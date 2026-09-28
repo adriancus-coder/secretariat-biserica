@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
     "/pdf/**": ["./assets/fonts/**"],
   },
   experimental: {
+    // forbidden() pentru paginile interzise rolului curent.
+    authInterrupts: true,
     serverActions: {
       // Importul JSON (copie de siguranță) poate depăși limita implicită de 1 MB.
       bodySizeLimit: "20mb",
