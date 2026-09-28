@@ -12,8 +12,11 @@ import { initialFormState } from "@/lib/form-state";
 export function useActionForm(action: (prev: FormState, formData: FormData) => Promise<FormState>) {
   const [state, dispatch, pending] = useActionState(action, initialFormState);
   function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    // Butoanele marcate `data-native-submit` (ex. previzualizarea PDF într-o filă nouă) trimit
+    // formularul direct, către adresa din `formAction`.
+    if (submitter?.dataset.nativeSubmit !== undefined) return;
+    e.preventDefault();
     const formData = new FormData(e.currentTarget, submitter);
     startTransition(() => dispatch(formData));
   }
