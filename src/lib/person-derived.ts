@@ -8,3 +8,8 @@ export function personDerived(p: { nume: string; prenume: string; familie: strin
     sortKey: personSortKey(p.nume, p.prenume),
   };
 }
+
+/** Textul de căutare al unei mențiuni (text, tip, familie — fără diacritice). */
+export function noteSearchText(n: { text: string; tip: string; familie: string }): string {
+  return normalizeSearch([n.text, n.tip, n.familie].join(" "));
+}

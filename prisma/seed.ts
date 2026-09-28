@@ -20,7 +20,7 @@ import { buildReportText } from "../src/domain/report";
 import { computeStats } from "../src/domain/stats";
 import type { PersonRecord } from "../src/domain/types";
 import { inYear, todayIso } from "../src/lib/dates";
-import { personDerived } from "../src/lib/person-derived";
+import { noteSearchText, personDerived } from "../src/lib/person-derived";
 import { hashPassword } from "../src/server/password";
 
 const DEMO_CHURCH_ID = "demo";
@@ -272,7 +272,9 @@ async function main() {
     [addDays(TODAY, -3), "Generală", null, "", "De actualizat datele de contact pentru familiile venite prin transfer anul acesta."],
   ];
   for (const [data, tip, who, familie, text] of notes) {
-    await prisma.note.create({ data: { churchId, data: date(data), tip, personId: who ? pid(who) : null, familie, text } });
+    await prisma.note.create({
+      data: { churchId, data: date(data), tip, personId: who ? pid(who) : null, familie, text, searchText: noteSearchText({ text, tip, familie }) },
+    });
   }
 
   // Documente (registrul de ieșire), cu texte generate din șabloane
