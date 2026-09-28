@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AppNav } from "@/components/shell/app-nav";
 import { Icon } from "@/components/shell/icons";
+import { Flash } from "@/components/ui/flash";
 import { ROLE_LABEL } from "@/lib/labels";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
@@ -39,6 +41,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="shell-main" id="continut">
         {children}
       </main>
+      <Suspense>
+        <Flash />
+      </Suspense>
     </div>
   );
 }
