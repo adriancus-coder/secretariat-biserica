@@ -4,8 +4,9 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("Variabila de mediu DATABASE_URL nu este setată.");
+  // Conexiunea se deschide abia la prima interogare (build-ul nu are nevoie de baza de date).
+  if (!connectionString && process.env.NEXT_PHASE !== "phase-production-build") {
+    console.warn("[db] Variabila de mediu DATABASE_URL nu este setată — vezi .env.example.");
   }
   const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({

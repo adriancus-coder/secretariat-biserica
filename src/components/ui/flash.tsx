@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const MESSAGES: Record<string, string> = {
@@ -16,30 +16,33 @@ const MESSAGES: Record<string, string> = {
  */
 export function Flash() {
   const params = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const key = Object.keys(MESSAGES).find((k) => params.has(k));
-  const [message, setMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; at: number } | null>(null);
 
+  // Preia mesajul din URL și curăță adresa (fără o nouă cerere la server).
   useEffect(() => {
     if (!key) return;
     const text = params.get("mesaj") || MESSAGES[key];
-    const show = setTimeout(() => setMessage(text), 0);
     const sp = new URLSearchParams(params.toString());
     sp.delete(key);
     sp.delete("mesaj");
-    router.replace(`${pathname}${sp.size ? `?${sp}` : ""}`, { scroll: false });
-    const hide = setTimeout(() => setMessage(null), 2500);
-    return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
-    };
-  }, [key, params, pathname, router]);
+    window.history.replaceState(window.history.state, "", `${pathname}${sp.size ? `?${sp}` : ""}`);
+    // Intenționat fără anulare: curățarea URL-ului re-execută efectul, dar mesajul trebuie afișat.
+    setTimeout(() => setToast({ text, at: Date.now() }), 0);
+  }, [key, params, pathname]);
 
-  if (!message) return null;
+  // Ascunde mesajul după 2,5 secunde.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  if (!toast) return null;
   return (
     <div className="toast" role="status" aria-live="polite">
-      {message}
+      {toast.text}
     </div>
   );
 }

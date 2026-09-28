@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
-import { ageAt, toDbDate } from "@/lib/dates";
+import { ageAt, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { getChurch } from "@/server/queries/church";
@@ -35,7 +35,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
   const church = await getChurch(ctx);
   const requested = Number(typeof sp.an === "string" ? sp.an : NaN);
-  const currentYear = new Date().getFullYear();
+  const currentYear = Number(todayIso().slice(0, 4));
   const year = Number.isInteger(requested) && requested > 1800 && requested <= currentYear + 1 ? requested : undefined;
 
   const { stats: s, persons, years, today } = await loadStats(ctx, year);
