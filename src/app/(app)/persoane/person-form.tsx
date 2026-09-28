@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
-import { initialFormState } from "@/lib/form-state";
+import { useActionForm } from "@/components/ui/use-action-form";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
 
@@ -25,13 +24,13 @@ export function PersonForm({
   rudenie: string[];
   cancelHref: string;
 }) {
-  const [state, action, pending] = useActionState(savePersonAction.bind(null, id), initialFormState);
+  const { state, pending, onSubmit } = useActionForm(savePersonAction.bind(null, id));
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
 
   return (
-    <form action={action} noValidate>
+    <form onSubmit={onSubmit} noValidate>
       <div className="row2">
         <TextField name="nume" label="Nume" defaultValue={val("nume")} error={e.nume} required autoComplete="off" />
         <TextField name="prenume" label="Prenume" defaultValue={val("prenume")} error={e.prenume} autoComplete="off" />
