@@ -1,0 +1,445 @@
+// Schema bazei de date pentru Secretariat Biserică.
+//
+// Convenții:
+// - fiecare înregistrare de domeniu are `churchId`: datele fiecărei biserici sunt complet izolate
+//   (vezi src/server/tenant-db.ts, care adaugă automat filtrul pe biserică în toate interogările);
+// - numele câmpurilor de domeniu urmează modelul de date din prototip (nume, prenume, dataNasterii, ...);
+// - textele opționale sunt șiruri goale (nu NULL), ca în prototip; datele calendaristice sunt `date`.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Organizație, utilizatori, acces
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  SECRETAR
+  VIZUALIZARE
+}
+
+model Church {
+  id       String @id @default(cuid())
+  nume     String
+  adresa   String @default("")
+  orgNr    String @default("")
+  telefon  String @default("")
+  email    String @default("")
+  pastor   String @default("")
+  secretar String @default("")
+
+  // Nomenclatoare editabile. O listă goală înseamnă „valorile implicite” din aplicație.
+  tipuriSedinte    String[] @default([])
+  tipuriEvenimente String[] @default([])
+  tipuriMentiuni   String[] @default([])
+  gradeRudenie     String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  invitations    Invitation[]
+  persons        Person[]
+  meetings       Meeting[]
+  events         Event[]
+  documents      Document[]
+  groups         Group[]
+  notes          Note[]
+  auditLogs      AuditLog[]
+  passwordResets PasswordReset[]
+
+  @@map("churches")
+}
+
+model User {
+  id             String  @id @default(cuid())
+  churchId       String
+  church         Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  /// Adresa de e-mail, stocată cu litere mici; unică în toată aplicația (un utilizator aparține unei singure biserici).
+  email          String  @unique
+  name           String
+  passwordHash   String
+  role           Role    @default(VIZUALIZARE)
+  active         Boolean @default(true)
+  /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
+  sessionVersion Int     @default(0)
+
+  failedLoginCount  Int       @default(0)
+  lastFailedLoginAt DateTime?
+  lastLoginAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs       AuditLog[]
+  invitationsSent Invitation[]    @relation("InvitedBy")
+  passwordResets  PasswordReset[] @relation("ResetFor")
+  resetsIssued    PasswordReset[] @relation("ResetIssuedBy")
+
+  @@index([churchId])
+  @@map("users")
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  churchId    String
+  church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  email       String
+  role        Role
+  /// SHA-256 al tokenului din link; tokenul în clar nu se stochează.
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  invitedById String?
+  invitedBy   User?     @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([churchId, createdAt])
+  @@map("invitations")
+}
+
+model PasswordReset {
+  id         String    @id @default(cuid())
+  churchId   String
+  church     Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation("ResetFor", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  issuedById String?
+  issuedBy   User?     @relation("ResetIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+// ---------------------------------------------------------------------------
+// Registrul de persoane
+// ---------------------------------------------------------------------------
+
+enum PersonStatus {
+  MEMBRU
+  APARTINATOR
+  PRIETEN
+  COPIL
+  FOST_MEMBRU
+}
+
+enum Gender {
+  M
+  F
+}
+
+enum EntryMode {
+  BOTEZ
+  TRANSFER
+  NASCUT_IN_BISERICA
+  REPRIMIRE
+  ALTUL
+}
+
+enum ExitMode {
+  TRANSFER
+  RETRAGERE
+  DECES
+  EXCLUDERE
+  ALTUL
+}
+
+model Person {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  nume         String
+  prenume      String       @default("")
+  statut       PersonStatus @default(MEMBRU)
+  gen          Gender?
+  familie      String       @default("")
+  rudenie      String       @default("")
+  dataNasterii DateTime?    @db.Date
+  telefon      String       @default("")
+  email        String       @default("")
+  adresa       String       @default("")
+
+  // Intrare în biserică
+  dataMembru          DateTime?  @db.Date
+  modIntrare          EntryMode?
+  bisericaProvenienta String     @default("")
+  dataBotez           DateTime?  @db.Date
+  locBotez            String     @default("")
+  dataBinecuvantare   DateTime?  @db.Date
+
+  // Ieșire din evidență
+  dataIesire         DateTime? @db.Date
+  modIesire          ExitMode?
+  bisericaDestinatie String    @default("")
+
+  slujire String @default("")
+  note    String @default("")
+
+  /// Derivat: nume, prenume, familie, telefon, e-mail — litere mici, fără diacritice (căutare).
+  searchText String @default("")
+  /// Derivat: cheie de ordonare alfabetică românească (A, Ă, Â, B, ..., S, Ș, T, Ț, ...).
+  sortKey    String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meetings  MeetingAttendee[]
+  groups    GroupMember[]
+  mentiuni  Note[]
+  documents Document[]
+
+  @@index([churchId, sortKey])
+  @@index([churchId, familie])
+  @@index([churchId, statut])
+  @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("persons")
+}
+
+// ---------------------------------------------------------------------------
+// Procese-verbale
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  titlu      String   @default("")
+  tip        String
+  data       DateTime @db.Date
+  /// Ora în format HH:MM (sau șir gol).
+  ora        String   @default("")
+  loc        String   @default("")
+  presedinte String   @default("")
+  invitati   String   @default("")
+  ordine     String   @default("")
+  discutii   String   @default("")
+  hotarari   String   @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prezenti MeetingAttendee[]
+
+  @@index([churchId, data])
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  meetingId String
+  personId  String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([meetingId, personId])
+  @@index([personId])
+  @@map("meeting_attendees")
+}
+
+// ---------------------------------------------------------------------------
+// Calendar
+// ---------------------------------------------------------------------------
+
+model Event {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  titlu       String
+  tip         String
+  data        DateTime @db.Date
+  ora         String   @default("")
+  loc         String   @default("")
+  invitat     String   @default("")
+  responsabil String   @default("")
+  descriere   String   @default("")
+
+  agapaActiva      Boolean @default(false)
+  agapaResponsabil String  @default("")
+  agapaPersoane    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contributii EventContribution[]
+
+  @@index([churchId, data])
+  @@map("events")
+}
+
+/// „Cine aduce ce” la agapă.
+model EventContribution {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  pozitie Int
+  cine    String @default("")
+  ce      String @default("")
+
+  @@index([eventId, pozitie])
+  @@map("event_contributions")
+}
+
+// ---------------------------------------------------------------------------
+// Registrul de ieșire (documente)
+// ---------------------------------------------------------------------------
+
+enum DocumentType {
+  adeverinta
+  botez
+  binecuvantare
+  recomandare
+  scrisoare
+  raport
+}
+
+model Document {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  tip        DocumentType
+  /// Numărul de înregistrare; unic pe biserică și an.
+  nr         Int
+  /// Anul registrului (anul din `data`), folosit pentru numerotarea pe an.
+  anRegistru Int
+  data       DateTime     @db.Date
+
+  personId String?
+  person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  /// Numele persoanei la momentul emiterii (rămâne și dacă persoana e ștearsă din registru).
+  persoana String  @default("")
+
+  catre String @default("")
+  scop  String @default("")
+  titlu String @default("")
+  text  String
+
+  /// Pentru darea de seamă: anul raportat.
+  anRaport Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([churchId, anRegistru, nr])
+  @@index([churchId, data])
+  @@index([personId])
+  @@map("documents")
+}
+
+// ---------------------------------------------------------------------------
+// Grupuri și mențiuni
+// ---------------------------------------------------------------------------
+
+model Group {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  nume        String
+  responsabil String @default("")
+  descriere   String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  membri GroupMember[]
+
+  @@index([churchId, nume])
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId  String
+  personId String
+  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, personId])
+  @@index([personId])
+  @@map("group_members")
+}
+
+model Note {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  data     DateTime @db.Date
+  tip      String
+  personId String?
+  person   Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  familie  String   @default("")
+  text     String
+
+  /// Derivat: text, tip și familie — litere mici, fără diacritice (căutare).
+  searchText String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId, data])
+  @@index([personId])
+  @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("notes")
+}
+
+// ---------------------------------------------------------------------------
+// Jurnal de modificări
+// ---------------------------------------------------------------------------
+
+enum AuditEntity {
+  PERSON
+  DOCUMENT
+  MEETING
+  EVENT
+  GROUP
+  NOTE
+  SETTINGS
+  USER
+  IMPORT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model AuditLog {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Numele utilizatorului la momentul modificării.
+  userName String  @default("")
+
+  entity      AuditEntity
+  entityId    String
+  /// Eticheta înregistrării (ex. numele persoanei), păstrată și după ștergere.
+  entityLabel String      @default("")
+  action      AuditAction
+  /// Pentru UPDATE: { câmp: [înainte, după] }; pentru CREATE/DELETE: instantaneul câmpurilor.
+  changes     Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([churchId, entity, entityId, createdAt])
+  @@index([churchId, createdAt])
+  @@map("audit_logs")
+}
