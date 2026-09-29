@@ -17,6 +17,8 @@ export const emailField = z
   .max(200)
   .pipe(z.email("Adresă de e-mail invalidă."));
 
+export const forgotPasswordSchema = z.object({ email: emailField });
+
 export const newPasswordFields = z
   .object({
     password,

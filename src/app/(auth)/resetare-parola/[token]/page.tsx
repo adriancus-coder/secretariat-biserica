@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon } from "@/components/shell/icons";
 import { findValidPasswordReset } from "@/server/queries/auth";
 import { ResetPasswordForm } from "./reset-form";
 
@@ -12,10 +13,14 @@ export default async function ResetPasswordPage({ params }: PageProps<"/resetare
     return (
       <>
         <h2 className="text-2xl mb-2">Link expirat</h2>
-        <p className="hint">Linkul de resetare nu mai este valabil. Cereți administratorului bisericii unul nou.</p>
-        <p className="mt-6">
-          <Link href="/autentificare">Autentificare</Link>
-        </p>
+        <p className="hint mb-5">Linkul de resetare nu mai este valabil sau a fost deja folosit. Puteți cere unul nou.</p>
+        <Link href="/am-uitat-parola" className="btn btn-primary w-full min-h-11">
+          <Icon name="email" className="size-[18px]" />
+          Cere un link nou
+        </Link>
+        <Link href="/autentificare" className="btn w-full min-h-11 mt-3">
+          Înapoi la autentificare
+        </Link>
       </>
     );
   }

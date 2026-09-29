@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { formatDateTime } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ROLE_LABEL } from "@/lib/labels";
+import { isEmailConfigured } from "@/server/email";
 import { requireCtx } from "@/server/session";
 import { ActiveToggle, InviteForm, ResetLinkButton, RevokeInvitation, RoleSelect } from "./user-controls";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Utilizatori" };
 
 export default async function UsersPage() {
   const ctx = await requireCtx("admin");
+  const emailEnabled = isEmailConfigured();
   const [users, invitations] = await Promise.all([
     ctx.db.user.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
@@ -27,11 +29,17 @@ export default async function UsersPage() {
 
       <div className="card">
         <h3>Invită un utilizator</h3>
-        <p className="hint mb-3">
-          Se generează un link personal (valabil 7 zile) pe care îl trimiteți persoanei invitate; aceasta își alege singură
-          parola.
-        </p>
-        <InviteForm />
+        {emailEnabled ? (
+          <p className="hint mb-3">
+            Persoana invitată primește pe e-mail un link personal (valabil 7 zile) și își alege singură parola.
+          </p>
+        ) : (
+          <p className="hint mb-3">
+            Se generează un link personal (valabil 7 zile) pe care îl trimiteți persoanei invitate; aceasta își alege
+            singură parola. Trimiterea pe e-mail nu este configurată.
+          </p>
+        )}
+        <InviteForm emailEnabled={emailEnabled} />
       </div>
 
       {invitations.length ? (
@@ -70,7 +78,7 @@ export default async function UsersPage() {
             </div>
             <div className="flex gap-2 items-start flex-wrap">
               <RoleSelect userId={u.id} role={u.role} disabled={!u.active} />
-              {u.active ? <ResetLinkButton userId={u.id} /> : null}
+              {u.active ? <ResetLinkButton userId={u.id} emailEnabled={emailEnabled} /> : null}
               {u.id !== ctx.user.id ? <ActiveToggle userId={u.id} active={u.active} /> : null}
             </div>
           </div>

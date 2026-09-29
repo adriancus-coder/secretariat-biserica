@@ -217,6 +217,20 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Documents with a missing or duplicate number are renumbered.
 - The request body limit is 20 MB (`next.config.ts`).
 
+### E-mail
+
+- `src/server/email.ts` uses Resend and exports `sendInvitationEmail` and `sendPasswordResetEmail`.
+  - They never throw. They return `"sent"`, `"disabled"` or `"failed"`.
+  - The caller tells the user the outcome and keeps the link visible for manual sending.
+- E-mail stays off unless `RESEND_API_KEY` and a valid `APP_URL` are set. Links are built only from `APP_URL`, never from request headers.
+- Never log tokens, links or recipients.
+  - The tests assert that no token reaches the logs.
+  - The tests mock the `resend` package; they must never call the real API.
+- The public forgot-password flow is `/am-uitat-parola`:
+  - it gives the same answer whether or not the account exists;
+  - the lookup, the token and the e-mail run in `after()`;
+  - each e-mail address is limited to 3 requests per 15 minutes, in memory (`src/server/rate-limit.ts`).
+
 ### Database and migrations
 
 - Never edit an applied migration: Prisma checks its checksum. Add a new migration instead. Example: `note_search` has a wrong backfill, which `note_search_fix` corrects.

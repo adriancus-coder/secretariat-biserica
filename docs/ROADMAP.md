@@ -46,10 +46,12 @@ Also in place:
 
 ## Next steps (priority order)
 
-1. **Render + Resend** (this run):
-   - Render Blueprint and a health check;
-   - invitation and password-reset e-mails;
-   - a public "forgot password" page.
+1. **Render + Resend**:
+   - Done on `dev`: Render Blueprint (`render.yaml`), `/api/health`, invitation and password-reset e-mails through Resend, and the public `/am-uitat-parola` page.
+   - Remaining, manual:
+     - first deploy on Render;
+     - verify the sender domain in Resend;
+     - send a real invitation and a real password reset.
 2. **Data migration from membriibiserica.ro:**
    - export the current register;
    - convert it to the prototype JSON format;
@@ -66,6 +68,9 @@ Also in place:
   - most primary buttons have no icon.
 
   Audit and align these screen by screen.
+- The `/am-uitat-parola` limit is kept in process memory: 3 requests per e-mail address per 15 minutes.
+  - It resets when the app restarts and is not shared between instances. That is fine for the single Render instance.
+  - Move it to PostgreSQL or Redis before running more than one instance; this belongs with step 4.
 - Older code comments and most of the README are in Romanian.
 - Auth.js v5 is still a beta release.
 - Date fields use the browser's native date picker.

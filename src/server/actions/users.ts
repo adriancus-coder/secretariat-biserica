@@ -8,12 +8,22 @@ import { inviteSchema } from "@/lib/schemas/settings";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { prisma } from "../db";
+import { sendInvitationEmail, sendPasswordResetEmail, type EmailResult } from "../email";
 import { actionCtx, ActionError } from "../session";
 import { appUrl, newToken } from "../tokens";
 import { parseOrThrow, runFormAction } from "./run";
 
 export interface LinkState extends FormState {
   link?: string;
+  /** Shown above the result when the e-mail could not be sent; the link stays visible. */
+  warning?: string;
+}
+
+/** What the admin reads when an e-mail was not sent (the link is shown for manual sending). */
+function emailWarning(result: EmailResult): string | undefined {
+  if (result === "disabled") return "Trimiterea pe e-mail nu este configurată.";
+  if (result === "failed") return "E-mailul nu a putut fi trimis. Încercați din nou mai târziu sau trimiteți linkul manual.";
+  return undefined;
 }
 
 const INVITE_DAYS = 7;
@@ -26,9 +36,11 @@ async function origin(): Promise<string | null> {
   return host ? `${proto}://${host}` : null;
 }
 
-/** Invitație pentru un utilizator nou: se generează un link valabil 7 zile. */
+/** Invitație pentru un utilizator nou: link valabil 7 zile, trimis pe e-mail când e configurat. */
 export async function inviteUserAction(_prev: LinkState, formData: FormData): Promise<LinkState> {
   let link: string | undefined;
+  let emailed = "disabled" as EmailResult; // assigned in the callback below
+  let invitedEmail = "";
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("admin");
     const { email, role } = parseOrThrow(inviteSchema, Object.fromEntries(formData));
@@ -60,11 +72,30 @@ export async function inviteUserAction(_prev: LinkState, formData: FormData): Pr
       });
     });
     link = appUrl(`/invitatie/${token}`, await origin());
+    invitedEmail = email;
+    emailed = await sendInvitationEmail({
+      to: email,
+      token,
+      churchName: ctx.user.churchName,
+      invitedBy: ctx.user.name,
+      roleLabel: ROLE_LABEL[role],
+      validDays: INVITE_DAYS,
+    });
   });
   revalidatePath("/setari/utilizatori");
-  return link
-    ? { ok: true, message: `Invitația a fost creată. Trimiteți linkul de mai jos persoanei invitate (valabil ${INVITE_DAYS} zile).`, link }
-    : state;
+  if (!link) return state;
+  return emailed === "sent"
+    ? {
+        ok: true,
+        message: `Invitația a fost trimisă pe e-mail la ${invitedEmail}. Linkul de mai jos (valabil ${INVITE_DAYS} zile) poate fi trimis și manual.`,
+        link,
+      }
+    : {
+        ok: true,
+        message: `Invitația a fost creată. Trimiteți linkul de mai jos persoanei invitate (valabil ${INVITE_DAYS} zile).`,
+        warning: emailWarning(emailed),
+        link,
+      };
 }
 
 export async function revokeInvitationAction(id: string): Promise<FormState> {
@@ -141,9 +172,11 @@ export async function setUserActiveAction(userId: string, active: boolean): Prom
   return state;
 }
 
-/** Link de resetare a parolei, generat de administrator (valabil 48 de ore). */
+/** Link de resetare a parolei, generat de administrator (valabil 48 de ore) și trimis pe e-mail. */
 export async function passwordResetLinkAction(userId: string): Promise<LinkState> {
   let link: string | undefined;
+  let emailed = "disabled" as EmailResult; // assigned in the callback below
+  let userEmail = "";
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, userId);
@@ -171,6 +204,21 @@ export async function passwordResetLinkAction(userId: string): Promise<LinkState
       });
     });
     link = appUrl(`/resetare-parola/${token}`, await origin());
+    userEmail = user.email;
+    emailed = await sendPasswordResetEmail({
+      to: user.email,
+      token,
+      churchName: ctx.user.churchName,
+      name: user.name,
+      validHours: RESET_HOURS,
+    });
   });
-  return link ? { ok: true, message: `Link de resetare valabil ${RESET_HOURS} de ore:`, link } : state;
+  if (!link) return state;
+  return emailed === "sent"
+    ? {
+        ok: true,
+        message: `Linkul de resetare a fost trimis pe e-mail la ${userEmail}. Îl puteți trimite și manual (valabil ${RESET_HOURS} de ore):`,
+        link,
+      }
+    : { ok: true, message: `Link de resetare valabil ${RESET_HOURS} de ore:`, warning: emailWarning(emailed), link };
 }

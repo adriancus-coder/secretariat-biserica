@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 /** Rutele accesibile fără autentificare. */
-export const PUBLIC_PATHS = ["/autentificare", "/inregistrare", "/invitatie", "/resetare-parola"];
+export const PUBLIC_PATHS = ["/autentificare", "/inregistrare", "/invitatie", "/resetare-parola", "/am-uitat-parola"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/api/auth");

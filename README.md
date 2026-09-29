@@ -22,7 +22,7 @@ calculul statisticilor, șabloanele de documente și darea de seamă. Echivalen�
 | **Dare de seamă** | „Situația membrală la 31.12.AAAA” pentru orice an, calculată retroactiv; se salvează ca document în registru. |
 | **Grupuri** | Nume, responsabil, descriere, persoane; listă tipăribilă (PDF). |
 | **Mențiuni** | Note pe persoană sau familie, vizibile pe fișa persoanei. |
-| **Setări** | Datele organizației (antet și semnături), nomenclatoare editabile, utilizatori și roluri (invitații, resetare parolă), export/import JSON compatibil cu prototipul, jurnalul de modificări. |
+| **Setări** | Datele organizației (antet și semnături), nomenclatoare editabile, utilizatori și roluri (invitații și resetarea parolei, trimise pe e-mail), export/import JSON compatibil cu prototipul, jurnalul de modificări. |
 
 Toate PDF-urile (documente, procese-verbale, liste de grup, fișe de eveniment, dare de seamă) sunt
 generate pe server, cu antetul bisericii și semnăturile pastorului și secretarului.
@@ -82,9 +82,11 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | `DATABASE_URL` | da | Conexiunea PostgreSQL a aplicației și a migrărilor. |
 | `AUTH_SECRET` | da | Cheia de semnare a sesiunilor (min. 32 de caractere aleatoare). |
 | `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. |
-| `APP_URL` | recomandat | Adresa publică (ex. `https://secretariat.exemplu.ro`), folosită în linkurile de invitație și resetare a parolei. |
+| `APP_URL` | recomandat | Adresa publică (ex. `https://secretariat.exemplu.ro`), folosită în linkurile de invitație și resetare a parolei. Necesară pentru trimiterea e-mailurilor. |
 | `ALLOW_SIGNUP` | nu | `true` permite înregistrarea de biserici noi din `/inregistrare`. Implicit doar prima biserică. |
 | `APP_TIME_ZONE` | nu | Fusul orar pentru „azi” (implicit `Europe/Bucharest`; ex. `Europe/Oslo`). |
+| `RESEND_API_KEY` | nu | Cheia [Resend](https://resend.com) pentru trimiterea invitațiilor și a linkurilor de resetare pe e-mail. Fără ea, administratorul copiază linkurile din **Setări → Utilizatori**. |
+| `EMAIL_FROM` | nu | Expeditorul e-mailurilor (implicit `Secretariat Biserică <secretariat@sanctuaryvoice.com>`); domeniul trebuie verificat în Resend. |
 | `TEST_DATABASE_URL` | pentru teste | Baza de date (separată!) pentru testele de integrare; fără ea sunt sărite. |
 
 ## Migrări Prisma
@@ -113,8 +115,13 @@ administrator: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`.
 | **Vizualizare** | Consultă și tipărește (PDF), inclusiv darea de seamă, fără a o înregistra. |
 
 Utilizatorii noi sunt invitați din **Setări → Utilizatori**: se generează un link personal (valabil
-7 zile) pe care administratorul îl trimite persoanei invitate. Tot de acolo se generează linkuri de
-resetare a parolei, se schimbă rolul sau se dezactivează un cont (sesiunile deschise se închid imediat).
+7 zile), trimis pe e-mail când `RESEND_API_KEY` este setată; linkul rămâne vizibil pentru administrator,
+care îl poate trimite și manual. Tot de acolo se trimit linkuri de resetare a parolei (valabile 48 de
+ore), se schimbă rolul sau se dezactivează un cont (sesiunile deschise se închid imediat).
+
+Utilizatorii își pot reseta singuri parola din **`/am-uitat-parola`** (link din pagina de autentificare):
+primesc pe e-mail un link valabil o oră. Răspunsul este același indiferent dacă adresa are cont, iar
+pentru aceeași adresă se acceptă cel mult 3 cereri la 15 minute.
 
 ## Teste
 
@@ -131,9 +138,10 @@ npm run test:watch     # mod interactiv
 - **Statistici și dare de seamă** ([`src/domain/stats.test.ts`](src/domain/stats.test.ts),
   [`src/domain/report.test.ts`](src/domain/report.test.ts)): scenarii explicite — situația la zi și
   retroactivă, vârste la data situației, copii ai membrilor, mișcarea anului, formatul complet al textului.
-- **Documente, tipărituri, PDF, validări, import/export, parole, blocarea autentificării.**
-- **Integrare pe PostgreSQL** (`tests/integration`): izolarea datelor între biserici și numerotarea
-  concurentă a registrului de documente. Baza indicată de `TEST_DATABASE_URL` este golită la rulare.
+- **Documente, tipărituri, PDF, validări, import/export, parole, blocarea autentificării, e-mailuri**
+  (client Resend simulat; niciun token nu ajunge în jurnale), **limitarea cererilor, verificarea stării.**
+- **Integrare pe PostgreSQL** (`tests/integration`): izolarea datelor între biserici, numerotarea
+  concurentă a registrului de documente și resetarea parolei cerută de utilizator. Baza indicată de `TEST_DATABASE_URL` este golită la rulare.
 
 ## Working model
 
@@ -207,6 +215,10 @@ Notes:
   - This was verified locally: all migrations applied with such a role.
   - If a deploy log still shows `permission denied to create extension`, open the database's page in Render, connect with its **PSQL command**, run `CREATE EXTENSION IF NOT EXISTS pg_trgm;` and redeploy.
 - **Do not set `NODE_ENV=production`** as an environment variable. `npm ci` would then skip the devDependencies that the build and `prisma migrate deploy` need. `next start` sets production mode by itself.
+- **E-mail (Resend).**
+  - Verify the sender's domain in Resend (DNS records) before setting `EMAIL_FROM`.
+  - Turn off click tracking for that domain, so that invitation and password-reset links reach users unchanged.
+  - Until `RESEND_API_KEY` is set, the app works without e-mail: admins copy the links from Setări → Utilizatori.
 - **Never run `npm run db:seed` against the production database**: it is for the demo church.
 - **Backups.** Render keeps database backups for paid instance types. Each church can also download its JSON copy from Setări → Copie de siguranță.
   - `ipAllowList: []` keeps the database private. To run `pg_dump` from your own machine, temporarily allow your IP address in the database's settings.

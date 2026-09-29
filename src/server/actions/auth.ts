@@ -2,11 +2,13 @@
 
 import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { signIn, signOut } from "@/auth";
 import type { FormState } from "@/lib/form-state";
 import {
   acceptInvitationSchema,
   changePasswordSchema,
+  forgotPasswordSchema,
   newPasswordFields,
   safeCallbackUrl,
   signupSchema,
@@ -14,7 +16,8 @@ import {
 import { formValues } from "@/lib/validation";
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "../password";
-import { getCurrentUser } from "../session";
+import { passwordResetRequests, requestPasswordReset, RESET_REQUEST_WINDOW_MINUTES } from "../password-reset";
+import { ActionError, getCurrentUser } from "../session";
 import { hashToken } from "../tokens";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { signupAllowed } from "../queries/auth";
@@ -122,7 +125,30 @@ export async function acceptInvitationAction(token: string, _prev: FormState, fo
   return (await signInOrMessage(credentials.email, credentials.password, "/")) ?? {};
 }
 
-/** Setarea unei parole noi pe baza unui link de resetare emis de administrator. */
+/**
+ * "Forgot password": always the same neutral answer, so the page does not reveal which addresses
+ * have an account. The lookup, the token and the e-mail run after the response (`after`).
+ */
+export async function forgotPasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  return runFormAction(formData, async () => {
+    const { email } = parseOrThrow(forgotPasswordSchema, Object.fromEntries(formData));
+    if (!passwordResetRequests.hit(email)) {
+      throw new ActionError(
+        `Prea multe cereri pentru această adresă. Încercați din nou peste ${RESET_REQUEST_WINDOW_MINUTES} minute.`,
+      );
+    }
+    after(async () => {
+      try {
+        await requestPasswordReset(email);
+      } catch (error) {
+        console.error("[password-reset] request failed:", error instanceof Error ? error.message : String(error));
+      }
+    });
+    return { ok: true, message: "Dacă adresa există, veți primi un e-mail.", values: { email } };
+  });
+}
+
+/** Setarea unei parole noi pe baza unui link de resetare (trimis pe e-mail sau emis de administrator). */
 export async function resetPasswordAction(token: string, _prev: FormState, formData: FormData): Promise<FormState> {
   let credentials: { email: string; password: string } | undefined;
   const state = await runFormAction(formData, async () => {
@@ -132,7 +158,7 @@ export async function resetPasswordAction(token: string, _prev: FormState, formD
       include: { user: true },
     });
     if (!reset || reset.usedAt || reset.expiresAt < new Date() || !reset.user.active) {
-      return { message: "Linkul de resetare nu mai este valabil. Cereți administratorului unul nou." };
+      return { message: "Linkul de resetare nu mai este valabil. Cereți unul nou din pagina „Am uitat parola”." };
     }
     const passwordHash = await hashPassword(data.password);
     await prisma.$transaction(async (tx) => {

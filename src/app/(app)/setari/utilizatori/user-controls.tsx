@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Icon } from "@/components/shell/icons";
 import { SelectField, TextField } from "@/components/ui/fields";
-import { initialFormState, type FormState } from "@/lib/form-state";
+import { initialFormState } from "@/lib/form-state";
 import { ROLE_DESCRIPTION, ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import {
   changeRoleAction,
@@ -38,17 +39,24 @@ function CopyLink({ link }: { link: string }) {
   );
 }
 
-function Message({ state }: { state: FormState & { link?: string } }) {
+function Message({ state }: { state: LinkState }) {
   if (!state.message) return null;
   return (
-    <div className={`alert ${state.ok ? "alert-ok" : ""} !mb-0 mt-2`} role={state.ok ? "status" : "alert"}>
-      {state.message}
-      {state.link ? <CopyLink link={state.link} /> : null}
-    </div>
+    <>
+      {state.warning ? (
+        <div className="alert !mb-0 mt-2" role="alert">
+          {state.warning}
+        </div>
+      ) : null}
+      <div className={`alert ${state.ok ? "alert-ok" : ""} !mb-0 mt-2`} role={state.ok ? "status" : "alert"}>
+        {state.message}
+        {state.link ? <CopyLink link={state.link} /> : null}
+      </div>
+    </>
   );
 }
 
-export function InviteForm() {
+export function InviteForm({ emailEnabled }: { emailEnabled: boolean }) {
   const [state, action, pending] = useActionState(inviteUserAction, initialFormState as LinkState);
   const [role, setRole] = useState<RoleKey>("SECRETAR");
   return (
@@ -65,8 +73,9 @@ export function InviteForm() {
           error={state.errors?.role}
         />
       </div>
-      <button type="submit" className="btn btn-primary" disabled={pending}>
-        {pending ? "Se creează…" : "Creează invitația"}
+      <button type="submit" className="btn btn-primary min-h-11" disabled={pending}>
+        <Icon name="email" className="size-[18px]" />
+        {emailEnabled ? (pending ? "Se trimite…" : "Trimite invitația") : pending ? "Se creează…" : "Creează invitația"}
       </button>
       <Message state={state} />
     </form>
@@ -113,12 +122,12 @@ export function ActiveToggle({ userId, active, disabled }: { userId: string; act
   );
 }
 
-export function ResetLinkButton({ userId }: { userId: string }) {
+export function ResetLinkButton({ userId, emailEnabled }: { userId: string; emailEnabled: boolean }) {
   const [state, action, pending] = useActionState(async () => passwordResetLinkAction(userId), initialFormState as LinkState);
   return (
     <form action={action}>
       <button type="submit" className="btn btn-sm" disabled={pending}>
-        Link resetare parolă
+        {emailEnabled ? "Trimite link de resetare" : "Link resetare parolă"}
       </button>
       <Message state={state} />
     </form>
