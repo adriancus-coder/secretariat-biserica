@@ -9,6 +9,7 @@ Church secretariat web app. It covers the person register, meeting minutes (proc
 
 - Functional spec: `prototip/secretariat-biserica.html`, the original single-file prototype. **Never edit it**: the parity tests execute its code.
 - `README.md`: setup, environment variables, migrations and deployment.
+- Deployment: `render.yaml` (Render Blueprint) with the health check `/api/health`. The steps are in README, "Deploy on Render".
 - `docs/ROADMAP.md`: decisions and priorities.
 
 <!-- BEGIN:nextjs-agent-rules -->
@@ -98,7 +99,8 @@ tests/                  unit/, integration/, prototype/ (parity harness), stubs/
   - the session;
   - the `Church` model, which is not a tenant model;
   - global checks such as a unique e-mail;
-  - import.
+  - import;
+  - the health check.
 - A new church-owned model needs:
   - a `churchId` column with a relation and an index;
   - an entry in `TENANT_MODELS`;

@@ -162,6 +162,57 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
   **Setări → Copie de siguranță**.
 - Autentificarea blochează temporar (15 minute) un cont după 5 parole greșite consecutive.
 
+## Deploy on Render
+
+[`render.yaml`](render.yaml) is a Render Blueprint. It creates:
+
+- the web service **secretariat-biserica**: Node 22, Starter plan, Frankfurt, deploying from `dev` for now;
+- the PostgreSQL 16 database **secretariat-db**: plan `basic-256mb`, the smallest paid instance type, reachable only from Render's private network.
+
+| | Command |
+| --- | --- |
+| Build | `npm ci && npx prisma generate && npm run build` |
+| Start | `npx prisma migrate deploy && npm run start` |
+
+`/api/health` is Render's health check. It answers `{"ok":true,"db":true}` with HTTP 200, or HTTP 503 when the database does not answer.
+
+1. **Create the Blueprint.** In the Render dashboard choose **New → Blueprint**, then pick the repository `adriancus-coder/secretariat-biserica` and the branch `dev`.
+2. **Fill in the variables Render asks for** (`sync: false` in `render.yaml`):
+
+   | Variable | Value |
+   | --- | --- |
+   | `APP_URL` | The public address. A new service gets `https://<service-name>.onrender.com`; if the exact URL is not known yet, set it right after the first deploy. Links in e-mails are built from it. |
+   | `RESEND_API_KEY` | A Resend API key with sending access. Leave it empty to start without e-mail: invitation and password-reset links are then copied manually from Setări → Utilizatori. |
+   | `EMAIL_FROM` | Optional. The default is `Secretariat Biserică <secretariat@sanctuaryvoice.com>`; the sender's domain must be verified in Resend. |
+   | `ALLOW_SIGNUP` | `true`, only for the first setup (step 4). |
+
+   Render sets the rest itself:
+   - `DATABASE_URL` comes from the database;
+   - `AUTH_SECRET` is generated;
+   - `AUTH_TRUST_HOST=true`;
+   - `APP_TIME_ZONE=Europe/Oslo`;
+   - `NODE_VERSION=22`.
+3. **Apply.** Render creates the database, builds, runs the migrations and starts the app. Check that `https://<your-app>/api/health` returns `{"ok":true,"db":true}`.
+4. **Create the first administrator.** Open `/inregistrare` and register the church (Maranata Stavanger) and your admin account.
+   - Then, in the service's **Environment** tab, delete `ALLOW_SIGNUP` (or set it to `false`) and save. Render redeploys.
+   - Do this right after the first deploy: while the database is empty, anyone who opens `/inregistrare` can register the first church.
+5. **Finish the setup in the app.**
+   - In Setări, fill in the organisation data (address, pastor, secretar), which is used in the PDF letterhead and signatures.
+   - Invite the other users from Setări → Utilizatori.
+
+Notes:
+
+- **Extension `pg_trgm`.** The first migration runs `CREATE EXTENSION IF NOT EXISTS pg_trgm`.
+  - `pg_trgm` is a trusted extension (PostgreSQL 13+), so a database owner without superuser rights can create it. That matches the Render database user.
+  - This was verified locally: all migrations applied with such a role.
+  - If a deploy log still shows `permission denied to create extension`, open the database's page in Render, connect with its **PSQL command**, run `CREATE EXTENSION IF NOT EXISTS pg_trgm;` and redeploy.
+- **Do not set `NODE_ENV=production`** as an environment variable. `npm ci` would then skip the devDependencies that the build and `prisma migrate deploy` need. `next start` sets production mode by itself.
+- **Never run `npm run db:seed` against the production database**: it is for the demo church.
+- **Backups.** Render keeps database backups for paid instance types. Each church can also download its JSON copy from Setări → Copie de siguranță.
+  - `ipAllowList: []` keeps the database private. To run `pg_dump` from your own machine, temporarily allow your IP address in the database's settings.
+- **Going live from `main`.** When production should follow `main`, change `branch: dev` to `branch: main` in `render.yaml`, or change the branch in the service settings.
+- **Custom domain.** After adding a custom domain in Render, update `APP_URL`.
+
 ## Arhitectură
 
 ```
@@ -172,7 +223,7 @@ src/
   app/(auth)/             autentificare, înregistrare, invitații, resetare parolă
   app/(app)/              paginile aplicației (Acasă, Persoane, Calendar, Ședințe, …)
   app/pdf/                rute care generează PDF-uri
-  app/api/                Auth.js, export JSON
+  app/api/                Auth.js, export JSON, verificarea stării (/api/health)
   domain/                 logică pură, testată: statistici, dare de seamă, șabloane, tipărituri, backup
   lib/                    formatări, etichete, validări (zod), utilitare comune server/client
   server/                 acces la date (queries), acțiuni (actions), sesiune, audit, PDF

@@ -1,0 +1,55 @@
+# Render Blueprint: one web service and one managed PostgreSQL database, both in Frankfurt.
+# Setup steps are in README.md, "Deploy on Render".
+# Variables marked `sync: false` are entered in the Render dashboard when the Blueprint is
+# created; their values never live in this file.
+
+databases:
+  - name: secretariat-db
+    # basic-256mb is the smallest paid instance type. The free type is not an option for
+    # production: free Render databases expire and have no backups.
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+    databaseName: secretariat
+    user: secretariat
+    # Private network only: just services in the same Render region can connect. To run
+    # pg_dump from your own machine, temporarily allow your IP address in the dashboard.
+    ipAllowList: []
+
+services:
+  - type: web
+    name: secretariat-biserica
+    runtime: node
+    plan: starter
+    region: frankfurt
+    # Deploys from `dev` for now; switch to `main` once production runs from main.
+    branch: dev
+    buildCommand: npm ci && npx prisma generate && npm run build
+    # Migrations are idempotent; they run before every start.
+    startCommand: npx prisma migrate deploy && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: secretariat-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: APP_TIME_ZONE
+        value: Europe/Oslo
+      - key: NODE_VERSION
+        value: "22"
+      # Public address, e.g. https://secretariat-biserica.onrender.com (links in e-mails).
+      - key: APP_URL
+        sync: false
+      # Resend API key; without it the app still works and admins copy links manually.
+      - key: RESEND_API_KEY
+        sync: false
+      # Optional sender; defaults to "Secretariat Biserică <secretariat@sanctuaryvoice.com>".
+      - key: EMAIL_FROM
+        sync: false
+      # "true" only while creating the first church, then remove it.
+      - key: ALLOW_SIGNUP
+        sync: false
