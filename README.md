@@ -135,6 +135,17 @@ npm run test:watch     # mod interactiv
 - **Integrare pe PostgreSQL** (`tests/integration`): izolarea datelor între biserici și numerotarea
   concurentă a registrului de documente. Baza indicată de `TEST_DATABASE_URL` este golită la rulare.
 
+## Working model
+
+- **Branches:**
+  - Development happens on the `dev` branch.
+  - `main` is production. Only the owner updates it, with fast-forward merges.
+  - Before each merge, the owner creates a `backup-<branch>-<YYYY-MM-DD>` branch.
+- **Checks:** every commit passes `npm run check` (lint, typecheck, unit and integration tests, production build). CI runs the same command.
+- **Documentation:**
+  - [`CLAUDE.md`](CLAUDE.md): conventions, commit format (`MARKER: subject`), language rules and UI rules.
+  - [`docs/ROADMAP.md`](docs/ROADMAP.md): current state, decisions and next steps.
+
 ## Producție
 
 ```bash
@@ -220,6 +231,4 @@ corecții deliberate:
 
 ## Limitări și pași următori
 
-- Linkurile de invitație și de resetare a parolei se transmit manual (nu există încă trimitere de e-mail).
-- Fără atașamente (fișiere scanate) la documente sau procese-verbale.
-- Datele calendaristice din formulare folosesc selectorul nativ al browserului.
+Limitările cunoscute și pașii următori, în ordinea priorității, sunt în [`docs/ROADMAP.md`](docs/ROADMAP.md).

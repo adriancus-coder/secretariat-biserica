@@ -2,15 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  verificare:
-    name: Lint, tipuri, teste, build
+  check:
+    name: npm run check
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -39,13 +39,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Instalare dependențe
+      - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Verificarea tipurilor
-        run: npm run typecheck
-      - name: Teste (unitare + integrare pe PostgreSQL)
-        run: npm test
-      - name: Build de producție
-        run: npm run build
+      # The same command every commit must pass locally: lint, typecheck, unit + integration tests, build.
+      - name: npm run check
+        run: npm run check

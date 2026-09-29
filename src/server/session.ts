@@ -77,7 +77,7 @@ export class ActionError extends Error {}
 
 /**
  * Pentru acțiuni de server: nu redirecționează, ci aruncă `ActionError`, pe care formularele
- * îl afișează ca mesaj (vezi src/server/actions/result.ts).
+ * îl afișează ca mesaj (vezi src/server/actions/run.ts).
  */
 export async function actionCtx(permission?: Permission): Promise<Ctx> {
   const user = await getCurrentUser();
