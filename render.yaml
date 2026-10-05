@@ -44,12 +44,17 @@ services:
       # Public address, e.g. https://secretariat-biserica.onrender.com (links in e-mails).
       - key: APP_URL
         sync: false
+      # Same value as APP_URL. Auth.js builds its redirects from it: behind Render's proxy,
+      # Next.js only sees its internal address (https://localhost:10000).
+      - key: AUTH_URL
+        sync: false
       # Resend API key; without it the app still works and admins copy links manually.
       - key: RESEND_API_KEY
         sync: false
       # Optional sender; defaults to "Secretariat Biserică <secretariat@sanctuaryvoice.com>".
       - key: EMAIL_FROM
         sync: false
-      # "true" only while creating the first church, then remove it.
+      # Leave empty: while the database is empty the first church can register anyway.
+      # "true" only to let more churches register on this server.
       - key: ALLOW_SIGNUP
         sync: false

@@ -48,10 +48,11 @@ Also in place:
 
 1. **Render + Resend**:
    - Done on `dev`: Render Blueprint (`render.yaml`), `/api/health`, invitation and password-reset e-mails through Resend, and the public `/am-uitat-parola` page.
+   - First deploy on Render done on 2026-10-05: https://secretariat-biserica.onrender.com (service and database in Frankfurt, following `dev`).
    - Remaining, manual:
-     - first deploy on Render;
-     - verify the sender domain in Resend;
-     - send a real invitation and a real password reset.
+     - verify the sender domain in Resend and set `RESEND_API_KEY`;
+     - send a real invitation and a real password reset;
+     - when real data is in, fast-forward `main` to `dev` and point the Render service at `main`.
 2. **Data migration from membriibiserica.ro:**
    - export the current register;
    - convert it to the prototype JSON format;

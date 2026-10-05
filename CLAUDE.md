@@ -10,6 +10,8 @@ Church secretariat web app. It covers the person register, meeting minutes (proc
 - Functional spec: `prototip/secretariat-biserica.html`, the original single-file prototype. **Never edit it**: the parity tests execute its code.
 - `README.md`: setup, environment variables, migrations and deployment.
 - Deployment: `render.yaml` (Render Blueprint) with the health check `/api/health`. The steps are in README, "Deploy on Render".
+  - Production: https://secretariat-biserica.onrender.com. The Render service follows `dev`, so every push to `dev` goes live.
+  - In production, `APP_URL` and `AUTH_URL` both hold the public address. Behind Render's proxy, Next.js only sees `https://localhost:10000`.
 - `docs/ROADMAP.md`: decisions and priorities.
 
 <!-- BEGIN:nextjs-agent-rules -->

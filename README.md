@@ -82,6 +82,7 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | `DATABASE_URL` | da | Conexiunea PostgreSQL a aplicației și a migrărilor. |
 | `AUTH_SECRET` | da | Cheia de semnare a sesiunilor (min. 32 de caractere aleatoare). |
 | `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. |
+| `AUTH_URL` | în spatele unui proxy | Adresa publică pentru Auth.js, aceeași valoare ca `APP_URL`. Fără ea, în spatele unui proxy (ex. Render) Auth.js vede adresa internă a serverului (`https://localhost:10000`). |
 | `APP_URL` | recomandat | Adresa publică (ex. `https://secretariat.exemplu.ro`), folosită în linkurile de invitație și resetare a parolei. Necesară pentru trimiterea e-mailurilor. |
 | `ALLOW_SIGNUP` | nu | `true` permite înregistrarea de biserici noi din `/inregistrare`. Implicit doar prima biserică. |
 | `APP_TIME_ZONE` | nu | Fusul orar pentru „azi” (implicit `Europe/Bucharest`; ex. `Europe/Oslo`). |
@@ -190,9 +191,10 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
    | Variable | Value |
    | --- | --- |
    | `APP_URL` | The public address. A new service gets `https://<service-name>.onrender.com`; if the exact URL is not known yet, set it right after the first deploy. Links in e-mails are built from it. |
+   | `AUTH_URL` | The same public address. Auth.js builds its redirects from it; behind Render's proxy, Next.js only sees its internal address (`https://localhost:10000`). |
    | `RESEND_API_KEY` | A Resend API key with sending access. Leave it empty to start without e-mail: invitation and password-reset links are then copied manually from Setări → Utilizatori. |
    | `EMAIL_FROM` | Optional. The default is `Secretariat Biserică <secretariat@sanctuaryvoice.com>`; the sender's domain must be verified in Resend. |
-   | `ALLOW_SIGNUP` | `true`, only for the first setup (step 4). |
+   | `ALLOW_SIGNUP` | Leave it empty. While the database is empty, the first church can register anyway; registration then closes by itself. Set `true` only to let more churches register. |
 
    Render sets the rest itself:
    - `DATABASE_URL` comes from the database;
@@ -202,8 +204,8 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
    - `NODE_VERSION=22`.
 3. **Apply.** Render creates the database, builds, runs the migrations and starts the app. Check that `https://<your-app>/api/health` returns `{"ok":true,"db":true}`.
 4. **Create the first administrator.** Open `/inregistrare` and register the church (Maranata Stavanger) and your admin account.
-   - Then, in the service's **Environment** tab, delete `ALLOW_SIGNUP` (or set it to `false`) and save. Render redeploys.
    - Do this right after the first deploy: while the database is empty, anyone who opens `/inregistrare` can register the first church.
+   - Then check that `/inregistrare` shows "Înregistrare dezactivată". If you had set `ALLOW_SIGNUP=true`, delete it in the service's **Environment** tab.
 5. **Finish the setup in the app.**
    - In Setări, fill in the organisation data (address, pastor, secretar), which is used in the PDF letterhead and signatures.
    - Invite the other users from Setări → Utilizatori.
@@ -223,7 +225,8 @@ Notes:
 - **Backups.** Render keeps database backups for paid instance types. Each church can also download its JSON copy from Setări → Copie de siguranță.
   - `ipAllowList: []` keeps the database private. To run `pg_dump` from your own machine, temporarily allow your IP address in the database's settings.
 - **Going live from `main`.** When production should follow `main`, change `branch: dev` to `branch: main` in `render.yaml`, or change the branch in the service settings.
-- **Custom domain.** After adding a custom domain in Render, update `APP_URL`.
+- **Custom domain.** After adding a custom domain in Render, update both `APP_URL` and `AUTH_URL`.
+- **Changing variables.** Changes made in the **Environment** tab, or through the Render API, apply only from the next deploy.
 
 ## Arhitectură
 
