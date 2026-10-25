@@ -9,6 +9,7 @@ import {
   newApplicationEmail,
   passwordResetEmail,
   sendInvitationEmail,
+  sendApplicationLinkEmail,
   sendLoginCodeEmail,
   sendMinutesEmail,
   sendNewApplicationEmail,
@@ -267,5 +268,28 @@ describe("login code", () => {
     expect(send.mock.calls[1][0].text).toContain("valabil 10 minute");
     expect(loggedText()).not.toContain("482913");
     expect(loggedText()).not.toContain("ana@example.org");
+  });
+});
+
+describe("application link", () => {
+  const link = { to: ["Ana@Example.org", "ion@example.no"], subject: "Cerere de membru — Biserica Maranata", message: "Bună ziua,\n\nCererea: [link]\n\nCu stimă", slug: "maranata-stavanger" };
+
+  it("sends one message to both recipients with the link built from APP_URL", async () => {
+    await expect(sendApplicationLinkEmail(link)).resolves.toEqual({ result: "sent", id: "em_123" });
+    expect(send).toHaveBeenCalledTimes(1);
+    const payload = send.mock.calls[0][0];
+    expect(payload.to).toEqual(["ana@example.org", "ion@example.no"]);
+    expect(payload.text).toContain(`Cererea: ${APP_URL}/cerere/maranata-stavanger`);
+    expect(payload.text).not.toContain("[link]");
+    expect(loggedText()).not.toMatch(/ana@example|ion@example/i);
+  });
+
+  it("appends the link when the message lost it, and is disabled without a key", async () => {
+    await sendApplicationLinkEmail({ ...link, message: "Bună ziua" });
+    expect(send.mock.calls[0][0].text).toBe(`Bună ziua\n\n${APP_URL}/cerere/maranata-stavanger`);
+    vi.stubEnv("RESEND_API_KEY", "");
+    send.mockClear();
+    await expect(sendApplicationLinkEmail(link)).resolves.toEqual({ result: "disabled" });
+    expect(send).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, type ReactNode } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
 import { TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
@@ -21,7 +21,10 @@ export function SettingsForm({
   privacyText,
   privacyUrl,
   extractAvailable,
+  applicationLink,
 }: {
+  /** The QR / share panel of the application link (outside the read-only fieldset). */
+  applicationLink?: ReactNode;
   church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean; extractEnabled: boolean };
   /** The notice as published (the saved text, or the template filled with the church's details). */
   privacyText: string;
@@ -106,6 +109,7 @@ export function SettingsForm({
           </span>
         </label>
       </fieldset>
+      {applicationLink}
       <fieldset className="card" disabled={readOnly}>
         <h3>Confidențialitate</h3>
         <p className="hint mb-2">

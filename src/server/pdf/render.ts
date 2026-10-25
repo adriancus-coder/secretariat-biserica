@@ -30,7 +30,7 @@ export function letterheadDetails(c: ChurchInfo): string {
 
 export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   const doc = new PDFDocument({
-    size: "A4",
+    size: spec.size ?? "A4",
     margins: MARGIN,
     bufferPages: true,
     info: {
@@ -192,6 +192,20 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         }
         doc.x = left;
         doc.y += 10;
+        break;
+      }
+      case "centered": {
+        doc.font(block.bold ? "Serif-Bold" : "Serif").fontSize(block.size ?? BODY_SIZE).fillColor("#000");
+        doc.text(block.text, left, doc.y, { width, align: "center" });
+        doc.y += 12;
+        break;
+      }
+      case "image": {
+        const w = Math.min(block.width, width);
+        if (doc.y + w > bottomLimit()) doc.addPage();
+        doc.image(Buffer.from(block.png), left + (width - w) / 2, doc.y, { width: w });
+        doc.x = left;
+        doc.y += w + 12;
         break;
       }
       case "signed": {

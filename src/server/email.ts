@@ -332,6 +332,28 @@ export async function sendMinutesEmail(p: {
   return send(config, "minutes", to, minutesEmail(p), to, p.attachment ? [p.attachment] : undefined);
 }
 
+// ---------- Public application link ----------
+
+/** Placeholder for the link in the editable message; replaced by the link built from APP_URL. */
+export const APPLICATION_LINK_PLACEHOLDER = "[link]";
+
+/**
+ * E-mails the link of the public membership application to all recipients in one message.
+ * The link is built only from APP_URL; `[link]` in the message is replaced by it, and it is
+ * appended when the message does not contain it. Never throws; recipients are never logged.
+ */
+export async function sendApplicationLinkEmail(p: { to: string[]; subject: string; message: string; slug: string }): Promise<Delivery> {
+  const config = emailConfig();
+  if (!config) return { result: disabled() };
+  const to = dedupeRecipients(p.to);
+  if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
+  const link = new URL(`/cerere/${p.slug}`, config.appUrl).toString();
+  const message = p.message.includes(APPLICATION_LINK_PLACEHOLDER)
+    ? p.message.split(APPLICATION_LINK_PLACEHOLDER).join(link)
+    : `${p.message.trim()}\n\n${link}`;
+  return send(config, "application-link", to, minutesEmail({ subject: p.subject, message }), to);
+}
+
 // ---------- Login code (second factor) ----------
 
 export function loginCodeEmail(p: { code: string; churchName: string; validMinutes: number }): EmailContent {

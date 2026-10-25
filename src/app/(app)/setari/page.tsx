@@ -15,6 +15,10 @@ import { SettingsForm } from "./settings-form";
 import { privacyTemplate } from "@/lib/privacy";
 import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
+import { ApplicationLink } from "./application-link";
+import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
+import { isEmailConfigured } from "@/server/email";
+import { defaultLinkMessage, defaultLinkSubject } from "@/lib/schemas/application-link";
 
 export const metadata: Metadata = { title: "Setări" };
 
@@ -24,6 +28,19 @@ export default async function SettingsPage() {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const role = ctx.user.role;
   const formUrl = appUrl(`/cerere/${church.slug}`, await requestOrigin());
+  // The QR code and the sending controls are for those who may write; it follows the saved slug.
+  const linkPanel = permissions.write(role) ? (
+    <ApplicationLink
+      url={formUrl}
+      slug={church.slug}
+      qrSvg={await applicationQrSvg(formUrl)}
+      qrPng={`data:image/png;base64,${(await applicationQrPng(formUrl)).toString("base64")}`}
+      open={church.applicationsOpen}
+      emailConfigured={isEmailConfigured()}
+      subject={defaultLinkSubject(church.nume)}
+      message={defaultLinkMessage(church.nume)}
+    />
+  ) : null;
   return (
     <>
       <PageHead title="Setări" sub="Organizația, semnături, nomenclatoare" />
@@ -43,6 +60,7 @@ export default async function SettingsPage() {
         privacyUrl={appUrl(`/confidentialitate/${church.slug}`, await requestOrigin())}
         extractAvailable={isExtractConfigured()}
         readOnly={!permissions.admin(role)}
+        applicationLink={linkPanel}
       />
       <StatutesCard
         slug={church.slug}

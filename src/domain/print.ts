@@ -24,7 +24,11 @@ export type Block =
   /** "Secretar, Ioana Pop" with "Semnătura" and a line under it, in two columns (the minutes). */
   | { type: "signed"; left: Signature; right: Signature }
   /** "Nume | Semnătura": one row per person, with the drawn signature (PNG) or an empty line to sign on paper. */
-  | { type: "signatureTable"; rows: SignatureCell[] };
+  | { type: "signatureTable"; rows: SignatureCell[] }
+  /** A centered line (the application poster), `size` in points. */
+  | { type: "centered"; text: string; size?: number; bold?: boolean }
+  /** A centered PNG (the application QR code), `width` in points; `alt` stands for it in printToText. */
+  | { type: "image"; png: Uint8Array; width: number; alt: string };
 
 export interface SignatureCell {
   name: string;
@@ -40,6 +44,8 @@ export interface PrintSpec {
   blocks: Block[];
   /** A line at the bottom of every page (e.g. "Proces-verbal închis la …"). */
   footer?: string;
+  /** Page size; A4 by default. */
+  size?: "A4" | "A5";
 }
 
 export const b = (text: string): Run => ({ text, bold: true });
@@ -207,11 +213,28 @@ export function eventPrint(x: EventPrint, church: ChurchInfo): PrintSpec {
 }
 
 /** Textul simplu al unui document tipărit (pentru teste și previzualizare). */
+/** The A5 poster for the public membership application: the church, the QR code and the link as text. */
+export function printApplicationPoster(church: ChurchInfo, url: string, qrPng: Uint8Array): PrintSpec {
+  return {
+    title: "Cerere de membru online",
+    church,
+    size: "A5",
+    blocks: [
+      { type: "centered", text: "Cerere de membru online", size: 22, bold: true },
+      { type: "centered", text: "Scanați codul cu telefonul pentru a completa cererea.", size: 12 },
+      { type: "image", png: qrPng, width: 220, alt: `[cod QR: ${url}]` },
+      { type: "centered", text: url, size: 11 },
+    ],
+  };
+}
+
 export function printToText(spec: PrintSpec): string {
   const lines: string[] = [`Biserica ${spec.church.nume}`.trim()];
   for (const blk of spec.blocks) {
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
+    else if (blk.type === "centered") lines.push(blk.text);
+    else if (blk.type === "image") lines.push(blk.alt);
     else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${i + 1}.` : "•"} ${it}`));
     else if (blk.type === "signatureTable") {
       lines.push("Nume | Semnătura");
