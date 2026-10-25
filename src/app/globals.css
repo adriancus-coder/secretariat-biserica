@@ -712,7 +712,7 @@
     padding: 0;
     list-style: none;
   }
-  .points li {
+  .points > li {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 4px 8px;
