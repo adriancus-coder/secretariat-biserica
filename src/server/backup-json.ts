@@ -10,7 +10,9 @@ import { permissions } from "@/lib/permissions";
 import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMemberFamilies, familiesToJson, parseFamiliesJson } from "@/lib/families-backup";
 import { addGroupExtras, parseGroupExtras } from "@/lib/group-backup";
-import { addMeetingExtras, parseMeetingExtras } from "@/lib/meeting-backup";
+import { addMeetingExtras, committeeToJson, parseCommitteeJson, parseMeetingExtras } from "@/lib/meeting-backup";
+import { fromDbDate } from "@/lib/dates";
+import { prisma } from "./db";
 import { addMemberCommittee, addMemberRoles, parseRolesJson, roleGroupsToJson, rolesToJson } from "@/lib/roles-backup";
 import {
   loadAliases,
@@ -34,6 +36,12 @@ import type { Ctx } from "./session";
  * as POST /api/export sends it; shared with the tests. Returns the object and the church's name.
  */
 export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, unknown>; churchName: string }> {
+  // The Church row is not a tenant model: read by the session's church id.
+  const c = await prisma.church.findUnique({
+    where: { id: ctx.user.churchId },
+    select: { comitetAlesLa: true, comitetAlegereMeetingId: true, comitetPrelungit: true },
+  });
+  const comitet = c ? committeeToJson({ ...c, comitetAlesLa: fromDbDate(c.comitetAlesLa) }) : undefined;
   const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras, groupExtras, register, campaignData] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
@@ -73,6 +81,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       aliases: aliasesToJson(aliases),
       campaigns: campaignData.campaigns,
       consents: campaignData.consents,
+      ...(comitet ? { comitet } : {}),
       // Administrators only (Statut art. 27): a secretary's export carries no trace of discipline.
       ...(permissions.disciplina(ctx.user.role) ? { discipline: disciplineToJson(await loadDiscipline(ctx)) } : {}),
     },
@@ -110,6 +119,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       campaigns: parseCampaignsJson(raw),
       consents: parseConsentsJson(raw),
       aliases: parseAliasesJson(raw),
+      committee: parseCommitteeJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],
   };

@@ -40,6 +40,29 @@ export interface MeetingExtra {
   convocataDeComunitate?: boolean;
   /** Votes per point, aligned with `puncte` (null = no vote). */
   voturi?: (Vote | null)[];
+  /** Excused absences (person ids among `absenti`, Statut art. 45). */
+  motivati?: string[];
+}
+
+/** The committee's mandate (Statut art. 45), top-level `comitet`: election date, the election's minutes (meeting id), extended once. */
+export interface BCommittee {
+  alesLa: string | null;
+  sedinta: string | null;
+  prelungit: boolean;
+}
+
+export function committeeToJson(c: { comitetAlesLa: string | null; comitetAlegereMeetingId: string | null; comitetPrelungit: boolean }): BCommittee | undefined {
+  if (!c.comitetAlesLa && !c.comitetAlegereMeetingId && !c.comitetPrelungit) return undefined;
+  return { alesLa: c.comitetAlesLa, sedinta: c.comitetAlegereMeetingId, prelungit: c.comitetPrelungit };
+}
+
+export function parseCommitteeJson(root: unknown): BCommittee | null {
+  const c = typeof root === "object" && root !== null ? (root as Record<string, unknown>).comitet : undefined;
+  if (typeof c !== "object" || c === null) return null;
+  const x = c as Record<string, unknown>;
+  const alesLa = typeof x.alesLa === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.alesLa) && !Number.isNaN(Date.parse(x.alesLa)) ? x.alesLa : null;
+  const sedinta = typeof x.sedinta === "string" && ID_RE.test(x.sedinta) ? x.sedinta : null;
+  return { alesLa, sedinta, prelungit: alesLa !== null && x.prelungit === true };
 }
 
 /** Adds the extra fields to the exported meetings (in place). */
@@ -64,6 +87,7 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.tipAG) m.tipAG = x.tipAG;
     if (x.convocataDeComunitate) m.convocataDeComunitate = true;
     if (x.voturi) m.voturi = x.voturi;
+    if (x.motivati?.length) m.motivati = x.motivati;
   }
 }
 
@@ -138,6 +162,10 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     if (convocare) x.convocareText = convocare;
     if (m.tipAG === "ORDINARA" || m.tipAG === "EXTRAORDINARA") x.tipAG = m.tipAG;
     if (m.convocataDeComunitate === true) x.convocataDeComunitate = true;
+    if (Array.isArray(m.motivati)) {
+      const excused = [...new Set(m.motivati.filter((v): v is string => typeof v === "string" && x.absenti.includes(v)))];
+      if (excused.length) x.motivati = excused;
+    }
     const votes = storedVotes(m.voturi);
     if (votes) x.voturi = votes;
     if (

@@ -29,6 +29,7 @@ export function PersonForm({
   meetings = [],
   contactRestricted = false,
   cancelHref,
+  committeeWarnings,
   applicationId,
   din,
   nav,
@@ -46,6 +47,8 @@ export function PersonForm({
   /** A person who left, edited by a non-administrator: contact data are not shown and are kept as they are. */
   contactRestricted?: boolean;
   cancelHref: string;
+  /** The art. 45 alin. 4 warnings next to "Membru în comitet" (src/server/queries/committee.ts). */
+  committeeWarnings?: string[];
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
   /** The Persoane list the person was opened from (see src/lib/person-nav.ts). */
@@ -267,7 +270,7 @@ export function PersonForm({
         </div>
       </fieldset>
 
-      <RolesPicker groups={roles} initial={val("functii")} inComitet={val("inComitet") === "on"} error={e.functii} />
+      <RolesPicker groups={roles} initial={val("functii")} inComitet={val("inComitet") === "on"} committeeWarnings={committeeWarnings} error={e.functii} />
 
       <TextAreaField name="note" label="Note" defaultValue={val("note")} error={e.note} />
 

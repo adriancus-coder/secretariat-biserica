@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMeetingExtras, parseMeetingExtras, type MeetingExtra } from "./meeting-backup";
+import { addMeetingExtras, committeeToJson, parseCommitteeJson, parseMeetingExtras, type MeetingExtra } from "./meeting-backup";
 
 describe("meeting extras in the backup", () => {
   it("round-trips absentees, expected count, number, points, observations and closing sentence", () => {
@@ -27,6 +27,20 @@ describe("meeting extras in the backup", () => {
     expect(parseMeetingExtras({ meetings })).toEqual(new Map([["m1", extra]]));
     const bad = parseMeetingExtras({ meetings: { m1: { convocatLa: "ieri", tipAG: "ALTA", voturi: [{ pentru: -1 }] } } });
     expect(bad.size).toBe(0);
+  });
+
+  it("round-trips excused absences and the committee's mandate", () => {
+    const meetings: Record<string, Record<string, unknown>> = { m1: { tip: "Comitet" } };
+    const extra: MeetingExtra = { absenti: ["a", "b"], asteptati: 2, motivati: ["b"] };
+    addMeetingExtras(meetings, new Map([["m1", extra]]));
+    expect(parseMeetingExtras({ meetings })).toEqual(new Map([["m1", extra]]));
+    // An excused person must be among the absent.
+    expect(parseMeetingExtras({ meetings: { m1: { absenti: ["a"], motivati: ["z"] } } }).get("m1")?.motivati).toBeUndefined();
+    const comitet = committeeToJson({ comitetAlesLa: "2022-03-15", comitetAlegereMeetingId: "m1", comitetPrelungit: true });
+    expect(parseCommitteeJson({ comitet })).toEqual({ alesLa: "2022-03-15", sedinta: "m1", prelungit: true });
+    expect(committeeToJson({ comitetAlesLa: null, comitetAlegereMeetingId: null, comitetPrelungit: false })).toBeUndefined();
+    expect(parseCommitteeJson({})).toBeNull();
+    expect(parseCommitteeJson({ comitet: { alesLa: "ieri", prelungit: true } })).toEqual({ alesLa: null, sedinta: null, prelungit: false });
   });
 
   it("ignores older files and malformed values", () => {

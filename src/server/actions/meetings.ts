@@ -121,9 +121,11 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
       if (id) {
         const before = await auditView(tx, id);
         if (!before) throw new ActionError("Procesul-verbal nu mai există.");
+        // An excused absence stays excused while the person is still absent.
+        const excused = new Set((await tx.meetingAttendee.findMany({ where: { meetingId: id, motivat: true }, select: { personId: true } })).map((r) => r.personId));
         await tx.meeting.update({
           where: { id },
-          data: { ...data, prezenti: { deleteMany: {}, create: rows } },
+          data: { ...data, prezenti: { deleteMany: {}, create: rows.map((r) => ({ ...r, motivat: r.status === "ABSENT" && excused.has(r.personId) })) } },
         });
         // A signature belongs to someone present: removing a person from the list removes it.
         await tx.meetingSignature.deleteMany({ where: { meetingId: id, personId: { notIn: prezenti } } });

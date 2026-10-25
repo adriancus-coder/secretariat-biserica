@@ -8,6 +8,8 @@ import { ageAt, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assembly";
 import { permissions } from "@/lib/permissions";
+import { mandateNotice } from "@/lib/committee";
+import { committeeAbsences } from "@/server/queries/committee";
 import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
 import { loadStats } from "@/server/queries/stats";
@@ -105,6 +107,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     });
     agMissing = ordinaryAssemblyMissing(today, held.filter((m) => isGeneralAssembly(m.tip, church.tipuriAG)).length);
   }
+  // Statut art. 45: the committee's mandate (write roles) and 5 unexcused absences in a row (administrators).
+  const mandate = canWrite ? mandateNotice(today, church.comitetAlesLa, church.comitetPrelungit) : null;
+  const absences = permissions.admin(ctx.user.role) ? await committeeAbsences(ctx, church) : [];
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -114,6 +119,23 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {mandate ? (
+        <div className="alert mb-4" role="status">
+          {mandate} <Link href="/setari">Setări</Link>
+        </div>
+      ) : null}
+      {absences.length ? (
+        <div className="alert mb-4" role="status">
+          Absențe nemotivate la rând la ședințele comitetului (Statut art. 45):{" "}
+          {absences.map((a, i) => (
+            <span key={a.id}>
+              {i ? ", " : ""}
+              <Link href={`/persoane/${a.id}`}>{a.name}</Link> ({a.count})
+            </span>
+          ))}
+          .
+        </div>
+      ) : null}
       {agMissing ? (
         <div className="alert mb-4" role="status">
           Adunarea Generală ordinară nu a avut loc în {today.slice(0, 4)} (Statut art. 46 alin. 3).{" "}

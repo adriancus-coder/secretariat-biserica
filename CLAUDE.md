@@ -365,6 +365,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Acasă (write roles), from 1 October: "Adunarea Generală ordinară nu a avut loc în <an>" (art. 46 alin. 3).
 - Export/import: `convocatLa`, `convocareText`, `tipAG`, `convocataDeComunitate`, `voturi` on meetings.
 
+### Committee mandate (Statut art. 45)
+
+- `src/lib/committee.ts` (pure). `Church.comitetAlesLa`, `comitetAlegereMeetingId` (the election's minutes; plain id checked against the church on save, no FK) and `comitetPrelungit`. The mandate ends 5 years after the election, 10 when extended; `extendCommitteeMandateAction` refuses a second extension, and a new election date clears the extension. Setări → "Mandatul comitetului" (`admin` edits, audited SETTINGS); Acasă warns write roles from 6 months before the end (`mandateNotice`).
+- Ticking "Membru în comitet" shows `committeeEligibility()` (`src/server/queries/committee.ts`): under 2 years a member, under 5 years since baptism (or missing dates); for administrators an applied suspension or exclusion; every other role always gets "Verificați condițiile din Statut art. 45 alin. 4" instead, so nothing about discipline leaks. Never blocking.
+- `MeetingAttendee.motivat`: "Absențe motivate" on the page of a meeting whose type has the COMITET rule (`saveExcusedAction`, `write`, audited, refused on a closed meeting); re-saving the meeting keeps the flag for those still absent. Acasă shows administrators the committee members with 5 or more unexcused absences in a row (`committeeAbsences`).
+- Export/import: `motivati` on meetings, top-level `comitet` `{ alesLa, sedinta, prelungit }`.
+
 ### Minutes (procese-verbale)
 
 - Numbered per year like documents: `lockMeetingRegister` then `nextFreeMeetingNumber` (`src/server/doc-numbering.ts`), unique `(churchId, anRegistru, nr)`. A manual number is checked; meetings saved before numbering have `nr = null` until edited or "Atribuie număr".

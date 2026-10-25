@@ -21,6 +21,10 @@ export interface ChurchSettings extends ChurchInfo {
   /** Meeting types that are a General Assembly (empty = "Adunare generală") and those showing a quorum. */
   tipuriAG: string[];
   tipuriCvorum: string[];
+  /** Committee mandate (Statut art. 45): election date (ISO), the election's minutes, extended once. */
+  comitetAlesLa: string | null;
+  comitetAlegereMeetingId: string | null;
+  comitetPrelungit: boolean;
   /** Preselected recipients when the minutes are e-mailed ("" = none). */
   pastorEmail: string;
   secretarEmail: string;
@@ -77,6 +81,9 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),
     tipuriAG: c.tipuriAG,
     tipuriCvorum: c.tipuriCvorum,
+    comitetAlesLa: c.comitetAlesLa ? c.comitetAlesLa.toISOString().slice(0, 10) : null,
+    comitetAlegereMeetingId: c.comitetAlegereMeetingId,
+    comitetPrelungit: c.comitetPrelungit,
   };
 });
 

@@ -13,6 +13,7 @@ import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions
 import { dotDateTime } from "@/lib/dates";
 import { fmtDot } from "@/domain/print";
 import { Signatures } from "./signatures";
+import { ExcusedForm } from "./excused";
 import { SendMinutesButton, ShareMinutesButton, type Recipient } from "./send-minutes";
 import { defaultSendSubject } from "@/lib/schemas/meeting-send";
 import { minutesLines, isEmailConfigured } from "@/server/email";
@@ -32,6 +33,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   const canWrite = permissions.write(ctx.user.role);
   const lines = minutesAttendance({ ...x, present: x.prezenti.length, absent: x.absenti.length }, church);
   const ag = isGeneralAssembly(x.tip, church.tipuriAG);
+  const committeeMeeting = church.attendanceRules[x.tip] === "COMITET";
   const numberLabel = minutesNumber(x);
   // A closed meeting is read-only (the server refuses edits too).
   const canEdit = canWrite && !x.locked;
@@ -112,6 +114,11 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             <dt>Absenți ({x.absenti.length})</dt>
             <dd>
               <PersonLinks list={x.absenti} />
+              {x.absenti.some((p) => p.motivat) ? (
+                <span className="block text-sm text-ink-2">
+                  Motivați: {x.absenti.filter((p) => p.motivat).map((p) => p.name).join(", ")}
+                </span>
+              ) : null}
             </dd>
           </>
         ) : null}
@@ -172,6 +179,10 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <dt>Formula de încheiere</dt>
         <dd>{x.formulaRich ? <RichView doc={x.formulaRich} /> : x.formulaIncheiere}</dd>
       </dl>
+
+      {canEdit && committeeMeeting && x.absenti.length ? (
+        <ExcusedForm meetingId={x.id} absent={x.absenti.map((p) => ({ id: p.id, name: p.name, motivat: p.motivat }))} />
+      ) : null}
 
       <Signatures
         meetingId={x.id}

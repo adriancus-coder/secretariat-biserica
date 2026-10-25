@@ -1,3 +1,4 @@
+import { committeeEligibility } from "@/server/queries/committee";
 import { fmtDot } from "@/domain/print";
 import { consentNote, STATUTE, STATUTE_KINDS } from "@/lib/statutes";
 import type { Metadata } from "next";
@@ -81,6 +82,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
         </p>
       ) : null}
       <PersonForm
+        committeeWarnings={await committeeEligibility(ctx, null)}
         id={null}
         initial={initial}
         families={families}

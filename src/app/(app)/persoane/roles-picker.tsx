@@ -34,13 +34,17 @@ export function RolesPicker({
   groups: initialGroups,
   initial,
   inComitet,
+  committeeWarnings = [],
   error,
 }: {
   groups: RoleChoiceGroup[];
   initial?: string;
   inComitet: boolean;
+  /** Shown while "Membru în comitet" is ticked (Statut art. 45 alin. 4; never blocking). */
+  committeeWarnings?: string[];
   error?: string;
 }) {
+  const [committee, setCommittee] = useState(inComitet);
   const [groups, setGroups] = useState(initialGroups);
   const [picked, setPicked] = useState<Picked[]>(() => parse(initial));
   const byId = new Map(picked.map((p) => [p.id, p]));
@@ -58,12 +62,19 @@ export function RolesPicker({
       <h3>Comitet, funcții și slujiri</h3>
       <input type="hidden" name="functii" value={JSON.stringify(picked)} />
       <label className="choice mb-4">
-        <input type="checkbox" name="inComitet" defaultChecked={inComitet} />
+        <input type="checkbox" name="inComitet" checked={committee} onChange={(e) => setCommittee(e.target.checked)} />
         <span className="tick" aria-hidden="true">
           <Icon name="bifa" className="size-[14px]" />
         </span>
         Membru în comitet
       </label>
+      {committee && committeeWarnings.length ? (
+        <ul className="alert -mt-2 mb-4 list-disc pl-6" role="status">
+          {committeeWarnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      ) : null}
       {groups.map((g) => (
         <div key={g.id} className="role-block" role="group" aria-labelledby={`grup-${g.id}`}>
           <h4 id={`grup-${g.id}`}>{g.nume}</h4>

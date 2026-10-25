@@ -19,6 +19,10 @@ import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import { adoptPrivacyModelAction } from "@/server/actions/settings";
 import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
+import { CommitteeCard } from "./committee-card";
+import { mandateEnd } from "@/lib/committee";
+import { fmtL } from "@/lib/format";
+import { meetingChoices } from "@/server/queries/meetings";
 import { ApplicationLink } from "./application-link";
 import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
 import { applicationLinkSubject, isEmailConfigured } from "@/server/email";
@@ -27,7 +31,7 @@ export const metadata: Metadata = { title: "Setări" };
 
 export default async function SettingsPage() {
   const ctx = await requireCtx();
-  const [church, statutes] = await Promise.all([getChurch(ctx), listStatutes(ctx.user.churchId)]);
+  const [church, statutes, meetings] = await Promise.all([getChurch(ctx), listStatutes(ctx.user.churchId), meetingChoices(ctx)]);
   const jar = await cookies();
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
@@ -80,6 +84,14 @@ export default async function SettingsPage() {
         extractAvailable={isExtractConfigured()}
         readOnly={!permissions.admin(role)}
         applicationLink={linkPanel}
+      />
+      <CommitteeCard
+        alesLa={church.comitetAlesLa}
+        sedinta={meetings.find((m) => m.id === church.comitetAlegereMeetingId) ?? null}
+        prelungit={church.comitetPrelungit}
+        end={church.comitetAlesLa ? fmtL(mandateEnd(church.comitetAlesLa, church.comitetPrelungit)) : null}
+        meetings={meetings.map((m) => ({ value: m.id, label: m.label }))}
+        readOnly={!permissions.admin(role)}
       />
       <StatutesCard
         slug={church.slug}

@@ -66,6 +66,7 @@ export async function getMeeting(ctx: Ctx, id: string) {
         nume: p.person.nume,
         prenume: p.person.prenume,
         email: p.person.email,
+        motivat: p.motivat,
         signature: status === "PRESENT" ? (signed.get(p.person.id) ?? null) : null,
       }));
   return {

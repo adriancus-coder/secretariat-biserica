@@ -64,6 +64,11 @@ model Church {
   tipuriAG         String[] @default([])
   /// Meeting types whose minutes show the quorum line (default: none).
   tipuriCvorum     String[] @default([])
+  /// Committee mandate (Statut art. 45): elected on, the minutes of the election (a meeting id, checked
+  /// against the church on save; no FK), extended once by 5 years.
+  comitetAlesLa           DateTime? @db.Date
+  comitetAlegereMeetingId String?
+  comitetPrelungit        Boolean   @default(false)
   /// Default page layout of the printed minutes (src/lib/page-layout.ts); {} = the built-in layout.
   pvLayout         Json     @default("{}")
   /// Default page layout of the registered documents (src/lib/page-layout.ts); {} = the standard layout.
@@ -787,6 +792,8 @@ model MeetingAttendee {
   meeting   Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   person    Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
   status    AttendanceStatus @default(PRESENT)
+  /// An absence excused (committee meetings, Statut art. 45): not counted towards 5 in a row.
+  motivat   Boolean          @default(false)
 
   @@id([meetingId, personId])
   @@index([personId])

@@ -11,7 +11,7 @@ import { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
 import type { DocumentExtra } from "@/lib/document-backup";
 import type { GroupExtra } from "@/lib/group-backup";
-import type { MeetingExtra } from "@/lib/meeting-backup";
+import type { BCommittee, MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { richToPlain, type RichDoc } from "@/lib/rich-text";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
@@ -319,7 +319,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       tipAG: true,
       convocataDeComunitate: true,
       voturi: true,
-      prezenti: { where: { status: "ABSENT" }, select: { personId: true } },
+      prezenti: { where: { status: "ABSENT" }, select: { personId: true, motivat: true } },
       signatures: { select: { personId: true, imagePng: true, signedAt: true } },
     },
   });
@@ -328,6 +328,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       m.id,
       {
         absenti: m.prezenti.map((p) => p.personId),
+        ...(m.prezenti.some((p) => p.motivat) ? { motivati: m.prezenti.filter((p) => p.motivat).map((p) => p.personId) } : {}),
         asteptati: m.asteptati,
         nr: m.nr,
         puncte: m.puncte,
@@ -431,6 +432,8 @@ export interface ImportExtras {
   /** Data-update campaigns and consents (see src/lib/consents-backup.ts); null = not in the file. */
   campaigns?: BCampaign[] | null;
   consents?: BConsent[] | null;
+  /** The committee's mandate (see src/lib/meeting-backup.ts); null = not in the file. */
+  committee?: BCommittee | null;
 }
 
 export interface ImportSummary {
@@ -768,10 +771,11 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           voturi: extra?.voturi ? (extra.voturi.slice(0, (extra?.puncte ?? split!.puncte).length) as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
+        const excusedIds = new Set((extra?.motivati ?? []).map(pid));
         const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
         const rows = [
           ...prezenti.map((personId) => ({ personId, status: "PRESENT" as const })),
-          ...absenti.map((personId) => ({ personId, status: "ABSENT" as const })),
+          ...absenti.map((personId) => ({ personId, status: "ABSENT" as const, motivat: excusedIds.has(personId) })),
         ];
         // Signatures: only of persons present, re-checked like a newly drawn one.
         const signatures = [];
@@ -794,6 +798,15 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows }, signatures: { create: signatures } },
           });
         }
+      }
+
+      // The committee's mandate (Statut art. 45), with the election's minutes when imported too.
+      if (extras.committee) {
+        const c = extras.committee;
+        await tx.church.update({
+          where: { id: churchId },
+          data: { comitetAlesLa: toDbDate(c.alesLa), comitetAlegereMeetingId: (c.sedinta && meet.map.get(c.sedinta)) || null, comitetPrelungit: c.prelungit },
+        });
       }
 
       if (badSignatures) warnings.push(`${badSignatures} semnături nu erau imagini valide și nu au fost importate.`);

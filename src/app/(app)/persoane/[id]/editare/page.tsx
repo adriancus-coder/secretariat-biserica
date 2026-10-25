@@ -1,3 +1,4 @@
+import { committeeEligibility } from "@/server/queries/committee";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
@@ -53,6 +54,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
       <BackLink href={withDin(`/persoane/${id}`, din)}>{memberName(person)}</BackLink>
       <PageHead title="Editează persoana" />
       <PersonForm
+        committeeWarnings={await committeeEligibility(ctx, id)}
         id={id}
         initial={initial}
         families={families}
