@@ -21,10 +21,22 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 async function groupView(tx: Tx, id: string) {
   const g = await tx.group.findUnique({
     where: { id },
-    include: { membri: { include: { person: { select: { nume: true, prenume: true } } } } },
+    include: {
+      membri: { include: { person: { select: { nume: true, prenume: true } } } },
+      functie: { select: { nume: true } },
+      functieLider: { select: { nume: true } },
+    },
   });
   if (!g) return null;
-  return { ...g, membri: g.membri.map((m) => memberName(m.person)).sort(compareRo) };
+  return { ...g, functie: g.functie?.nume ?? "", functieLider: g.functieLider?.nume ?? "", membri: g.membri.map((m) => memberName(m.person)).sort(compareRo) };
+}
+
+/** The roles linked to a group must belong to the church (checked through the scoped client). */
+async function assertGroupRoles(db: Ctx["db"], ids: (string | null)[]): Promise<void> {
+  const wanted = [...new Set(ids.filter((x): x is string => Boolean(x)))];
+  if (!wanted.length) return;
+  const found = await db.churchRole.count({ where: { id: { in: wanted } } });
+  if (found !== wanted.length) throw new ValidationError({ functieId: "Funcția aleasă nu mai există." });
 }
 
 export async function saveGroupAction(id: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -34,6 +46,7 @@ export async function saveGroupAction(id: string | null, _prev: FormState, formD
     if (id !== null) parseOrThrow(idSchema, id);
     const { membri: ids, ...fields } = parseOrThrow(groupSchema, groupFormInput(formData));
     const membri = await assertPersonsInChurch(ctx.db, ids);
+    await assertGroupRoles(ctx.db, [fields.functieId, fields.functieLiderId]);
     savedId = await ctx.db.$transaction(async (tx) => {
       if (id) {
         const before = await groupView(tx, id);

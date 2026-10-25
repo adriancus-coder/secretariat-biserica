@@ -295,6 +295,11 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Export/import (`src/lib/roles-backup.ts`): `roleGroups`, `roles` (each with `grup`), `functii` (by name) and `inComitet` on members. Older files: roles land in the first group, and `comitet` roles give their current holders the flag.
 - The old free text `Person.slujire` is no longer edited: the migration moved it to the top of the note ("Slujire (vechi): …", `noteWithSlujire()`); the column stays one release (export writes it, import reads it).
 
+### Groups
+
+- A group can be linked to two church roles: `Group.functieId` ("Slujirea grupului", the ministry it belongs to) and `Group.functieLiderId` ("Funcția de conducere", the role whose holders lead it); both SetNull, checked against the church on save. The form offers the active roles by role group; "Creează din funcție" preselects the ministry. Setări → Funcții și slujiri shows "Folosită de grupurile: …". The `group_kind` migration linked groups named exactly like one active role.
+- Export/import: `functie` and `functieLider` on groups, by role name (`src/lib/group-backup.ts`). The whole JSON is built by `buildExportJson()` and read by `parseImportJson()` (`src/server/backup-json.ts`), shared by the export route, the import action and the tests.
+
 ### Meeting attendance
 
 - Each meeting type has a rule (`Church.regulaPrezenta`, `src/lib/attendance.ts`): `TOTI` (members in the record), `COMITET` (persons in the record with `inComitet`) or `MANUAL`. Defaults: Adunare generală → TOTI, Comitet and Frați slujitori → COMITET.

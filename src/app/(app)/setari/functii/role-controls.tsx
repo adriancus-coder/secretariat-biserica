@@ -108,6 +108,7 @@ function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first:
             {role.nume} {!role.active ? <span className="tag tag-warn">dezactivată</span> : null}
           </div>
           <div className="m">{holdersText(role.holders)}</div>
+          {role.groups.length ? <div className="m">Folosită de grupurile: {role.groups.join(", ")}</div> : null}
         </div>
       </div>
     );
@@ -130,6 +131,7 @@ function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first:
               <>
                 {holdersText(role.holders)}
                 {!role.active ? " · dezactivată" : ""}
+                {role.groups.length ? <span className="block">Folosită de grupurile: {role.groups.join(", ")}</span> : null}
               </>
             }
           />

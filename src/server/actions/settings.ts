@@ -1,14 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { parsePrototypeJson } from "@/domain/backup";
-import { parseApplicationsJson } from "@/lib/application-backup";
-import { parseDocumentExtras } from "@/lib/document-backup";
-import { parseMeetingExtras } from "@/lib/meeting-backup";
-import { parseMemberBaptism } from "@/lib/baptism-backup";
-import { parseAliasesJson } from "@/lib/aliases-backup";
-import { parseFamiliesJson } from "@/lib/families-backup";
-import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
 import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
 import { attendanceRulesText, resolveAttendanceRules } from "@/lib/attendance";
@@ -16,6 +8,7 @@ import { NOMEN_DEFAULTS } from "@/lib/labels";
 import { privacyTemplate } from "@/lib/privacy";
 import { writeAudit } from "../audit";
 import { importBackup, type ImportMode } from "../backup";
+import { parseImportJson } from "../backup-json";
 import { prisma } from "../db";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -78,25 +71,13 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
     } catch {
       throw new ActionError("Fișier invalid: conținutul nu este JSON.");
     }
-    const parsed = parsePrototypeJson(raw);
+    const parsed = parseImportJson(raw);
     if (!parsed.ok) {
       details = parsed.errors;
       throw new ActionError(`Importul a fost oprit: ${parsed.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const apps = parseApplicationsJson(raw, new Set(parsed.backup.members.map((m) => m.id)));
-    if (apps.errors.length) {
-      details = apps.errors;
-      throw new ActionError(`Importul a fost oprit: ${apps.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
-    }
-    const roles = parseRolesJson(raw);
-    const families = parseFamiliesJson(raw);
-    const extraErrors = [...roles.errors, ...families.errors];
-    if (extraErrors.length) {
-      details = extraErrors;
-      throw new ActionError(`Importul a fost oprit: ${extraErrors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
-    }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw), documents: parseDocumentExtras(raw), baptism: parseMemberBaptism(raw), aliases: parseAliasesJson(raw), textFamilies: formData.get("faraFamiliiText") !== "on" });
-    details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
+    const summary = await importBackup(ctx, parsed.backup, mode, { ...parsed.extras, textFamilies: formData.get("faraFamiliiText") !== "on" });
+    details = [...parsed.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {
       ok: true,

@@ -57,6 +57,8 @@ export const FIELD_LABELS: Record<string, string> = {
   prezenti: "Prezenți",
   invitat: "Invitat",
   responsabil: "Responsabil",
+  functie: "Slujirea grupului",
+  functieLider: "Funcția de conducere",
   descriere: "Descriere",
   agapaActiva: "Agapă",
   agapaResponsabil: "Responsabil agapă",

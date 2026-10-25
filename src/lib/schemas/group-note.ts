@@ -1,10 +1,16 @@
 import { z } from "zod";
 import { idSchema, longText, requiredDate, requiredText, text } from "../validation";
 
-export const GROUP_FIELDS = ["nume", "responsabil", "descriere", "membri"] as const;
+export const GROUP_FIELDS = ["nume", "functie", "functieLider", "responsabil", "descriere", "membri"] as const;
+
+const optionalGroupId = z.preprocess((v) => (v === null || v === undefined || v === "" ? null : v), idSchema.nullable());
 
 export const groupSchema = z.object({
   nume: requiredText(120, "Numele grupului lipsește.", "Numele"),
+  /** "Slujirea grupului": the ministry (church role) the group belongs to. */
+  functieId: optionalGroupId,
+  /** "Funcția de conducere": the role whose holders lead the group. */
+  functieLiderId: optionalGroupId,
   responsabil: text(160, "Responsabilul"),
   descriere: longText(5000, "Descrierea"),
   membri: z.array(idSchema).max(5000),

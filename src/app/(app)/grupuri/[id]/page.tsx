@@ -35,6 +35,18 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
         ) : null}
       </PageHead>
       <dl className="detail mb-4">
+        {g.functie ? (
+          <>
+            <dt>Slujirea grupului</dt>
+            <dd>{g.functie.nume}</dd>
+          </>
+        ) : null}
+        {g.functieLider ? (
+          <>
+            <dt>Funcția de conducere</dt>
+            <dd>{g.functieLider.nume}</dd>
+          </>
+        ) : null}
         {g.responsabil ? (
           <>
             <dt>Responsabil</dt>

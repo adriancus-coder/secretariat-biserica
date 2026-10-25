@@ -22,6 +22,8 @@ export async function getGroup(ctx: Ctx, id: string) {
     where: { id },
     include: {
       membri: { include: { person: { select: { id: true, nume: true, prenume: true, telefon: true, dataIesire: true } } } },
+      functie: { select: { id: true, nume: true } },
+      functieLider: { select: { id: true, nume: true } },
     },
   });
   if (!g) return null;

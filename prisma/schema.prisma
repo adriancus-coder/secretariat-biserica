@@ -329,6 +329,9 @@ model ChurchRole {
   updatedAt DateTime @updatedAt
 
   holders PersonRole[]
+  /// Groups of this ministry, and groups led by this role's holders.
+  groups    Group[] @relation("GroupFunctie")
+  ledGroups Group[] @relation("GroupFunctieLider")
 
   @@unique([churchId, nume])
   @@index([churchId, sortOrder])
@@ -637,10 +640,20 @@ model Group {
   responsabil String @default("")
   descriere   String @default("")
 
+  /// The ministry the group belongs to (e.g. "Laudă și închinare"): its holders are the group's automatic members.
+  functieId      String?
+  functie        ChurchRole? @relation("GroupFunctie", fields: [functieId], references: [id], onDelete: SetNull)
+  /// The role whose holders lead the group (e.g. "Lider laudă și închinare").
+  functieLiderId String?
+  functieLider   ChurchRole? @relation("GroupFunctieLider", fields: [functieLiderId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   membri GroupMember[]
+
+  @@index([functieId])
+  @@index([functieLiderId])
 
   @@index([churchId, nume])
   @@map("groups")

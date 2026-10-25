@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { compareRo } from "@/lib/text";
 import type { Ctx } from "../session";
 
 /** Roles in display order: by group, then within the group. */
@@ -21,6 +22,8 @@ export interface RoleRow {
   active: boolean;
   /** Persons holding the role. */
   holders: number;
+  /** Groups linked to the role (as their ministry or their leader role), by name. */
+  groups: string[];
 }
 
 export interface RoleGroupRow {
@@ -36,7 +39,10 @@ export async function listRoleGroups(ctx: Ctx): Promise<RoleGroupRow[]> {
   const groups = await ctx.db.roleGroup.findMany({
     orderBy: GROUP_ORDER,
     include: {
-      roles: { orderBy: [{ sortOrder: "asc" }, { nume: "asc" }], include: { _count: { select: { holders: true } } } },
+      roles: {
+        orderBy: [{ sortOrder: "asc" }, { nume: "asc" }],
+        include: { _count: { select: { holders: true } }, groups: { select: { nume: true } }, ledGroups: { select: { nume: true } } },
+      },
     },
   });
   return groups.map((g) => ({
@@ -44,7 +50,15 @@ export async function listRoleGroups(ctx: Ctx): Promise<RoleGroupRow[]> {
     nume: g.nume,
     sortOrder: g.sortOrder,
     active: g.active,
-    roles: g.roles.map(({ _count, id, nume, groupId, sortOrder, active }) => ({ id, nume, groupId, sortOrder, active, holders: _count.holders })),
+    roles: g.roles.map(({ _count, id, nume, groupId, sortOrder, active, groups, ledGroups }) => ({
+      id,
+      nume,
+      groupId,
+      sortOrder,
+      active,
+      holders: _count.holders,
+      groups: [...new Set([...groups, ...ledGroups].map((x) => x.nume))].sort(compareRo),
+    })),
   }));
 }
 
@@ -159,4 +173,16 @@ export async function committee(ctx: Ctx): Promise<CommitteeMember[]> {
     })
     .sort((a, b) => a.first - b.first)
     .map(({ id, name, roles }) => ({ id, name, roles }));
+}
+
+/** The roles a group can be linked to: the active ones, plus those it is already linked to. By role group. */
+export async function groupRoleChoices(ctx: Ctx, keep: (string | null)[]): Promise<RoleChoiceGroup[]> {
+  const ids = keep.filter((x): x is string => Boolean(x));
+  const roleWhere = ids.length ? { OR: [{ active: true }, { id: { in: ids } }] } : { active: true };
+  const groups = await ctx.db.roleGroup.findMany({
+    where: { roles: { some: roleWhere } },
+    orderBy: GROUP_ORDER,
+    select: { id: true, nume: true, roles: { where: roleWhere, orderBy: [{ sortOrder: "asc" }, { nume: "asc" }], select: { id: true, nume: true, active: true } } },
+  });
+  return groups;
 }

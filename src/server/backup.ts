@@ -7,6 +7,7 @@ import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/
 import { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
 import type { DocumentExtra } from "@/lib/document-backup";
+import type { GroupExtra } from "@/lib/group-backup";
 import type { MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { richToPlain, type RichDoc } from "@/lib/rich-text";
@@ -275,6 +276,12 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
   );
 }
 
+/** Group id → the fields beyond the prototype's format (linked roles by name), for the export. */
+export async function loadGroupExtras(ctx: Ctx): Promise<Map<string, GroupExtra>> {
+  const rows = await ctx.db.group.findMany({ select: { id: true, functie: { select: { nume: true } }, functieLider: { select: { nume: true } } } });
+  return new Map(rows.map((g) => [g.id, { functie: g.functie?.nume, functieLider: g.functieLider?.nume }]));
+}
+
 /** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
 export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
   const rows = await ctx.db.document.findMany({
@@ -313,6 +320,8 @@ export interface ImportExtras {
   meetings?: ReadonlyMap<string, MeetingExtra>;
   /** Document id → the rich text, as in the file (see parseDocumentExtras). */
   documents?: ReadonlyMap<string, DocumentExtra>;
+  /** Group id → the linked roles, as in the file (see parseGroupExtras). */
+  groups?: ReadonlyMap<string, GroupExtra>;
   /**
    * Older files (no `families` collection): create one family per family text (true), or keep the
    * text on the person only (false, the default: "Nu crea familii din text").
@@ -747,10 +756,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
 
       // Grupuri
       const grs = await planIds(tx, TABLES.groups, backup.groups.map((g) => g.id), churchId);
+      // Linked roles by name (after the roles above were imported); unknown names leave the group unlinked.
+      const roleByKey = new Map((await tx.churchRole.findMany({ select: { id: true, nume: true } })).map((r) => [roleKey(r.nume), r.id]));
+      const roleOf = (n: string | undefined) => (n ? (roleByKey.get(roleKey(n)) ?? null) : null);
       for (const g of backup.groups) {
         const id = grs.map.get(g.id)!;
         const membri = [...new Set(g.membri.map(pid).filter((x): x is string => x !== null))];
-        const data = { nume: g.nume, responsabil: g.responsabil, descriere: g.descriere };
+        const gx = extras.groups?.get(g.id);
+        const data = { nume: g.nume, responsabil: g.responsabil, descriere: g.descriere, functieId: roleOf(gx?.functie), functieLiderId: roleOf(gx?.functieLider) };
         if (grs.existing.has(g.id)) {
           await tx.group.update({ where: { id }, data: { ...data, membri: { deleteMany: {}, create: membri.map((personId) => ({ personId })) } } });
         } else {
