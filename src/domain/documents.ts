@@ -20,6 +20,9 @@ export interface DocPerson {
   botezBiserica: string;
   botezOficiant: string;
   dataBinecuvantare: string | null;
+  /** Parents' names when they are not persons in the register (Statut art. 14; not in the prototype). */
+  numeTata?: string;
+  numeMama?: string;
 }
 
 export interface DocumentTemplateInput {
@@ -49,7 +52,7 @@ export function generateDocumentText({ tip, person: m, family, familyHeadId, chu
   const nascut = m?.dataNasterii ? `, născut${f ? "ă" : ""} la data de ${fmtL(m.dataNasterii)}` : "";
   const bis = `Biserica ${c.nume || BLANK}`;
   // The parents are the family's head and spouse (the prototype also took rudenie "Părinte", by family name).
-  const parinti =
+  const fromFamily =
     m && m.familyId
       ? family
           .filter((p) => p.id !== m.id && p.familyId === m.familyId && (p.id === familyHeadId || PARENT_RELATIONS.includes(p.rudenie)))
@@ -57,6 +60,8 @@ export function generateDocumentText({ tip, person: m, family, familyHeadId, chu
           .map(memberName)
           .join(" și ")
       : "";
+  // Without parents in the register, the parents' names written on the person (not in the prototype).
+  const parinti = fromFamily || [m?.numeTata?.trim(), m?.numeMama?.trim()].filter(Boolean).join(" și ");
 
   // Baptism church and officiant (not in the prototype): mentioned only when known.
   const botezBis = m?.botezBiserica.trim() ? churchName(m.botezBiserica) : "";

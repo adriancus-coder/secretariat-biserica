@@ -14,6 +14,7 @@ import { z } from "zod";
 import { isIsoDate } from "@/lib/dates";
 import {
   DOCUMENT_TYPES,
+  PROTOTYPE_ENTRY_LABEL,
   ENTRY_LABEL,
   EXIT_LABEL,
   keyForLabel,
@@ -166,7 +167,7 @@ export function toPrototypeJson(b: Backup): Record<string, unknown> {
       email: p.email,
       adresa: p.adresa,
       dataMembru: d(p.dataMembru),
-      modIntrare: p.modIntrare ? ENTRY_LABEL[p.modIntrare] : "",
+      modIntrare: p.modIntrare ? PROTOTYPE_ENTRY_LABEL[p.modIntrare] : "",
       bisericaProvenienta: p.bisericaProvenienta,
       dataBotez: d(p.dataBotez),
       locBotez: p.locBotez,
@@ -328,7 +329,7 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
     const gen = gRaw === "M" || gRaw === "F" ? gRaw : null;
     if (gRaw && !gen) warnings.push(`${who}: genul „${gRaw}” a fost ignorat.`);
     const miRaw = str.parse(m.modIntrare);
-    let modIntrare = miRaw ? (keyForLabel(ENTRY_LABEL, miRaw) ?? null) : null;
+    let modIntrare = miRaw ? (keyForLabel(PROTOTYPE_ENTRY_LABEL, miRaw) ?? keyForLabel(ENTRY_LABEL, miRaw) ?? null) : null;
     if (miRaw && !modIntrare) {
       modIntrare = "ALTUL";
       warnings.push(`${who}: modul de intrare „${miRaw}” a fost înregistrat ca „Altul”.`);

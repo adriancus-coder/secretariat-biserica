@@ -2,7 +2,7 @@ import { z } from "zod";
 import { todayIso } from "../dates";
 import { ENTRY_MODES, EXIT_MODES, GENDERS, PERSON_STATUSES } from "../labels";
 import { NEW_FAMILY } from "../families";
-import { baptismYearOf, idSchema, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { baptismYearOf, idSchema, optionalId, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const PERSON_FIELDS = [
   "nume",
@@ -26,6 +26,12 @@ export const PERSON_FIELDS = [
   "dataIesire",
   "modIesire",
   "bisericaDestinatie",
+  "dataCerereRetragere",
+  "dataCasatoriei",
+  "numeTata",
+  "numeMama",
+  "plecatDin",
+  "plecatUnde",
   "note",
   "inComitet",
 ] as const;
@@ -53,6 +59,14 @@ const personFields = z.object({
   dataIesire: optionalDate,
   modIesire: optionalEnum(EXIT_MODES),
   bisericaDestinatie: text(160, "Biserica de destinație"),
+  dataCerereRetragere: optionalDate,
+  intrareMeetingId: optionalId,
+  iesireMeetingId: optionalId,
+  dataCasatoriei: optionalDate,
+  numeTata: text(160, "Numele tatălui"),
+  numeMama: text(160, "Numele mamei"),
+  plecatDin: optionalDate,
+  plecatUnde: text(160, "Locul"),
   note: longText(5000, "Notele"),
   inComitet: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
 });
@@ -87,6 +101,18 @@ export function personDateErrors(input: PersonInput, today: string): Record<stri
   if (input.dataNasterii && input.dataIesire && input.dataIesire < input.dataNasterii) {
     errors.dataIesire = "Data ieșirii este înaintea datei nașterii.";
   }
+  // Statut art. 24: the exit's own conditions.
+  if (input.modIesire === "RETRAGERE" && !input.dataCerereRetragere) {
+    errors.dataCerereRetragere = "Retragerea se face pe baza unei cereri scrise (Statut art. 24 alin. 2). Completați data cererii.";
+  }
+  if (input.modIesire === "EXCLUDERE" && !input.iesireMeetingId) {
+    errors.iesireMeetingId = "Excluderea se consemnează într-un proces-verbal. Alegeți procesul-verbal.";
+  }
+  if (input.modIesire === "TRANSFER" && !input.bisericaDestinatie.trim()) {
+    errors.bisericaDestinatie = "Completați biserica de destinație.";
+  }
+  if (input.plecatDin && input.plecatDin > today) errors.plecatDin = "Data plecării nu poate fi în viitor.";
+  if (input.dataCasatoriei && input.dataCasatoriei > today) errors.dataCasatoriei = "Data căsătoriei nu poate fi în viitor.";
   // Statut art. 28: aparținătorii sunt nebotezați.
   if (input.statut === "APARTINATOR" && (input.dataBotez || input.botezAn)) {
     errors.statut = "Aparținătorii sunt persoane nebotezate (Statut art. 28). Alegeți „Membru” sau „Botezat, fără calitate de membru”.";

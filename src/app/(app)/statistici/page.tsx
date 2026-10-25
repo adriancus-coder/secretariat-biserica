@@ -80,13 +80,13 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
         />
         <StackedBars
           title="Intrări pe an, după mod"
-          desc={d.rows.map((r) => `${r.year}: botez ${r.intrari.botez}, transfer ${r.intrari.transfer}, cerere ${r.intrari.cerere}, reprimire ${r.intrari.reprimire}`).join("; ")}
+          desc={d.rows.map((r) => `${r.year}: botez ${r.intrari.botez}, transfer ${r.intrari.transfer}, cerere ${r.intrari.cerere}, reabilitare ${r.intrari.reprimire}`).join("; ")}
           labels={labels}
           series={[
             { name: "Botez", values: d.rows.map((r) => r.intrari.botez), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.botez, r.an)) },
             { name: "Transfer", values: d.rows.map((r) => r.intrari.transfer), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.transfer, r.an)) },
             { name: "Cerere", values: d.rows.map((r) => r.intrari.cerere), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.cerere, r.an)) },
-            { name: "Reprimire", values: d.rows.map((r) => r.intrari.reprimire), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.reprimire, r.an)) },
+            { name: "Reabilitare", values: d.rows.map((r) => r.intrari.reprimire), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.reprimire, r.an)) },
           ]}
         />
         </div>
@@ -100,7 +100,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
                 <th>Botez</th>
                 <th>Transfer</th>
                 <th>Cerere</th>
-                <th>Reprimire</th>
+                <th>Reabilitare</th>
                 <th>Ieșiri</th>
                 <th>Transfer</th>
                 <th>Retragere</th>
@@ -148,7 +148,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
         <p className="hint">
           Listele anului: <Link href={cat(EVOLUTION_KEYS.botez, d.an)}>botezați</Link> ·{" "}
           <Link href={cat(EVOLUTION_KEYS.transfer, d.an)}>transferați</Link> · <Link href={cat(EVOLUTION_KEYS.cerere, d.an)}>cereri</Link> ·{" "}
-          <Link href={cat(EVOLUTION_KEYS.reprimire, d.an)}>reprimiți</Link> · <Link href={cat(EVOLUTION_KEYS.iesiri, d.an)}>ieșiri</Link>
+          <Link href={cat(EVOLUTION_KEYS.reprimire, d.an)}>reabilitați</Link> · <Link href={cat(EVOLUTION_KEYS.iesiri, d.an)}>ieșiri</Link>
         </p>
       </section>
 

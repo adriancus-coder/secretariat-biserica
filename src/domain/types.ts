@@ -31,6 +31,8 @@ export interface PersonRecord {
   bisericaDestinatie: string;
   /** Data înregistrării în aplicație (AAAA-LL-ZZ). */
   createdAt: string | null;
+  /** Temporarily away since (Statut art. 23 alin. 4–5; not in the prototype). */
+  plecatDin?: string | null;
 }
 
 export interface EventRecord {

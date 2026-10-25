@@ -61,7 +61,7 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   if (input.personId) {
     const row = await ctx.db.person.findUnique({ where: { id: input.personId }, select: personRecordSelect });
     if (row) {
-      person = toDocPerson(toPersonRecord(row));
+      person = toDocPerson(toPersonRecord(row), row);
       if (row.familyId) {
         familyHeadId = (await ctx.db.family.findUnique({ where: { id: row.familyId }, select: { headId: true } }))?.headId ?? null;
         const fam = await ctx.db.person.findMany({

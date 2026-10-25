@@ -96,3 +96,23 @@ export async function attendeeOptions(ctx: Ctx, selected: string[]): Promise<Che
     note: r.dataIesire ? "ieșit din evidență" : r.dataNasterii && r.dataNasterii > adultBorn ? "minor" : undefined,
   }));
 }
+
+export interface MeetingChoice {
+  id: string;
+  label: string;
+  data: string;
+}
+
+/** The minutes, newest first, for linking a person's entry or exclusion (Statut art. 22–24). */
+export async function meetingChoices(ctx: Ctx): Promise<MeetingChoice[]> {
+  const rows = await ctx.db.meeting.findMany({
+    orderBy: [{ data: "desc" }, { createdAt: "desc" }],
+    take: 300,
+    select: { id: true, nr: true, anRegistru: true, tip: true, titlu: true, data: true },
+  });
+  return rows.map((m) => {
+    const data = fromDbDate(m.data)!;
+    const nr = m.nr !== null ? `PV nr. ${m.nr}/${m.anRegistru} — ` : "";
+    return { id: m.id, data, label: `${nr}${m.titlu || m.tip}, ${data.split("-").reverse().join(".")}` };
+  });
+}

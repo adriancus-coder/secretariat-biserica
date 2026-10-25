@@ -1,4 +1,4 @@
-import { ageAt, inYear } from "@/lib/dates";
+import { ageAt, inYear, monthsBefore } from "@/lib/dates";
 import { PARENT_RELATIONS } from "@/lib/labels";
 import { computeStats, type Stats } from "./stats";
 import type { EventRecord, PersonRecord } from "./types";
@@ -52,7 +52,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "intrati-botez", label: "Botezați în anul ales", group: "Botez și intrare", yearly: true },
   { key: "intrati-transfer", label: "Intrați prin transfer în anul ales", group: "Botez și intrare", yearly: true },
   { key: "intrati-cerere", label: "Intrați prin cerere de membralitate în anul ales", group: "Botez și intrare", yearly: true },
-  { key: "reprimiti", label: "Reprimiți în anul ales", group: "Botez și intrare", yearly: true },
+  { key: "reprimiti", label: "Reabilitați spiritual în anul ales", group: "Botez și intrare", yearly: true },
   { key: "binecuvantati", label: "Binecuvântați în anul ales", group: "Botez și intrare", yearly: true },
   ...CATEGORY_AGE_BANDS.map(([min, max]): CategoryDef => ({ key: ageKey(min, max), label: ageLabel(min, max), group: "Vârstă" })),
   { key: "fara-data-nasterii", label: "Fără dată de naștere", group: "Vârstă" },
@@ -61,6 +61,9 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "fara-familie", label: "Fără familie", group: "Familie" },
   { key: "singuri-in-familie", label: "Singuri în familie (familie de o persoană)", group: "Familie" },
   { key: "capi-familie", label: "Capi de familie", group: "Familie" },
+  { key: "plecati-temporar", label: "Plecați temporar", group: "Statut" },
+  { key: "plecati-3-luni", label: "Plecați de peste 3 luni", group: "Statut" },
+  { key: "plecati-6-luni", label: "Plecați de peste 6 luni (trebuie cerut transferul)", group: "Statut" },
   { key: "iesiti-an", label: "Ieșiți în anul ales", group: "Ieșiri", yearly: true },
   { key: "iesiti-transfer", label: "Ieșiți prin transfer în anul ales", group: "Ieșiri", yearly: true },
   { key: "iesiti-retragere", label: "Retrași în anul ales", group: "Ieșiri", yearly: true },
@@ -187,6 +190,13 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return inRecord((p) => Boolean(p.familyId) && familySize.get(p.familyId!) === 1);
         case "iesiti":
           return ids(input.persons.filter((p) => p.dataIesire !== null || p.statut === "FOST_MEMBRU"));
+        // Statut art. 23 alin. 4–5: temporarily away; after 6 months the transfer must be asked for.
+        case "plecati-temporar":
+          return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= s.endDate));
+        case "plecati-3-luni":
+          return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= monthsBefore(s.endDate, 3)));
+        case "plecati-6-luni":
+          return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= monthsBefore(s.endDate, 6)));
       }
       const m = AGE_KEY.exec(key);
       if (!m) return null;

@@ -294,3 +294,16 @@ describe("documented deviations from the prototype (baptism known only by its ye
     expect(doc("adeverinta", full)).toContain("fiind botezat în apă la data de 15 iunie 2010.");
   });
 });
+
+describe("documented deviations from the prototype (parents' names, Statut art. 14)", () => {
+  const church = { nume: "Maranata Stavanger", adresa: "Kongsgårdbakken 1, Stavanger" };
+  const child = makePerson({ id: "k", nume: "Pop", prenume: "Ana", gen: "F", dataNasterii: "2015-01-01", dataBinecuvantare: "2015-06-01" });
+  const doc = (person: Parameters<typeof generateDocumentText>[0]["person"]) =>
+    generateDocumentText({ tip: "binecuvantare", person, family: [], church, catre: "", scop: "" });
+
+  it("without parents in the register, the blessing certificate names the parents written on the person", () => {
+    expect(doc(child)).not.toContain("din părinții");
+    expect(doc({ ...child, numeTata: "Ion Pop", numeMama: "Maria Pop" })).toContain(", din părinții Ion Pop și Maria Pop,");
+    expect(doc({ ...child, numeMama: "Maria Pop" })).toContain(", din părinții Maria Pop,");
+  });
+});

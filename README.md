@@ -348,6 +348,11 @@ corecții deliberate:
     părinte → Aparținător; ceilalți → Prieten; „Aparținător” botezat → „Botezat, fără calitate de
     membru” (cu un rând în nota persoanei și lista „Statute ajustate” din Setări → Date). Fișierele mai
     vechi se importă după aceleași reguli.
+19. **Registrul după Statut (art. 14, 20–24):** data căsătoriei, numele părinților (când nu sunt în
+    evidență), procesul-verbal al transferului, al reabilitării spirituale („Reprimire” se afișează
+    „Reabilitare spirituală”; în copia de siguranță rămâne „Reprimire”) și al excluderii, data cererii
+    scrise de retragere și plecarea temporară. Certificatul de binecuvântare numește părinții scriși pe
+    persoană când familia din registru nu are părinți (prototipul nu avea aceste câmpuri).
 
 ## Limitări și pași următori
 

@@ -47,6 +47,9 @@ function toPersonData(person: PersonInput) {
     dataBotez: toDbDate(input.dataBotez),
     dataBinecuvantare: toDbDate(input.dataBinecuvantare),
     dataIesire: toDbDate(input.dataIesire),
+    dataCerereRetragere: toDbDate(input.dataCerereRetragere),
+    dataCasatoriei: toDbDate(input.dataCasatoriei),
+    plecatDin: toDbDate(input.plecatDin),
     ...personDerived(input),
   } satisfies Prisma.PersonUpdateInput;
 }
@@ -69,6 +72,12 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
     const data = toPersonData(input);
     const roles = parseOrThrow(personRolesSchema, formData.get("functii"));
     await assertPersonRoles(ctx.db, id, roles);
+    // The minutes of an entry or an exclusion must be this church's (the scoped client finds only those).
+    for (const [field, meetingId] of [["intrareMeetingId", input.intrareMeetingId], ["iesireMeetingId", input.iesireMeetingId]] as const) {
+      if (meetingId && !(await ctx.db.meeting.findUnique({ where: { id: meetingId }, select: { id: true } }))) {
+        throw new ValidationError({ [field]: "Procesul-verbal ales nu mai există." });
+      }
+    }
     const familyChoice = input.familyId;
     if (familyChoice && familyChoice !== NEW_FAMILY && !(await ctx.db.family.findUnique({ where: { id: familyChoice }, select: { id: true } }))) {
       throw new ValidationError({ familyId: "Familia aleasă nu mai există." });

@@ -19,6 +19,7 @@ const p = (o: Partial<ExportPerson>): ExportPerson => ({
   dataBotez: null,
   botezAn: null,
   botezBiserica: "",
+  dataCasatoriei: null,
   functii: "",
   inComitet: false,
   grupuri: "",

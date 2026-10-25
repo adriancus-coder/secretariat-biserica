@@ -27,6 +27,9 @@ export const personRecordSelect = {
   modIesire: true,
   bisericaDestinatie: true,
   createdAt: true,
+  plecatDin: true,
+  numeTata: true,
+  numeMama: true,
 } satisfies Prisma.PersonSelect;
 
 export type PersonRecordRow = Prisma.PersonGetPayload<{ select: typeof personRecordSelect }>;
@@ -55,10 +58,11 @@ export function toPersonRecord(p: PersonRecordRow): PersonRecord {
     modIesire: p.modIesire,
     bisericaDestinatie: p.bisericaDestinatie,
     createdAt: p.createdAt.toISOString().slice(0, 10),
+    plecatDin: fromDbDate(p.plecatDin),
   };
 }
 
-export function toDocPerson(p: PersonRecord): DocPerson {
+export function toDocPerson(p: PersonRecord, parents?: { numeTata: string; numeMama: string }): DocPerson {
   return {
     id: p.id,
     nume: p.nume,
@@ -74,6 +78,7 @@ export function toDocPerson(p: PersonRecord): DocPerson {
     botezBiserica: p.botezBiserica,
     botezOficiant: p.botezOficiant,
     dataBinecuvantare: p.dataBinecuvantare,
+    ...(parents ?? {}),
   };
 }
 

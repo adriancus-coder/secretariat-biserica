@@ -32,7 +32,7 @@ export function statisticsTables(d: StatisticsReport): StatTable[] {
   return [
     {
       name: "Evoluție",
-      columns: ["An", "Membri", "Botez", "Transfer", "Cerere", "Reprimire", "Ieșiri", "Ieșiri transfer", "Retragere", "Deces", "Excludere", "Binecuvântări", "Creștere netă"],
+      columns: ["An", "Membri", "Botez", "Transfer", "Cerere", "Reabilitare", "Ieșiri", "Ieșiri transfer", "Retragere", "Deces", "Excludere", "Binecuvântări", "Creștere netă"],
       rows: d.rows.map((r) => [
         r.year,
         r.membri,
@@ -106,7 +106,7 @@ export function statisticsPrint(d: StatisticsReport, church: ChurchInfo): PrintS
           { name: "Botez", values: d.rows.map((r) => r.intrari.botez) },
           { name: "Transfer", values: d.rows.map((r) => r.intrari.transfer) },
           { name: "Cerere", values: d.rows.map((r) => r.intrari.cerere) },
-          { name: "Reprimire", values: d.rows.map((r) => r.intrari.reprimire) },
+          { name: "Reabilitare", values: d.rows.map((r) => r.intrari.reprimire) },
         ],
       },
       heading("Evoluție"),

@@ -3,6 +3,7 @@ import { parsePrototypeJson, toPrototypeJson, type Backup } from "@/domain/backu
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
 import { addMemberBaptism, parseMemberBaptism } from "@/lib/baptism-backup";
+import { addMemberRegister, parseMemberRegister } from "@/lib/register-backup";
 import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMemberFamilies, familiesToJson, parseFamiliesJson } from "@/lib/families-backup";
 import { addGroupExtras, parseGroupExtras } from "@/lib/group-backup";
@@ -13,6 +14,7 @@ import {
   loadApplications,
   loadBackup,
   loadBaptism,
+  loadRegister,
   loadDocumentExtras,
   loadFamilies,
   loadGroupExtras,
@@ -27,7 +29,7 @@ import type { Ctx } from "./session";
  * as POST /api/export sends it; shared with the tests. Returns the object and the church's name.
  */
 export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, unknown>; churchName: string }> {
-  const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras, groupExtras] = await Promise.all([
+  const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras, groupExtras, register] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
@@ -37,6 +39,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
     loadAliases(ctx),
     loadDocumentExtras(ctx),
     loadGroupExtras(ctx),
+    loadRegister(ctx),
   ]);
   const data = toPrototypeJson(backup);
   type Coll = Record<string, Record<string, unknown>>;
@@ -45,6 +48,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
   addDocumentExtras(data.documents as Coll, documentExtras);
   addGroupExtras(data.groups as Coll, groupExtras);
   addMemberBaptism(data.members as Coll, baptism);
+  addMemberRegister(data.members as Coll, register);
   addMemberRoles(data.members as Coll, roles.functii);
   addMemberCommittee(data.members as Coll, roles.committee);
   return {
@@ -85,6 +89,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       documents: parseDocumentExtras(raw),
       groups: parseGroupExtras(raw),
       baptism: parseMemberBaptism(raw),
+      register: parseMemberRegister(raw),
       aliases: parseAliasesJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],

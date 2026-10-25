@@ -1,4 +1,5 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
+import type { RegisterFields } from "@/lib/register-backup";
 import type { BAlias } from "@/lib/aliases-backup";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
@@ -28,6 +29,28 @@ import type { Ctx } from "./session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 const byName = { orderBy: { createdAt: "asc" as const } };
+
+/** Member id → register fields of the Statut, for the export (see addMemberRegister). */
+export async function loadRegister(ctx: Ctx): Promise<Map<string, RegisterFields>> {
+  const rows = await ctx.db.person.findMany({
+    select: { id: true, dataCasatoriei: true, numeTata: true, numeMama: true, dataCerereRetragere: true, plecatDin: true, plecatUnde: true, intrareMeetingId: true, iesireMeetingId: true },
+  });
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      {
+        dataCasatoriei: fromDbDate(r.dataCasatoriei),
+        numeTata: r.numeTata,
+        numeMama: r.numeMama,
+        dataCerereRetragere: fromDbDate(r.dataCerereRetragere),
+        plecatDin: fromDbDate(r.plecatDin),
+        plecatUnde: r.plecatUnde,
+        intrarePv: r.intrareMeetingId,
+        iesirePv: r.iesireMeetingId,
+      },
+    ]),
+  );
+}
 
 /** Member id → baptism church / locality / officiant, for the export (see addMemberBaptism). */
 export async function loadBaptism(ctx: Ctx): Promise<Map<string, BaptismFields>> {
@@ -349,6 +372,8 @@ export interface ImportExtras {
   textFamilies?: boolean;
   /** Member id → baptism church / locality / officiant, as in the file (see parseMemberBaptism). */
   baptism?: ReadonlyMap<string, BaptismFields>;
+  /** Member id → register fields of the Statut, as in the file (see parseMemberRegister). */
+  register?: ReadonlyMap<string, RegisterFields>;
   /** Other forms of persons' names (see parseAliasesJson); null = not in the file. */
   aliases?: BAlias[] | null;
 }
@@ -460,7 +485,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         bisericaDestinatie: m.bisericaDestinatie,
         slujire: m.slujire,
         note: noteWithSlujire(m.note, m.slujire),
-        ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez, m.dataBotez) }),
+        ...registerData(extras.register?.get(m.id)),
+        ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez, m.dataBotez), ...extras.register?.get(m.id) }),
       });
       const newPersons: Prisma.PersonCreateManyInput[] = [];
       for (const m of backup.members) {
@@ -711,6 +737,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       if (badSignatures) warnings.push(`${badSignatures} semnături nu erau imagini valide și nu au fost importate.`);
       if (unnumbered.length) warnings.push(`Procese-verbale rămase fără număr (numărul era deja folosit): ${unnumbered.join(", ")}.`);
 
+      // Entry / exclusion minutes of the persons, now that the meetings have their ids here.
+      for (const [memberId, r] of extras.register ?? []) {
+        const personId = people.map.get(memberId);
+        if (!personId || (!r.intrarePv && !r.iesirePv)) continue;
+        const meetingOf = (fileId: string | null) => (fileId ? (meet.map.get(fileId) ?? null) : null);
+        await tx.person.update({ where: { id: personId }, data: { intrareMeetingId: meetingOf(r.intrarePv), iesireMeetingId: meetingOf(r.iesirePv) } });
+      }
+
       // Evenimente
       const evs = await planIds(tx, TABLES.events, backup.events.map((e) => e.id), churchId);
       for (const e of backup.events) {
@@ -948,4 +982,16 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
     },
     { timeout: 120_000, maxWait: 15_000 },
   );
+}
+
+/** The register fields of an imported member (empty when the file has none). */
+function registerData(r: RegisterFields | undefined) {
+  return {
+    dataCasatoriei: toDbDate(r?.dataCasatoriei),
+    numeTata: r?.numeTata ?? "",
+    numeMama: r?.numeMama ?? "",
+    dataCerereRetragere: toDbDate(r?.dataCerereRetragere),
+    plecatDin: toDbDate(r?.plecatDin),
+    plecatUnde: r?.plecatUnde ?? "",
+  };
 }

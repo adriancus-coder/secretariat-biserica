@@ -89,3 +89,18 @@ describe("person categories", () => {
     expect(combineCategories(ctx, persons, ["membri", "barbati", ageKey(18, 30)], "toate")).toEqual(["r1"]);
   });
 });
+
+describe("temporarily away (Statut art. 23 alin. 4–5)", () => {
+  it("counts the persons away since more than 3 and 6 months", () => {
+    const persons = [
+      person({ id: "a", nume: "A", plecatDin: "2026-09-01" }),
+      person({ id: "b", nume: "B", plecatDin: "2026-06-01" }),
+      person({ id: "c", nume: "C", plecatDin: "2026-03-01" }),
+      person({ id: "d", nume: "D", plecatDin: "2026-03-01", dataIesire: "2026-10-01", statut: "FOST_MEMBRU" }),
+    ];
+    const ctx = categoryContext({ persons, events: [], today: "2026-11-01", committee: new Set(), heads: new Set(), holders: new Map() });
+    expect(ctx.ids("plecati-temporar")).toEqual(["a", "b", "c"]);
+    expect(ctx.ids("plecati-3-luni")).toEqual(["b", "c"]);
+    expect(ctx.ids("plecati-6-luni")).toEqual(["c"]);
+  });
+});

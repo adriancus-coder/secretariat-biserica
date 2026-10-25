@@ -10,6 +10,7 @@ import { getPerson, parseListSpec, personNeighbors } from "@/server/queries/pers
 import { withDin } from "@/lib/person-nav";
 import { personRoles, roleChoices, rolesFieldValue } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
+import { meetingChoices } from "@/server/queries/meetings";
 import { PersonForm } from "../../person-form";
 
 export const metadata: Metadata = { title: "Editează persoana" };
@@ -19,12 +20,13 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
   const sp = await searchParams;
   const din = typeof sp.din === "string" ? sp.din : undefined;
   const ctx = await requireCtx("write");
-  const [person, church, families, roles, held] = await Promise.all([
+  const [person, church, families, roles, held, meetings] = await Promise.all([
     getPerson(ctx, id),
     getChurch(ctx),
     familyOptions(ctx),
     roleChoices(ctx, id),
     personRoles(ctx, id),
+    meetingChoices(ctx),
   ]);
   if (!person) notFound();
   const nav = await personNeighbors(ctx, id, parseListSpec(din), church.nomen.rudenie);
@@ -37,6 +39,8 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
   initial.functii = rolesFieldValue(held);
   initial.inComitet = person.inComitet ? "on" : "";
   initial.familyId = person.familyId ?? "";
+  initial.intrareMeetingId = person.intrareMeetingId ?? "";
+  initial.iesireMeetingId = person.iesireMeetingId ?? "";
   // The head of a family with other members changes family only after a new head is chosen.
   const headOf = await ctx.db.family.findUnique({ where: { headId: id }, select: { id: true, nume: true, _count: { select: { members: true } } } });
   const lockedFamily = headOf && headOf._count.members > 1 ? { id: headOf.id, nume: headOf.nume } : undefined;
@@ -51,6 +55,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
         lockedFamily={lockedFamily}
         rudenie={church.nomen.rudenie}
         roles={roles}
+        meetings={meetings}
         cancelHref={withDin(`/persoane/${id}`, din)}
         din={din}
         nav={{

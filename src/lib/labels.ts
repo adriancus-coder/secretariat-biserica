@@ -38,10 +38,14 @@ export const ENTRY_LABEL: Record<EntryModeKey, string> = {
   BOTEZ: "Botez",
   TRANSFER: "Transfer",
   NASCUT_IN_BISERICA: "Născut în biserică",
-  REPRIMIRE: "Reprimire",
+  // Statut art. 20 lit. c.
+  REPRIMIRE: "Reabilitare spirituală",
   CERERE_MEMBRALITATE: "Cerere de membralitate",
   ALTUL: "Altul",
 };
+
+/** The prototype's labels, kept in the JSON backup so older readers and the prototype understand it. */
+export const PROTOTYPE_ENTRY_LABEL: Record<EntryModeKey, string> = { ...ENTRY_LABEL, REPRIMIRE: "Reprimire" };
 
 export const EXIT_MODES = ["TRANSFER", "RETRAGERE", "DECES", "EXCLUDERE", "ALTUL"] as const;
 export type ExitModeKey = (typeof EXIT_MODES)[number];

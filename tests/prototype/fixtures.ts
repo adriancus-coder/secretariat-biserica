@@ -1,7 +1,7 @@
 /** Generator determinist de registre aleatoare + conversia în formatul prototipului. */
 import type { EventRecord, PersonRecord } from "@/domain/types";
 import {
-  ENTRY_LABEL,
+  PROTOTYPE_ENTRY_LABEL,
   ENTRY_MODES,
   EXIT_LABEL,
   EXIT_MODES,
@@ -122,7 +122,7 @@ export function toPrototypeMember(p: FixturePerson): Record<string, unknown> {
     email: "",
     adresa: "",
     dataMembru: p.dataMembru ?? "",
-    modIntrare: p.modIntrare ? ENTRY_LABEL[p.modIntrare] : "",
+    modIntrare: p.modIntrare ? PROTOTYPE_ENTRY_LABEL[p.modIntrare] : "",
     bisericaProvenienta: p.bisericaProvenienta,
     dataBotez: p.dataBotez ?? "",
     locBotez: p.locBotez,

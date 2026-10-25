@@ -36,6 +36,12 @@ export const FIELD_LABELS: Record<string, string> = {
   dataIesire: "Data ieșirii",
   modIesire: "Mod de ieșire",
   bisericaDestinatie: "Biserica de destinație",
+  dataCerereRetragere: "Data cererii de retragere",
+  dataCasatoriei: "Data căsătoriei",
+  numeTata: "Numele tatălui",
+  numeMama: "Numele mamei",
+  plecatDin: "Plecat temporar din",
+  plecatUnde: "Plecat unde",
   slujire: "Slujire",
   note: "Note",
   tip: "Tip",
@@ -104,7 +110,7 @@ export const FIELD_LABELS: Record<string, string> = {
   pozitie: "Poziția în listă",
 };
 
-const DATE_FIELDS = new Set(["dataNasterii", "dataMembru", "dataBotez", "dataBinecuvantare", "dataIesire", "data"]);
+const DATE_FIELDS = new Set(["dataNasterii", "dataMembru", "dataBotez", "dataBinecuvantare", "dataIesire", "data", "dataCerereRetragere", "dataCasatoriei", "plecatDin"]);
 
 /** Valoarea afișată pentru un câmp din jurnal (etichete românești pentru enumerări și date). */
 export function displayAuditValue(field: string, value: unknown): string {

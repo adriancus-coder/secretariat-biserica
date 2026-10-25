@@ -13,6 +13,7 @@ import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS
 import { savePersonAction } from "@/server/actions/persons";
 import { FamilyField, type FamilyChoice } from "./family-field";
 import { RolesPicker, type RoleChoiceGroup } from "./roles-picker";
+import type { MeetingChoice } from "@/server/queries/meetings";
 
 export type PersonFormValues = Record<string, string>;
 
@@ -25,6 +26,7 @@ export function PersonForm({
   lockedFamily,
   rudenie,
   roles,
+  meetings = [],
   cancelHref,
   applicationId,
   din,
@@ -38,6 +40,8 @@ export function PersonForm({
   rudenie: string[];
   /** Role groups with their active roles, plus inactive ones the person already holds. */
   roles: RoleChoiceGroup[];
+  /** Minutes to link an entry (transfer, reabilitare) or an exclusion to. */
+  meetings?: MeetingChoice[];
   cancelHref: string;
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
@@ -55,6 +59,9 @@ export function PersonForm({
   const val = (k: string) => v[k] ?? "";
   const [statut, setStatut] = useState<PersonStatusKey>((val("statut") || "MEMBRU") as PersonStatusKey);
   const [baptised, setBaptised] = useState(Boolean(val("dataBotez") || val("botezAn")));
+  const [modIntrare, setModIntrare] = useState(val("modIntrare"));
+  const [modIesire, setModIesire] = useState(val("modIesire"));
+  const meetingOptions = meetings.map((m) => ({ value: m.id, label: m.label }));
   const statusHint =
     STATUS_HINT[statut] + (statut === "MEMBRU" && !baptised ? " Atenție: botezul nu este completat (Statut art. 20)." : "");
 
@@ -64,6 +71,14 @@ export function PersonForm({
         const f = ev.currentTarget.elements;
         const value = (n: string) => (f.namedItem(n) as HTMLInputElement | null)?.value ?? "";
         setBaptised(Boolean(value("dataBotez") || value("botezAn")));
+        // Statut art. 22 alin. 3: a member from the baptism date, or from the date of the approving minutes.
+        const dm = f.namedItem("dataMembru") as HTMLInputElement | null;
+        if (dm && !dm.value) {
+          const mode = value("modIntrare");
+          const meeting = meetings.find((m) => m.id === value("intrareMeetingId"));
+          if (mode === "BOTEZ" && value("dataBotez")) dm.value = value("dataBotez");
+          else if ((mode === "TRANSFER" || mode === "REPRIMIRE") && meeting) dm.value = meeting.data;
+        }
       }} noValidate>
       {nav ? <PersonNav {...nav} /> : null}
       {din !== undefined ? <input type="hidden" name="din" value={din} /> : null}
@@ -94,6 +109,21 @@ export function PersonForm({
         <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
       </div>
       <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
+      <div className="row2">
+        <TextField name="dataCasatoriei" label="Data căsătoriei" type="date" defaultValue={val("dataCasatoriei")} error={e.dataCasatoriei} />
+        <div />
+      </div>
+      <div className="row2">
+        <TextField
+          name="numeTata"
+          label="Numele tatălui"
+          defaultValue={val("numeTata")}
+          error={e.numeTata}
+          hint="Doar dacă părinții nu sunt în evidență."
+          autoComplete="off"
+        />
+        <TextField name="numeMama" label="Numele mamei" defaultValue={val("numeMama")} error={e.numeMama} autoComplete="off" />
+      </div>
 
       <fieldset className="card">
         <h3>Intrare în biserică</h3>
@@ -106,8 +136,31 @@ export function PersonForm({
             error={e.dataMembru}
             hint="Folosită pentru statistica retroactivă."
           />
-          <SelectField name="modIntrare" label="Mod" defaultValue={val("modIntrare")} error={e.modIntrare} emptyLabel="—" options={opts(ENTRY_MODES, ENTRY_LABEL)} />
+          <SelectField
+            name="modIntrare"
+            label="Mod"
+            defaultValue={val("modIntrare")}
+            error={e.modIntrare}
+            emptyLabel="—"
+            options={opts(ENTRY_MODES, ENTRY_LABEL)}
+            onChange={(ev) => setModIntrare(ev.target.value)}
+          />
         </div>
+        {modIntrare === "TRANSFER" || modIntrare === "REPRIMIRE" || val("intrareMeetingId") ? (
+          <SelectField
+            name="intrareMeetingId"
+            label="Procesul-verbal de aprobare"
+            defaultValue={val("intrareMeetingId")}
+            error={e.intrareMeetingId}
+            emptyLabel="—"
+            options={meetingOptions}
+            hint={
+              modIntrare === "REPRIMIRE"
+                ? "Reabilitarea spirituală se consemnează într-un proces-verbal (Statut art. 22 alin. 3)."
+                : "Transferul se avizează de pastor și comitet (Statut art. 23 alin. 3)."
+            }
+          />
+        ) : null}
         <TextField
           name="bisericaProvenienta"
           label="Biserica de proveniență (la transfer)"
@@ -150,8 +203,36 @@ export function PersonForm({
         <h3>Ieșire din evidență</h3>
         <div className="row2">
           <TextField name="dataIesire" label="Data ieșirii" type="date" defaultValue={val("dataIesire")} error={e.dataIesire} />
-          <SelectField name="modIesire" label="Mod" defaultValue={val("modIesire")} error={e.modIesire} emptyLabel="—" options={opts(EXIT_MODES, EXIT_LABEL)} />
+          <SelectField
+            name="modIesire"
+            label="Mod"
+            defaultValue={val("modIesire")}
+            error={e.modIesire}
+            emptyLabel="—"
+            options={opts(EXIT_MODES, EXIT_LABEL)}
+            onChange={(ev) => setModIesire(ev.target.value)}
+          />
         </div>
+        {modIesire === "RETRAGERE" || val("dataCerereRetragere") ? (
+          <TextField
+            name="dataCerereRetragere"
+            label="Data cererii scrise"
+            type="date"
+            defaultValue={val("dataCerereRetragere")}
+            error={e.dataCerereRetragere}
+            hint="Retragerea se face pe baza unei cereri scrise (Statut art. 24 alin. 2)."
+          />
+        ) : null}
+        {modIesire === "EXCLUDERE" || val("iesireMeetingId") ? (
+          <SelectField
+            name="iesireMeetingId"
+            label="Procesul-verbal al excluderii"
+            defaultValue={val("iesireMeetingId")}
+            error={e.iesireMeetingId}
+            emptyLabel="—"
+            options={meetingOptions}
+          />
+        ) : null}
         <TextField
           name="bisericaDestinatie"
           label="Biserica de destinație (la transfer)"
@@ -160,6 +241,21 @@ export function PersonForm({
           hint="Cu dată de ieșire (în afară de deces), statutul devine automat „Fost membru”."
           className="mb-0"
         />
+      </fieldset>
+
+      <fieldset className="card">
+        <h3>Plecat temporar</h3>
+        <div className="row2">
+          <TextField
+            name="plecatDin"
+            label="Plecat din"
+            type="date"
+            defaultValue={val("plecatDin")}
+            error={e.plecatDin}
+            hint="După 6 luni de absență trebuie cerut transferul (Statut art. 23 alin. 4–5)."
+          />
+          <TextField name="plecatUnde" label="Unde" placeholder="ex. Londra" defaultValue={val("plecatUnde")} error={e.plecatUnde} />
+        </div>
       </fieldset>
 
       <RolesPicker groups={roles} initial={val("functii")} inComitet={val("inComitet") === "on"} error={e.functii} />

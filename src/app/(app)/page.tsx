@@ -4,7 +4,7 @@ import { PageHead } from "@/components/ui/page-head";
 import { ageKey } from "@/domain/categories";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
 import { categoryHref } from "@/lib/category-params";
-import { ageAt, todayIso, toDbDate } from "@/lib/dates";
+import { ageAt, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { getChurch } from "@/server/queries/church";
@@ -75,6 +75,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     .filter((p) => p.dataNasterii && p.dataNasterii.slice(5, 7) === month && !p.dataIesire)
     .sort((a, b) => a.dataNasterii!.slice(8).localeCompare(b.dataNasterii!.slice(8)));
   const canWrite = permissions.write(ctx.user.role);
+  // Statut art. 23 alin. 4–5: away for more than 3 months; after 6 the transfer must be asked for.
+  const away = (months: number) => persons.filter((p) => !p.dataIesire && p.plecatDin && p.plecatDin <= monthsBefore(today, months)).length;
+  const away3 = away(3);
+  const away6 = away(6);
   // Administrators are reminded of the monthly JSON export (backup policy, docs/SECURITY.md).
   const exportDays = permissions.admin(ctx.user.role) ? await daysSinceLastExport(ctx) : undefined;
   const exportDue = exportDays !== undefined && (exportDays === null || exportDays > EXPORT_REMINDER_DAYS);
@@ -87,6 +91,18 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {away3 ? (
+        <div className="alert mb-4" role="status">
+          <Link href={categoryHref("plecati-3-luni", undefined)}>{away3} plecați de peste 3 luni</Link>
+          {away6 ? (
+            <>
+              {" · "}
+              <Link href={categoryHref("plecati-6-luni", undefined)}>{away6} de peste 6 luni (trebuie cerut transferul)</Link>
+            </>
+          ) : null}
+          {" "}— Statut art. 23 alin. 4–5.
+        </div>
+      ) : null}
       {exportDue ? (
         <div className="alert mb-4" role="status">
           {exportAgeText(exportDays ?? null)} Descărcați o copie de siguranță a datelor din{" "}
@@ -131,7 +147,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           <div className="bars">
             <Bar label="Botezați" n={s.intrBotez.length} width={move(s.intrBotez.length)} href={cat("intrati-botez")} />
             <Bar label="Transferați" n={s.intrTransfer.length} width={move(s.intrTransfer.length)} href={cat("intrati-transfer")} />
-            <Bar label="Reprimiți" n={s.reprimiri.length} width={move(s.reprimiri.length)} href={cat("reprimiti")} />
+            <Bar label="Reabilitați" n={s.reprimiri.length} width={move(s.reprimiri.length)} href={cat("reprimiti")} />
             <Bar label="Binecuv." n={s.binecuv.length} width={move(s.binecuv.length)} href={cat("binecuvantati")} />
             <Bar label="Ieșiri" n={s.iesiri.length} width={move(s.iesiri.length)} warn href={cat("iesiti-an")} />
           </div>

@@ -241,6 +241,23 @@ model Person {
   dataIesire         DateTime? @db.Date
   modIesire          ExitMode?
   bisericaDestinatie String    @default("")
+  /// Statut art. 24 alin. 2: a withdrawal starts from a written request.
+  dataCerereRetragere DateTime? @db.Date
+  /// The minutes approving the entry (transfer: art. 23 alin. 3; reabilitare: art. 22 alin. 3).
+  intrareMeetingId    String?
+  intrareMeeting      Meeting?  @relation("PersonEntryMeeting", fields: [intrareMeetingId], references: [id], onDelete: SetNull)
+  /// The minutes recording an exclusion.
+  iesireMeetingId     String?
+  iesireMeeting       Meeting?  @relation("PersonExitMeeting", fields: [iesireMeetingId], references: [id], onDelete: SetNull)
+
+  // Registru (Statut art. 14 alin. 3 lit. a)
+  dataCasatoriei DateTime? @db.Date
+  /// Parents' names, when the parents are not persons in the register.
+  numeTata       String    @default("")
+  numeMama       String    @default("")
+  /// Temporary absence (Statut art. 23 alin. 4–5): since when and where; cleared by "S-a întors".
+  plecatDin      DateTime? @db.Date
+  plecatUnde     String    @default("")
 
   /// Legacy free text "Slujire / responsabilități": moved into the note by the person_form_polish migration;
   /// no longer edited, kept one release (export writes it, import reads it).
@@ -270,6 +287,8 @@ model Person {
   responsibleFor Group[]            @relation("GroupResponsabil")
 
   @@index([churchId, sortKey])
+  @@index([intrareMeetingId])
+  @@index([iesireMeetingId])
   @@index([churchId, familyId])
   @@index([churchId, statut])
   @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
@@ -418,6 +437,10 @@ model Meeting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Persons whose entry / exclusion these minutes record.
+  entries Person[] @relation("PersonEntryMeeting")
+  exits   Person[] @relation("PersonExitMeeting")
 
   /// A closed (signed) meeting is read-only until an administrator reopens it.
   locked   Boolean   @default(false)

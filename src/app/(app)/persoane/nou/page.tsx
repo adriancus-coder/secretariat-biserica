@@ -12,13 +12,14 @@ import { familyOptions } from "@/server/queries/families";
 import { roleChoices } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { PersonForm, type PersonFormValues } from "../person-form";
+import { meetingChoices } from "@/server/queries/meetings";
 
 export const metadata: Metadata = { title: "Persoană nouă" };
 
 export default async function NewPersonPage({ searchParams }: PageProps<"/persoane/nou">) {
   const ctx = await requireCtx("write");
   const sp = await searchParams;
-  const [church, families, roles] = await Promise.all([getChurch(ctx), familyOptions(ctx), roleChoices(ctx, null)]);
+  const [church, families, roles, meetings] = await Promise.all([getChurch(ctx), familyOptions(ctx), roleChoices(ctx, null), meetingChoices(ctx)]);
   // "+ Membru de familie" from a person's page: the new person joins that family.
   const familyId = typeof sp.familie === "string" && families.some((f) => f.id === sp.familie) ? sp.familie : "";
 
@@ -85,6 +86,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
         families={families}
         rudenie={church.nomen.rudenie}
         roles={roles}
+        meetings={meetings}
         cancelHref={app ? `/cereri/${app.id}` : "/persoane"}
         applicationId={app?.id}
       />

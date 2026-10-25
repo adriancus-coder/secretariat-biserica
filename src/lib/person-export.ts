@@ -23,6 +23,7 @@ export interface ExportPerson {
   dataBotez: string | null;
   botezAn: number | null;
   botezBiserica: string;
+  dataCasatoriei: string | null;
   functii: string;
   inComitet: boolean;
   grupuri: string;
@@ -44,6 +45,7 @@ export const EXPORT_COLUMNS = [
   ["modIntrare", "Mod intrare"],
   ["botez", "Data botezului / anul"],
   ["botezBiserica", "Biserica botezului"],
+  ["dataCasatoriei", "Data căsătoriei"],
   ["functii", "Funcții și slujiri"],
   ["comitet", "Comitet"],
   ["grupuri", "Grupuri"],
@@ -94,6 +96,8 @@ export function cell(p: ExportPerson, c: ExportColumn, refDate: string): string 
       return p.dataBotez ? fmtDot(p.dataBotez) : p.botezAn ? String(p.botezAn) : "";
     case "botezBiserica":
       return p.botezBiserica;
+    case "dataCasatoriei":
+      return p.dataCasatoriei ? fmtDot(p.dataCasatoriei) : "";
     case "functii":
       return p.functii;
     case "comitet":

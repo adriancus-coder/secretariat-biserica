@@ -78,6 +78,8 @@ export function optionalInt(min: number, max: number) {
 
 /** ID-uri generate de aplicație (cuid) sau păstrate din importul prototipului. */
 export const idSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, "Identificator invalid.");
+/** An optional id from a form ("" → null). */
+export const optionalId = z.preprocess((v) => (v === null || v === undefined || v === "" ? null : v), idSchema.nullable());
 
 /** Arguments bound by the client to server actions (anyone can call an action with other values). */
 export const booleanArg = z.boolean({ message: "Valoare invalidă." });

@@ -269,6 +269,8 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
       application: { select: { id: true, createdAt: true } },
       roles: { include: { role: { select: { nume: true, sortOrder: true, group: { select: { id: true, nume: true, sortOrder: true } } } } } },
       family: { select: { id: true, nume: true, headId: true } },
+      intrareMeeting: { select: { id: true, nr: true, anRegistru: true, data: true, tip: true } },
+      iesireMeeting: { select: { id: true, nr: true, anRegistru: true, data: true, tip: true } },
     },
   });
   if (!person) return null;

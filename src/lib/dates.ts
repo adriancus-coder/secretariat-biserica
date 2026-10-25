@@ -95,3 +95,10 @@ export function dotDateTime(d: Date, timeZone: string = appTimeZone()): string {
 export function daysBetween(fromIso: string, toIso: string): number {
   return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86_400_000);
 }
+
+/** The same day `n` months earlier (clamped to the month's last day): "2026-08-31", 6 → "2026-02-28". */
+export function monthsBefore(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = addMonths(y, m - 1, -n);
+  return isoFromParts(t.year, t.month0, Math.min(d, daysInMonth(t.year, t.month0)));
+}

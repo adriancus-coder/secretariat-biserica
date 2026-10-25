@@ -20,7 +20,7 @@ describe("validarea persoanei", () => {
   });
 
   it("regula din prototip: cu dată de ieșire, statutul devine „Fost membru” (mai puțin la deces)", () => {
-    const base = personSchema.parse(form({ dataIesire: "2025-05-01", modIesire: "TRANSFER" }));
+    const base = personSchema.parse(form({ dataIesire: "2025-05-01", modIesire: "TRANSFER", bisericaDestinatie: "Betel Oslo" }));
     expect(applyExitRule(base).statut).toBe("FOST_MEMBRU");
     const deces = personSchema.parse(form({ dataIesire: "2025-05-01", modIesire: "DECES" }));
     expect(applyExitRule(deces).statut).toBe("MEMBRU");
@@ -46,5 +46,20 @@ describe("validarea persoanei", () => {
       expect(r.success, bad).toBe(false);
       expect(r.error!.issues.map((i) => i.path[0])).toEqual(["botezAn"]);
     }
+  });
+
+  it("Statut art. 24 and 28: the exit's conditions and an unbaptised aparținător", () => {
+    const paths = (o: Record<string, string>) => {
+      const r = personSchema.safeParse(form(o));
+      return r.success ? [] : r.error.issues.map((i) => i.path[0]);
+    };
+    expect(paths({ dataIesire: "2025-05-01", modIesire: "RETRAGERE" })).toEqual(["dataCerereRetragere"]);
+    expect(paths({ dataIesire: "2025-05-01", modIesire: "RETRAGERE", dataCerereRetragere: "2025-04-20" })).toEqual([]);
+    expect(paths({ dataIesire: "2025-05-01", modIesire: "EXCLUDERE" })).toEqual(["iesireMeetingId"]);
+    expect(paths({ dataIesire: "2025-05-01", modIesire: "EXCLUDERE", iesireMeetingId: "m1" })).toEqual([]);
+    expect(paths({ dataIesire: "2025-05-01", modIesire: "TRANSFER" })).toEqual(["bisericaDestinatie"]);
+    expect(paths({ statut: "APARTINATOR", botezAn: "2010" })).toEqual(["statut"]);
+    expect(paths({ statut: "APARTINATOR" })).toEqual([]);
+    expect(paths({ plecatDin: "2999-01-01" })).toContain("plecatDin");
   });
 });

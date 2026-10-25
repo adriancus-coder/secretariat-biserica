@@ -20,6 +20,7 @@ import { PersonAliases } from "./person-aliases";
 import { canBeHead } from "@/lib/families";
 import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
+import { returnedAction } from "@/server/actions/statute";
 
 export async function generateMetadata({ params }: PageProps<"/persoane/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -47,7 +48,17 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const di = fromDbDate(x.dataIesire);
   const kind = apartinatorKind({ statut: x.statut, dataNasterii: dn, baptised: Boolean(db || x.botezAn) }, family, x.family?.headId ?? null, today);
   // Aceleași rânduri ca fișa din prototip (showMember).
-  const rows: [string, string][] = (
+  const pvLink = (m: { id: string; nr: number | null; anRegistru: number | null; data: Date; tip: string } | null) =>
+    m ? (
+      <Link href={`/procese-verbale/${m.id}`}>
+        {m.nr !== null ? `PV nr. ${m.nr}/${m.anRegistru}` : "Procesul-verbal"} ({m.tip}, {fmt(fromDbDate(m.data)!)})
+      </Link>
+    ) : null;
+  const dcas = fromDbDate(x.dataCasatoriei);
+  const dcr = fromDbDate(x.dataCerereRetragere);
+  const plecat = fromDbDate(x.plecatDin);
+  const parents = [x.numeTata && `tatăl ${x.numeTata}`, x.numeMama && `mama ${x.numeMama}`].filter(Boolean).join(", ");
+  const rows: [string, React.ReactNode][] = (
     [
       ["Statut", STATUS_LABEL[x.statut] + (kind ? ` — ${kind}) ${APARTINATOR_KIND_LABEL[kind]} (Statut art. 28)` : "")],
       ["Gen", x.gen ? GENDER_LABEL[x.gen] : ""],
@@ -56,22 +67,38 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
       ["Telefon", x.telefon],
       ["E-mail", x.email],
       ["Adresă", x.adresa],
+      ["Data căsătoriei", dcas ? fmt(dcas) : ""],
+      ["Părinți", parents],
       [
         "Intrare în biserică",
-        dm
-          ? fmt(dm) +
-            (x.modIntrare ? ` — ${ENTRY_LABEL[x.modIntrare]}` : "") +
-            (x.bisericaProvenienta ? ` de la ${x.bisericaProvenienta}` : "")
-          : "",
+        dm ? (
+          <>
+            {fmt(dm) + (x.modIntrare ? ` — ${ENTRY_LABEL[x.modIntrare]}` : "") + (x.bisericaProvenienta ? ` de la ${x.bisericaProvenienta}` : "")}
+            {x.intrareMeeting ? <> · {pvLink(x.intrareMeeting)}</> : null}
+          </>
+        ) : (
+          ""
+        ),
       ],
       ["Botez în apă", baptismSentence({ ...x, data: db ? fmt(db) : "" })],
       ["Binecuvântat ca copil", dbin ? fmt(dbin) : ""],
       [
         "Ieșire",
-        di ? fmt(di) + (x.modIesire ? ` — ${EXIT_LABEL[x.modIesire]}` : "") + (x.bisericaDestinatie ? ` la ${x.bisericaDestinatie}` : "") : "",
+        di ? (
+          <>
+            {x.modIesire === "DECES"
+              ? `Decedat${x.gen === "F" ? "ă" : ""} la ${fmt(di)}`
+              : fmt(di) + (x.modIesire ? ` — ${EXIT_LABEL[x.modIesire]}` : "") + (x.bisericaDestinatie ? ` la ${x.bisericaDestinatie}` : "")}
+            {dcr ? ` (cerere scrisă din ${fmt(dcr)})` : ""}
+            {x.iesireMeeting ? <> · {pvLink(x.iesireMeeting)}</> : null}
+          </>
+        ) : (
+          ""
+        ),
       ],
+      ["Plecat temporar", plecat ? `din ${fmt(plecat)}${x.plecatUnde ? `, ${x.plecatUnde}` : ""}` : ""],
       ["Note", x.note],
-    ] as [string, string][]
+    ] as [string, React.ReactNode][]
   ).filter(([, v]) => v);
 
   return (
@@ -125,7 +152,16 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         {rows.map(([k, v]) => (
           <div key={k}>
             <dt>{k}</dt>
-            <dd className="whitespace-pre-wrap">{v}</dd>
+            <dd className="whitespace-pre-wrap">
+              {v}
+              {k === "Plecat temporar" && canWrite ? (
+                <form action={returnedAction.bind(null, x.id)} className="inline ml-2">
+                  <button type="submit" className="btn btn-sm">
+                    S-a întors
+                  </button>
+                </form>
+              ) : null}
+            </dd>
           </div>
         ))}
       </dl>
