@@ -1,19 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/shell/icons";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { APPLICATION_KIND_LABEL, APPLICATION_KINDS, GENDER_LABEL, GENDERS, type ApplicationKindKey } from "@/lib/labels";
 import { APPLICATION_MESSAGE_MAX } from "@/lib/schemas/application";
+import { STATUTE, type StatuteKind } from "@/lib/statutes";
 import { submitApplicationAction } from "@/server/actions/applications";
 
-export function ApplicationForm({ slug, rudenie }: { slug: string; rudenie: string[] }) {
+export interface PublishedStatute {
+  kind: StatuteKind;
+  /** Changes when the statute is replaced, so a new version must be opened again. */
+  version: string;
+}
+
+const openedKey = (slug: string, s: PublishedStatute) => `statut-deschis:${slug}:${s.kind}:${s.version}`;
+const OPENED_EVENT = "statut-deschis";
+/** Fallback when sessionStorage is unavailable (private mode): remembered for this page view. */
+const openedInMemory = new Set<string>();
+
+function wasOpened(key: string): boolean {
+  try {
+    if (sessionStorage.getItem(key) === "1") return true;
+  } catch {
+    // no storage
+  }
+  return openedInMemory.has(key);
+}
+
+function rememberOpened(key: string) {
+  openedInMemory.add(key);
+  try {
+    sessionStorage.setItem(key, "1");
+  } catch {
+    // no storage: the in-memory flag is enough for this page view
+  }
+  window.dispatchEvent(new Event(OPENED_EVENT));
+}
+
+function subscribeOpened(onChange: () => void) {
+  window.addEventListener(OPENED_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(OPENED_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rudenie: string[]; statutes: PublishedStatute[] }) {
   const { state, pending, onSubmit } = useActionForm(submitApplicationAction.bind(null, slug));
   const v = state.values ?? {};
   const e = state.errors ?? {};
   const [kind, setKind] = useState<ApplicationKindKey | "">((v.kind as ApplicationKindKey) || "");
+  const [gdpr, setGdpr] = useState(v.consent === "on");
+  // A statute's checkbox is enabled once the statute was opened in this browser session.
+  const openedList = useSyncExternalStore(
+    subscribeOpened,
+    () => statutes.filter((st) => wasOpened(openedKey(slug, st))).map((st) => st.kind).join(","),
+    () => "",
+  );
+  const opened = Object.fromEntries(openedList.split(",").filter(Boolean).map((k) => [k, true])) as Partial<Record<StatuteKind, boolean>>;
+  const [agreed, setAgreed] = useState<Partial<Record<StatuteKind, boolean>>>({});
+  const markOpened = (st: PublishedStatute) => rememberOpened(openedKey(slug, st));
+  const ready = gdpr && statutes.every((s) => agreed[s.kind]);
 
   return (
     <form onSubmit={onSubmit} noValidate>
@@ -103,8 +154,55 @@ export function ApplicationForm({ slug, rudenie }: { slug: string; rudenie: stri
         <input id="f-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
+      {statutes.map((s) => {
+        const info = STATUTE[s.kind];
+        const field = info.consentField;
+        return (
+          <div className="card" key={s.kind}>
+            <h3>{info.label}</h3>
+            <a
+              href={`/cerere/${slug}/statut/${info.slug}`}
+              target="_blank"
+              rel="noopener"
+              className="btn mb-2"
+              onClick={() => markOpened(s)}
+            >
+              <Icon name="documente" className="size-[18px]" /> Deschide statutul
+            </a>
+            <label className="consent">
+              <input
+                type="checkbox"
+                name={field}
+                disabled={!opened[s.kind]}
+                checked={Boolean(agreed[s.kind])}
+                onChange={(ev) => setAgreed((a) => ({ ...a, [s.kind]: ev.target.checked }))}
+                aria-invalid={e[field] ? true : undefined}
+                aria-describedby={opened[s.kind] ? undefined : `hint-${field}`}
+              />
+              <span>{info.consentLabel}</span>
+            </label>
+            {opened[s.kind] ? null : (
+              <p className="hint" id={`hint-${field}`}>
+                Deschideți statutul pentru a putea bifa.
+              </p>
+            )}
+            {e[field] ? (
+              <div className="field-error" role="alert">
+                {e[field]}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+
       <label className="consent">
-        <input type="checkbox" name="consent" defaultChecked={v.consent === "on"} aria-invalid={e.consent ? true : undefined} />
+        <input
+          type="checkbox"
+          name="consent"
+          checked={gdpr}
+          onChange={(ev) => setGdpr(ev.target.checked)}
+          aria-invalid={e.consent ? true : undefined}
+        />
         <span>Sunt de acord ca datele mele să fie păstrate de biserică în scopul evidenței membrilor.</span>
       </label>
       {e.consent ? (
@@ -114,7 +212,12 @@ export function ApplicationForm({ slug, rudenie }: { slug: string; rudenie: stri
       ) : null}
 
       <FormMessage state={state} />
-      <button type="submit" className="btn btn-primary w-full min-h-11 mt-2" disabled={pending}>
+      {ready ? null : (
+        <p className="hint mt-2">
+          {statutes.length ? "Pentru a trimite cererea, bifați acordul cu fiecare statut și acordul pentru păstrarea datelor." : "Pentru a trimite cererea, bifați acordul pentru păstrarea datelor."}
+        </p>
+      )}
+      <button type="submit" className="btn btn-primary w-full min-h-11 mt-2" disabled={pending || !ready}>
         <Icon name="trimite" className="size-[18px]" />
         {pending ? "Se trimite…" : "Trimite cererea"}
       </button>

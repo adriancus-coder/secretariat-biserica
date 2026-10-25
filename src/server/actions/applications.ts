@@ -1,5 +1,7 @@
 "use server";
 
+import { STATUTE } from "@/lib/statutes";
+import { listStatutes } from "../statutes";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -56,7 +58,18 @@ export async function submitApplicationAction(slug: string, _prev: FormState, fo
       throw new ActionError("Ați trimis deja mai multe cereri în ultima oră. Încercați din nou mai târziu.");
     }
 
-    const { consent, dataNasterii, dataBotez, ...fields } = input;
+    // Every statute the church publishes must be accepted; flags are kept only for those.
+    const published = (await listStatutes(church.id)).map((s) => s.kind);
+    const missing = published.filter((k) => !input[STATUTE[k].consentField]);
+    if (missing.length) {
+      throw new ValidationError(Object.fromEntries(missing.map((k) => [STATUTE[k].consentField, `Este necesar acordul cu ${STATUTE[k].noteName}.`])));
+    }
+    const { consent, dataNasterii, dataBotez, consentStatutCult, consentStatutIntern, ...fields } = input;
+    const statuteConsent = {
+      consentStatutCult: consentStatutCult && published.includes("STATUT_CULT"),
+      consentStatutIntern: consentStatutIntern && published.includes("STATUT_INTERN"),
+      consentAt: published.length ? new Date() : null,
+    };
     const db = tenantDb(church.id);
     const created = await db.$transaction(async (tx) => {
       const app = await tx.application.create({
@@ -64,6 +77,7 @@ export async function submitApplicationAction(slug: string, _prev: FormState, fo
           ...fields,
           churchId: church.id,
           consent,
+          ...statuteConsent,
           dataNasterii: toDbDate(dataNasterii),
           dataBotez: toDbDate(dataBotez),
         },

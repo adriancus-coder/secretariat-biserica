@@ -28,7 +28,7 @@ describe.skipIf(!hasTestDb)("applications in the JSON backup", () => {
     await source.db.application.create({
       data: { churchId: a.id, kind: "TRANSFER", nume: "Munteanu", prenume: "Andrei", consent: true, status: "ACCEPTED", personId: person.id },
     });
-    await source.db.application.create({ data: { churchId: a.id, kind: "BOTEZ", nume: "Rusu", prenume: "Elena", consent: true } });
+    await source.db.application.create({ data: { churchId: a.id, kind: "BOTEZ", nume: "Rusu", prenume: "Elena", consent: true, consentStatutIntern: true, consentAt: new Date("2026-10-20T10:00:00Z") } });
   });
 
   afterAll(async () => {
@@ -50,6 +50,12 @@ describe.skipIf(!hasTestDb)("applications in the JSON backup", () => {
     const imported = await target.db.application.findMany({ orderBy: { nume: "asc" }, include: { person: true } });
     expect(imported.map((x) => [x.nume, x.status])).toEqual([["Munteanu", "ACCEPTED"], ["Rusu", "PENDING"]]);
     expect(imported[0].person?.churchId).toBe(target.user.churchId);
+    // Statute consents travel with the application.
+    expect([imported[1].consentStatutCult, imported[1].consentStatutIntern, imported[1].consentAt?.toISOString()]).toEqual([
+      false,
+      true,
+      "2026-10-20T10:00:00.000Z",
+    ]);
     // Ids already used by the source church are remapped, never shared.
     expect(await source.db.application.count()).toBe(2);
   });

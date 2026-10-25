@@ -9,13 +9,16 @@ import { getChurch } from "@/server/queries/church";
 import { requestOrigin } from "@/server/request-origin";
 import { requireCtx } from "@/server/session";
 import { appUrl } from "@/server/tokens";
+import { dotDateTime } from "@/lib/dates";
+import { listStatutes } from "@/server/statutes";
 import { SettingsForm } from "./settings-form";
+import { StatutesCard } from "./statutes-card";
 
 export const metadata: Metadata = { title: "Setări" };
 
 export default async function SettingsPage() {
   const ctx = await requireCtx();
-  const church = await getChurch(ctx);
+  const [church, statutes] = await Promise.all([getChurch(ctx), listStatutes(ctx.user.churchId)]);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const role = ctx.user.role;
   const formUrl = appUrl(`/cerere/${church.slug}`, await requestOrigin());
@@ -30,6 +33,15 @@ export default async function SettingsPage() {
         <Link href="/cont">Contul meu</Link>
       </nav>
       <SettingsForm church={church} nomen={church.nomen} attendanceRules={church.attendanceRules} formUrl={formUrl} readOnly={!permissions.admin(role)} />
+      <StatutesCard
+        slug={church.slug}
+        readOnly={!permissions.admin(role)}
+        statutes={statutes.map((d) => ({
+          kind: d.kind,
+          fileName: d.fileName,
+          details: `${Math.max(1, Math.round(d.size / 1024))} KB · încărcat la ${dotDateTime(d.uploadedAt)}`,
+        }))}
+      />
       <div className="card mt-7">
         <h3>Aspect</h3>
         <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>

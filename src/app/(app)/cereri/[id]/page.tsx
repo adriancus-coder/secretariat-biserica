@@ -48,6 +48,11 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
       ["Mesaj", a.mesaj],
       ["Acord pentru păstrarea datelor", a.consent ? "da" : "nu"],
       [
+        "Statute acceptate",
+        [a.consentStatutCult ? "statutul cultului" : "", a.consentStatutIntern ? "statutul intern" : ""].filter(Boolean).join(", ") +
+          (a.consentAt && (a.consentStatutCult || a.consentStatutIntern) ? ` (${formatDateTime(a.consentAt)})` : ""),
+      ],
+      [
         a.status === "ACCEPTED" ? "Acceptată" : a.status === "REJECTED" ? "Respinsă" : "",
         a.decidedAt ? `${formatDateTime(a.decidedAt)}${a.decidedBy ? ` de ${a.decidedBy.name}` : ""}` : "",
       ],

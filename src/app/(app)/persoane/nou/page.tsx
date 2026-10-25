@@ -1,3 +1,5 @@
+import { fmtDot } from "@/domain/print";
+import { consentNote, STATUTE, STATUTE_KINDS } from "@/lib/statutes";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink, PageHead } from "@/components/ui/page-head";
@@ -54,7 +56,15 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       botezBiserica: app.botezBiserica,
       botezLocalitate: app.botezLocalitate,
       botezOficiant: app.botezOficiant,
-      note: app.mesaj ? `Din cererea de membru: ${app.mesaj}` : "",
+      note: [
+        app.mesaj ? `Din cererea de membru: ${app.mesaj}` : "",
+        consentNote(
+          STATUTE_KINDS.filter((k) => app[STATUTE[k].consentField]),
+          app.consentAt ? fmtDot(app.consentAt.toISOString().slice(0, 10)) : "",
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n"),
     };
   }
   return (

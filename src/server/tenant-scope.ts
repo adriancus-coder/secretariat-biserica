@@ -15,6 +15,7 @@ export const TENANT_MODELS = new Set([
   "Application",
   "ChurchRole",
   "Family",
+  "ChurchDocument",
 ]);
 
 const WHERE_OPERATIONS = new Set([

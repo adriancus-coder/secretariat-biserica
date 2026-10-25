@@ -27,6 +27,11 @@ export interface BApplication {
   botezOficiant: string;
   mesaj: string;
   consent: boolean;
+  /** Statutes accepted when applying (the PDFs themselves are not exported). */
+  consentStatutCult: boolean;
+  consentStatutIntern: boolean;
+  /** ISO timestamp. */
+  consentAt: string | null;
   /** ISO timestamps. */
   createdAt: string;
   decidedAt: string | null;
@@ -65,6 +70,9 @@ const entry = z.object({
   locBotez: str(160),
   mesaj: str(2000),
   consent: z.unknown().optional().transform((v) => v === true),
+  consentStatutCult: z.unknown().optional().transform((v) => v === true),
+  consentStatutIntern: z.unknown().optional().transform((v) => v === true),
+  consentAt: instant,
   createdAt: instant,
   decidedAt: instant,
   membruId: z.unknown().optional().transform((v) => (typeof v === "string" && v ? v : null)),

@@ -53,19 +53,20 @@ model Church {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users          User[]
-  invitations    Invitation[]
-  persons        Person[]
-  meetings       Meeting[]
-  events         Event[]
-  documents      Document[]
-  groups         Group[]
-  notes          Note[]
-  auditLogs      AuditLog[]
-  passwordResets PasswordReset[]
-  applications   Application[]
-  roles          ChurchRole[]
-  families       Family[]
+  users           User[]
+  invitations     Invitation[]
+  persons         Person[]
+  meetings        Meeting[]
+  events          Event[]
+  documents       Document[]
+  groups          Group[]
+  notes           Note[]
+  auditLogs       AuditLog[]
+  passwordResets  PasswordReset[]
+  applications    Application[]
+  roles           ChurchRole[]
+  families        Family[]
+  churchDocuments ChurchDocument[]
 
   @@map("churches")
 }
@@ -91,12 +92,13 @@ model User {
   updatedAt DateTime @updatedAt
 
   auditLogs           AuditLog[]
-  invitationsSent     Invitation[]    @relation("InvitedBy")
-  passwordResets      PasswordReset[] @relation("ResetFor")
-  resetsIssued        PasswordReset[] @relation("ResetIssuedBy")
-  applicationsDecided Application[]   @relation("ApplicationDecidedBy")
+  invitationsSent     Invitation[]       @relation("InvitedBy")
+  passwordResets      PasswordReset[]    @relation("ResetFor")
+  resetsIssued        PasswordReset[]    @relation("ResetIssuedBy")
+  applicationsDecided Application[]      @relation("ApplicationDecidedBy")
   signaturesCollected MeetingSignature[] @relation("SignatureCollectedBy")
   meetingSends        MeetingSend[]
+  churchDocuments     ChurchDocument[]
 
   @@index([churchId])
   @@map("users")
@@ -223,7 +225,7 @@ model Person {
   documents   Document[]
   application Application?
   roles       PersonRole[]
-  headOf      Family?           @relation("FamilyHead")
+  headOf      Family?            @relation("FamilyHead")
   signatures  MeetingSignature[]
 
   @@index([churchId, sortKey])
@@ -299,17 +301,17 @@ model Meeting {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  titlu      String   @default("")
-  tip        String
-  data       DateTime @db.Date
+  titlu            String   @default("")
+  tip              String
+  data             DateTime @db.Date
   /// Ora în format HH:MM (sau șir gol).
-  ora        String   @default("")
-  loc        String   @default("")
-  presedinte String   @default("")
-  invitati   String   @default("")
-  ordine     String   @default("")
-  discutii   String   @default("")
-  hotarari   String   @default("")
+  ora              String   @default("")
+  loc              String   @default("")
+  presedinte       String   @default("")
+  invitati         String   @default("")
+  ordine           String   @default("")
+  discutii         String   @default("")
+  hotarari         String   @default("")
   /// Number in the minutes register of the year `anRegistru` (the year of `data`); null = not numbered yet.
   nr               Int?
   anRegistru       Int?
@@ -318,7 +320,7 @@ model Meeting {
   observatii       String   @default("")
   formulaIncheiere String   @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
-  asteptati  Int?
+  asteptati        Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,6 +352,29 @@ model MeetingSignature {
 
   @@unique([meetingId, personId])
   @@map("meeting_signatures")
+}
+
+enum ChurchDocumentKind {
+  STATUT_CULT
+  STATUT_INTERN
+}
+
+/// A PDF the church publishes on its application form (the statutes), stored in the database.
+model ChurchDocument {
+  id           String             @id @default(cuid())
+  churchId     String
+  church       Church             @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  kind         ChurchDocumentKind
+  fileName     String
+  size         Int
+  pdf          Bytes
+  uploadedAt   DateTime           @default(now())
+  uploadedById String?
+  uploadedBy   User?              @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@unique([churchId, kind])
+  @@index([churchId])
+  @@map("church_documents")
 }
 
 enum MeetingSendStatus {
@@ -632,6 +657,10 @@ model Application {
   mesaj               String    @default("")
   /// The applicant agreed that the church keeps the data for its membership records.
   consent             Boolean   @default(false)
+  /// The applicant read and accepted the statutes the church had published when applying.
+  consentStatutCult   Boolean   @default(false)
+  consentStatutIntern Boolean   @default(false)
+  consentAt           DateTime?
 
   createdAt    DateTime  @default(now())
   decidedAt    DateTime?

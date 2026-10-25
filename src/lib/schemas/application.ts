@@ -27,6 +27,9 @@ const applicationFields = z.object({
   botezLocalitate: text(160, "Localitatea botezului"),
   botezOficiant: text(160, "Numele celui care a oficiat botezul"),
   mesaj: longText(APPLICATION_MESSAGE_MAX, "Mesajul"),
+  // Checked against the statutes the church published (in the action).
+  consentStatutCult: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+  consentStatutIntern: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   consent: z.preprocess(
     (v) => v === "on" || v === "true" || v === true,
     z.boolean().refine((v) => v, "Este necesar acordul pentru păstrarea datelor."),

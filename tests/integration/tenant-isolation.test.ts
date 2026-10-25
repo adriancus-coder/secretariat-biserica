@@ -105,6 +105,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect((await prisma.family.findUniqueOrThrow({ where: { id: fam.id } })).nume).toBe("Fam. Ion Popescu");
   });
 
+  it("church documents (statutes) are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const pdf = new Uint8Array(Buffer.from("%PDF-1.7 test"));
+    const doc = await a.churchDocument.create({ data: { kind: "STATUT_CULT", fileName: "statut.pdf", size: pdf.length, pdf } as never });
+    expect(doc.churchId).toBe(churchA);
+    expect(await b.churchDocument.findUnique({ where: { id: doc.id } })).toBeNull();
+    expect(await b.churchDocument.findFirst({ where: { kind: "STATUT_CULT" } })).toBeNull();
+    expect(await b.churchDocument.count()).toBe(0);
+    expect((await b.churchDocument.updateMany({ data: { fileName: "x.pdf" } })).count).toBe(0);
+    expect((await b.churchDocument.deleteMany({})).count).toBe(0);
+    // The same kind can exist once per church.
+    const other = await b.churchDocument.create({ data: { kind: "STATUT_CULT", fileName: "b.pdf", size: pdf.length, pdf } as never });
+    expect(other.churchId).toBe(churchB);
+    expect((await prisma.churchDocument.findUniqueOrThrow({ where: { id: doc.id } })).fileName).toBe("statut.pdf");
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

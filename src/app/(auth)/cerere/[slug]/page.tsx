@@ -4,6 +4,7 @@ import { resolveNomen } from "@/lib/labels";
 import { APPLICATIONS_CLOSED_MESSAGE } from "@/lib/schemas/application";
 import { isValidSlug } from "@/lib/slug";
 import { prisma } from "@/server/db";
+import { listStatutes } from "@/server/statutes";
 import { ApplicationForm } from "./application-form";
 
 export const metadata: Metadata = { title: "Cerere de membru" };
@@ -13,7 +14,7 @@ async function findChurch(slug: string) {
   if (!isValidSlug(slug)) return null;
   return prisma.church.findUnique({
     where: { slug },
-    select: { nume: true, slug: true, applicationsOpen: true, gradeRudenie: true },
+    select: { id: true, nume: true, slug: true, applicationsOpen: true, gradeRudenie: true },
   });
 }
 
@@ -35,7 +36,11 @@ export default async function ApplicationPage({ params }: PageProps<"/cerere/[sl
       <p className="hint mb-5">
         {church.nume}. Completați formularul; biserica vă va contacta după ce cererea este analizată.
       </p>
-      <ApplicationForm slug={church.slug} rudenie={resolveNomen({ rudenie: church.gradeRudenie }).rudenie} />
+      <ApplicationForm
+        slug={church.slug}
+        rudenie={resolveNomen({ rudenie: church.gradeRudenie }).rudenie}
+        statutes={(await listStatutes(church.id)).map((s) => ({ kind: s.kind, version: String(s.uploadedAt.getTime()) }))}
+      />
     </>
   );
 }
