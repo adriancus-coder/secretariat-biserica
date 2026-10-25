@@ -17,11 +17,13 @@ export default async function MinutesImportPage() {
     <>
       <BackLink href="/procese-verbale">Procese-verbale</BackLink>
       <PageHead title="Importă proces-verbal" />
-      {isExtractConfigured() ? (
-        <MinutesImport people={people} tipuri={church.nomen.tipuriSedinte} rules={church.attendanceRules} prefill={prefill} />
-      ) : (
-        <div className="alert">Extragerea din imagini nu este configurată.</div>
-      )}
+      <MinutesImport
+        aiConfigured={isExtractConfigured()}
+        people={people}
+        tipuri={church.nomen.tipuriSedinte}
+        rules={church.attendanceRules}
+        prefill={prefill}
+      />
     </>
   );
 }

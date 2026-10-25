@@ -267,6 +267,12 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Sending: "Trimite" (`write`, `sendMinutesAction` in `src/server/actions/meeting-send.ts`) e-mails one message to the deduplicated recipients (Pastor/Secretar from `Church.pastorEmail`/`secretarEmail` preselected, attendees with an e-mail, free addresses), the PDF attached (≤ 10 MB). Each send is a `MeetingSend` row (no `churchId`, created through the meeting) and an audit entry; `sharedRateLimiter("minutes-send")` allows 20 sends per church per hour. Without e-mail configured the button is disabled.
 - `renderMeetingPdf()` / `meetingPdfFileName()` (`src/server/pdf/meeting.ts`) are shared by the PDF route and the e-mail: `PV-<nr>-<AAAA>-<slug>.pdf`. "Partajează" passes that file to the Web Share API, else downloads it.
 
+### Importing old minutes
+
+- `/procese-verbale/import` (`write`): Word files and scans on one page. `.docx` (≤ 5 MB, ≤ 30 per batch) are read in memory with mammoth (`src/server/minutes-import.ts`) and parsed by `parseMinutesText()` (`src/domain/minutes-parse.ts`, pure; fixtures `docs/samples/*.docx`). Scans go through the extraction below. Nothing is stored.
+- `reviewDraft()` matches names (`matchPersonName`): a unique match is an attendee, the rest are "Nepotriviți" with a picker (`resolveImport()` in `src/lib/minutes-import.ts`); unpicked names become guests.
+- The review saves through `saveMeetingAction` with the hidden field `import=1`: no redirect (batch "Următorul"), and a taken number falls back to the next free one with a notice.
+
 ### Reading documents with Claude (extraction)
 
 - `src/server/extract.ts`: PDF / JPG / PNG (≤ 20 MB, 30 s timeout) sent to the Claude API with a strict JSON schema per kind (`src/lib/schemas/extract.ts`). The answer is validated again with zod and anything off-schema is refused. The model comes from `EXTRACT_MODEL`, default `claude-sonnet-5-5`, with server-side refusal fallback.

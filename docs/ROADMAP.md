@@ -76,6 +76,7 @@ Also in place:
   - Button heights are fixed: `.btn` is at least 44 px and `.btn-sm` at least 40 px. Small controls that are not `.btn` (calendar day cells, pager links, inline text links) have not been audited yet.
 - Absentees are computed from today's register as of the meeting date (who was a member, who held a committee role then). Editing a meeting saved before the attendance rules computes its absentees for the first time; role history only exists from the `din` dates entered.
 - Role end dates (`until`) are stored and exported but not yet editable in the UI.
+- Imported Word minutes (.docx) are not stored either: only the meeting saved from them is kept. A batch is limited to 25 MB in total by the request body limit, besides 5 MB per file and 30 files.
 - Documents read with Claude are not stored (no object storage yet); HEIC photos are not converted on the server (phones send JPEG through the file picker).
 - `Person.familieVeche` (the family text before families became records) is still in the database. Drop it in a migration once production has run a release with families.
 - Person search no longer includes the family name; rows saved before families became records still contain the old family text until they are saved again.

@@ -55,8 +55,17 @@ async function attendance(ctx: Ctx, tip: string, date: string, present: string[]
 const label = (m: { titlu: string; tip: string; data: Date; nr?: number | null; anRegistru?: number | null }) =>
   `${m.nr != null ? `PV nr. ${m.nr}/${m.anRegistru} — ` : ""}${m.titlu || m.tip} (${m.data.toISOString().slice(0, 10)})`;
 
-export async function saveMeetingAction(id: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
+export interface MeetingFormState extends FormState {
+  /** Import review only: the saved meeting (the form stays on the page for "Următorul"). */
+  savedId?: string;
+}
+
+export async function saveMeetingAction(id: string | null, _prev: MeetingFormState, formData: FormData): Promise<MeetingFormState> {
   let savedId: string | undefined;
+  // Import review (hidden field "import"): a taken number falls back to the next free one with a notice.
+  const importing = id === null && formData.get("import") === "1";
+  let savedNr = "";
+  let notice = "";
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
@@ -77,10 +86,14 @@ export async function saveMeetingAction(id: string | null, _prev: FormState, for
           where: { anRegistru: year, nr: wantedNr, ...(id ? { id: { not: id } } : {}) },
           select: { id: true },
         });
-        if (clash) throw new ValidationError({ nr: `Numărul ${wantedNr}/${year} este deja folosit de alt proces-verbal.` });
-        nr = wantedNr;
+        if (clash && importing) {
+          nr = await nextFreeMeetingNumber(tx, ctx.user.churchId, year);
+          notice = `Numărul ${wantedNr}/${year} era deja folosit; procesul-verbal a primit numărul ${nr}/${year}.`;
+        } else if (clash) throw new ValidationError({ nr: `Numărul ${wantedNr}/${year} este deja folosit de alt proces-verbal.` });
+        else nr = wantedNr;
       } else if (previous?.nr != null && previous.anRegistru === year) nr = previous.nr;
       else nr = await nextFreeMeetingNumber(tx, ctx.user.churchId, year);
+      savedNr = `${nr}/${year}`;
       const data = { ...fields, data: toDbDate(fields.data)!, asteptati, nr, anRegistru: year };
 
       if (id) {
@@ -120,6 +133,7 @@ export async function saveMeetingAction(id: string | null, _prev: FormState, for
   });
   if (!savedId) return state;
   revalidatePath("/", "layout");
+  if (importing) return { ok: true, savedId, message: notice || `Procesul-verbal nr. ${savedNr} a fost salvat.` };
   redirect(`/procese-verbale/${savedId}?salvat=1`);
 }
 

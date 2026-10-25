@@ -125,6 +125,12 @@ const PERSONS: P[] = [
   { key: "mariag", nume: "Georgescu", prenume: "Maria", gen: "F", familie: "Georgescu", rudenie: "Soție", dataNasterii: "1948-03-03", dataMembru: d(24, 2, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Arad", dataBotez: "1967-06-11", dataIesire: d(2, 3, 3), modIesire: "DECES" },
   { key: "stefan", nume: "Marin", prenume: "Ștefan", gen: "M", statut: "FOST_MEMBRU", dataNasterii: "1965-09-09", dataMembru: d(16, 5, 5), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1990-05-20", dataIesire: d(3, 2, 1), modIesire: "RETRAGERE" },
   { key: "kari", nume: "Olsen", prenume: "Kari", gen: "F", statut: "PRIETEN", dataNasterii: "1991-06-21", telefon: "+47 470 12 345", note: "Colegă de serviciu a Ioanei Pop; vine la serviciile de duminică seara.", inregistrat: d(1, 10, 5) },
+  // The committee named in the sample minutes (docs/samples/*.docx), so their import matches the register.
+  { key: "dumitruc", nume: "Ciobanu", prenume: "Dumitru", gen: "M", dataNasterii: "1962-04-02", dataMembru: d(20, 3, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
+  { key: "ovidiu", nume: "Haidemak", prenume: "Ovidiu", gen: "M", dataNasterii: "1978-10-12", dataMembru: d(12, 6, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Emanuel Oradea" },
+  { key: "nelu", nume: "Gaju", prenume: "Nelu", gen: "M", dataNasterii: "1971-01-20", dataMembru: d(15, 9, 7), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
+  { key: "florin", nume: "Vasile", prenume: "Florin", gen: "M", dataNasterii: "1980-05-05", dataMembru: d(9, 4, 4), modIntrare: "BOTEZ", dataBotez: d(9, 4, 4), locBotez: BAPTISTERIU },
+  { key: "adrian", nume: "Cușniriuc", prenume: "Adrian", gen: "M", dataNasterii: "1984-08-08", dataMembru: d(11, 2, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
   { key: "erik", nume: "Nilsen", prenume: "Erik", gen: "M", statut: "PRIETEN", dataNasterii: "1988-02-17", inregistrat: clampPast(d(0, 4, 2)) },
   { key: "iacob", nume: "Ardelean", prenume: "Iacob", gen: "M", statut: "APARTINATOR", dataNasterii: "1976-12-05", telefon: "+47 960 03 030", dataMembru: d(6, 5, 1), modIntrare: "ALTUL", dataBotez: "1998-09-13", note: "Membru al Bisericii Harul Cluj; locuiește temporar în Stavanger." },
 ];

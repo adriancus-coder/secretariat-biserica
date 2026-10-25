@@ -1,14 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { todayIso } from "@/lib/dates";
 import type { FormState } from "@/lib/form-state";
-import { matchMeetingType, matchPersonName } from "@/lib/name-match";
-import { DEFAULT_CLOSING } from "@/lib/minutes";
+import type { ImportDraft } from "@/lib/minutes-import";
 import type { PersonDraft } from "@/lib/schemas/extract";
 import { writeAudit } from "../audit";
 import { checkExtractFile, extractDocument, ExtractError, type ExtractKind } from "../extract";
-import { getChurch } from "../queries/church";
+import { reviewDraft } from "../minutes-import";
 import { sharedRateLimiter } from "../rate-limit";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { runFormAction } from "./run";
@@ -38,7 +36,7 @@ async function readUpload(ctx: Ctx, kind: ExtractKind, formData: FormData) {
     fields: ["tip", "fisier", "marime"],
     after: { tip: KIND_LABEL[kind], fisier: file.name.slice(0, 200), marime: `${Math.max(1, Math.round(file.size / 1024))} KB` },
   });
-  return { mediaType: file.type, data: Buffer.from(await file.arrayBuffer()) };
+  return { mediaType: file.type, data: Buffer.from(await file.arrayBuffer()), fileName: file.name };
 }
 
 /** The extraction, with its messages shown in the form. */
@@ -61,54 +59,17 @@ export async function extractPersonAction(_prev: ExtractPersonState, formData: F
 }
 
 export interface ExtractMinutesState extends FormState {
-  meeting?: {
-    initial: Record<string, string>;
-    points: string[];
-    selected: string[];
-    warnings: string[];
-  };
+  meeting?: ImportDraft;
 }
 
-/** Reads a scanned or photographed minutes page into a prefilled meeting form. */
+/** Reads a scanned or photographed minutes page into a review draft. */
 export async function extractMinutesAction(_prev: ExtractMinutesState, formData: FormData): Promise<ExtractMinutesState> {
-  let meeting: ExtractMinutesState["meeting"];
+  let meeting: ImportDraft | undefined;
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("write");
-    const draft = await extractDocument("proces-verbal", await readUpload(ctx, "proces-verbal", formData)).catch(asActionError);
-    const [church, persons] = await Promise.all([
-      getChurch(ctx),
-      ctx.db.person.findMany({ select: { id: true, nume: true, prenume: true } }),
-    ]);
-    const warnings: string[] = [];
-    const selected: string[] = [];
-    const guests = [...draft.invitati];
-    for (const name of draft.prezenti) {
-      const m = matchPersonName(name, persons);
-      if (m.status === "unique") selected.push(m.id);
-      else {
-        guests.push(name);
-        warnings.push(
-          m.status === "ambiguous"
-            ? `„${name}” se potrivește cu mai multe persoane din registru; a fost trecut la invitați.`
-            : `„${name}” nu a fost găsit în registru; a fost trecut la invitați.`,
-        );
-      }
-    }
-    if (!draft.data) warnings.push("Data ședinței nu a putut fi citită; verificați-o.");
-    const fallbackType = church.nomen.tipuriSedinte.find((t) => t === "Comitet") ?? church.nomen.tipuriSedinte[0] ?? "Comitet";
-    meeting = {
-      initial: {
-        nr: draft.nr ? String(draft.nr) : "",
-        tip: matchMeetingType(draft.tip, church.nomen.tipuriSedinte, fallbackType),
-        data: draft.data ?? todayIso(),
-        presedinte: draft.pastor ?? church.pastor,
-        invitati: guests.join(", "),
-        formulaIncheiere: draft.formulaIncheiere ?? DEFAULT_CLOSING,
-      },
-      points: draft.puncte,
-      selected: [...new Set(selected)],
-      warnings,
-    };
+    const upload = await readUpload(ctx, "proces-verbal", formData);
+    const draft = await extractDocument("proces-verbal", upload).catch(asActionError);
+    meeting = await reviewDraft(ctx, upload.fileName, draft, draft.data ? [] : ["Data ședinței nu a putut fi citită; verificați-o."]);
   });
   return meeting ? { ok: true, meeting } : state;
 }

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PersonChecklist, type ChecklistOption } from "@/components/person-checklist";
 import { Field, nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
-import { saveMeetingAction } from "@/server/actions/meetings";
+import { saveMeetingAction, type MeetingFormState } from "@/server/actions/meetings";
 import { PointsEditor } from "./points-editor";
 
 const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((x) => b.has(x));
@@ -23,6 +23,7 @@ export function MeetingForm({
   rules,
   prefill,
   cancelHref,
+  onImported,
 }: {
   id: string | null;
   initial: Record<string, string>;
@@ -36,6 +37,8 @@ export function MeetingForm({
   /** The persons each automatic rule checks. */
   prefill: Record<"TOTI" | "COMITET", string[]>;
   cancelHref: string;
+  /** Import review: the meeting is saved without leaving the page; called with the saved state. */
+  onImported?: (state: MeetingFormState) => void;
 }) {
   const [attendees, setAttendees] = useState<Set<string>>(() => new Set(selected));
   const [tip, setTip] = useState(initial.tip ?? "");
@@ -52,7 +55,10 @@ export function MeetingForm({
     setAttendees(ids);
   }
 
-  const { state, pending, onSubmit } = useActionForm(saveMeetingAction.bind(null, id));
+  const { state, pending, onSubmit } = useActionForm<MeetingFormState>(saveMeetingAction.bind(null, id));
+  useEffect(() => {
+    if (state.ok && state.savedId) onImported?.(state);
+  }, [state, onImported]);
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
@@ -60,6 +66,7 @@ export function MeetingForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
+      {onImported ? <input type="hidden" name="import" value="1" /> : null}
       <div className="row2">
         <TextField
           name="nr"
