@@ -1,3 +1,6 @@
+import { storedExcerpts } from "@/lib/statute-excerpts";
+import { STATUTE } from "@/lib/statutes";
+import { listStatutes } from "@/server/statutes";
 import { fromDbDate } from "@/lib/dates";
 import { privacyTemplate, publicPrivacyText } from "@/lib/privacy";
 import { prisma } from "@/server/db";
@@ -25,8 +28,22 @@ export function LockedLink() {
 export async function churchForCampaign(churchId: string) {
   const c = await prisma.church.findUniqueOrThrow({
     where: { id: churchId },
-    select: { nume: true, email: true, adresa: true, orgNr: true, telefon: true, comunitate: true, privacyAdoptedAt: true, privacyText: true, extractEnabled: true },
+    select: {
+      nume: true,
+      slug: true,
+      email: true,
+      adresa: true,
+      orgNr: true,
+      telefon: true,
+      comunitate: true,
+      privacyAdoptedAt: true,
+      privacyText: true,
+      extractEnabled: true,
+      statutExtrase: true,
+    },
   });
   const notice = publicPrivacyText(c.privacyText.trim() || privacyTemplate({ ...c, privacyAdoptedAt: fromDbDate(c.privacyAdoptedAt) }), c.extractEnabled);
-  return { nume: c.nume, notice };
+  // The statute excerpts, with the Cult's statute link when the church published it.
+  const cult = (await listStatutes(churchId)).some((s) => s.kind === "STATUT_CULT");
+  return { nume: c.nume, notice, excerpts: storedExcerpts(c.statutExtrase), statuteUrl: cult ? `/cerere/${c.slug}/statut/${STATUTE.STATUT_CULT.slug}` : null };
 }

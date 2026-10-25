@@ -69,6 +69,8 @@ model Church {
   comitetAlesLa           DateTime? @db.Date
   comitetAlegereMeetingId String?
   comitetPrelungit        Boolean   @default(false)
+  /// Statute excerpts on the application form (src/lib/statute-excerpts.ts); [] = the defaults.
+  statutExtrase           Json      @default("[]")
   /// Default page layout of the printed minutes (src/lib/page-layout.ts); {} = the built-in layout.
   pvLayout         Json     @default("{}")
   /// Default page layout of the registered documents (src/lib/page-layout.ts); {} = the standard layout.

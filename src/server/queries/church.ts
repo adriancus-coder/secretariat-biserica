@@ -3,6 +3,7 @@ import { cache } from "react";
 import type { ChurchInfo } from "@/domain/types";
 import { resolveAttendanceRules, type AttendanceRule } from "@/lib/attendance";
 import { resolveNomen, type Nomenclatures } from "@/lib/labels";
+import { storedExcerpts, type StatuteExcerpt } from "@/lib/statute-excerpts";
 import { storedLayout, type PageLayout } from "@/lib/page-layout";
 import { prisma } from "../db";
 import type { Ctx } from "../session";
@@ -25,6 +26,8 @@ export interface ChurchSettings extends ChurchInfo {
   comitetAlesLa: string | null;
   comitetAlegereMeetingId: string | null;
   comitetPrelungit: boolean;
+  /** The statute excerpts of the application form (the defaults when none are saved). */
+  statutExtrase: StatuteExcerpt[];
   /** Preselected recipients when the minutes are e-mailed ("" = none). */
   pastorEmail: string;
   secretarEmail: string;
@@ -84,6 +87,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     comitetAlesLa: c.comitetAlesLa ? c.comitetAlesLa.toISOString().slice(0, 10) : null,
     comitetAlegereMeetingId: c.comitetAlegereMeetingId,
     comitetPrelungit: c.comitetPrelungit,
+    statutExtrase: storedExcerpts(c.statutExtrase),
   };
 });
 

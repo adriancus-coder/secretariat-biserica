@@ -1,11 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/form-state";
+import { excerptsField, excerptsText, isDefaultExcerpts, storedExcerpts, type StatuteExcerpt } from "@/lib/statute-excerpts";
 import { looksLikePdf, STATUTE, STATUTE_KINDS, STATUTE_MAX_BYTES, type StatuteKind } from "@/lib/statutes";
 import { writeAudit } from "../audit";
 import { actionCtx, ActionError, type Ctx } from "../session";
-import { runFormAction } from "./run";
+import { parseOrThrow, runFormAction } from "./run";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
@@ -75,4 +78,44 @@ export async function deleteStatuteAction(kind: string): Promise<FormState> {
     revalidatePath("/setari");
     return { ok: true, message: `${STATUTE[k].label} a fost șters.` };
   });
+}
+
+/** Saves the statute excerpts of the application form (the defaults are stored as []); audited SETTINGS. */
+async function saveExcerpts(ctx: Ctx, list: StatuteExcerpt[] | null) {
+  await ctx.db.$transaction(async (tx) => {
+    const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { nume: true, statutExtrase: true } });
+    const stored = list && !isDefaultExcerpts(list) ? list : [];
+    await tx.church.update({ where: { id: ctx.user.churchId }, data: { statutExtrase: stored as unknown as Prisma.InputJsonArray } });
+    await writeAudit(tx, ctx.user, {
+      entity: "SETTINGS",
+      entityId: ctx.user.churchId,
+      entityLabel: before.nume,
+      action: "UPDATE",
+      fields: ["extraseStatut"],
+      before: { extraseStatut: excerptsText(storedExcerpts(before.statutExtrase)) },
+      after: { extraseStatut: excerptsText(storedExcerpts(stored)) },
+    });
+  });
+}
+
+/** Setări → "Extrase din statut afișate în cererea de membru" (administrators). */
+export async function saveStatuteExcerptsAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const state = await runFormAction(formData, async () => {
+    const ctx = await actionCtx("admin");
+    const list = parseOrThrow(z.object({ extrase: excerptsField }), { extrase: String(formData.get("extrase") ?? "") }).extrase;
+    await saveExcerpts(ctx, list);
+  });
+  if (!state.ok) return state;
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Extrasele au fost salvate." };
+}
+
+/** "Revino la textul implicit": the defaults of docs/statut-extrase.md (administrators). */
+export async function resetStatuteExcerptsAction(): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    await saveExcerpts(await actionCtx("admin"), null);
+  });
+  if (!state.ok) return state;
+  revalidatePath("/", "layout");
+  return { ok: true, message: "S-a revenit la textul implicit." };
 }

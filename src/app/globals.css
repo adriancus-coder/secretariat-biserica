@@ -769,6 +769,34 @@
   .points-tools .btn {
     min-width: 40px;
   }
+  /* Statute excerpts (application form, data-update page) */
+  .excerpts details {
+    border-top: 1px solid var(--line);
+  }
+  .excerpts summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-height: 44px;
+    padding: 8px 0;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .excerpts summary .tag {
+    font-weight: 400;
+  }
+  .excerpt-text {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+    margin-bottom: 8px;
+  }
+  .excerpt-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
   .points-vote {
     grid-column: 2;
     display: flex;

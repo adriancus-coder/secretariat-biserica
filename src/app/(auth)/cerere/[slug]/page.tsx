@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { resolveNomen } from "@/lib/labels";
 import { APPLICATIONS_CLOSED_MESSAGE } from "@/lib/schemas/application";
 import { isValidSlug } from "@/lib/slug";
+import { storedExcerpts } from "@/lib/statute-excerpts";
 import { prisma } from "@/server/db";
 import { listStatutes } from "@/server/statutes";
 import { ApplicationForm } from "./application-form";
@@ -14,7 +15,7 @@ async function findChurch(slug: string) {
   if (!isValidSlug(slug)) return null;
   return prisma.church.findUnique({
     where: { slug },
-    select: { id: true, nume: true, slug: true, applicationsOpen: true, gradeRudenie: true },
+    select: { id: true, nume: true, slug: true, applicationsOpen: true, gradeRudenie: true, statutExtrase: true },
   });
 }
 
@@ -39,6 +40,7 @@ export default async function ApplicationPage({ params }: PageProps<"/cerere/[sl
       <ApplicationForm
         slug={church.slug}
         rudenie={resolveNomen({ rudenie: church.gradeRudenie }).rudenie}
+        excerpts={storedExcerpts(church.statutExtrase)}
         statutes={(await listStatutes(church.id)).map((s) => ({ kind: s.kind, version: String(s.uploadedAt.getTime()) }))}
       />
     </>

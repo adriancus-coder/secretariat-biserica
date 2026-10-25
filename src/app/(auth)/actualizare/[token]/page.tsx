@@ -1,3 +1,4 @@
+import { StatuteExcerptsCard } from "@/components/statute-excerpts-card";
 import type { Metadata } from "next";
 import { fmt } from "@/lib/format";
 import { OPTIONAL_CONSENTS, type OptionalConsentKey } from "@/lib/labels";
@@ -83,6 +84,7 @@ export default async function PersonalUpdatePage({ params }: PageProps<"/actuali
     <>
       {head}
       {proposal ? <p className="alert alert-ok mb-3">Ați trimis deja datele; le puteți modifica până la data limită.</p> : null}
+      {adult.statut === "MEMBRU" || adult.statut === "APARTINATOR" ? <StatuteExcerptsCard excerpts={church.excerpts} statuteUrl={church.statuteUrl} collapsed /> : null}
       <UpdateForm
         action={submitPersonalUpdateAction.bind(null, token)}
         self={proposal?.self ?? register}

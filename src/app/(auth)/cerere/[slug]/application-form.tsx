@@ -9,6 +9,8 @@ import { APPLICATION_KIND_LABEL, APPLICATION_KINDS, GENDER_LABEL, GENDERS, type 
 import { APPLICATION_MESSAGE_MAX, hasBaptismFields } from "@/lib/schemas/application";
 import { todayIso } from "@/lib/dates";
 import { STATUTE, type StatuteKind } from "@/lib/statutes";
+import type { StatuteExcerpt } from "@/lib/statute-excerpts";
+import { StatuteExcerptsCard } from "@/components/statute-excerpts-card";
 import { submitApplicationAction } from "@/server/actions/applications";
 
 export interface PublishedStatute {
@@ -50,7 +52,18 @@ function subscribeOpened(onChange: () => void) {
   };
 }
 
-export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rudenie: string[]; statutes: PublishedStatute[] }) {
+export function ApplicationForm({
+  slug,
+  rudenie,
+  statutes,
+  excerpts,
+}: {
+  slug: string;
+  rudenie: string[];
+  statutes: PublishedStatute[];
+  /** "Ce înseamnă să fiți membru al bisericii" (Setări; defaults from docs/statut-extrase.md). */
+  excerpts: StatuteExcerpt[];
+}) {
   const { state, pending, onSubmit } = useActionForm(submitApplicationAction.bind(null, slug));
   const v = state.values ?? {};
   const e = state.errors ?? {};
@@ -167,6 +180,18 @@ export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rud
         <label htmlFor="f-website">Site web</label>
         <input id="f-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
+
+      {(() => {
+        // The card's links open the Cult's statute: that counts as opening it (reading the card does not).
+        const cult = statutes.find((s) => s.kind === "STATUT_CULT");
+        return (
+          <StatuteExcerptsCard
+            excerpts={excerpts}
+            statuteUrl={cult ? `/cerere/${slug}/statut/${STATUTE.STATUT_CULT.slug}` : null}
+            onOpen={cult ? () => markOpened(cult) : undefined}
+          />
+        );
+      })()}
 
       {statutes.map((s) => {
         const info = STATUTE[s.kind];

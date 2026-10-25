@@ -20,6 +20,8 @@ import { adoptPrivacyModelAction } from "@/server/actions/settings";
 import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
 import { CommitteeCard } from "./committee-card";
+import { ExcerptsCard } from "./excerpts-card";
+import { isDefaultExcerpts } from "@/lib/statute-excerpts";
 import { mandateEnd, mandateNotice } from "@/lib/committee";
 import { fmtL, memberName } from "@/lib/format";
 import { meetingChoices } from "@/server/queries/meetings";
@@ -109,6 +111,7 @@ export default async function SettingsPage() {
           details: `${Math.max(1, Math.round(d.size / 1024))} KB · încărcat la ${dotDateTime(d.uploadedAt)}`,
         }))}
       />
+      <ExcerptsCard excerpts={church.statutExtrase} isDefault={isDefaultExcerpts(church.statutExtrase)} readOnly={!permissions.admin(role)} />
       <div className="card mt-7">
         <h3>Aspect</h3>
         <p className="hint mb-3">Tema și mărimea textului se păstrează pe acest dispozitiv.</p>
