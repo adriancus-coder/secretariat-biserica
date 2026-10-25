@@ -60,7 +60,7 @@ Extrage datele în formatul cerut:
 - secretar, pastor: numele celor care semnează.
 Copiază textul așa cum este scris. Când o informație lipsește sau nu se poate citi sigur, pune null (sau listă goală). Nu inventa nimic.`,
   persoana: `Documentul atașat este un certificat de transfer de la altă biserică sau o cerere de membru (scanat sau fotografiat).
-Extrage datele persoanei în formatul cerut: nume (de familie), prenume, gen (M sau F), data nașterii și data botezului ca AAAA-LL-ZZ, locul botezului, biserica de proveniență, telefon, e-mail, adresă, iar kind: TRANSFER pentru un certificat de transfer, BOTEZ pentru o cerere de botez.
+Extrage datele persoanei în formatul cerut: nume (de familie), prenume, gen (M sau F), data nașterii și data botezului ca AAAA-LL-ZZ, biserica, localitatea și cine a oficiat botezul (fiecare separat, null dacă nu scrie), biserica de proveniență, telefon, e-mail, adresă, iar kind: TRANSFER pentru un certificat de transfer, BOTEZ pentru o cerere de botez.
 Copiază textul așa cum este scris. Când o informație lipsește sau nu se poate citi sigur, pune null. Nu inventa nimic.`,
 };
 

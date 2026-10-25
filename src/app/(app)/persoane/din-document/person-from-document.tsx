@@ -27,7 +27,9 @@ export function PersonFromDocument({ families, rudenie, roles }: { families: Fam
       dataMembru: todayIso(),
       bisericaProvenienta: d.bisericaProvenienta ?? "",
       dataBotez: d.dataBotez ?? "",
-      locBotez: d.locBotez ?? "",
+      botezBiserica: d.botezBiserica ?? "",
+      botezLocalitate: d.botezLocalitate ?? "",
+      botezOficiant: d.botezOficiant ?? "",
     };
     return (
       <>

@@ -51,7 +51,9 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       dataMembru: member ? todayIso() : "",
       bisericaProvenienta: app.bisericaProvenienta,
       dataBotez: fromDbDate(app.dataBotez) ?? "",
-      locBotez: app.locBotez,
+      botezBiserica: app.botezBiserica,
+      botezLocalitate: app.botezLocalitate,
+      botezOficiant: app.botezOficiant,
       note: app.mesaj ? `Din cererea de membru: ${app.mesaj}` : "",
     };
   }

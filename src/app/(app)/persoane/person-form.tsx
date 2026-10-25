@@ -83,10 +83,17 @@ export function PersonForm({
           defaultValue={val("bisericaProvenienta")}
           error={e.bisericaProvenienta}
         />
-        <div className="row2">
-          <TextField name="dataBotez" label="Botez în apă" type="date" defaultValue={val("dataBotez")} error={e.dataBotez} />
-          <TextField name="locBotez" label="Locul botezului" defaultValue={val("locBotez")} error={e.locBotez} />
-        </div>
+        <fieldset className="subfields">
+          <legend>Botez în apă</legend>
+          <div className="row2">
+            <TextField name="dataBotez" label="Data botezului" type="date" defaultValue={val("dataBotez")} error={e.dataBotez} />
+            <TextField name="botezBiserica" label="Biserica" placeholder="ex. Betel Oslo" defaultValue={val("botezBiserica")} error={e.botezBiserica} />
+          </div>
+          <div className="row2">
+            <TextField name="botezLocalitate" label="Localitatea" defaultValue={val("botezLocalitate")} error={e.botezLocalitate} />
+            <TextField name="botezOficiant" label="Oficiat de" placeholder="ex. pastor Ioan Pop" defaultValue={val("botezOficiant")} error={e.botezOficiant} />
+          </div>
+        </fieldset>
         <TextField
           name="dataBinecuvantare"
           label="Binecuvântare ca copil"

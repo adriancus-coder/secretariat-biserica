@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { baptismSentence } from "@/lib/baptism";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
@@ -52,7 +53,7 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
             (x.bisericaProvenienta ? ` de la ${x.bisericaProvenienta}` : "")
           : "",
       ],
-      ["Botezat în apă", db ? fmt(db) + (x.locBotez ? `, ${x.locBotez}` : "") : ""],
+      ["Botez în apă", baptismSentence({ ...x, data: db ? fmt(db) : "" })],
       ["Binecuvântat ca copil", dbin ? fmt(dbin) : ""],
       [
         "Ieșire",

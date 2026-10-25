@@ -5,13 +5,13 @@ const base = { kind: "TRANSFER", nume: "Munteanu", prenume: "Andrei", telefon: "
 
 describe("applicationSchema", () => {
   it("accepts a complete transfer and keeps its transfer details", () => {
-    const r = applicationSchema.parse({ ...base, bisericaProvenienta: "Elim Timișoara", dataBotez: "2008-07-20", locBotez: "Timișoara", dataNasterii: "1990-04-12" });
+    const r = applicationSchema.parse({ ...base, bisericaProvenienta: "Elim Timișoara", dataBotez: "2008-07-20", botezLocalitate: "Timișoara", botezOficiant: "Ioan Pop", dataNasterii: "1990-04-12" });
     expect(r).toMatchObject({ kind: "TRANSFER", consent: true, bisericaProvenienta: "Elim Timișoara", dataBotez: "2008-07-20" });
   });
 
   it("drops transfer details for other kinds", () => {
-    const r = applicationSchema.parse({ ...base, kind: "BOTEZ", bisericaProvenienta: "X", dataBotez: "2008-07-20", locBotez: "Y" });
-    expect(r).toMatchObject({ bisericaProvenienta: "", dataBotez: null, locBotez: "" });
+    const r = applicationSchema.parse({ ...base, kind: "BOTEZ", bisericaProvenienta: "X", dataBotez: "2008-07-20", botezBiserica: "Y", botezLocalitate: "Z", botezOficiant: "W" });
+    expect(r).toMatchObject({ bisericaProvenienta: "", dataBotez: null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" });
   });
 
   it("requires consent, a kind and names, reported together", () => {

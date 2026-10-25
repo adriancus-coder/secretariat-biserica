@@ -1,3 +1,4 @@
+import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
@@ -17,6 +18,12 @@ import type { Ctx } from "./session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 const byName = { orderBy: { createdAt: "asc" as const } };
+
+/** Member id → baptism church / locality / officiant, for the export (see addMemberBaptism). */
+export async function loadBaptism(ctx: Ctx): Promise<Map<string, BaptismFields>> {
+  const rows = await ctx.db.person.findMany({ select: { id: true, botezBiserica: true, botezLocalitate: true, botezOficiant: true } });
+  return new Map(rows.map(({ id, ...b }) => [id, b]));
+}
 
 /** Toate datele bisericii, pentru export. */
 export async function loadBackup(ctx: Ctx): Promise<Backup> {
@@ -48,7 +55,7 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
       modIntrare: p.modIntrare,
       bisericaProvenienta: p.bisericaProvenienta,
       dataBotez: fromDbDate(p.dataBotez),
-      locBotez: p.locBotez,
+      locBotez: p.botezLocalitate,
       dataBinecuvantare: fromDbDate(p.dataBinecuvantare),
       dataIesire: fromDbDate(p.dataIesire),
       modIesire: p.modIesire,
@@ -158,7 +165,9 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
     rudenie: a.rudenie,
     bisericaProvenienta: a.bisericaProvenienta,
     dataBotez: fromDbDate(a.dataBotez),
-    locBotez: a.locBotez,
+    botezBiserica: a.botezBiserica,
+    botezLocalitate: a.botezLocalitate,
+    botezOficiant: a.botezOficiant,
     mesaj: a.mesaj,
     consent: a.consent,
     createdAt: a.createdAt.toISOString(),
@@ -242,6 +251,8 @@ export interface ImportExtras {
   families?: ParsedFamilies | null;
   /** Meeting id → the fields beyond the prototype's format, as in the file (see parseMeetingExtras). */
   meetings?: ReadonlyMap<string, MeetingExtra>;
+  /** Member id → baptism church / locality / officiant, as in the file (see parseMemberBaptism). */
+  baptism?: ReadonlyMap<string, BaptismFields>;
 }
 
 export interface ImportSummary {
@@ -343,14 +354,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         modIntrare: m.modIntrare,
         bisericaProvenienta: m.bisericaProvenienta,
         dataBotez: toDbDate(m.dataBotez),
-        locBotez: m.locBotez,
+        ...importedBaptism(extras.baptism?.get(m.id), m.locBotez),
         dataBinecuvantare: toDbDate(m.dataBinecuvantare),
         dataIesire: toDbDate(m.dataIesire),
         modIesire: m.modIesire,
         bisericaDestinatie: m.bisericaDestinatie,
         slujire: m.slujire,
         note: m.note,
-        ...personDerived(m),
+        ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez) }),
       });
       const newPersons: Prisma.PersonCreateManyInput[] = [];
       for (const m of backup.members) {
@@ -665,7 +676,9 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             rudenie: a.rudenie,
             bisericaProvenienta: a.bisericaProvenienta,
             dataBotez: toDbDate(a.dataBotez),
-            locBotez: a.locBotez,
+            botezBiserica: a.botezBiserica,
+            botezLocalitate: a.botezLocalitate,
+            botezOficiant: a.botezOficiant,
             mesaj: a.mesaj,
             consent: a.consent,
             decidedAt: a.decidedAt ? new Date(a.decidedAt) : null,

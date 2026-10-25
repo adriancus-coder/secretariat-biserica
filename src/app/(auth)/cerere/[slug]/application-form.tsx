@@ -82,10 +82,17 @@ export function ApplicationForm({ slug, rudenie }: { slug: string; rudenie: stri
             defaultValue={v.bisericaProvenienta ?? ""}
             error={e.bisericaProvenienta}
           />
-          <div className="row2 stack-sm">
-            <TextField name="dataBotez" label="Data botezului" type="date" defaultValue={v.dataBotez ?? ""} error={e.dataBotez} />
-            <TextField name="locBotez" label="Locul botezului" defaultValue={v.locBotez ?? ""} error={e.locBotez} />
-          </div>
+          <fieldset className="subfields">
+            <legend>Botez în apă</legend>
+            <div className="row2 stack-sm">
+              <TextField name="dataBotez" label="Data botezului" type="date" defaultValue={v.dataBotez ?? ""} error={e.dataBotez} />
+              <TextField name="botezBiserica" label="Biserica" defaultValue={v.botezBiserica ?? ""} error={e.botezBiserica} />
+            </div>
+            <div className="row2 stack-sm">
+              <TextField name="botezLocalitate" label="Localitatea" defaultValue={v.botezLocalitate ?? ""} error={e.botezLocalitate} />
+              <TextField name="botezOficiant" label="Oficiat de" defaultValue={v.botezOficiant ?? ""} error={e.botezOficiant} />
+            </div>
+          </fieldset>
         </fieldset>
       ) : null}
 

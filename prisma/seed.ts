@@ -59,7 +59,9 @@ type P = {
   modIntrare?: "BOTEZ" | "TRANSFER" | "NASCUT_IN_BISERICA" | "REPRIMIRE" | "ALTUL";
   bisericaProvenienta?: string;
   dataBotez?: string;
-  locBotez?: string;
+  botezBiserica?: string;
+  botezLocalitate?: string;
+  botezOficiant?: string;
   dataBinecuvantare?: string;
   dataIesire?: string;
   modIesire?: "TRANSFER" | "RETRAGERE" | "DECES" | "EXCLUDERE" | "ALTUL";
@@ -71,20 +73,22 @@ type P = {
 };
 
 const BAPTISTERIU = "baptisteriul bisericii";
+/** Baptised in the demo church itself. */
+const BOTEZ_AICI = { botezBiserica: "Maranata Stavanger", botezLocalitate: "Stavanger", botezOficiant: "Daniel Mureșan" };
 
 const PERSONS: P[] = [
   // Familia Mureșan (pastorul)
-  { key: "daniel", nume: "Mureșan", prenume: "Daniel", gen: "M", familie: "Mureșan", rudenie: "Cap de familie", dataNasterii: "1968-11-11", telefon: "+47 912 34 501", email: "daniel.muresan@example.org", adresa: "Kongsgårdbakken 3, Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1986-06-22", locBotez: "Biserica Emanuel Oradea", slujire: "pastor" },
+  { key: "daniel", nume: "Mureșan", prenume: "Daniel", gen: "M", familie: "Mureșan", rudenie: "Cap de familie", dataNasterii: "1968-11-11", telefon: "+47 912 34 501", email: "daniel.muresan@example.org", adresa: "Kongsgårdbakken 3, Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1986-06-22", botezBiserica: "Emanuel", botezLocalitate: "Oradea", botezOficiant: "Vasile Talpoș", slujire: "pastor" },
   { key: "rodica", nume: "Mureșan", prenume: "Rodica", gen: "F", familie: "Mureșan", rudenie: "Soție", dataNasterii: "1970-03-15", telefon: "+47 912 34 502", adresa: "Kongsgårdbakken 3, Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1988-07-10", slujire: "cor, școala duminicală" },
-  { key: "lidia", nume: "Mureșan", prenume: "Lidia", gen: "F", familie: "Mureșan", rudenie: "Fiică", dataNasterii: "2001-05-20", telefon: "+47 912 34 503", dataMembru: d(10, 5, 15), modIntrare: "BOTEZ", dataBotez: d(10, 5, 15), locBotez: BAPTISTERIU, slujire: "tineret, cor" },
+  { key: "lidia", nume: "Mureșan", prenume: "Lidia", gen: "F", familie: "Mureșan", rudenie: "Fiică", dataNasterii: "2001-05-20", telefon: "+47 912 34 503", dataMembru: d(10, 5, 15), modIntrare: "BOTEZ", dataBotez: d(10, 5, 15), ...BOTEZ_AICI, slujire: "tineret, cor" },
   // Familia Popescu
-  { key: "ion", nume: "Popescu", prenume: "Ion", gen: "M", familie: "Popescu", rudenie: "Cap de familie", dataNasterii: "1972-04-12", telefon: "+47 913 11 201", email: "ion.popescu@example.org", adresa: "Madlaveien 14, Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1992-06-14", locBotez: "Râul Someș, Cluj", slujire: "diacon, comitet" },
+  { key: "ion", nume: "Popescu", prenume: "Ion", gen: "M", familie: "Popescu", rudenie: "Cap de familie", dataNasterii: "1972-04-12", telefon: "+47 913 11 201", email: "ion.popescu@example.org", adresa: "Madlaveien 14, Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1992-06-14", botezLocalitate: "Râul Someș, Cluj", slujire: "diacon, comitet" },
   { key: "maria", nume: "Popescu", prenume: "Maria", gen: "F", familie: "Popescu", rudenie: "Soție", dataNasterii: "1975-09-03", telefon: "+47 913 11 202", adresa: "Madlaveien 14, Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1994-08-21", slujire: "cor" },
-  { key: "andrei", nume: "Popescu", prenume: "Andrei", gen: "M", familie: "Popescu", rudenie: "Fiu", dataNasterii: "2005-02-10", dataMembru: d(3, 6, 18), modIntrare: "BOTEZ", dataBotez: d(3, 6, 18), locBotez: BAPTISTERIU, slujire: "tineret, sunet" },
+  { key: "andrei", nume: "Popescu", prenume: "Andrei", gen: "M", familie: "Popescu", rudenie: "Fiu", dataNasterii: "2005-02-10", dataMembru: d(3, 6, 18), modIntrare: "BOTEZ", dataBotez: d(3, 6, 18), ...BOTEZ_AICI, slujire: "tineret, sunet" },
   { key: "anapopescu", nume: "Popescu", prenume: "Ana", gen: "F", statut: "COPIL", familie: "Popescu", rudenie: "Fiică", dataNasterii: "2012-07-19", dataMembru: "2012-07-19", modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: "2012-10-07" },
   // Familia Ionescu
-  { key: "mihai", nume: "Ionescu", prenume: "Mihai", gen: "M", familie: "Ionescu", rudenie: "Cap de familie", dataNasterii: "1980-01-25", telefon: "+47 918 20 301", email: "mihai.ionescu@example.org", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), locBotez: BAPTISTERIU, slujire: "comitet, casier" },
-  { key: "elena", nume: "Ionescu", prenume: "Elena", gen: "F", familie: "Ionescu", rudenie: "Soție", dataNasterii: "1983-06-30", telefon: "+47 918 20 302", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), locBotez: BAPTISTERIU, slujire: "școala duminicală" },
+  { key: "mihai", nume: "Ionescu", prenume: "Mihai", gen: "M", familie: "Ionescu", rudenie: "Cap de familie", dataNasterii: "1980-01-25", telefon: "+47 918 20 301", email: "mihai.ionescu@example.org", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "comitet, casier" },
+  { key: "elena", nume: "Ionescu", prenume: "Elena", gen: "F", familie: "Ionescu", rudenie: "Soție", dataNasterii: "1983-06-30", telefon: "+47 918 20 302", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "școala duminicală" },
   { key: "david", nume: "Ionescu", prenume: "David", gen: "M", statut: "COPIL", familie: "Ionescu", rudenie: "Fiu", dataNasterii: d(4, 3, 8), dataMembru: d(4, 3, 8), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: d(4, 6, 12) },
   { key: "sara", nume: "Ionescu", prenume: "Sara", gen: "F", statut: "COPIL", familie: "Ionescu", rudenie: "Fiică", dataNasterii: d(1, 11, 2), dataMembru: d(1, 11, 2), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: clampPast(d(0, 2, 15)) },
   // Familia Pop (secretara)
@@ -95,7 +99,7 @@ const PERSONS: P[] = [
   { key: "petru", nume: "Ștefănescu", prenume: "Petru", gen: "M", familie: "Ștefănescu", rudenie: "Cap de familie", dataNasterii: "1958-12-01", telefon: "+47 915 00 111", adresa: "Eiganesveien 40, Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1980-08-17", slujire: "prezbiter, comitet" },
   { key: "viorica", nume: "Ștefănescu", prenume: "Viorica", gen: "F", familie: "Ștefănescu", rudenie: "Soție", dataNasterii: "1961-04-04", telefon: "+47 915 00 112", adresa: "Eiganesveien 40, Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1982-09-05", slujire: "surori, vizite" },
   // Familia Țurcanu
-  { key: "radu", nume: "Țurcanu", prenume: "Radu", gen: "M", familie: "Țurcanu", rudenie: "Cap de familie", dataNasterii: "1990-10-10", telefon: "+47 921 10 001", dataMembru: d(2, 6, 16), modIntrare: "BOTEZ", dataBotez: d(2, 6, 16), locBotez: "Lacul Mosvatnet" },
+  { key: "radu", nume: "Țurcanu", prenume: "Radu", gen: "M", familie: "Țurcanu", rudenie: "Cap de familie", dataNasterii: "1990-10-10", telefon: "+47 921 10 001", dataMembru: d(2, 6, 16), modIntrare: "BOTEZ", dataBotez: d(2, 6, 16), ...BOTEZ_AICI, botezLocalitate: "Lacul Mosvatnet, Stavanger" },
   { key: "cristina", nume: "Țurcanu", prenume: "Cristina", gen: "F", statut: "PRIETEN", familie: "Țurcanu", rudenie: "Soție", dataNasterii: "1992-12-12", telefon: "+47 921 10 002", inregistrat: d(3, 2, 1) },
   { key: "matei", nume: "Țurcanu", prenume: "Matei", gen: "M", statut: "COPIL", familie: "Țurcanu", rudenie: "Fiu", dataNasterii: d(2, 1, 5), dataMembru: d(2, 1, 5), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: d(2, 4, 21) },
   // Familia Lungu
@@ -111,16 +115,16 @@ const PERSONS: P[] = [
   // Familia Ciobanu
   { key: "emanuel", nume: "Ciobanu", prenume: "Emanuel", gen: "M", familie: "Ciobanu", rudenie: "Cap de familie", dataNasterii: "1983-08-18", telefon: "+47 940 55 010", email: "emanuel.ciobanu@example.org", dataMembru: d(14, 7, 6), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "2002-07-07", slujire: "comitet, tineret" },
   { key: "naomi", nume: "Ciobanu", prenume: "Naomi", gen: "F", familie: "Ciobanu", rudenie: "Soție", dataNasterii: "1986-10-01", telefon: "+47 940 55 011", dataMembru: d(7, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "2005-08-28", slujire: "școala duminicală" },
-  { key: "beniamin", nume: "Ciobanu", prenume: "Beniamin", gen: "M", familie: "Ciobanu", rudenie: "Fiu", dataNasterii: "2010-12-24", dataMembru: clampPast(d(0, 5, 24)), modIntrare: "BOTEZ", dataBotez: clampPast(d(0, 5, 24)), locBotez: BAPTISTERIU, slujire: "tineret" },
+  { key: "beniamin", nume: "Ciobanu", prenume: "Beniamin", gen: "M", familie: "Ciobanu", rudenie: "Fiu", dataNasterii: "2010-12-24", dataMembru: clampPast(d(0, 5, 24)), modIntrare: "BOTEZ", dataBotez: clampPast(d(0, 5, 24)), ...BOTEZ_AICI, slujire: "tineret" },
   { key: "estera", nume: "Ciobanu", prenume: "Estera", gen: "F", statut: "COPIL", familie: "Ciobanu", rudenie: "Fiică", dataNasterii: d(7, 3, 30), dataMembru: d(7, 3, 30), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: d(7, 6, 9) },
   // Familia Dumitru (tineri căsătoriți)
-  { key: "alin", nume: "Dumitru", prenume: "Alin", gen: "M", familie: "Dumitru", rudenie: "Cap de familie", dataNasterii: "1999-02-28", telefon: "+47 945 00 777", dataMembru: d(5, 7, 4), modIntrare: "BOTEZ", dataBotez: d(5, 7, 4), locBotez: BAPTISTERIU, slujire: "tineret, muzică" },
-  { key: "bianca", nume: "Dumitru", prenume: "Bianca", gen: "F", familie: "Dumitru", rudenie: "Soție", dataNasterii: "2000-07-31", telefon: "+47 945 00 778", dataMembru: d(3, 6, 18), modIntrare: "BOTEZ", dataBotez: d(3, 6, 18), locBotez: BAPTISTERIU },
+  { key: "alin", nume: "Dumitru", prenume: "Alin", gen: "M", familie: "Dumitru", rudenie: "Cap de familie", dataNasterii: "1999-02-28", telefon: "+47 945 00 777", dataMembru: d(5, 7, 4), modIntrare: "BOTEZ", dataBotez: d(5, 7, 4), ...BOTEZ_AICI, slujire: "tineret, muzică" },
+  { key: "bianca", nume: "Dumitru", prenume: "Bianca", gen: "F", familie: "Dumitru", rudenie: "Soție", dataNasterii: "2000-07-31", telefon: "+47 945 00 778", dataMembru: d(3, 6, 18), modIntrare: "BOTEZ", dataBotez: d(3, 6, 18), ...BOTEZ_AICI },
   // Persoane singure, prieteni, aparținători
-  { key: "samuel", nume: "Munteanu", prenume: "Samuel", gen: "M", familie: "Munteanu", dataNasterii: "2003-04-04", telefon: "+47 950 01 234", dataMembru: clampPast(d(0, 5, 24)), modIntrare: "BOTEZ", dataBotez: clampPast(d(0, 5, 24)), locBotez: BAPTISTERIU, slujire: "tineret" },
+  { key: "samuel", nume: "Munteanu", prenume: "Samuel", gen: "M", familie: "Munteanu", dataNasterii: "2003-04-04", telefon: "+47 950 01 234", dataMembru: clampPast(d(0, 5, 24)), modIntrare: "BOTEZ", dataBotez: clampPast(d(0, 5, 24)), ...BOTEZ_AICI, slujire: "tineret" },
   { key: "ruxandra", nume: "Enache", prenume: "Ruxandra", gen: "F", familie: "Enache", dataNasterii: "1994-11-11", telefon: "+47 951 22 333", email: "ruxandra.enache@example.org", dataMembru: clampPast(d(0, 3, 1)), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "2012-06-03", slujire: "cor" },
   { key: "timotei", nume: "Rusu", prenume: "Timotei", gen: "M", statut: "PRIETEN", familie: "Rusu", dataNasterii: "1995-01-15", telefon: "+47 952 10 010", inregistrat: d(2, 9, 10) },
-  { key: "debora", nume: "Rusu", prenume: "Debora", gen: "F", statut: "APARTINATOR", familie: "Rusu", dataNasterii: "1997-05-05", dataMembru: d(4, 1, 15), modIntrare: "ALTUL", dataBotez: "2015-07-12", locBotez: "Biserica Penticostală Iași" },
+  { key: "debora", nume: "Rusu", prenume: "Debora", gen: "F", statut: "APARTINATOR", familie: "Rusu", dataNasterii: "1997-05-05", dataMembru: d(4, 1, 15), modIntrare: "ALTUL", dataBotez: "2015-07-12", botezBiserica: "Penticostală Betania", botezLocalitate: "Iași" },
   { key: "ilie", nume: "Georgescu", prenume: "Ilie", gen: "M", familie: "Georgescu", rudenie: "Cap de familie", dataNasterii: "1945-01-01", telefon: "+47 516 00 100", dataMembru: d(24, 2, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Arad", dataBotez: "1965-06-06" },
   { key: "mariag", nume: "Georgescu", prenume: "Maria", gen: "F", familie: "Georgescu", rudenie: "Soție", dataNasterii: "1948-03-03", dataMembru: d(24, 2, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Arad", dataBotez: "1967-06-11", dataIesire: d(2, 3, 3), modIesire: "DECES" },
   { key: "stefan", nume: "Marin", prenume: "Ștefan", gen: "M", statut: "FOST_MEMBRU", dataNasterii: "1965-09-09", dataMembru: d(16, 5, 5), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1990-05-20", dataIesire: d(3, 2, 1), modIesire: "RETRAGERE" },
@@ -129,7 +133,7 @@ const PERSONS: P[] = [
   { key: "dumitruc", nume: "Ciobanu", prenume: "Dumitru", gen: "M", dataNasterii: "1962-04-02", dataMembru: d(20, 3, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
   { key: "ovidiu", nume: "Haidemak", prenume: "Ovidiu", gen: "M", dataNasterii: "1978-10-12", dataMembru: d(12, 6, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Emanuel Oradea" },
   { key: "nelu", nume: "Gaju", prenume: "Nelu", gen: "M", dataNasterii: "1971-01-20", dataMembru: d(15, 9, 7), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
-  { key: "florin", nume: "Vasile", prenume: "Florin", gen: "M", dataNasterii: "1980-05-05", dataMembru: d(9, 4, 4), modIntrare: "BOTEZ", dataBotez: d(9, 4, 4), locBotez: BAPTISTERIU },
+  { key: "florin", nume: "Vasile", prenume: "Florin", gen: "M", dataNasterii: "1980-05-05", dataMembru: d(9, 4, 4), modIntrare: "BOTEZ", dataBotez: d(9, 4, 4), ...BOTEZ_AICI },
   { key: "adrian", nume: "Cușniriuc", prenume: "Adrian", gen: "M", dataNasterii: "1984-08-08", dataMembru: d(11, 2, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo" },
   { key: "erik", nume: "Nilsen", prenume: "Erik", gen: "M", statut: "PRIETEN", dataNasterii: "1988-02-17", inregistrat: clampPast(d(0, 4, 2)) },
   { key: "iacob", nume: "Ardelean", prenume: "Iacob", gen: "M", statut: "APARTINATOR", dataNasterii: "1976-12-05", telefon: "+47 960 03 030", dataMembru: d(6, 5, 1), modIntrare: "ALTUL", dataBotez: "1998-09-13", note: "Membru al Bisericii Harul Cluj; locuiește temporar în Stavanger." },
@@ -191,14 +195,16 @@ async function main() {
       modIntrare: p.modIntrare ?? null,
       bisericaProvenienta: p.bisericaProvenienta ?? "",
       dataBotez: p.dataBotez ? date(p.dataBotez) : null,
-      locBotez: p.locBotez ?? "",
+      botezBiserica: p.botezBiserica ?? "",
+      botezLocalitate: p.botezLocalitate ?? "",
+      botezOficiant: p.botezOficiant ?? "",
       dataBinecuvantare: p.dataBinecuvantare ? date(p.dataBinecuvantare) : null,
       dataIesire: p.dataIesire ? date(p.dataIesire) : null,
       modIesire: p.modIesire ?? null,
       bisericaDestinatie: p.bisericaDestinatie ?? "",
       slujire: p.slujire ?? "",
       note: p.note ?? "",
-      ...personDerived({ nume: p.nume, prenume: p.prenume, telefon: p.telefon ?? "", email: p.email ?? "" }),
+      ...personDerived({ nume: p.nume, prenume: p.prenume, telefon: p.telefon ?? "", email: p.email ?? "", botezBiserica: p.botezBiserica ?? "", botezOficiant: p.botezOficiant ?? "" }),
       ...(p.inregistrat ? { createdAt: date(p.inregistrat) } : {}),
     };
     const created = await prisma.person.create({ data });
@@ -358,7 +364,7 @@ async function main() {
     modIntrare: p.modIntrare,
     bisericaProvenienta: p.bisericaProvenienta,
     dataBotez: p.dataBotez?.toISOString().slice(0, 10) ?? null,
-    locBotez: p.locBotez,
+    locBotez: p.botezLocalitate,
     dataBinecuvantare: p.dataBinecuvantare?.toISOString().slice(0, 10) ?? null,
     dataIesire: p.dataIesire?.toISOString().slice(0, 10) ?? null,
     modIesire: p.modIesire,
@@ -466,7 +472,9 @@ async function main() {
         rudenie: "Cap de familie",
         bisericaProvenienta: "Biserica Penticostală Elim Timișoara",
         dataBotez: date("2008-07-20"),
-        locBotez: "Timișoara",
+        botezBiserica: "Penticostală Elim",
+        botezLocalitate: "Timișoara",
+        botezOficiant: "Ioan Ardelean",
         mesaj: "Ne-am mutat în Stavanger în august și dorim să ne transferăm la biserica dumneavoastră.",
         consent: true,
         createdAt: date(addDays(TODAY, -3)),

@@ -233,6 +233,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
   - the lookup, the token and the e-mail run in `after()`;
   - each e-mail address is limited to 3 requests per 15 minutes, in memory (`src/server/rate-limit.ts`).
 
+### Baptism details
+
+- Person and Application have `botezBiserica`, `botezLocalitate`, `botezOficiant` (the old `locBotez` became the locality in the `baptism_details` migration). `baptismSentence()` (`src/lib/baptism.ts`) renders "Botezat la …, în Biserica …, …, de …" without dangling commas.
+- The church and the officiant are part of `personDerived` searchText.
+- Domain records keep the prototype's `locBotez`, filled from the locality (`src/server/mappers.ts`).
+- Export/import: the three fields on members (`src/lib/baptism-backup.ts`), `locBotez` written with the locality; older files import `locBotez` as the locality.
+
 ### Membership applications
 
 - Public form `/cerere/<slug>`, under `(auth)`, listed in `PUBLIC_PATHS`. `Church.slug` is unique; `slugify()`/`slugVariant()` in `src/lib/slug.ts` are mirrored by the backfill in the `applications` migration.

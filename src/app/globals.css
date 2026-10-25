@@ -782,6 +782,19 @@
   .sign-actions .spacer {
     flex: 1;
   }
+  /* A labelled group of fields inside a form card (e.g. "Botez în apă") */
+  .subfields {
+    margin: 0 0 14px;
+    padding: 10px 12px 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .subfields legend {
+    padding: 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
   /* Minutes: send dialog */
   .dialog {
     width: min(560px, calc(100vw - 32px));

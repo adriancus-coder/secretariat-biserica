@@ -22,7 +22,9 @@ export interface BApplication {
   rudenie: string;
   bisericaProvenienta: string;
   dataBotez: string | null;
-  locBotez: string;
+  botezBiserica: string;
+  botezLocalitate: string;
+  botezOficiant: string;
   mesaj: string;
   consent: boolean;
   /** ISO timestamps. */
@@ -56,6 +58,10 @@ const entry = z.object({
   rudenie: str(60),
   bisericaProvenienta: str(160),
   dataBotez: day,
+  botezBiserica: str(160),
+  botezLocalitate: str(160),
+  botezOficiant: str(160),
+  /** Older files: the single baptism place, read as the locality. */
   locBotez: str(160),
   mesaj: str(2000),
   consent: z.unknown().optional().transform((v) => v === true),
@@ -101,7 +107,14 @@ export function parseApplicationsJson(root: unknown, memberIds: ReadonlySet<stri
       membruId = null;
     }
     if (membruId) linked.add(membruId);
-    applications.push({ ...r.data, id, membruId, createdAt: r.data.createdAt ?? new Date(0).toISOString() });
+    const { locBotez, ...data } = r.data;
+    applications.push({
+      ...data,
+      botezLocalitate: data.botezLocalitate || locBotez,
+      id,
+      membruId,
+      createdAt: data.createdAt ?? new Date(0).toISOString(),
+    });
   }
   return { applications, errors, warnings };
 }

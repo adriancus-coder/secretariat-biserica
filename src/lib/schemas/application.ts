@@ -23,7 +23,9 @@ const applicationFields = z.object({
   rudenie: text(60, "Gradul de rudenie"),
   bisericaProvenienta: text(160, "Biserica de proveniență"),
   dataBotez: optionalDate,
-  locBotez: text(160, "Locul botezului"),
+  botezBiserica: text(160, "Biserica botezului"),
+  botezLocalitate: text(160, "Localitatea botezului"),
+  botezOficiant: text(160, "Numele celui care a oficiat botezul"),
   mesaj: longText(APPLICATION_MESSAGE_MAX, "Mesajul"),
   consent: z.preprocess(
     (v) => v === "on" || v === "true" || v === true,
@@ -47,7 +49,9 @@ export const applicationSchema = applicationFields
     }
   })
   .transform((v) =>
-    v.kind === "TRANSFER" ? v : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, locBotez: "" },
+    v.kind === "TRANSFER"
+      ? v
+      : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
   );
 
 export type ApplicationInput = z.output<typeof applicationSchema>;

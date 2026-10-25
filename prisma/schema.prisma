@@ -195,7 +195,10 @@ model Person {
   modIntrare          EntryMode?
   bisericaProvenienta String     @default("")
   dataBotez           DateTime?  @db.Date
-  locBotez            String     @default("")
+  /// Water baptism: church, locality and the minister who baptised (replace the old free "locBotez").
+  botezBiserica       String     @default("")
+  botezLocalitate     String     @default("")
+  botezOficiant       String     @default("")
   dataBinecuvantare   DateTime?  @db.Date
 
   // Ieșire din evidență
@@ -623,7 +626,9 @@ model Application {
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")
   dataBotez           DateTime? @db.Date
-  locBotez            String    @default("")
+  botezBiserica       String    @default("")
+  botezLocalitate     String    @default("")
+  botezOficiant       String    @default("")
   mesaj               String    @default("")
   /// The applicant agreed that the church keeps the data for its membership records.
   consent             Boolean   @default(false)

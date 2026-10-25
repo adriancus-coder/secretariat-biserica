@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { baptismSentence } from "@/lib/baptism";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail, formatDateTime } from "@/components/audit-trail";
@@ -43,7 +44,7 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
       ["Adresă", a.adresa],
       ["Familie", a.familie ? a.familie + (a.rudenie ? ` — ${a.rudenie}` : "") : a.rudenie],
       ["Biserica de proveniență", a.bisericaProvenienta],
-      ["Botez", db ? fmt(db) + (a.locBotez ? `, ${a.locBotez}` : "") : a.locBotez],
+      ["Botez în apă", baptismSentence({ ...a, data: db ? fmt(db) : "" })],
       ["Mesaj", a.mesaj],
       ["Acord pentru păstrarea datelor", a.consent ? "da" : "nu"],
       [
