@@ -1,18 +1,17 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { z } from "zod";
-import { sniffFileType } from "@/lib/file-type";
+import { sniffFileType, type SniffedType } from "@/lib/file-type";
 import {
   EXTRACT_MAX_BYTES,
-  EXTRACT_MEDIA_TYPES,
   minutesDraftJsonSchema,
   minutesDraftSchema,
   personDraftJsonSchema,
   personDraftSchema,
-  type ExtractMediaType,
   type MinutesDraft,
   type PersonDraft,
 } from "@/lib/schemas/extract";
+import { ExtractInputError, prepareUpload, type HeicDecoder } from "./extract-image";
 
 /**
  * Reading scanned documents and photos with the Claude API: a minutes page becomes a minutes
@@ -72,21 +71,41 @@ const SCHEMAS = {
 
 export interface ExtractInput {
   data: Buffer;
+  /** HEIC decoder override (tests). */
+  decodeHeic?: HeicDecoder;
 }
 
 /**
  * The file's real type, from its first bytes (never the browser's claim); size and type checked. A
- * file claiming another of the accepted types (a photo renamed .pdf) is refused.
+ * file named as a document but holding a photo, or the other way round, is refused; a HEIC photo
+ * named .jpg is fine (it is converted anyway).
  */
-export function checkExtractFile(data: Uint8Array, declared: ExtractMediaType | "" = ""): ExtractMediaType {
+export function checkExtractFile(data: Uint8Array, declared: "document" | "image" | "" = ""): SniffedType {
   if (!data.length) throw new ExtractError("Alegeți un fișier.");
   if (data.length > EXTRACT_MAX_BYTES) throw new ExtractError("Fișierul depășește 20 MB.");
   const type = sniffFileType(data);
-  if (!type || !(EXTRACT_MEDIA_TYPES as readonly string[]).includes(type)) throw new ExtractError("Se pot citi doar fișiere PDF, JPG sau PNG.");
-  if (declared && declared !== type) {
+  if (!type) throw new ExtractError("Se pot citi doar fișiere PDF sau poze (JPG, PNG, HEIC, WebP, GIF, TIFF).");
+  const kind = type === "application/pdf" ? "document" : "image";
+  if (declared && declared !== kind) {
     throw new ExtractError("Conținutul fișierului nu corespunde tipului său (de exemplu, o poză redenumită .pdf). Încărcați fișierul original.");
   }
   return type;
+}
+
+/** What the user sees when the API call fails, by HTTP status (no technical details). */
+export function apiErrorMessage(status: number | undefined): string {
+  if (status === 400 || status === 413) return "Fișierul nu a fost acceptat (tip sau mărime). Încărcați un PDF sau o poză JPG/PNG.";
+  if (status === 401 || status === 403) return "Cheia de acces nu este validă (administrator).";
+  if (status === 404) return "Modelul configurat nu este disponibil (administrator).";
+  if (status === 429) return "Prea multe cereri; reîncercați peste un minut.";
+  return "Serviciul nu răspunde; reîncercați.";
+}
+
+/** The API's error type ("invalid_request_error", "overloaded_error"…), safe to log. */
+function apiErrorType(error: InstanceType<typeof Anthropic.APIError>): string | undefined {
+  const body = error.error as { error?: { type?: unknown }; type?: unknown } | undefined;
+  const type = body?.error?.type ?? body?.type;
+  return typeof type === "string" ? type.slice(0, 60) : undefined;
 }
 
 let defaultClient: Anthropic | undefined;
@@ -95,9 +114,17 @@ export async function extractDocument(kind: "proces-verbal", input: ExtractInput
 export async function extractDocument(kind: "persoana", input: ExtractInput, client?: ExtractClient): Promise<PersonDraft>;
 export async function extractDocument(kind: ExtractKind, input: ExtractInput, client?: ExtractClient): Promise<MinutesDraft | PersonDraft> {
   if (!client && !isExtractConfigured()) throw new ExtractError("Extragerea din imagini nu este configurată.");
-  const mediaType = checkExtractFile(input.data);
+  const sniffed = checkExtractFile(input.data);
+  let prepared;
+  try {
+    prepared = await prepareUpload(input.data, sniffed, input.decodeHeic);
+  } catch (error) {
+    if (error instanceof ExtractInputError) throw new ExtractError(error.message);
+    throw error;
+  }
+  const { mediaType } = prepared;
   const api: ExtractClient = client ?? (defaultClient ??= new Anthropic());
-  const data = input.data.toString("base64");
+  const data = prepared.data.toString("base64");
   const source: Anthropic.Beta.Messages.BetaContentBlockParam =
     mediaType === "application/pdf"
       ? { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
@@ -118,13 +145,16 @@ export async function extractDocument(kind: ExtractKind, input: ExtractInput, cl
       { timeout: TIMEOUT_MS, maxRetries: 1 },
     );
   } catch (error) {
-    console.warn("[extract]", { kind, ms: Date.now() - started, error: error instanceof Anthropic.APIError ? error.status : "network" });
-    if (error instanceof Anthropic.APIConnectionTimeoutError) throw new ExtractError("Citirea documentului a durat prea mult. Încercați din nou.");
-    if (error instanceof Anthropic.RateLimitError) throw new ExtractError("Serviciul de citire este ocupat. Încercați din nou peste un minut.");
-    throw new ExtractError("Documentul nu a putut fi citit. Încercați din nou.");
+    // Only the kind, the duration, the status and the API error type; never the file or the answer.
+    const api = error instanceof Anthropic.APIError ? error : undefined;
+    const status = api && typeof api.status === "number" ? api.status : undefined;
+    console.warn("[extract]", { kind, ms: Date.now() - started, status: status ?? (error instanceof Anthropic.APIConnectionTimeoutError ? "timeout" : "network"), type: api ? apiErrorType(api) : undefined });
+    throw new ExtractError(apiErrorMessage(status));
   }
   console.info("[extract]", {
     kind,
+    sent: mediaType,
+    steps: prepared.steps,
     ms: Date.now() - started,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,

@@ -313,6 +313,8 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 
 ### Reading documents with Claude (extraction)
 
+- Input (`src/server/extract-image.ts`): the real type comes from the first bytes (PDF, PNG, JPEG, HEIC/HEIF, WebP, GIF, TIFF; `sniffFileType`). HEIC is decoded with `heic-decode` (libheif WebAssembly; the prebuilt sharp cannot read HEVC), WebP/GIF/TIFF with sharp; all become JPEG q85 with the EXIF orientation applied, and photos above 4 000 px on the long side are scaled to 2 500 px. Only PDF, JPEG and PNG reach the API. PDFs above 20 pages are refused. A name/content mismatch is refused only between a document and an image.
+- API errors map to Romanian messages by status (`apiErrorMessage`: 400, 401/403, 404, 429, 5xx/timeout); the log keeps kind, ms, status and the API error type.
 - `src/server/extract.ts`: PDF / JPG / PNG (≤ 20 MB, 30 s timeout) sent to the Claude API with a strict JSON schema per kind (`src/lib/schemas/extract.ts`). The answer is validated again with zod and anything off-schema is refused. The model comes from `EXTRACT_MODEL`, default `claude-sonnet-5-5`, with server-side refusal fallback.
 - Off unless `ANTHROPIC_API_KEY` is set (`isExtractConfigured()`). Log only the kind, the duration and the token counts, never content. Files are read in memory and never stored.
 - 60 extractions per church per day (`sharedRateLimiter("extract")`), and an `EXTRACT` audit entry (file name and size) per extraction.

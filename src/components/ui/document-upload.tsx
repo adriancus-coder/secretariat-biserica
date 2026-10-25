@@ -2,13 +2,13 @@
 
 import { Icon } from "@/components/shell/icons";
 
-/** File field + "Citește documentul" for the AI extraction forms (PDF, JPG, PNG; up to 20 MB). */
+/** File field + "Citește documentul" for the AI extraction forms (PDF or a photo: JPG, PNG, HEIC, WebP, GIF, TIFF; up to 20 MB). */
 export function DocumentUploadFields({ pending, hint }: { pending: boolean; hint: string }) {
   return (
     <>
       <div className="field">
-        <label htmlFor="fisier">Document (PDF, JPG sau PNG, cel mult 20 MB)</label>
-        <input id="fisier" name="fisier" type="file" accept="application/pdf,image/jpeg,image/png" required />
+        <label htmlFor="fisier">Document (PDF sau poză, cel mult 20 MB)</label>
+        <input id="fisier" name="fisier" type="file" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp,image/gif,image/tiff,.heic,.heif" required />
         <div className="hint">{hint}</div>
       </div>
       <button type="submit" className="btn btn-primary" disabled={pending}>

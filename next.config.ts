@@ -14,7 +14,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // pdfkit citește fișierele AFM/ICC din propriul director la runtime; rămâne nebundle-uit.
-  serverExternalPackages: ["pdfkit"],
+  serverExternalPackages: ["pdfkit", "heic-decode", "libheif-js"],
   // Fonturile TTF folosite la generarea PDF-urilor trebuie incluse în build-ul de producție.
   outputFileTracingIncludes: {
     "/pdf/**": ["./assets/fonts/**"],

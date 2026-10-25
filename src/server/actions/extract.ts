@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import type { FormState } from "@/lib/form-state";
 import type { ImportDraft } from "@/lib/minutes-import";
-import { declaredFileType } from "@/lib/file-type";
+import { declaredKind } from "@/lib/file-type";
 import { EXTRACT_MAX_BYTES, type PersonDraft } from "@/lib/schemas/extract";
 import { writeAudit } from "../audit";
 import { checkExtractFile, extractDocument, ExtractError, type ExtractKind } from "../extract";
@@ -25,7 +25,7 @@ async function readUpload(ctx: Ctx, kind: ExtractKind, formData: FormData) {
   if (file.size > EXTRACT_MAX_BYTES) throw new ActionError("Fișierul depășește 20 MB.");
   const data = Buffer.from(await file.arrayBuffer());
   try {
-    checkExtractFile(data, declaredFileType(file.name, file.type));
+    checkExtractFile(data, declaredKind(file.name, file.type));
   } catch (e) {
     if (e instanceof ExtractError) throw new ActionError(e.message);
     throw e;

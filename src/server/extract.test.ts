@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type Anthropic from "@anthropic-ai/sdk";
-import { checkExtractFile, DEFAULT_EXTRACT_MODEL, extractDocument, ExtractError, type ExtractClient } from "./extract";
+import Anthropic from "@anthropic-ai/sdk";
+import sharp from "sharp";
+import { apiErrorMessage, checkExtractFile, DEFAULT_EXTRACT_MODEL, extractDocument, ExtractError, type ExtractClient } from "./extract";
+import { pdfPageCount } from "./extract-image";
 
 function reply(json: unknown, stop: Anthropic.Beta.Messages.BetaMessage["stop_reason"] = "end_turn") {
   return {
@@ -68,7 +71,8 @@ describe("extractDocument", () => {
 
   it("returns a minutes draft for images", async () => {
     const { client, create } = mockClient(reply(minutes));
-    expect(await extractDocument("proces-verbal", { data: JPEG }, client)).toEqual(minutes);
+    const photo = await sharp({ create: { width: 60, height: 40, channels: 3, background: "#ffffff" } }).jpeg().toBuffer();
+    expect(await extractDocument("proces-verbal", { data: photo }, client)).toEqual(minutes);
     expect(create.mock.calls[0][0].messages[0].content[0]).toMatchObject({ type: "image", source: { media_type: "image/jpeg" } });
   });
 
@@ -95,12 +99,13 @@ describe("extractDocument", () => {
 
   it("refuses unsupported or oversized files before calling the API", async () => {
     const { client, create } = mockClient(reply(person));
-    await expect(extractDocument("persoana", { data: Buffer.from("x") }, client)).rejects.toThrow("PDF, JPG sau PNG");
+    await expect(extractDocument("persoana", { data: Buffer.from("x") }, client)).rejects.toThrow("PDF sau poze");
     await expect(extractDocument("persoana", { data: Buffer.alloc(21 * 1024 * 1024) }, client)).rejects.toThrow("20 MB");
     // A JPEG renamed .pdf is refused (the bytes decide, not the name).
-    expect(() => checkExtractFile(JPEG, "application/pdf")).toThrow("nu corespunde");
-    // Bytes that are none of the three types are refused whatever the name or the claimed type.
-    await expect(extractDocument("persoana", { data: Buffer.from("GIF89a....") }, client)).rejects.toThrow("PDF, JPG sau PNG");
+    expect(() => checkExtractFile(JPEG, "document")).toThrow("nu corespunde");
+    expect(() => checkExtractFile(Buffer.from("%PDF-1.4"), "image")).toThrow("nu corespunde");
+    // A broken GIF is recognised but cannot be opened.
+    await expect(extractDocument("persoana", { data: Buffer.from("GIF89a....") }, client)).rejects.toThrow("nu a putut fi deschisă");
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -117,5 +122,93 @@ describe("extractDocument", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     await expect(extractDocument("persoana", pdf)).rejects.toThrow("nu este configurată");
     vi.unstubAllEnvs();
+  });
+});
+
+/** A minimal PDF with n pages (each page object plus the page tree's /Count). */
+function pdfWithPages(n: number): Buffer {
+  const kids = Array.from({ length: n }, (_, i) => `${i + 3} 0 R`).join(" ");
+  const pages = Array.from({ length: n }, (_, i) => `${i + 3} 0 obj << /Type /Page /Parent 2 0 R >> endobj`).join("\n");
+  return Buffer.from(`%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [${kids}] /Count ${n} >> endobj\n${pages}\n%%EOF`);
+}
+
+describe("extractDocument: phone photos and large files", () => {
+  it("converts a HEIC photo to JPEG before sending it", async () => {
+    const heic = readFileSync("tests/fixtures/photo-1200x1600.heic");
+    expect(checkExtractFile(heic, "image")).toBe("image/heic");
+    const { client, create } = mockClient(reply(minutes));
+    await extractDocument("proces-verbal", { data: heic }, client);
+    const sent = create.mock.calls[0][0].messages[0].content[0];
+    expect(sent).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/jpeg" } });
+    const meta = await sharp(Buffer.from(sent.source.data, "base64")).metadata();
+    expect(meta).toMatchObject({ format: "jpeg", width: 1200, height: 1600 });
+  });
+
+  it("converts WebP to JPEG and scales a 5 000 px photo down to 2 500 px", async () => {
+    const big = await sharp({ create: { width: 5000, height: 3000, channels: 3, background: "#d0d0d0" } }).jpeg().toBuffer();
+    const webp = await sharp({ create: { width: 800, height: 600, channels: 3, background: "#ffffff" } }).webp().toBuffer();
+    for (const [data, width, height] of [
+      [big, 2500, 1500],
+      [webp, 800, 600],
+    ] as const) {
+      const { client, create } = mockClient(reply(minutes));
+      await extractDocument("proces-verbal", { data }, client);
+      const sent = create.mock.calls[0][0].messages[0].content[0];
+      expect(sent.source.media_type).toBe("image/jpeg");
+      expect(await sharp(Buffer.from(sent.source.data, "base64")).metadata()).toMatchObject({ format: "jpeg", width, height });
+    }
+  });
+
+  it("applies the EXIF orientation", async () => {
+    // A 400×200 photo stored with "rotate 90°" (orientation 6) is read as 200×400.
+    const sideways = await sharp({ create: { width: 400, height: 200, channels: 3, background: "#ffffff" } }).webp().withMetadata({ orientation: 6 }).toBuffer();
+    const { client, create } = mockClient(reply(minutes));
+    await extractDocument("proces-verbal", { data: sideways }, client);
+    const sent = create.mock.calls[0][0].messages[0].content[0];
+    expect(await sharp(Buffer.from(sent.source.data, "base64")).metadata()).toMatchObject({ width: 200, height: 400 });
+  });
+
+  it("sends small JPEG and PNG files unchanged", async () => {
+    const png = await sharp({ create: { width: 300, height: 200, channels: 3, background: "#ffffff" } }).png().toBuffer();
+    const { client, create } = mockClient(reply(minutes));
+    await extractDocument("proces-verbal", { data: png }, client);
+    expect(create.mock.calls[0][0].messages[0].content[0].source).toMatchObject({ media_type: "image/png", data: png.toString("base64") });
+  });
+
+  it("refuses a PDF above 20 pages before calling the API", async () => {
+    expect(pdfPageCount(pdfWithPages(25))).toBe(25);
+    expect(pdfPageCount(pdfWithPages(3))).toBe(3);
+    const { client, create } = mockClient(reply(person));
+    await expect(extractDocument("persoana", { data: pdfWithPages(25) }, client)).rejects.toThrow("PDF-ul are 25 de pagini; se pot citi cel mult 20");
+    expect(create).not.toHaveBeenCalled();
+    await expect(extractDocument("persoana", { data: pdfWithPages(20) }, client)).resolves.toEqual(person);
+  });
+
+  it("maps each API error status to its message and logs only status and type", async () => {
+    const cases: [number | "timeout", string][] = [
+      [400, "Fișierul nu a fost acceptat (tip sau mărime). Încărcați un PDF sau o poză JPG/PNG."],
+      [401, "Cheia de acces nu este validă (administrator)."],
+      [403, "Cheia de acces nu este validă (administrator)."],
+      [404, "Modelul configurat nu este disponibil (administrator)."],
+      [429, "Prea multe cereri; reîncercați peste un minut."],
+      [500, "Serviciul nu răspunde; reîncercați."],
+      [529, "Serviciul nu răspunde; reîncercați."],
+      ["timeout", "Serviciul nu răspunde; reîncercați."],
+    ];
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const [status, message] of cases) {
+      const error =
+        status === "timeout"
+          ? new Anthropic.APIConnectionTimeoutError()
+          : Anthropic.APIError.generate(status, { type: "error", error: { type: "invalid_request_error", message: "Ioana Pop secret" } }, undefined, new Headers());
+      const create = vi.fn().mockRejectedValue(error);
+      await expect(extractDocument("persoana", pdf, { beta: { messages: { create } } })).rejects.toThrow(message);
+      expect(apiErrorMessage(status === "timeout" ? undefined : status)).toBe(message);
+    }
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('"status":400');
+    expect(logged).toContain('"type":"invalid_request_error"');
+    expect(logged).toContain('"status":"timeout"');
+    for (const secret of ["Ioana", "secret", "%PDF"]) expect(logged).not.toContain(secret);
   });
 });

@@ -41,7 +41,7 @@ Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: 
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.
 - Word files: at most 5 MB, and the uncompressed size declared by the ZIP's central directory must stay under 50 MB (`src/server/zip-size.ts`), checked before mammoth unpacks anything.
-- Scans read with Claude: the type comes from the file's first bytes (`src/lib/file-type.ts`), never from the browser; a file whose name claims another accepted type is refused.
+- Scans read with Claude: the type comes from the file's first bytes (`src/lib/file-type.ts`), never from the browser; a file named as a document but holding an image (or the reverse) is refused. Phone photos (HEIC/HEIF, WebP, GIF, TIFF) are converted to JPEG in memory before sending; images declaring more than 120 million pixels are refused before decoding, photos above 4 000 px are scaled down, PDFs above 20 pages are refused. HEIC decoding uses `heic-decode` / `libheif-js` (LGPL-3.0, used unmodified as a separate package on the server; nothing is distributed to browsers).
 - Arguments that the client binds to server actions (booleans, directions) are parsed with zod like form fields.
 - Unexpected errors are logged by `logError()` (`src/server/log.ts`): a short id, the error name and code and the first line of the message with e-mail addresses masked; never the error object or request data.
 
