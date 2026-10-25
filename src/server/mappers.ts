@@ -78,7 +78,8 @@ export function toDocPerson(p: PersonRecord, parents?: { numeTata: string; numeM
     botezBiserica: p.botezBiserica,
     botezOficiant: p.botezOficiant,
     dataBinecuvantare: p.dataBinecuvantare,
-    ...(parents ?? {}),
+    // Only the parents' names: callers may pass the whole database row (its dates are Date objects).
+    ...(parents ? { numeTata: parents.numeTata, numeMama: parents.numeMama } : {}),
   };
 }
 
