@@ -1,4 +1,5 @@
 import { memberName } from "@/lib/format";
+import { normalizeSearch } from "@/lib/text";
 import { EXIT_LABEL } from "@/lib/labels";
 import type { Stats } from "./stats";
 
@@ -15,13 +16,22 @@ export interface YearActivity {
  * Textul dării de seamă anuale — portarea funcției `reportText(y)` din prototip, cu același
  * conținut, aceleași formulări și aceeași ordine a rândurilor.
  */
-export function buildReportText(year: number, s: Stats, activity: YearActivity): string {
+export function buildReportText(year: number, s: Stats, activity: YearActivity, churchName = ""): string {
   const names = (list: { nume: string; prenume: string }[]) => list.map(memberName).join(", ");
+  // Not in the prototype: a baptism in another church is followed by "(<biserica>, <oficiant>)".
+  const here = churchKey(churchName);
+  const baptised = (list: Stats["intrBotez"]) =>
+    list
+      .map((p) => {
+        const other = p.botezBiserica.trim() && churchKey(p.botezBiserica) !== here;
+        return other ? `${memberName(p)} (${[p.botezBiserica.trim(), p.botezOficiant.trim()].filter(Boolean).join(", ")})` : memberName(p);
+      })
+      .join(", ");
   const L: string[] = [];
   L.push(`SITUAȚIA MEMBRALĂ LA 31.12.${year}, prezentată de secretar`);
   L.push("");
   L.push(`Total membri: ${s.membri.length}, din care:`);
-  if (s.intrBotez.length) L.push(`  ✓ ${s.intrBotez.length} botezați în ${year} (${names(s.intrBotez)})`);
+  if (s.intrBotez.length) L.push(`  ✓ ${s.intrBotez.length} botezați în ${year} (${baptised(s.intrBotez)})`);
   if (s.intrTransfer.length) L.push(`  ✓ ${s.intrTransfer.length} veniți cu transfer (${names(s.intrTransfer)})`);
   if (s.reprimiri.length) L.push(`  ✓ ${s.reprimiri.length} reprimiți (${names(s.reprimiri)})`);
   L.push(`Copii ai membrilor sub 18 ani: ${s.copiiMembri.length}`);
@@ -41,7 +51,7 @@ export function buildReportText(year: number, s: Stats, activity: YearActivity):
     );
   }
   if (s.intrBotez.length) {
-    evs.push(`${s.intrBotez.length === 1 ? "un botez nou-testamentar" : "botezuri nou-testamentare"} (${names(s.intrBotez)})`);
+    evs.push(`${s.intrBotez.length === 1 ? "un botez nou-testamentar" : "botezuri nou-testamentare"} (${baptised(s.intrBotez)})`);
   }
   if (s.nunti.length) {
     evs.push(`${s.nunti.length === 1 ? "o nuntă" : `${s.nunti.length} nunți`} (${s.nunti.map((e) => e.titlu).join(", ")})`);
@@ -68,4 +78,9 @@ export function buildReportText(year: number, s: Stats, activity: YearActivity):
     `Activitate: ${activity.evenimente} evenimente înregistrate în calendar, ${activity.sedinte} ședințe consemnate în procese-verbale, ${activity.documente} documente eliberate.`,
   );
   return L.join("\n");
+}
+
+/** "Biserica Maranata Stavanger" and "maranata stavanger" are the same church. */
+function churchKey(name: string): string {
+  return normalizeSearch(name).replace(/^biserica\s+/, "");
 }

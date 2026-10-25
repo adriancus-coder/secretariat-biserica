@@ -88,6 +88,9 @@ export function randomPerson(r: Rng, id: string, today: string, families: string
     bisericaProvenienta: modIntrare === "TRANSFER" ? r.pick(BISERICI) : "",
     dataBotez,
     locBotez: dataBotez ? r.pick(LOCURI) : "",
+    // Not in the prototype: empty, so the templates must match it exactly (deviations tested separately).
+    botezBiserica: "",
+    botezOficiant: "",
     dataBinecuvantare,
     dataIesire,
     modIesire,

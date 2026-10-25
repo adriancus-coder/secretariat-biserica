@@ -1,3 +1,4 @@
+import { getChurch } from "./church";
 import "server-only";
 import { buildReportText, type YearActivity } from "@/domain/report";
 import { computeStats, reportYears, type Stats } from "@/domain/stats";
@@ -54,6 +55,11 @@ export async function loadStats(ctx: Ctx, year?: number): Promise<StatsBundle> {
 /** Textul dării de seamă pentru anul dat. */
 export async function generateReportText(ctx: Ctx, year: number): Promise<string> {
   const today = todayIso();
-  const [persons, events, activity] = await Promise.all([loadPersonRecords(ctx), loadStatEvents(ctx), yearActivity(ctx, year)]);
-  return buildReportText(year, computeStats(persons, events, { year, today }), activity);
+  const [persons, events, activity, church] = await Promise.all([
+    loadPersonRecords(ctx),
+    loadStatEvents(ctx),
+    yearActivity(ctx, year),
+    getChurch(ctx),
+  ]);
+  return buildReportText(year, computeStats(persons, events, { year, today }), activity, church.nume);
 }

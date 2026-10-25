@@ -322,6 +322,12 @@ corecții deliberate:
     „Cap de familie”, „Soție”, „Soț”), cu capul familiei primul; prototipul lua gradele „Cap de familie”,
     „Soție” și „Părinte” din familia cu același nume. Gradul „Soț” a fost adăugat la nomenclatorul
     implicit.
+14. **Certificatele și botezul:** certificatul de botez numește biserica, localitatea și cine a oficiat
+    („…la data de 15 iunie 2008, în Biserica Betel din Oslo, de către Ioan Ardelean.”); adeverința de
+    membru și scrisoarea de recomandare pomenesc și biserica botezului. Părțile necunoscute sunt omise;
+    fără biserică și oficiant, textul rămâne cel din prototip.
+15. **Darea de seamă:** cei botezați în anul raportat într-o altă biserică au după nume „(biserica,
+    oficiantul)”.
 
 ## Limitări și pași următori
 

@@ -1,4 +1,5 @@
 import { fmtL, memberName } from "@/lib/format";
+import { churchName } from "@/lib/baptism";
 import { DOCUMENT_TYPE_LABEL, PARENT_RELATIONS, type DocumentTypeKey, type GenderKey } from "@/lib/labels";
 import type { ChurchInfo } from "./types";
 
@@ -13,7 +14,10 @@ export interface DocPerson {
   dataNasterii: string | null;
   dataMembru: string | null;
   dataBotez: string | null;
+  /** The baptism locality. */
   locBotez: string;
+  botezBiserica: string;
+  botezOficiant: string;
   dataBinecuvantare: string | null;
 }
 
@@ -53,15 +57,30 @@ export function generateDocumentText({ tip, person: m, family, familyHeadId, chu
           .join(" și ")
       : "";
 
+  // Baptism church and officiant (not in the prototype): mentioned only when known.
+  const botezBis = m?.botezBiserica.trim() ? churchName(m.botezBiserica) : "";
+  const botezLoc = m?.locBotez.trim() ?? "";
+  const botezOf = m?.botezOficiant.trim() ?? "";
+  const botezatInApa = (prefix: string) =>
+    m?.dataBotez || botezBis
+      ? `${prefix}botezat${f ? "ă" : ""} în apă${m?.dataBotez ? ` la data de ${fmtL(m.dataBotez)}` : ""}${botezBis ? `, în ${botezBis}` : ""}`
+      : "";
+
   switch (tip) {
     case "adeverinta":
-      return `${bis}, cu sediul în ${c.adresa || BLANK}, adeverește prin prezenta că ${nume}${nascut}, este membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din data de ${fmtL(m.dataMembru)}` : ""}${m?.dataBotez ? `, fiind botezat${f ? "ă" : ""} în apă la data de ${fmtL(m.dataBotez)}` : ""}.\n\nPrezenta adeverință se eliberează la cererea ${f ? "dânsei" : "dânsului"}, pentru ${scop || "a-i servi la cele legale"}.`;
+      return `${bis}, cu sediul în ${c.adresa || BLANK}, adeverește prin prezenta că ${nume}${nascut}, este membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din data de ${fmtL(m.dataMembru)}` : ""}${botezatInApa(", fiind ")}.\n\nPrezenta adeverință se eliberează la cererea ${f ? "dânsei" : "dânsului"}, pentru ${scop || "a-i servi la cele legale"}.`;
     case "botez":
-      return `Se certifică prin prezenta că ${nume}${nascut}, a fost botezat${f ? "ă" : ""} în apă, prin cufundare, în Numele Tatălui, al Fiului și al Sfântului Duh, la data de ${m?.dataBotez ? fmtL(m.dataBotez) : BLANK}${m?.locBotez ? `, la ${m.locBotez}` : ""}, în cadrul ${bis}.\n\nPrezentul certificat se eliberează pentru ${scop || "a-i servi la cele de trebuință"}.`;
+      return `Se certifică prin prezenta că ${nume}${nascut}, a fost botezat${f ? "ă" : ""} în apă, prin cufundare, în Numele Tatălui, al Fiului și al Sfântului Duh, la data de ${m?.dataBotez ? fmtL(m.dataBotez) : BLANK}${
+        botezBis ? `, în ${botezBis}${botezLoc ? ` din ${botezLoc}` : ""}` : `${botezLoc ? `, la ${botezLoc}` : ""}, în cadrul ${bis}`
+      }${botezOf ? `, de către ${botezOf}` : ""}.\n\nPrezentul certificat se eliberează pentru ${scop || "a-i servi la cele de trebuință"}.`;
     case "binecuvantare":
       return `Se certifică prin prezenta că ${f ? "copila" : "copilul"} ${nume}${nascut}${parinti ? `, din părinții ${parinti}` : ""}, a fost adus${f ? "ă" : ""} înaintea Domnului și binecuvântat${f ? "ă" : ""} în cadrul ${bis}, la data de ${m?.dataBinecuvantare ? fmtL(m.dataBinecuvantare) : BLANK}.\n\n„Lăsați copilașii să vină la Mine și nu-i opriți, căci Împărăția lui Dumnezeu este a celor ca ei.” (Marcu 10:14)`;
     case "recomandare":
-      return `Către ${catre || BLANK_NAME},\n\nHar și pace de la Dumnezeu, Tatăl nostru, și de la Domnul Isus Hristos!\n\n${bis} recomandă cu drag pe ${f ? "sora" : "fratele"} ${nume}${nascut}, membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din ${fmtL(m.dataMembru)}` : ""}${m?.dataBotez ? `, botezat${f ? "ă" : ""} în apă la ${fmtL(m.dataBotez)}` : ""}, care ${scop || "se mută în localitatea dumneavoastră"}. ${f ? "Sora" : "Fratele"} a avut o purtare frumoasă și o mărturie bună în mijlocul nostru și nu are datorii sau abateri de disciplină față de biserică.\n\nVă rugăm să ${f ? "o" : "îl"} primiți în părtășia frățească și să-i acordați toată dragostea în Domnul.\n\nCu salutări frățești,`;
+      return `Către ${catre || BLANK_NAME},\n\nHar și pace de la Dumnezeu, Tatăl nostru, și de la Domnul Isus Hristos!\n\n${bis} recomandă cu drag pe ${f ? "sora" : "fratele"} ${nume}${nascut}, membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din ${fmtL(m.dataMembru)}` : ""}${
+        m?.dataBotez || botezBis
+          ? `, botezat${f ? "ă" : ""} în apă${m?.dataBotez ? ` la ${fmtL(m.dataBotez)}` : ""}${botezBis ? `, în ${botezBis}` : ""}`
+          : ""
+      }, care ${scop || "se mută în localitatea dumneavoastră"}. ${f ? "Sora" : "Fratele"} a avut o purtare frumoasă și o mărturie bună în mijlocul nostru și nu are datorii sau abateri de disciplină față de biserică.\n\nVă rugăm să ${f ? "o" : "îl"} primiți în părtășia frățească și să-i acordați toată dragostea în Domnul.\n\nCu salutări frățești,`;
     case "scrisoare":
       return `Către ${catre || BLANK_NAME},\n\n${scop ? `Ref.: ${scop}\n\n` : ""}`;
     case "raport":

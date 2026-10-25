@@ -178,3 +178,56 @@ describe("documented deviations from the prototype (families as records)", () =>
     expect(text).toContain("din părinții Pop Vasile și Pop Ioana,");
   });
 });
+
+describe("documented deviations from the prototype (baptism church and officiant)", () => {
+  const today = "2026-09-28";
+  const proto = loadPrototype(today);
+  const church = { nume: "Maranata Stavanger", adresa: "Kongsgårdbakken 1, Stavanger" };
+  const base = makePerson({ id: "b", nume: "Pop", prenume: "Ana", gen: "F", dataBotez: "2008-06-15", locBotez: "Oslo", dataMembru: "2010-01-10" });
+  const doc = (tip: "botez" | "adeverinta" | "recomandare", person = base) =>
+    generateDocumentText({ tip, person, family: [], church, catre: "", scop: "" });
+  const protoDoc = (tip: string, person = base) => {
+    proto.S.members = { [person.id]: toPrototypeMember({ ...person, familie: "" }) };
+    proto.S.settings = church;
+    Object.assign(proto.form, { d_tip: tip, d_mb: person.id, d_catre: "", d_scop: "", d_data: today });
+    proto.elements.text.value = "";
+    proto.elements.text.dataset = {};
+    proto.genDocText(true, true);
+    return proto.elements.text.value;
+  };
+
+  it("without church and officiant the certificates match the prototype", () => {
+    for (const tip of ["botez", "adeverinta", "recomandare"] as const) expect(doc(tip)).toBe(protoDoc(tip));
+  });
+
+  it("the baptism certificate names the church, its locality and the officiant", () => {
+    const full = { ...base, botezBiserica: "Betel", botezOficiant: "Ioan Ardelean" };
+    expect(protoDoc("botez", full)).toContain("la data de 15 iunie 2008, la Oslo, în cadrul Biserica Maranata Stavanger.");
+    expect(doc("botez", full)).toContain("la data de 15 iunie 2008, în Biserica Betel din Oslo, de către Ioan Ardelean.");
+    expect(doc("botez", { ...full, locBotez: "" })).toContain("la data de 15 iunie 2008, în Biserica Betel, de către Ioan Ardelean.");
+    expect(doc("botez", { ...base, botezOficiant: "Ioan Ardelean" })).toContain(
+      "la data de 15 iunie 2008, la Oslo, în cadrul Biserica Maranata Stavanger, de către Ioan Ardelean.",
+    );
+  });
+
+  it("the membership certificate and the recommendation mention the baptism church", () => {
+    const withChurch = { ...base, botezBiserica: "Biserica Betel Oslo" };
+    expect(doc("adeverinta", withChurch)).toContain("fiind botezată în apă la data de 15 iunie 2008, în Biserica Betel Oslo.");
+    expect(doc("recomandare", withChurch)).toContain("botezată în apă la 15 iunie 2008, în Biserica Betel Oslo, care");
+    expect(doc("adeverinta", { ...withChurch, dataBotez: null })).toContain("fiind botezată în apă, în Biserica Betel Oslo.");
+  });
+
+  it("the report adds (church, officiant) to persons baptised in another church", () => {
+    const persons = [
+      makePerson({ id: "x", nume: "Rusu", prenume: "Ion", dataBotez: "2026-05-01", dataMembru: "2026-05-01", modIntrare: "BOTEZ", botezBiserica: "Betel Oslo", botezOficiant: "Ioan Ardelean" }),
+      makePerson({ id: "y", nume: "Lungu", prenume: "Eva", dataBotez: "2026-06-01", dataMembru: "2026-06-01", modIntrare: "BOTEZ", botezBiserica: "Biserica Maranata Stavanger", botezOficiant: "Daniel Mureșan" }),
+    ];
+    const s = computeStats(persons, [], { year: 2026, today });
+    const text = buildReportText(2026, s, { evenimente: 0, sedinte: 0, documente: 0 }, "Maranata Stavanger");
+    expect(text).toContain("2 botezați în 2026 (Rusu Ion (Betel Oslo, Ioan Ardelean), Lungu Eva)");
+    proto.S.members = Object.fromEntries(persons.map((p) => [p.id, toPrototypeMember({ ...p, familie: "" })]));
+    proto.S.events = {};
+    expect(proto.reportText(2026)).toContain("2 botezați în 2026 (");
+    expect(buildReportText(2026, s, { evenimente: 0, sedinte: 0, documente: 0 })).toContain("Rusu Ion (Betel Oslo, Ioan Ardelean)");
+  });
+});

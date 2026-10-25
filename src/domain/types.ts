@@ -18,7 +18,11 @@ export interface PersonRecord {
   modIntrare: EntryModeKey | null;
   bisericaProvenienta: string;
   dataBotez: string | null;
+  /** The baptism locality (the prototype's single "locBotez"). */
   locBotez: string;
+  /** Baptism church and officiant (not in the prototype). */
+  botezBiserica: string;
+  botezOficiant: string;
   dataBinecuvantare: string | null;
   dataIesire: string | null;
   modIesire: ExitModeKey | null;

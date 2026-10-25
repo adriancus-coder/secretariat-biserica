@@ -12,6 +12,8 @@ const base: DocPerson = {
   dataMembru: "2020-06-10",
   dataBotez: "2020-06-10",
   locBotez: "baptisteriul bisericii",
+  botezBiserica: "",
+  botezOficiant: "",
   dataBinecuvantare: "2010-09-12",
 };
 const church = { nume: "Maranata Stavanger", adresa: "Kongsgårdbakken 1, Stavanger" };

@@ -365,6 +365,8 @@ async function main() {
     bisericaProvenienta: p.bisericaProvenienta,
     dataBotez: p.dataBotez?.toISOString().slice(0, 10) ?? null,
     locBotez: p.botezLocalitate,
+    botezBiserica: p.botezBiserica,
+    botezOficiant: p.botezOficiant,
     dataBinecuvantare: p.dataBinecuvantare?.toISOString().slice(0, 10) ?? null,
     dataIesire: p.dataIesire?.toISOString().slice(0, 10) ?? null,
     modIesire: p.modIesire,

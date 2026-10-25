@@ -18,6 +18,8 @@ export function person(p: Partial<PersonRecord> & Pick<PersonRecord, "nume">): P
     bisericaProvenienta: "",
     dataBotez: null,
     locBotez: "",
+    botezBiserica: "",
+    botezOficiant: "",
     dataBinecuvantare: null,
     dataIesire: null,
     modIesire: null,
