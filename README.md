@@ -287,6 +287,17 @@ tests/                    teste de paritate cu prototipul și de integrare
 - **Numerotarea documentelor** este serializată pe (biserică, an) cu un advisory lock PostgreSQL, iar
   unicitatea e garantată și de un index unic.
 
+## Statutul Cultului
+
+Aplicația urmează Statutul Cultului Creștin Penticostal (Ordinul SSC nr. 141/15.12.2025); în cod și în
+documentație referințele se scriu „Statut art. N”. Pe scurt: categoriile de persoane — art. 28;
+registrul — art. 14; dobândirea și încetarea calității de membru — art. 20–24; drepturile și
+îndatoririle membrilor — art. 25 și 26; disciplina — art. 27 (formele: alin. 3; excluderea produce
+efecte la informarea scrisă a Comunității: alin. 5; fără transfer în timpul cercetării: alin. 6; măsura
+în certificatul de transfer: alin. 9; procesul-verbal: alin. 10; contestația în 15 zile: alin. 11;
+motivele excluderii: alin. 13), reprimirea — art. 271, procedura cercetării — art. 272.
+`tests/unit/statute-refs.test.ts` verifică faptul că disciplina nu este citată ca art. 26.
+
 ## Diferențe față de prototip
 
 Logica prototipului este păstrată întocmai (verificat prin testele de paritate), cu următoarele
