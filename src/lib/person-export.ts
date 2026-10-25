@@ -1,7 +1,8 @@
 import { categoryDef, type CombineMode } from "@/domain/categories";
 import { ageAt } from "./dates";
 import { fmtDot } from "@/domain/print";
-import { ENTRY_LABEL, GENDER_LABEL, STATUS_LABEL, type EntryModeKey, type GenderKey, type PersonStatusKey } from "./labels";
+import { ENTRY_LABEL, GENDER_LABEL, STATUS_LABEL, type ConsentKindKey, type EntryModeKey, type GenderKey, type PersonStatusKey } from "./labels";
+import { CONSENT_STATE_LABEL, type ConsentState } from "./consents";
 
 /** Exporting a list of persons (Excel, CSV, PDF): the columns, the rows and the file name. Pure. */
 
@@ -27,6 +28,8 @@ export interface ExportPerson {
   functii: string;
   inComitet: boolean;
   grupuri: string;
+  /** Current consents (absent = Neexprimat). */
+  acorduri?: Partial<Record<ConsentKindKey, ConsentState>>;
 }
 
 export const EXPORT_COLUMNS = [
@@ -49,6 +52,11 @@ export const EXPORT_COLUMNS = [
   ["functii", "Funcții și slujiri"],
   ["comitet", "Comitet"],
   ["grupuri", "Grupuri"],
+  ["acord_INFO_NOTE", "Nota de informare"],
+  ["acord_PHOTOS", "Acord: fotografii"],
+  ["acord_BIRTHDAY", "Acord: ziua de naștere"],
+  ["acord_CONTACT", "Acord: anunțuri"],
+  ["acord_DIRECTORY", "Acord: lista de contacte"],
 ] as const;
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number][0];
 export const EXPORT_COLUMN_KEYS = EXPORT_COLUMNS.map(([k]) => k) as ExportColumn[];
@@ -104,6 +112,14 @@ export function cell(p: ExportPerson, c: ExportColumn, refDate: string): string 
       return p.inComitet ? "da" : "";
     case "grupuri":
       return p.grupuri;
+    case "acord_INFO_NOTE":
+    case "acord_PHOTOS":
+    case "acord_BIRTHDAY":
+    case "acord_CONTACT":
+    case "acord_DIRECTORY": {
+      const st = p.acorduri?.[c.slice(6) as ConsentKindKey] ?? "NEEXPRIMAT";
+      return c === "acord_INFO_NOTE" ? (st === "DA" ? "confirmată" : "neconfirmată") : CONSENT_STATE_LABEL[st];
+    }
   }
 }
 

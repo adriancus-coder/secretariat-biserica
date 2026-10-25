@@ -1,4 +1,5 @@
 import "server-only";
+import { loadConsentStates } from "./consents";
 import { contactRestricted } from "@/lib/contact-access";
 import ExcelJS from "exceljs";
 import { fmtDot, type PrintSpec } from "@/domain/print";
@@ -44,6 +45,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
     },
   });
   const byId = new Map(rows.map((p) => [p.id, p]));
+  const consents = await loadConsentStates(ctx, ids);
   return ids
     .map((id) => byId.get(id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p))
@@ -72,6 +74,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       ),
       inComitet: p.inComitet,
       grupuri: p.groups.map((g) => g.group.nume).sort(compareRo).join(", "),
+      acorduri: consents.get(p.id) ?? {},
     }));
 }
 

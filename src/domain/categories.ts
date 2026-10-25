@@ -1,5 +1,6 @@
 import { ageAt, inYear, monthsBefore } from "@/lib/dates";
-import { PARENT_RELATIONS } from "@/lib/labels";
+import { OPTIONAL_CONSENTS, PARENT_RELATIONS, type ConsentKindKey } from "@/lib/labels";
+import type { ConsentState } from "@/lib/consents";
 import { computeStats, type Stats } from "./stats";
 import type { EventRecord, PersonRecord } from "./types";
 
@@ -9,7 +10,7 @@ import type { EventRecord, PersonRecord } from "./types";
  * changed here), so a list always has exactly as many rows as the number next to it. Pure.
  */
 
-export const CATEGORY_GROUPS = ["Statut", "Copii", "Botez și intrare", "Vârstă", "Slujire", "Familie", "Ieșiri"] as const;
+export const CATEGORY_GROUPS = ["Statut", "Copii", "Botez și intrare", "Vârstă", "Slujire", "Familie", "Ieșiri", "Acorduri"] as const;
 export type CategoryGroup = (typeof CATEGORY_GROUPS)[number];
 
 export interface CategoryDef {
@@ -29,6 +30,11 @@ export const CATEGORY_AGE_BANDS: readonly [min: number, max: number][] = [
   [46, 64],
   [65, 200],
 ];
+
+/** "acord-photos-da": the persons with that answer to an optional consent (a withdrawn one counts as "nu"). */
+export const consentKey = (kind: string, answer: "da" | "nu" | "neexprimat") => `acord-${kind.toLowerCase()}-${answer}`;
+const CONSENT_SHORT: Record<string, string> = { PHOTOS: "Fotografii", BIRTHDAY: "Ziua de naștere", CONTACT: "Anunțuri", DIRECTORY: "Lista de contacte" };
+const CONSENT_KEY = /^acord-(photos|birthday|contact|directory)-(da|nu|neexprimat)$/;
 
 const ageLabel = (min: number, max: number) => (max >= 200 ? `${min}+ ani` : `${min}–${max} ani`);
 export const ageKey = (min: number, max: number) => `varsta-${min}-${max}`;
@@ -70,6 +76,11 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "iesiti-deces", label: "Decedați în anul ales", group: "Ieșiri", yearly: true },
   { key: "iesiti-excludere", label: "Excluși în anul ales", group: "Ieșiri", yearly: true },
   { key: "iesiti", label: "Foști membri / ieșiți (oricând)", group: "Ieșiri" },
+  { key: "nota-confirmata", label: "Nota de informare confirmată", group: "Acorduri" },
+  { key: "nota-neconfirmata", label: "Fără confirmarea notei de informare", group: "Acorduri" },
+  ...OPTIONAL_CONSENTS.flatMap((k): CategoryDef[] =>
+    (["da", "nu", "neexprimat"] as const).map((a) => ({ key: consentKey(k, a), label: `${CONSENT_SHORT[k]}: ${a === "da" ? "Da" : a === "nu" ? "Nu" : "Neexprimat"}`, group: "Acorduri" })),
+  ),
 ];
 
 const AGE_KEY = /^varsta-(\d{1,3})-(\d{1,3})$/;
@@ -97,6 +108,8 @@ export interface CategoryInput {
   heads: ReadonlySet<string>;
   /** Role id → its current holders. */
   holders: ReadonlyMap<string, ReadonlySet<string>>;
+  /** Person id → the current state of each consent (absent = Neexprimat). */
+  consents?: ReadonlyMap<string, Partial<Record<ConsentKindKey, ConsentState>>>;
 }
 
 export interface CategoryContext {
@@ -190,6 +203,10 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return inRecord((p) => Boolean(p.familyId) && familySize.get(p.familyId!) === 1);
         case "iesiti":
           return ids(input.persons.filter((p) => p.dataIesire !== null || p.statut === "FOST_MEMBRU"));
+        case "nota-confirmata":
+          return inRecord((p) => input.consents?.get(p.id)?.INFO_NOTE === "DA");
+        case "nota-neconfirmata":
+          return inRecord((p) => input.consents?.get(p.id)?.INFO_NOTE !== "DA");
         // Statut art. 23 alin. 4–5: temporarily away; after 6 months the transfer must be asked for.
         case "plecati-temporar":
           return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= s.endDate));
@@ -197,6 +214,15 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= monthsBefore(s.endDate, 3)));
         case "plecati-6-luni":
           return inRecord((p) => Boolean(p.plecatDin && p.plecatDin <= monthsBefore(s.endDate, 6)));
+      }
+      const c = CONSENT_KEY.exec(key);
+      if (c) {
+        const kind = c[1].toUpperCase() as ConsentKindKey;
+        const want = c[2];
+        return inRecord((p) => {
+          const st = input.consents?.get(p.id)?.[kind];
+          return want === "da" ? st === "DA" : want === "nu" ? st === "NU" || st === "RETRAS" : st === undefined || st === "NEEXPRIMAT";
+        });
       }
       const m = AGE_KEY.exec(key);
       if (!m) return null;

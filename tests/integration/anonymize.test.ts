@@ -52,6 +52,9 @@ describe.skipIf(!hasTestDb)("anonymisation leaves no trace of the person", () =>
     await db.event.create({ data: { titlu: "Agapă", tip: "Agapă", data: new Date("2026-03-02"), agapaResponsabil: full, contributii: { create: [{ pozitie: 0, cine: full, ce: "prăjituri" }] } } as never });
     await db.note.create({ data: { data: new Date("2026-03-03"), tip: "Generală", text: `Vizită la ${full} (${TELEFON})`, searchText: "x" } as never });
     await db.family.create({ data: { nume: `Fam. ${full}`, note: `Contact: ${EMAIL}` } as never });
+    const campaign = await db.dataCampaign.create({ data: { nume: "Actualizare", deadline: new Date("2026-12-01"), privacyTextVersion: "v" } as never });
+    await db.dataUpdateSubmission.create({ data: { campaignId: campaign.id, personId, via: "PERSONAL", proposed: { self: { nume: full, telefon: TELEFON } } } as never });
+    await db.consent.create({ data: { personId, kind: "PHOTOS", granted: true, givenAt: new Date(), source: "ONLINE" } as never });
     await db.disciplinaryMeasure.create({ data: { personId, forma: "MUSTRARE_COMITET", dataInceput: new Date("2026-03-05"), motiv: `Cercetat ${full} (${TELEFON})` } as never });
     // Audit rows of other entities that mention the person.
     const audit = (entity: string, entityId: string, entityLabel: string, changes: object) =>

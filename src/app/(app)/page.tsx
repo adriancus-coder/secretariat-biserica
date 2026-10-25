@@ -13,6 +13,7 @@ import { loadStats } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
 import { deleteExpiredContactsAction } from "@/server/actions/statute";
 import { expiredContactWhere } from "@/server/retention";
+import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 
 /** A bar whose number opens the list of persons behind it. */
@@ -73,10 +74,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     select: { id: true, titlu: true, data: true, ora: true },
   });
   const month = today.slice(5, 7);
-  const birthdays = persons
+  const canWrite = permissions.write(ctx.user.role);
+  // Only persons who agreed to have their birthday announced; write roles can show all ("fără acord").
+  const allBirthdays = persons
     .filter((p) => p.dataNasterii && p.dataNasterii.slice(5, 7) === month && !p.dataIesire)
     .sort((a, b) => a.dataNasterii!.slice(8).localeCompare(b.dataNasterii!.slice(8)));
-  const canWrite = permissions.write(ctx.user.role);
+  const birthdayConsent = await loadConsentStates(ctx, allBirthdays.map((p) => p.id));
+  const agreed = (id: string) => birthdayConsent.get(id)?.BIRTHDAY === "DA";
+  const showAllBirthdays = canWrite && sp.aniversari === "toti";
+  const birthdays = allBirthdays.filter((p) => showAllBirthdays || agreed(p.id));
   // Statut art. 23 alin. 4–5: away for more than 3 months; after 6 the transfer must be asked for.
   const away = (months: number) => persons.filter((p) => !p.dataIesire && p.plecatDin && p.plecatDin <= monthsBefore(today, months)).length;
   const away3 = away(3);
@@ -249,13 +255,22 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
         <div className="card">
           <h3>Aniversări în {MONTHS_L[Number(month) - 1]}</h3>
+          <p className="hint mb-2">
+            {showAllBirthdays ? "Toate persoanele; cele fără acord sunt marcate." : "Doar persoanele care au fost de acord să li se anunțe ziua de naștere."}{" "}
+            {canWrite ? (
+              <Link href={showAllBirthdays ? "/" : "/?aniversari=toti"}>{showAllBirthdays ? "Doar cu acord" : `Arată toți (${allBirthdays.length})`}</Link>
+            ) : null}
+          </p>
           {birthdays.length ? (
             <ul>
               {birthdays.map((p) => (
                 <li key={p.id}>
                   <Link href={`/persoane/${p.id}`} className="flex gap-3 py-1.5 no-underline text-ink hover:underline">
                     <b className="w-[36px] shrink-0 font-serif">{Number(p.dataNasterii!.slice(8))}</b>
-                    <span className="min-w-0 truncate">{memberName(p)}</span>
+                    <span className="min-w-0 truncate">
+                      {memberName(p)}
+                      {showAllBirthdays && !agreed(p.id) ? <span className="hint inline"> · fără acord</span> : null}
+                    </span>
                     <span className="hint !mt-0 ml-auto shrink-0">
                       {ageAt(p.dataNasterii!, `${today.slice(0, 4)}-12-31`)} ani
                     </span>

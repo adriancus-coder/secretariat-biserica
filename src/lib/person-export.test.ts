@@ -54,4 +54,9 @@ describe("person export", () => {
     expect(selectionTitle(["copii-minori", "copii-apartinatori"], "oricare")).toBe("Copii minori + Copii ai aparținătorilor (oricare)");
     expect(selectionTitle(["membri"], "toate")).toBe("Membri");
   });
+
+  it("writes the consent columns", () => {
+    const x = p({ acorduri: { INFO_NOTE: "DA", PHOTOS: "NU", BIRTHDAY: "RETRAS" } });
+    expect(exportRows([x], ["acord_INFO_NOTE", "acord_PHOTOS", "acord_BIRTHDAY", "acord_CONTACT"], "2026-10-25")).toEqual([["confirmată", "Nu", "Retras", "Neexprimat"]]);
+  });
 });

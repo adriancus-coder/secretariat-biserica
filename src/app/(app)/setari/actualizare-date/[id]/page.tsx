@@ -14,6 +14,10 @@ import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
 import { getCampaign } from "@/server/queries/campaigns";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
+import { loadConsentStates } from "@/server/consents";
+import { categoryHref } from "@/lib/category-params";
+import { consentKey } from "@/domain/categories";
+import { CONSENT_KINDS, CONSENT_LABEL, OPTIONAL_CONSENTS, type ConsentKindKey } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Actualizare date" };
 
@@ -34,6 +38,20 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
   const answered = c.links.filter((l) => ANSWERED.includes(l.status)).length;
   const shown = c.links.filter((l) => (noPhone ? !l.telefon.trim() : filter ? l.status === filter : true));
   const allLinks = c.links.map((l) => `${memberName(l)} — ${l.telefon || "fără telefon"} — ${l.url}`).join("\n");
+  // Totals per consent over the persons in the record (each number opens its list).
+  const inRecord = await ctx.db.person.findMany({ where: { dataIesire: null, statut: { not: "FOST_MEMBRU" } }, select: { id: true } });
+  const states = await loadConsentStates(ctx, inRecord.map((p) => p.id));
+  const tally = (kind: ConsentKindKey) => {
+    const t = { da: 0, nu: 0, neexprimat: 0 };
+    for (const p of inRecord) {
+      const st = states.get(p.id)?.[kind];
+      if (st === "DA") t.da++;
+      else if (st === "NU" || st === "RETRAS") t.nu++;
+      else t.neexprimat++;
+    }
+    return t;
+  };
+  const exportHref = `/persoane/export?categorie=toti&${["nume", "prenume", "statut", ...CONSENT_KINDS.map((k) => `acord_${k}`)].map((col) => `coloane=${col}`).join("&")}`;
   const qrSvg = c.generalUrl ? await applicationQrSvg(c.generalUrl) : null;
   const qrPng = c.generalUrl ? `data:image/png;base64,${(await applicationQrPng(c.generalUrl)).toString("base64")}` : null;
   return (
@@ -77,6 +95,58 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
               {c.generalUrl ? "Oprește linkul general" : "Pornește linkul general"}
             </button>
           </form>
+        ) : null}
+      </div>
+
+      <div className="card">
+        <h3>Situația acordurilor</h3>
+        <div className="table-scroll">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>Acord</th>
+                <th>Da</th>
+                <th>Nu</th>
+                <th>Neexprimat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">{CONSENT_LABEL.INFO_NOTE}</th>
+                <td>
+                  <Link className="num-link" href={categoryHref("nota-confirmata", undefined)}>
+                    {tally("INFO_NOTE").da}
+                  </Link>
+                </td>
+                <td>—</td>
+                <td>
+                  <Link className="num-link" href={categoryHref("nota-neconfirmata", undefined)}>
+                    {inRecord.length - tally("INFO_NOTE").da}
+                  </Link>
+                </td>
+              </tr>
+              {OPTIONAL_CONSENTS.map((k) => {
+                const t = tally(k);
+                return (
+                  <tr key={k}>
+                    <th scope="row">{CONSENT_LABEL[k]}</th>
+                    {(["da", "nu", "neexprimat"] as const).map((a) => (
+                      <td key={a}>
+                        <Link className="num-link" href={categoryHref(consentKey(k, a), undefined)}>
+                          {t[a]}
+                        </Link>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {permissions.export(ctx.user.role) ? (
+          <Link href={exportHref} className="btn btn-sm mt-2">
+            Exportă situația acordurilor
+          </Link>
         ) : null}
       </div>
 

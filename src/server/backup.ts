@@ -1,6 +1,7 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
+import type { BCampaign, BConsent } from "@/lib/consents-backup";
 import type { BAlias } from "@/lib/aliases-backup";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
@@ -30,6 +31,27 @@ import type { Ctx } from "./session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 const byName = { orderBy: { createdAt: "asc" as const } };
+
+/** Campaigns (never their tokens) and consents, for the export. */
+export async function loadCampaignsAndConsents(ctx: Ctx): Promise<{ campaigns: BCampaign[]; consents: BConsent[] }> {
+  const [campaigns, consents] = await Promise.all([
+    ctx.db.dataCampaign.findMany({ orderBy: { createdAt: "asc" } }),
+    ctx.db.consent.findMany({ orderBy: [{ givenAt: "asc" }, { createdAt: "asc" }] }),
+  ]);
+  return {
+    campaigns: campaigns.map((c) => ({ id: c.id, nume: c.nume, deadline: fromDbDate(c.deadline)!, stare: c.status, versiuneNota: c.privacyTextVersion })),
+    consents: consents.map((k) => ({
+      membru: k.personId,
+      tip: k.kind,
+      acord: k.granted,
+      versiune: k.textVersion,
+      data: k.givenAt.toISOString(),
+      sursa: k.source,
+      datDe: k.givenByPersonId,
+      retrasLa: k.withdrawnAt?.toISOString() ?? null,
+    })),
+  };
+}
 
 /** Disciplinary measures for the export; the caller includes them only for administrators. */
 export async function loadDiscipline(ctx: Ctx): Promise<BDiscipline[]> {
@@ -395,6 +417,9 @@ export interface ImportExtras {
   aliases?: BAlias[] | null;
   /** Disciplinary measures (administrators' files only, see parseDisciplineJson); null = not in the file. */
   discipline?: BDiscipline[] | null;
+  /** Data-update campaigns and consents (see src/lib/consents-backup.ts); null = not in the file. */
+  campaigns?: BCampaign[] | null;
+  consents?: BConsent[] | null;
 }
 
 export interface ImportSummary {
@@ -423,6 +448,7 @@ const TABLES = {
   applications: "applications",
   families: "families",
   discipline: "disciplinary_measures",
+  campaigns: "data_campaigns",
 } as const;
 
 /**
@@ -783,6 +809,36 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         };
         if (plan.existing.has(d.id)) await tx.disciplinaryMeasure.update({ where: { id }, data });
         else await tx.disciplinaryMeasure.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
+      }
+
+      // Data-update campaigns (without links: the general link is off until an administrator turns it on).
+      for (const c of extras.campaigns ?? []) {
+        const plan = await planIds(tx, TABLES.campaigns, [c.id], churchId);
+        const id = plan.map.get(c.id)!;
+        const data = { nume: c.nume, deadline: toDbDate(c.deadline)!, status: c.stare, privacyTextVersion: c.versiuneNota };
+        if (plan.existing.has(c.id)) await tx.dataCampaign.update({ where: { id }, data });
+        else await tx.dataCampaign.create({ data: { ...data, id, churchId, generalLinkEnabled: false, createdById: ctx.user.id } });
+      }
+      // Consents: an answer already present (same person, kind, date and answer) is not added twice.
+      for (const k of extras.consents ?? []) {
+        const personId = pid(k.membru);
+        if (!personId) continue;
+        const givenAt = new Date(k.data);
+        if (await tx.consent.findFirst({ where: { personId, kind: k.tip, givenAt, granted: k.acord }, select: { id: true } })) continue;
+        await tx.consent.create({
+          data: {
+            churchId,
+            personId,
+            kind: k.tip,
+            granted: k.acord,
+            textVersion: k.versiune,
+            givenAt,
+            source: k.sursa,
+            givenByPersonId: pid(k.datDe),
+            withdrawnAt: k.retrasLa ? new Date(k.retrasLa) : null,
+            createdById: ctx.user.id,
+          },
+        });
       }
 
       // Evenimente

@@ -1379,6 +1379,18 @@
     color: var(--ok);
   }
 
+  /* Person page: the consents, one per line. */
+  .consent-list li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 2px 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .consent-list .hint {
+    flex-basis: 100%;
+  }
   /* "De verificat": actual → proposed per field, a 44 px checkbox per row. */
   .review-table {
     border-collapse: collapse;

@@ -70,6 +70,7 @@ Also in place:
 4. **Shared rate limits:** the per-IP limits (login, signup, forgot password, 2FA code) and the per-account lockout live in process memory; scaling to several instances needs a shared store (PostgreSQL or Redis).
 5. **Per-church time zone:** `Church.timeZone` instead of the global `APP_TIME_ZONE`.
 6. **Attachments:** scanned files on documents and meeting minutes. This needs object storage.
+7. **SMS code as an extra factor** for the data-update campaign's identity check (after name + phone). This needs an SMS provider.
 
 ## Known limitations and tech debt
 

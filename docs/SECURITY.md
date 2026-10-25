@@ -49,6 +49,14 @@ Measures (Statut art. 27, 271, 272) are the most sensitive records. They are rea
 
 After any exit (exit date or Fost membru), phone, e-mail and address are visible only to administrators (lists, person page, edit form, groups, person export and JSON backup of other roles leave them out). Twelve months after the exit they are listed on Acasă for administrators and deleted with "Șterge acum" (one transaction, audited with the count). Register data (Statut art. 14 alin. 3 lit. a) are never deleted. A person can ask for a copy of their data (art. 15 GDPR): administrators download it as PDF or JSON from the person page; each copy is audited.
 
+## Data-update campaign and consents
+
+- **What it collects:** an adult's own register and contact data (name, gender, birth and marriage dates, phone, e-mail, address, baptism, parents' names) and their own minor children's (name, gender, birth date, blessing), the confirmation of the privacy notice and four optional consents (photos and films, birthday announced, announcements by WhatsApp / SMS / e-mail, the church contact list) for each. Never notes, roles, groups, status or discipline.
+- **Identity check:** a personal link is a 43-character token (an HMAC of the link id and a random nonce under a key derived from `AUTH_SECRET`; only its sha256 and the nonce are stored, so a new link revokes the old one). Opening it asks for the full name and the phone number; both must match the link's person (diacritics, order and phone prefixes ignored), the answer never says which part failed, 5 wrong answers lock the link, and every visitor gets 20 checks per hour. A confirmed identity lasts 30 minutes (signed httpOnly cookie bound to the link). The general link (QR code) never shows or hints at register data: the form is always empty and the typed name and phone travel in an encrypted cookie; the match is made only for the secretary.
+- **Approval:** nothing reaches the register before the secretary approves it field by field ("De verificat"); every change is audited with the campaign's name.
+- **Legal basis:** register and contact data are kept as the records of a religious nonprofit's members (Statut art. 14; GDPR art. 6 alin. 1 lit. f and art. 9 alin. 2 lit. d); consent (art. 6 alin. 1 lit. a and art. 9 alin. 2 lit. a) only for the four optional purposes. Refusing has no consequence.
+- **Retention and withdrawal:** consents are kept until withdrawn ("Retrage acordul" in the app, or by asking the secretariat); submissions and rejected answers are deleted within 12 months; anonymising a person removes their consents, links and submissions. Each answer stores the notice version it refers to and its source (online, paper).
+
 ## Upload and input limits
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.

@@ -24,6 +24,8 @@ import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
 import { returnedAction } from "@/server/actions/statute";
 import { contactRestricted } from "@/lib/contact-access";
+import { consentState, CONSENT_STATE_LABEL, currentConsents } from "@/lib/consents";
+import { CONSENT_KINDS, CONSENT_LABEL, CONSENT_SOURCE_LABEL } from "@/lib/labels";
 
 export async function generateMetadata({ params }: PageProps<"/persoane/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -62,6 +64,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
       </Link>
     ) : null;
   const restricted = contactRestricted(x, ctx.user.role);
+  const consentRows = currentConsents(await ctx.db.consent.findMany({ where: { personId: x.id }, include: { givenBy: { select: { nume: true, prenume: true } } } }));
   const dcas = fromDbDate(x.dataCasatoriei);
   const dcr = fromDbDate(x.dataCerereRetragere);
   const plecat = fromDbDate(x.plecatDin);
@@ -299,6 +302,33 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             <div className="hint">Niciun document.</div>
           )}
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Acorduri GDPR</h3>
+        <ul className="consent-list">
+          {CONSENT_KINDS.map((k) => {
+            const r = consentRows[k];
+            const st = consentState(r);
+            return (
+              <li key={k}>
+                <span>{CONSENT_LABEL[k]}</span>
+                <b className={st === "DA" ? "text-ok" : undefined}>{k === "INFO_NOTE" ? (st === "DA" ? "confirmată" : "neconfirmată") : CONSENT_STATE_LABEL[st]}</b>
+                {r ? (
+                  <span className="hint block">
+                    {fmt(fromDbDate(r.givenAt)!)} · {CONSENT_SOURCE_LABEL[r.source]}
+                    {r.givenBy ? ` · dat de ${memberName(r.givenBy)}` : ""}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+        {canWrite ? (
+          <Link href={`/persoane/${x.id}/acorduri`} className="btn btn-sm mt-2">
+            Gestionează acordurile
+          </Link>
+        ) : null}
       </div>
 
       {discipline ? (

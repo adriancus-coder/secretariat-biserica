@@ -104,3 +104,21 @@ describe("temporarily away (Statut art. 23 alin. 4–5)", () => {
     expect(ctx.ids("plecati-6-luni")).toEqual(["c"]);
   });
 });
+
+describe("consent categories", () => {
+  it("split the persons by their current answer (a withdrawal counts as Nu)", () => {
+    const persons = [person({ id: "a", nume: "A" }), person({ id: "b", nume: "B" }), person({ id: "c", nume: "C" }), person({ id: "d", nume: "D" })];
+    const consents = new Map<string, Partial<Record<"INFO_NOTE" | "PHOTOS", "DA" | "NU" | "RETRAS" | "NEEXPRIMAT">>>([
+      ["a", { INFO_NOTE: "DA", PHOTOS: "DA" }],
+      ["b", { INFO_NOTE: "DA", PHOTOS: "NU" }],
+      ["c", { PHOTOS: "RETRAS" }],
+    ]);
+    const ctx = categoryContext({ persons, events: [], today: "2026-11-01", committee: new Set(), heads: new Set(), holders: new Map(), consents });
+    expect(ctx.ids("nota-confirmata")).toEqual(["a", "b"]);
+    expect(ctx.ids("nota-neconfirmata")).toEqual(["c", "d"]);
+    expect(ctx.ids("acord-photos-da")).toEqual(["a"]);
+    expect(ctx.ids("acord-photos-nu")).toEqual(["b", "c"]);
+    expect(ctx.ids("acord-photos-neexprimat")).toEqual(["d"]);
+    expect(ctx.ids("acord-birthday-neexprimat")).toEqual(["a", "b", "c", "d"]);
+  });
+});

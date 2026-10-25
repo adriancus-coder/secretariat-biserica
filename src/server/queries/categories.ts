@@ -1,4 +1,5 @@
 import "server-only";
+import { loadConsentStates } from "../consents";
 import { categoryContext, combineCategories, type CategoryContext, type CategoryInput, type CombineMode } from "@/domain/categories";
 import type { PersonRecord } from "@/domain/types";
 import { todayIso, toDbDate } from "@/lib/dates";
@@ -14,7 +15,7 @@ export interface LoadedCategories {
 /** Everything the categories need, for any year. */
 export async function loadCategoryInput(ctx: Ctx): Promise<Omit<CategoryInput, "year">> {
   const today = todayIso();
-  const [persons, events, committee, families, roles] = await Promise.all([
+  const [persons, events, committee, families, roles, consents] = await Promise.all([
     loadPersonRecords(ctx),
     loadStatEvents(ctx),
     ctx.db.person.findMany({ where: { inComitet: true }, select: { id: true } }),
@@ -24,10 +25,11 @@ export async function loadCategoryInput(ctx: Ctx): Promise<Omit<CategoryInput, "
       where: { roles: { some: {} } },
       select: { id: true, roles: { where: { OR: [{ until: null }, { until: { gte: toDbDate(today)! } }] }, select: { roleId: true } } },
     }),
+    loadConsentStates(ctx),
   ]);
   const holders = new Map<string, Set<string>>();
   for (const p of roles) for (const r of p.roles) holders.set(r.roleId, (holders.get(r.roleId) ?? new Set()).add(p.id));
-  return { persons, events, today, committee: new Set(committee.map((p) => p.id)), heads: new Set(families.map((f) => f.headId!)), holders };
+  return { persons, events, today, committee: new Set(committee.map((p) => p.id)), heads: new Set(families.map((f) => f.headId!)), holders, consents };
 }
 
 /** The categories for the selected year (undefined = today, as on Acasă). */

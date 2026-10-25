@@ -5,6 +5,7 @@ import { applicationsToJson, parseApplicationsJson } from "@/lib/application-bac
 import { addMemberBaptism, parseMemberBaptism } from "@/lib/baptism-backup";
 import { addMemberRegister, parseMemberRegister } from "@/lib/register-backup";
 import { disciplineToJson, parseDisciplineJson } from "@/lib/discipline-backup";
+import { parseCampaignsJson, parseConsentsJson } from "@/lib/consents-backup";
 import { permissions } from "@/lib/permissions";
 import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMemberFamilies, familiesToJson, parseFamiliesJson } from "@/lib/families-backup";
@@ -18,6 +19,7 @@ import {
   loadBaptism,
   loadRegister,
   loadDiscipline,
+  loadCampaignsAndConsents,
   loadDocumentExtras,
   loadFamilies,
   loadGroupExtras,
@@ -32,7 +34,7 @@ import type { Ctx } from "./session";
  * as POST /api/export sends it; shared with the tests. Returns the object and the church's name.
  */
 export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, unknown>; churchName: string }> {
-  const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras, groupExtras, register] = await Promise.all([
+  const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras, groupExtras, register, campaignData] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
@@ -43,6 +45,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
     loadDocumentExtras(ctx),
     loadGroupExtras(ctx),
     loadRegister(ctx),
+    loadCampaignsAndConsents(ctx),
   ]);
   const data = toPrototypeJson(backup);
   type Coll = Record<string, Record<string, unknown>>;
@@ -68,6 +71,8 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       roles: rolesToJson(roles.roles),
       families: familiesToJson(families.families),
       aliases: aliasesToJson(aliases),
+      campaigns: campaignData.campaigns,
+      consents: campaignData.consents,
       // Administrators only (Statut art. 27): a secretary's export carries no trace of discipline.
       ...(permissions.disciplina(ctx.user.role) ? { discipline: disciplineToJson(await loadDiscipline(ctx)) } : {}),
     },
@@ -102,6 +107,8 @@ export function parseImportJson(raw: unknown): ParsedImport {
       baptism: parseMemberBaptism(raw),
       register: parseMemberRegister(raw),
       discipline: parseDisciplineJson(raw),
+      campaigns: parseCampaignsJson(raw),
+      consents: parseConsentsJson(raw),
       aliases: parseAliasesJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],
