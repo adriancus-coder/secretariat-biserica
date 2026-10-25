@@ -14,6 +14,8 @@ export function CommitteeCard({
   prelungit,
   end,
   meetings,
+  members,
+  notice,
   readOnly,
 }: {
   alesLa: string | null;
@@ -23,6 +25,10 @@ export function CommitteeCard({
   /** "15 martie 2027", or null without an election date. */
   end: string | null;
   meetings: { value: string; label: string }[];
+  /** The current committee ("Membru în comitet" on the person's form). */
+  members: { id: string; name: string }[];
+  /** The notice from 6 months before the end (or after it), else null. */
+  notice: string | null;
   readOnly: boolean;
 }) {
   const [state, action, pending] = useActionState(saveCommitteeMandateAction, initialFormState);
@@ -30,11 +36,16 @@ export function CommitteeCard({
   const v = state.values;
   return (
     <div className="card mt-7">
-      <h3>Mandatul comitetului</h3>
+      <h3>Comitetul bisericii</h3>
       <p className="hint mb-3">
         Statut art. 45: comitetul este ales pentru 5 ani; mandatul poate fi prelungit o singură dată cu 5 ani. Pe Acasă apare o atenționare cu 6 luni
         înainte de expirare.
       </p>
+      {notice ? (
+        <div className="alert mb-3" role="status">
+          {notice}
+        </div>
+      ) : null}
       <dl className="detail mb-3">
         <dt>Ales la</dt>
         <dd>{alesLa ? alesLa.split("-").reverse().join(".") : "—"}</dd>
@@ -44,6 +55,17 @@ export function CommitteeCard({
         <dd>
           {end ?? "—"}
           {prelungit ? <span className="tag ml-1.5">prelungit o dată</span> : null}
+        </dd>
+        <dt>Membri în comitet ({members.length})</dt>
+        <dd>
+          {members.length
+            ? members.map((m, i) => (
+                <span key={m.id}>
+                  {i ? ", " : ""}
+                  <Link href={`/persoane/${m.id}`}>{m.name}</Link>
+                </span>
+              ))
+            : "—"}
         </dd>
       </dl>
       {readOnly ? null : (

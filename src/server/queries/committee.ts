@@ -30,7 +30,15 @@ export async function committeeEligibility(ctx: Ctx, personId: string | null): P
  * Committee members with 5 or more unexcused absences in a row from the committee's meetings (types
  * with the COMITET attendance rule), newest first. Administrators only (the caller checks).
  */
-export async function committeeAbsences(ctx: Ctx, church: ChurchSettings): Promise<{ id: string; name: string; count: number }[]> {
+export interface CommitteeAbsence {
+  id: string;
+  name: string;
+  count: number;
+  /** The meetings of the streak, newest first: id and "PV nr. 3/2026, 11.09.2026" (or the date). */
+  meetings: { id: string; label: string }[];
+}
+
+export async function committeeAbsences(ctx: Ctx, church: ChurchSettings): Promise<CommitteeAbsence[]> {
   const types = Object.entries(church.attendanceRules)
     .filter(([, r]) => r === "COMITET")
     .map(([t]) => t);
@@ -43,14 +51,24 @@ export async function committeeAbsences(ctx: Ctx, church: ChurchSettings): Promi
     where: { tip: { in: types } },
     orderBy: [{ data: "desc" }, { createdAt: "desc" }],
     take: 60,
-    select: { prezenti: { where: { personId: { in: ids } }, select: { personId: true, status: true, motivat: true } } },
+    select: {
+      id: true,
+      nr: true,
+      anRegistru: true,
+      data: true,
+      prezenti: { where: { personId: { in: ids } }, select: { personId: true, status: true, motivat: true } },
+    },
   });
+  const label = (x: (typeof meetings)[number]) => {
+    const date = fromDbDate(x.data)!.split("-").reverse().join(".");
+    return x.nr !== null ? `PV nr. ${x.nr}/${x.anRegistru}, ${date}` : date;
+  };
   return members
-    .map((m) => ({
-      id: m.id,
-      name: memberName(m),
-      count: consecutiveUnexcused(meetings.flatMap((x) => x.prezenti.filter((r) => r.personId === m.id))),
-    }))
+    .map((m) => {
+      const own = meetings.flatMap((x) => x.prezenti.filter((r) => r.personId === m.id).map((r) => ({ ...r, meeting: x })));
+      const count = consecutiveUnexcused(own);
+      return { id: m.id, name: memberName(m), count, meetings: own.slice(0, count).map((r) => ({ id: r.meeting.id, label: label(r.meeting) })) };
+    })
     .filter((m) => m.count >= ABSENCE_LIMIT)
     .sort((a, b) => b.count - a.count);
 }

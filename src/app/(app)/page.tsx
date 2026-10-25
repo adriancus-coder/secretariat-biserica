@@ -126,14 +126,20 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       ) : null}
       {absences.length ? (
         <div className="alert mb-4" role="status">
-          Absențe nemotivate la rând la ședințele comitetului (Statut art. 45):{" "}
-          {absences.map((a, i) => (
-            <span key={a.id}>
-              {i ? ", " : ""}
-              <Link href={`/persoane/${a.id}`}>{a.name}</Link> ({a.count})
-            </span>
-          ))}
-          .
+          <p className="m-0">Statut art. 45 alin. 6 lit. b: 5 absențe nemotivate consecutive la ședințele comitetului.</p>
+          <ul className="m-0 mt-1 pl-5 list-disc">
+            {absences.map((a) => (
+              <li key={a.id}>
+                <Link href={`/persoane/${a.id}`}>{a.name}</Link> ({a.count}):{" "}
+                {a.meetings.map((m, i) => (
+                  <span key={m.id}>
+                    {i ? ", " : ""}
+                    <Link href={`/procese-verbale/${m.id}`}>{m.label}</Link>
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {agMissing ? (

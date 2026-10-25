@@ -11,7 +11,7 @@ import { getChurch } from "@/server/queries/church";
 import { requestOrigin } from "@/server/request-origin";
 import { requireCtx } from "@/server/session";
 import { appUrl } from "@/server/tokens";
-import { dotDateTime } from "@/lib/dates";
+import { dotDateTime, todayIso } from "@/lib/dates";
 import { listStatutes } from "@/server/statutes";
 import { SettingsForm } from "./settings-form";
 import { privacyTemplate } from "@/lib/privacy";
@@ -20,8 +20,8 @@ import { adoptPrivacyModelAction } from "@/server/actions/settings";
 import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
 import { CommitteeCard } from "./committee-card";
-import { mandateEnd } from "@/lib/committee";
-import { fmtL } from "@/lib/format";
+import { mandateEnd, mandateNotice } from "@/lib/committee";
+import { fmtL, memberName } from "@/lib/format";
 import { meetingChoices } from "@/server/queries/meetings";
 import { ApplicationLink } from "./application-link";
 import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
@@ -31,7 +31,12 @@ export const metadata: Metadata = { title: "Setări" };
 
 export default async function SettingsPage() {
   const ctx = await requireCtx();
-  const [church, statutes, meetings] = await Promise.all([getChurch(ctx), listStatutes(ctx.user.churchId), meetingChoices(ctx)]);
+  const [church, statutes, meetings, committee] = await Promise.all([
+    getChurch(ctx),
+    listStatutes(ctx.user.churchId),
+    meetingChoices(ctx),
+    ctx.db.person.findMany({ where: { inComitet: true, dataIesire: null }, orderBy: [{ sortKey: "asc" }, { id: "asc" }], select: { id: true, nume: true, prenume: true } }),
+  ]);
   const jar = await cookies();
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
@@ -91,6 +96,8 @@ export default async function SettingsPage() {
         prelungit={church.comitetPrelungit}
         end={church.comitetAlesLa ? fmtL(mandateEnd(church.comitetAlesLa, church.comitetPrelungit)) : null}
         meetings={meetings.map((m) => ({ value: m.id, label: m.label }))}
+        members={committee.map((p) => ({ id: p.id, name: memberName(p) }))}
+        notice={mandateNotice(todayIso(), church.comitetAlesLa, church.comitetPrelungit)}
         readOnly={!permissions.admin(role)}
       />
       <StatutesCard

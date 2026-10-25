@@ -49,6 +49,7 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
           convocataDeComunitate: m.convocataDeComunitate ? "on" : "",
         }}
         votes={m.voturi}
+        excused={m.absenti.filter((p) => p.motivat).map((p) => p.id)}
         points={m.puncte}
         rich={{ puncte: m.puncteRich, observatii: m.observatiiRich, formula: m.formulaRich }}
         selected={selected}

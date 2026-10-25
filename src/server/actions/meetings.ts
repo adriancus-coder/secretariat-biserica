@@ -94,6 +94,8 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
     // Import review: the "Nepotriviți" names matched by hand are remembered as aliases of the attendees.
     const picks = importing ? parseOrThrow(pickedNamesSchema, pickedNamesInput(formData)).filter((p) => prezenti.includes(p.personId)) : [];
     const { asteptati, rows } = await attendance(ctx, fields.tip, fields.data, prezenti);
+    // Excused absences ticked in the form (only absentees count); without the field the saved ones stay.
+    const excusedInForm = formData.get("motivatiForm") === "1" ? new Set(formData.getAll("motivati").map(String)) : null;
     const year = Number(fields.data.slice(0, 4));
 
     savedId = await ctx.db.$transaction(async (tx) => {
@@ -121,8 +123,8 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
       if (id) {
         const before = await auditView(tx, id);
         if (!before) throw new ActionError("Procesul-verbal nu mai există.");
-        // An excused absence stays excused while the person is still absent.
-        const excused = new Set((await tx.meetingAttendee.findMany({ where: { meetingId: id, motivat: true }, select: { personId: true } })).map((r) => r.personId));
+        // An excused absence stays excused while the person is still absent (unless the form says otherwise).
+        const excused = excusedInForm ?? new Set((await tx.meetingAttendee.findMany({ where: { meetingId: id, motivat: true }, select: { personId: true } })).map((r) => r.personId));
         await tx.meeting.update({
           where: { id },
           data: { ...data, prezenti: { deleteMany: {}, create: rows.map((r) => ({ ...r, motivat: r.status === "ABSENT" && excused.has(r.personId) })) } },
@@ -142,7 +144,7 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
         return id;
       }
       const created = await tx.meeting.create({
-        data: { ...data, churchId: ctx.user.churchId, prezenti: { create: rows } },
+        data: { ...data, churchId: ctx.user.churchId, prezenti: { create: rows.map((r) => ({ ...r, motivat: r.status === "ABSENT" && Boolean(excusedInForm?.has(r.personId)) })) } },
       });
       await writeAudit(tx, ctx.user, {
         entity: "MEETING",

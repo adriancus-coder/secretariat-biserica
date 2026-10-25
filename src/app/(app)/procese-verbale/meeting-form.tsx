@@ -30,6 +30,7 @@ export function MeetingForm({
   prefill,
   tipuriAG = [],
   votes,
+  excused = [],
   cancelHref,
   onImported,
   pickedNames,
@@ -53,6 +54,8 @@ export function MeetingForm({
   tipuriAG?: string[];
   /** The recorded votes, aligned with `points`. */
   votes?: (Vote | null)[] | null;
+  /** Absences already excused (person ids). */
+  excused?: string[];
   cancelHref: string;
   /** Import review: the meeting is saved without leaving the page; called with the saved state. */
   onImported?: (state: MeetingFormState) => void;
@@ -86,6 +89,10 @@ export function MeetingForm({
   const [convocatLa, setConvocatLa] = useState(val("convocatLa"));
   const [byCommunity, setByCommunity] = useState(val("convocataDeComunitate") === "on");
   const warning = ag && date ? convocationWarning(date, convocatLa || null, byCommunity) : null;
+  // The expected persons not ticked become absentees on save; an absence can be excused (Statut art. 45).
+  const names = new Map(people.map((p) => [p.id, p.name]));
+  const absent = rule === "MANUAL" ? [] : prefill[rule].filter((pid) => !attendees.has(pid) && names.has(pid));
+  const [excusedSet, setExcused] = useState<Set<string>>(() => new Set(excused));
 
   const previewHost = `preview-${id ?? "nou"}`;
   // Built once: the editors keep their own state afterwards (also across validation errors).
@@ -172,6 +179,32 @@ export function MeetingForm({
       <Field label={`Prezenți (${inRegister} în registru)`} error={e.prezenti}>
         <PersonChecklist name="prezenti" options={people} selected={attendees} onSelectedChange={setAttendees} />
       </Field>
+      {absent.length ? (
+        <Field label={`Absenți (${absent.length}) — bifați absențele motivate`}>
+          <input type="hidden" name="motivatiForm" value="1" />
+          <div className="checklist scroll-panel">
+            {absent.map((pid) => (
+              <label key={pid} className="check">
+                <input
+                  type="checkbox"
+                  name="motivati"
+                  value={pid}
+                  checked={excusedSet.has(pid)}
+                  onChange={(ev) =>
+                    setExcused((s) => {
+                      const next = new Set(s);
+                      if (ev.target.checked) next.add(pid);
+                      else next.delete(pid);
+                      return next;
+                    })
+                  }
+                />
+                {names.get(pid)} <span className="text-ink-3 text-sm">motivat</span>
+              </label>
+            ))}
+          </div>
+        </Field>
+      ) : null}
       <TextField name="invitati" label="Invitați / alte persoane" defaultValue={val("invitati")} error={e.invitati} />
       <TextAreaField name="ordine" label="Ordinea de zi" placeholder={"1. …\n2. …"} defaultValue={val("ordine")} error={e.ordine} />
       <PointsEditor initial={points} initialRich={rich?.puncte} initialVotes={votes} error={e.puncte ?? e.puncteRich ?? e.voturi} />
