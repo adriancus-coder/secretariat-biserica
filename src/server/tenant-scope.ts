@@ -19,6 +19,8 @@ export const TENANT_MODELS = new Set([
   "RoleGroup",
   "PersonAlias",
   "DisciplinaryMeasure",
+  "DataCampaign",
+  "DataUpdateLink",
 ]);
 
 const WHERE_OPERATIONS = new Set([

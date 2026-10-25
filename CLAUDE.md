@@ -202,6 +202,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Recommendation letter: `recommendationDiscipline()` (`src/server/discipline.ts`) — no open measure → "nu are măsuri disciplinare" (documented deviation from the prototype's "nu are datorii sau abateri de disciplină"); APLICATA → the letter states the measure (art. 27 alin. 9) and only an admin can issue it; CERCETARE → refused (art. 27 alin. 6) unless the admin ticks the domicile exception (`Document.exceptieDomiciliu`, recorded in the text).
 - Backup: `discipline` collection only in an administrator's export (`src/lib/discipline-backup.ts`); anonymising deletes the measures.
 
+### Data-update campaign
+
+- `DataCampaign` and `DataUpdateLink` (tenant models). Setări → "Actualizare date" (`/setari/actualizare-date`, `write`; starting, closing and the general link: `admin`, `src/server/actions/campaigns.ts`, audited as CAMPAIGN by person name only). A campaign creates one personal link per adult in the record (`createMissingLinks`: no exit, not Fost membru, not anonymised, 18+ or no birth date; "Adaugă persoanele noi" later).
+- Tokens are never stored (`src/server/campaign-tokens.ts`): a link's token is an HMAC of its id and a random nonce under a key derived from `AUTH_SECRET`; the row keeps the nonce and `tokenHash` (sha256), so "Copiază linkul" can show it again and "Generează link nou" (new nonce) revokes it. The general link (`/actualizare/g/<token>`, QR, PNG, A5 poster `/pdf/afis-actualizare/[id]`) works the same way per campaign.
+- Statuses (`linkStatus`, `src/lib/campaign.ts`): Netrimis / Trimis / Deschis / Verificat / Completat / Blocat / Aprobat; "fără telefon" persons are flagged (they cannot pass the identity check). `campaignMessage()` is the text of "Partajează" / "Copiază mesajul".
+- Identity check (`src/lib/identity-match.ts`, pure): name by `nameKey` words (every surname word, at least one first-name word, at most one unknown word) and the last 8 phone digits; both on the same person; never say which part failed.
+
 ### Statistics categories
 
 - `src/domain/categories.ts` (pure): every person category (statut, copii, botez și intrare, vârstă, slujire, familie, ieșiri) as ids. The figures shown on Acasă reuse computeStats' own lists, so a list has exactly as many rows as its number (`categories.test.ts`). `categoryContext(input)` computes once; `combineCategories` gives union ("oricare") or intersection ("toate"). Copii ai membrilor / aparținătorilor follow the stats' family rule (a member, resp. an aparținător and no member, in the family).

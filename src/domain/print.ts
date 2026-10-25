@@ -243,14 +243,19 @@ export function eventPrint(x: EventPrint, church: ChurchInfo): PrintSpec {
 }
 
 /** The A5 poster for the public membership application: the church, the QR code and the link as text. */
-export function printApplicationPoster(church: ChurchInfo, url: string, qrPng: Uint8Array): PrintSpec {
+export function printApplicationPoster(
+  church: ChurchInfo,
+  url: string,
+  qrPng: Uint8Array,
+  text: { title: string; line: string } = { title: "Cerere de membru online", line: "Scanați codul cu telefonul pentru a completa cererea." },
+): PrintSpec {
   return {
-    title: "Cerere de membru online",
+    title: text.title,
     church,
     size: "A5",
     blocks: [
-      { type: "centered", text: "Cerere de membru online", size: 22, bold: true },
-      { type: "centered", text: "Scanați codul cu telefonul pentru a completa cererea.", size: 12 },
+      { type: "centered", text: text.title, size: 22, bold: true },
+      { type: "centered", text: text.line, size: 12 },
       { type: "image", png: qrPng, width: 220, alt: `[cod QR: ${url}]` },
       { type: "centered", text: url, size: 11 },
     ],

@@ -153,4 +153,5 @@ export const ENTITY_LABEL = {
   EXTRACT: "Citire din document",
   SECURITY: "Securitate cont",
   DISCIPLINE: "Disciplină",
+  CAMPAIGN: "Actualizare date",
 } as const;

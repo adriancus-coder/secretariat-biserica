@@ -1379,6 +1379,11 @@
     color: var(--ok);
   }
 
+  /* Data-update campaign: one adult per row, the link actions wrap under the name on phones. */
+  .campaign-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
   /* Application link: QR code next to the actions, stacked on phones. */
   .qr-row {
     display: grid;

@@ -52,6 +52,7 @@ export default async function SettingsPage() {
       <nav className="moremenu mb-4" aria-label="Secțiuni">
         {permissions.admin(role) ? <Link href="/setari/utilizatori">Utilizatori și roluri</Link> : null}
         {permissions.export(role) ? <Link href="/setari/date">Copie de siguranță (export / import)</Link> : null}
+        {permissions.write(role) ? <Link href="/setari/actualizare-date">Actualizare date (campanie)</Link> : null}
         <Link href="/setari/functii">Nomenclatoare: funcții și slujiri</Link>
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
         <Link href="/cont">Contul meu</Link>

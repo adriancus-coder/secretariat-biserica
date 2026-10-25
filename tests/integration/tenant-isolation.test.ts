@@ -162,6 +162,25 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.disciplinaryMeasure.delete({ where: { id: m.id } });
   });
 
+  it("data-update campaigns and their links are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const c = await a.dataCampaign.create({ data: { nume: "Actualizare", deadline: new Date("2026-12-01"), privacyTextVersion: "v" } as never });
+    const l = await a.dataUpdateLink.create({
+      data: { campaignId: c.id, personId: personA, nonce: "n", tokenHash: "h-isolation", expiresAt: new Date("2026-12-01T23:59:59Z") } as never,
+    });
+    expect([c.churchId, l.churchId]).toEqual([churchA, churchA]);
+    expect(await b.dataCampaign.findUnique({ where: { id: c.id } })).toBeNull();
+    expect(await b.dataUpdateLink.findUnique({ where: { id: l.id } })).toBeNull();
+    expect(await b.dataUpdateLink.findFirst({ where: { tokenHash: "h-isolation" } })).toBeNull();
+    expect([await b.dataCampaign.count(), await b.dataUpdateLink.count()]).toEqual([0, 0]);
+    expect((await b.dataUpdateLink.updateMany({ data: { failedChecks: 9 } })).count).toBe(0);
+    expect((await b.dataCampaign.deleteMany({})).count).toBe(0);
+    expect((await prisma.dataUpdateLink.findUniqueOrThrow({ where: { id: l.id } })).failedChecks).toBe(0);
+    await a.dataCampaign.delete({ where: { id: c.id } });
+    expect(await prisma.dataUpdateLink.findUnique({ where: { id: l.id } })).toBeNull();
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

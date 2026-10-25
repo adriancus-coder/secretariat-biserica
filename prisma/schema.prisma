@@ -85,6 +85,8 @@ model Church {
   churchDocuments ChurchDocument[]
   personAliases   PersonAlias[]
   disciplinaryMeasures DisciplinaryMeasure[]
+  dataCampaigns   DataCampaign[]
+  dataUpdateLinks DataUpdateLink[]
 
   @@map("churches")
 }
@@ -133,6 +135,7 @@ model User {
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
   disciplinaryMeasures DisciplinaryMeasure[]
+  dataCampaigns       DataCampaign[]
 
   @@index([churchId])
   @@map("users")
@@ -292,6 +295,7 @@ model Person {
   aliases        PersonAlias[]
   /// Administrators only (permission `disciplina`).
   disciplinaryMeasures DisciplinaryMeasure[]
+  dataUpdateLinks      DataUpdateLink[]
   /// Groups this person is responsible for.
   responsibleFor Group[]            @relation("GroupResponsabil")
 
@@ -351,6 +355,67 @@ model DisciplinaryMeasure {
   @@index([personId])
   @@index([meetingId])
   @@map("disciplinary_measures")
+}
+
+enum CampaignStatus {
+  ACTIVE
+  CLOSED
+}
+
+/// A "data update" campaign: adults check their own data and their minor children's through a
+/// personal link (or a general link / QR code), give or refuse the optional consents; the secretary
+/// approves the changes. Tokens are never stored: see src/server/campaign-tokens.ts.
+model DataCampaign {
+  id                 String         @id @default(cuid())
+  churchId           String
+  church             Church         @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nume               String
+  deadline           DateTime       @db.Date
+  status             CampaignStatus @default(ACTIVE)
+  generalLinkEnabled Boolean        @default(false)
+  /// The general link: its token is an HMAC of the campaign id and this nonce; only the hash is looked up.
+  generalNonce       String?
+  generalTokenHash   String?        @unique
+  /// sha256 of the privacy notice text when the campaign started (the consents' textVersion).
+  privacyTextVersion String
+  createdAt          DateTime       @default(now())
+  createdById        String?
+  createdBy          User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  closedAt           DateTime?
+
+  links DataUpdateLink[]
+
+  @@index([churchId, createdAt])
+  @@map("data_campaigns")
+}
+
+/// One adult's personal link in a campaign.
+model DataUpdateLink {
+  id           String       @id @default(cuid())
+  churchId     String
+  church       Church       @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campaignId   String
+  campaign     DataCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  personId     String
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// The token is an HMAC of the link id and this nonce (reproducible for "Copiază linkul"); a new
+  /// link gets a new nonce. Only the sha256 of the token is looked up.
+  nonce        String
+  tokenHash    String       @unique
+  expiresAt    DateTime
+  sentAt       DateTime?
+  openedAt     DateTime?
+  verifiedAt   DateTime?
+  failedChecks Int          @default(0)
+  lockedAt     DateTime?
+  submittedAt  DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@unique([campaignId, personId])
+  @@index([churchId])
+  @@index([personId])
+  @@map("data_update_links")
 }
 
 model PersonAlias {
@@ -815,6 +880,8 @@ enum AuditEntity {
   SECURITY
   /// Visible only with the `disciplina` permission (administrators).
   DISCIPLINE
+  /// Data-update campaigns (links, submissions, consents).
+  CAMPAIGN
 }
 
 enum AuditAction {
