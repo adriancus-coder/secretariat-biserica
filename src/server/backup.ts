@@ -8,6 +8,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
 import type { MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
+import type { RichDoc } from "@/lib/rich-text";
+import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
 import type { BPersonRole, BRole, BRoleGroup, ParsedRoles } from "@/lib/roles-backup";
@@ -217,6 +219,18 @@ export async function loadRoles(ctx: Ctx): Promise<{
   };
 }
 
+/** The meeting's stored rich documents, as exported (only those that still pass the schema). */
+function richExtras(m: { puncte: string[]; puncteRich: unknown; observatiiRich: unknown; formulaRich: unknown }): Pick<MeetingExtra, "puncteRich" | "observatiiRich" | "formulaRich"> {
+  const points = storedRichList(m.puncteRich, m.puncte.length);
+  const observatii = storedRich(m.observatiiRich);
+  const formula = storedRich(m.formulaRich);
+  return {
+    ...(points && points.every(Boolean) ? { puncteRich: points as RichDoc[] } : {}),
+    ...(observatii ? { observatiiRich: observatii } : {}),
+    ...(formula ? { formulaRich: formula } : {}),
+  };
+}
+
 /** Meeting id → the fields beyond the prototype's format (absentees, numbering, points …), for the export. */
 export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingExtra>> {
   const rows = await ctx.db.meeting.findMany({
@@ -227,6 +241,9 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       puncte: true,
       observatii: true,
       formulaIncheiere: true,
+      puncteRich: true,
+      observatiiRich: true,
+      formulaRich: true,
       layout: true,
       locked: true,
       lockedAt: true,
@@ -244,6 +261,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
         puncte: m.puncte,
         observatii: m.observatii,
         formulaIncheiere: m.formulaIncheiere,
+        ...richExtras(m),
         semnaturi: m.signatures.map((s) => ({
           persoanaId: s.personId,
           imagine: Buffer.from(s.imagePng).toString("base64"),
@@ -605,6 +623,9 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           puncte: extra?.puncte ?? split!.puncte,
           observatii: extra?.observatii ?? split?.observatii ?? "",
           formulaIncheiere: extra?.formulaIncheiere ?? DEFAULT_CLOSING,
+          ...(extra?.puncteRich ? { puncteRich: extra.puncteRich as unknown as Prisma.InputJsonArray } : {}),
+          ...(extra?.observatiiRich ? { observatiiRich: extra.observatiiRich as unknown as Prisma.InputJsonObject } : {}),
+          ...(extra?.formulaRich ? { formulaRich: extra.formulaRich as unknown as Prisma.InputJsonObject } : {}),
           nr,
           anRegistru: nr !== null ? year : null,
           asteptati: extra?.asteptati ?? null,

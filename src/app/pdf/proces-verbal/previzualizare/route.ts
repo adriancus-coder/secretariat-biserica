@@ -1,0 +1,62 @@
+import { meetingPrint } from "@/domain/print";
+import { absentees, quorumLine } from "@/lib/attendance";
+import { dotDateTime } from "@/lib/dates";
+import { resolveLayout } from "@/lib/page-layout";
+import { meetingFormInput, meetingSchema } from "@/lib/schemas/meeting";
+import { idSchema } from "@/lib/validation";
+import { pdfResponse, renderPdf } from "@/server/pdf/render";
+import { expectedAttendees } from "@/server/queries/attendance";
+import { getChurch } from "@/server/queries/church";
+import { getMeeting } from "@/server/queries/meetings";
+import { requireCtx } from "@/server/session";
+
+const badRequest = (message: string) => new Response(message, { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+
+/** The minutes as the form holds them now (unsaved): "Previzualizează" on the minutes form. */
+export async function POST(req: Request) {
+  const ctx = await requireCtx("write");
+  const form = await req.formData();
+  const parsed = meetingSchema.safeParse(meetingFormInput(form));
+  if (!parsed.success) return badRequest("Date incomplete pentru previzualizare: completați tipul, data și conținutul.");
+  const m = parsed.data;
+  const church = await getChurch(ctx);
+  // An existing meeting keeps its number, signatures and page layout in the preview.
+  const previewId = idSchema.safeParse(form.get("previewId"));
+  const existing = previewId.success ? await getMeeting(ctx, previewId.data) : null;
+  const rule = church.attendanceRules[m.tip] ?? "MANUAL";
+  const expected = await expectedAttendees(ctx.db, rule, m.data);
+  const absentIds = absentees(expected, m.prezenti);
+  // Names through the church-scoped client: ids of another church simply find nobody.
+  const people = await ctx.db.person.findMany({
+    where: { id: { in: [...m.prezenti, ...absentIds] } },
+    orderBy: [{ sortKey: "asc" }, { id: "asc" }],
+    select: { id: true, nume: true, prenume: true },
+  });
+  const present = people.filter((p) => m.prezenti.includes(p.id));
+  const signed = new Map((existing?.prezenti ?? []).filter((p) => p.signature).map((p) => [p.id, p.signature!]));
+  const spec = meetingPrint(
+    {
+      nr: m.nr ?? existing?.nr ?? null,
+      tip: m.tip,
+      data: m.data,
+      prezenti: present,
+      absenti: people.filter((p) => absentIds.includes(p.id)),
+      invitati: m.invitati,
+      ordine: m.ordine,
+      puncte: m.puncte,
+      puncteRich: m.puncteRich,
+      observatii: m.observatii,
+      observatiiRich: m.observatiiRich,
+      formulaIncheiere: m.formulaIncheiere,
+      formulaRich: m.formulaRich,
+      cvorum: quorumLine(rule === "MANUAL" ? null : expected.length, absentIds.length),
+      semnaturi: present.map((p) => {
+        const s = signed.get(p.id);
+        return { name: `${p.prenume} ${p.nume}`.trim(), image: s ? new Uint8Array(s.png) : null, signedAt: s ? dotDateTime(s.signedAt) : null };
+      }),
+    },
+    church,
+  );
+  const pdf = await renderPdf({ ...spec, layout: resolveLayout(church.pvLayout, existing?.layout) });
+  return pdfResponse(pdf, "previzualizare.pdf");
+}

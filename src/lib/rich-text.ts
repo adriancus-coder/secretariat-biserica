@@ -163,3 +163,25 @@ export function plainToRich(text: string): RichDoc {
 export function isRichEmpty(doc: RichDoc): boolean {
   return richToPlain(doc).trim() === "";
 }
+
+/**
+ * The formatting a document uses, in words ("îngroșat, mare, centru, listă numerotată"), "" when
+ * none: the audit log's view of a formatting change that leaves the plain text unchanged.
+ */
+export function richFormatSummary(doc: RichDoc | null | undefined): string {
+  if (!doc) return "";
+  const used = new Set<string>();
+  for (const line of richLines(doc)) {
+    for (const r of line.runs) {
+      if (r.bold) used.add("îngroșat");
+      if (r.italic) used.add("înclinat");
+      if (r.underline) used.add("subliniat");
+      if (r.size) used.add(TEXT_SIZE_LABEL[r.size].toLowerCase());
+    }
+    if (line.align) used.add(ALIGN_LABEL[line.align]);
+    if (line.marker === "•") used.add("listă cu puncte");
+    else if (line.marker) used.add("listă numerotată");
+  }
+  const order = ["îngroșat", "înclinat", "subliniat", "mic", "mare", "foarte mare", ...ALIGNS.map((a) => ALIGN_LABEL[a]), "listă numerotată", "listă cu puncte"];
+  return order.filter((o) => used.has(o)).join(", ");
+}

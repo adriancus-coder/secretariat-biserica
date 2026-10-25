@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { absentees, attendanceText } from "@/lib/attendance";
-import { pointsText } from "@/lib/minutes";
+import { minutesFormatting, pointsText } from "@/lib/minutes";
+import { Prisma } from "@/generated/prisma/client";
 import { toDbDate } from "@/lib/dates";
 import type { FormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
@@ -33,7 +34,7 @@ async function auditView(tx: Tx, id: string) {
   if (!m) return null;
   const names = (status: "PRESENT" | "ABSENT") =>
     attendanceText(m.prezenti.filter((p) => p.status === status).map((p) => memberName(p.person)).sort(compareRo));
-  return { ...m, prezenti: names("PRESENT"), absenti: names("ABSENT"), puncte: pointsText(m.puncte) };
+  return { ...m, prezenti: names("PRESENT"), absenti: names("ABSENT"), puncte: pointsText(m.puncte), formatare: minutesFormatting(m) };
 }
 
 /**
@@ -71,7 +72,13 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
-    const { prezenti: ids, nr: wantedNr, ...fields } = parseOrThrow(meetingSchema, meetingFormInput(formData));
+    const { prezenti: ids, nr: wantedNr, puncteRich, observatiiRich, formulaRich, ...fields } = parseOrThrow(meetingSchema, meetingFormInput(formData));
+    // The editor's documents (null clears the column: the plain text is then all there is).
+    const rich = {
+      puncteRich: puncteRich ? (puncteRich as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
+      observatiiRich: observatiiRich ? (observatiiRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
+      formulaRich: formulaRich ? (formulaRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
+    };
     const prezenti = await assertPersonsInChurch(ctx.db, ids);
     // Import review: the "Nepotriviți" names matched by hand are remembered as aliases of the attendees.
     const picks = importing ? parseOrThrow(pickedNamesSchema, pickedNamesInput(formData)).filter((p) => prezenti.includes(p.personId)) : [];
@@ -98,7 +105,7 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
       } else if (previous?.nr != null && previous.anRegistru === year) nr = previous.nr;
       else nr = await nextFreeMeetingNumber(tx, ctx.user.churchId, year);
       savedNr = `${nr}/${year}`;
-      const data = { ...fields, data: toDbDate(fields.data)!, asteptati, nr, anRegistru: year };
+      const data = { ...fields, ...rich, data: toDbDate(fields.data)!, asteptati, nr, anRegistru: year };
 
       if (id) {
         const before = await auditView(tx, id);

@@ -208,6 +208,7 @@ function ReviewOne({
         id={null}
         initial={{ ...draft.initial, invitati }}
         points={draft.points}
+        rich={draft.rich}
         selected={selected}
         people={people}
         cancelHref="/procese-verbale"

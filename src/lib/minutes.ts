@@ -1,4 +1,5 @@
 /** Meeting minutes (procese-verbale): points, closing sentence, numbering. Pure. */
+import { richFormatSummary, richToPlain, type RichDoc } from "./rich-text";
 
 export const DEFAULT_CLOSING = "Toate punctele au fost votate în unanimitate de membrii prezenți.";
 export const MAX_POINTS = 100;
@@ -41,4 +42,46 @@ export function pointsText(puncte: readonly string[]): string {
 /** "PV nr. 16/2026", or null for a meeting without a number. */
 export function minutesNumber(m: { nr: number | null; anRegistru: number | null }): string | null {
   return m.nr !== null && m.anRegistru !== null ? `PV nr. ${m.nr}/${m.anRegistru}` : null;
+}
+
+export interface MinutesRich {
+  puncteRich: RichDoc[] | null;
+  observatiiRich: RichDoc | null;
+  formulaRich: RichDoc | null;
+}
+
+/**
+ * The plain fields from the rich ones (the projection stored next to them): empty points are
+ * dropped with their document, an empty observation or closing sentence keeps no document (the
+ * closing sentence then falls back to the default). Fields without a rich version are left out.
+ */
+export function minutesFromRich(x: MinutesRich): Partial<{ puncte: string[]; observatii: string; formulaIncheiere: string }> & MinutesRich {
+  const out: ReturnType<typeof minutesFromRich> = { puncteRich: null, observatiiRich: null, formulaRich: null };
+  if (x.puncteRich) {
+    const kept = x.puncteRich.map((doc) => ({ doc, text: richToPlain(doc).trim() })).filter((p) => p.text);
+    out.puncte = kept.map((p) => p.text);
+    out.puncteRich = kept.length ? kept.map((p) => p.doc) : null;
+  }
+  if (x.observatiiRich) {
+    out.observatii = richToPlain(x.observatiiRich).trim();
+    out.observatiiRich = out.observatii ? x.observatiiRich : null;
+  }
+  if (x.formulaRich) {
+    const f = richToPlain(x.formulaRich).trim();
+    out.formulaIncheiere = f || DEFAULT_CLOSING;
+    out.formulaRich = f ? x.formulaRich : null;
+  }
+  return out;
+}
+
+/** "puncte: îngroșat, mare; observații: centru" — the formatting of the minutes, for the audit log. */
+export function minutesFormatting(x: { puncteRich?: unknown; observatiiRich?: unknown; formulaRich?: unknown }): string {
+  const points = Array.isArray(x.puncteRich) ? [...new Set((x.puncteRich as RichDoc[]).map(richFormatSummary).join(", ").split(", ").filter(Boolean))].join(", ") : "";
+  return [
+    points ? `puncte: ${points}` : "",
+    richFormatSummary(x.observatiiRich as RichDoc | null) ? `observații: ${richFormatSummary(x.observatiiRich as RichDoc)}` : "",
+    richFormatSummary(x.formulaRich as RichDoc | null) ? `încheiere: ${richFormatSummary(x.formulaRich as RichDoc)}` : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
 }

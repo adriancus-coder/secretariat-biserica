@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
+import { RichView } from "@/components/rich-editor/rich-view";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { quorumLine } from "@/lib/attendance";
@@ -127,11 +128,14 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <dd>
           {x.puncte.length ? (
             <ol className="list-decimal pl-5 space-y-1">
-              {x.puncte.map((p, i) => (
-                <li key={i} className="whitespace-pre-wrap">
-                  {p}
-                </li>
-              ))}
+              {x.puncte.map((p, i) => {
+                const doc = x.puncteRich?.[i];
+                return (
+                  <li key={i} className={doc ? undefined : "whitespace-pre-wrap"}>
+                    {doc ? <RichView doc={doc} /> : p}
+                  </li>
+                );
+              })}
             </ol>
           ) : (
             "—"
@@ -140,11 +144,11 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         {x.observatii ? (
           <>
             <dt>Observații</dt>
-            <dd className="whitespace-pre-wrap">{x.observatii}</dd>
+            <dd className={x.observatiiRich ? undefined : "whitespace-pre-wrap"}>{x.observatiiRich ? <RichView doc={x.observatiiRich} /> : x.observatii}</dd>
           </>
         ) : null}
         <dt>Formula de încheiere</dt>
-        <dd>{x.formulaIncheiere}</dd>
+        <dd>{x.formulaRich ? <RichView doc={x.formulaRich} /> : x.formulaIncheiere}</dd>
       </dl>
 
       <Signatures

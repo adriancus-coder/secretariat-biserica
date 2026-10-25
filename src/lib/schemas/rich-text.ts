@@ -108,3 +108,16 @@ export const richField = z
     }
     return r.doc;
   });
+
+/** A stored document (JSON column) read leniently: anything that fails the schema counts as none. */
+export function storedRich(value: unknown): RichDoc | null {
+  if (value === null || value === undefined) return null;
+  const r = checkRich(value);
+  return r.ok ? r.doc : null;
+}
+
+/** Stored documents of a list (the minutes' points), kept only when there is one per item. */
+export function storedRichList(value: unknown, length: number): (RichDoc | null)[] | null {
+  if (!Array.isArray(value) || value.length !== length) return null;
+  return value.map(storedRich);
+}

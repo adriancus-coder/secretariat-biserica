@@ -4,6 +4,7 @@ import { todayIso } from "@/lib/dates";
 import type { ImportDraft } from "@/lib/minutes-import";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { matchMeetingType, matchPersonName } from "@/lib/name-match";
+import { plainToRich } from "@/lib/rich-text";
 import type { MinutesDraft } from "@/lib/schemas/extract";
 import { loadAliasMap } from "./person-aliases";
 import { getChurch } from "./queries/church";
@@ -70,6 +71,8 @@ export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraf
       formulaIncheiere: draft.formulaIncheiere ?? DEFAULT_CLOSING,
     },
     points: draft.puncte,
+    // The review form edits rich text: Word and scanned minutes arrive as plain text, one paragraph per line.
+    rich: { puncte: draft.puncte.map(plainToRich), observatii: null, formula: plainToRich(draft.formulaIncheiere ?? DEFAULT_CLOSING) },
     selected: [...selected],
     approx,
     unmatched,

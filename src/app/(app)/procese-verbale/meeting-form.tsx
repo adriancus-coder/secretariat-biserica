@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PersonChecklist, type ChecklistOption } from "@/components/person-checklist";
+import { PreviewButton } from "@/components/rich-editor/preview-frame";
+import { RichEditor } from "@/components/rich-editor/rich-editor";
 import { Field, nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import type { PickedName } from "@/lib/minutes-import";
+import { plainToRich, type RichDoc } from "@/lib/rich-text";
 import { saveMeetingAction, type MeetingFormState } from "@/server/actions/meetings";
 import { PointsEditor } from "./points-editor";
 
@@ -18,6 +21,7 @@ export function MeetingForm({
   id,
   initial,
   points,
+  rich,
   selected,
   people,
   tipuri,
@@ -33,6 +37,8 @@ export function MeetingForm({
   initial: Record<string, string>;
   /** The meeting's points ("Puncte discutate și aprobate"). */
   points: string[];
+  /** The editor's documents, when the meeting has them (else built from the plain text). */
+  rich?: { puncte: (RichDoc | null)[] | null; observatii: RichDoc | null; formula: RichDoc | null };
   selected: string[];
   people: ChecklistOption[];
   tipuri: string[];
@@ -68,8 +74,15 @@ export function MeetingForm({
   const val = (k: string) => v[k] ?? "";
   const inRegister = people.filter((p) => !p.note).length;
 
+  const previewHost = `preview-${id ?? "nou"}`;
+  // Built once: the editors keep their own state afterwards (also across validation errors).
+  const [observatiiDoc] = useState(() => rich?.observatii ?? plainToRich(initial.observatii ?? ""));
+  const [formulaDoc] = useState(() => rich?.formula ?? plainToRich(initial.formulaIncheiere || DEFAULT_CLOSING));
+
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate className="edit-split">
+      <div className="edit-main">
+      {id ? <input type="hidden" name="previewId" value={id} /> : null}
       {onImported ? <input type="hidden" name="import" value="1" /> : null}
       {pickedNames?.length ? <input type="hidden" name="aliasuri" value={JSON.stringify(pickedNames)} /> : null}
       <div className="row2">
@@ -107,24 +120,26 @@ export function MeetingForm({
       </Field>
       <TextField name="invitati" label="Invitați / alte persoane" defaultValue={val("invitati")} error={e.invitati} />
       <TextAreaField name="ordine" label="Ordinea de zi" placeholder={"1. …\n2. …"} defaultValue={val("ordine")} error={e.ordine} />
-      <PointsEditor initial={points} error={e.puncte} />
-      <TextAreaField name="observatii" label="Observații (opțional)" defaultValue={val("observatii")} error={e.observatii} />
-      <TextField
-        name="formulaIncheiere"
-        label="Formula de încheiere"
-        defaultValue={val("formulaIncheiere") || DEFAULT_CLOSING}
-        error={e.formulaIncheiere}
-      />
+      <PointsEditor initial={points} initialRich={rich?.puncte} error={e.puncte} />
+      <Field label="Observații (opțional)" htmlFor={`obs-${previewHost}`} error={e.observatii ?? e.observatiiRich}>
+        <RichEditor name="observatiiRich" id={`obs-${previewHost}`} initial={observatiiDoc} label="Observații" minRows={3} invalid={Boolean(e.observatii ?? e.observatiiRich)} />
+      </Field>
+      <Field label="Formula de încheiere" htmlFor={`formula-${previewHost}`} error={e.formulaIncheiere ?? e.formulaRich}>
+        <RichEditor name="formulaRich" id={`formula-${previewHost}`} initial={formulaDoc} label="Formula de încheiere" minRows={2} invalid={Boolean(e.formulaIncheiere ?? e.formulaRich)} />
+      </Field>
       <FormMessage state={state} />
       <div className="actions">
         <Link href={cancelHref} className="btn btn-ghost">
           Renunță
         </Link>
         <div className="spacer" />
+        <PreviewButton action="/pdf/proces-verbal/previzualizare" frameHostId={previewHost} />
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Se salvează…" : "Salvează"}
         </button>
       </div>
+      </div>
+      <aside id={previewHost} className="edit-preview" hidden aria-label="Previzualizare" />
     </form>
   );
 }

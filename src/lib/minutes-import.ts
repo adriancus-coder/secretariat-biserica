@@ -1,3 +1,5 @@
+import type { RichDoc } from "./rich-text";
+
 /** The review draft of an imported minutes file (Word or scan), shared by the server and the review screen. Pure. */
 
 export interface UnmatchedName {
@@ -30,6 +32,8 @@ export interface ImportDraft {
   /** Meeting form values; `invitati` holds only the guests written as such. */
   initial: Record<string, string>;
   points: string[];
+  /** The same content as rich documents for the editor (plainToRich of the parsed text). */
+  rich?: { puncte: RichDoc[]; observatii: RichDoc | null; formula: RichDoc | null };
   /** Attendees matched to exactly one person. */
   selected: string[];
   /** The ones among `selected` matched approximately ("potrivit aproximativ"). */

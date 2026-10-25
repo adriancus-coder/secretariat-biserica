@@ -86,6 +86,7 @@ export const FIELD_LABELS: Record<string, string> = {
   puncte: "Puncte discutate și aprobate",
   observatii: "Observații",
   formulaIncheiere: "Formula de încheiere",
+  formatare: "Formatare",
   cap: "Capul familiei",
   observatie: "Observație",
   fisier: "Fișier",

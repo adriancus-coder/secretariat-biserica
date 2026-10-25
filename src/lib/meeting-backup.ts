@@ -1,9 +1,12 @@
-import { MAX_POINTS, POINT_MAX } from "./minutes";
+import { MAX_POINTS, minutesFromRich, POINT_MAX } from "./minutes";
+import type { RichDoc } from "./rich-text";
+import { storedRich } from "./schemas/rich-text";
 
 /**
  * Meeting fields beyond the prototype's JSON, on each meeting next to `prezenti`, `discutii` and
  * `hotarari`: `absenti` (person ids), `asteptati` (how many the attendance rule expected), `nr`,
- * `puncte`, `observatii` and `formulaIncheiere`. Files without them import unchanged (the points then
+ * `puncte`, `observatii` and `formulaIncheiere`, and their rich versions `puncteRich`, `observatiiRich`,
+ * `formulaRich`. Files without them import unchanged (the points then
  * come from `hotarari` / `discutii`, see splitDecisions).
  */
 
@@ -18,6 +21,10 @@ export interface MeetingExtra {
   puncte?: string[];
   observatii?: string;
   formulaIncheiere?: string;
+  /** The editor's documents (src/lib/rich-text.ts): one per point, the observations, the closing sentence. */
+  puncteRich?: RichDoc[];
+  observatiiRich?: RichDoc;
+  formulaRich?: RichDoc;
   /** Drawn signatures of persons present: PNG as base64, signing time as ISO. */
   semnaturi?: { persoanaId: string; imagine: string; semnatLa: string }[];
   /** Closed (read-only) minutes, with the closing time as ISO. */
@@ -37,6 +44,9 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.puncte) m.puncte = x.puncte;
     if (x.observatii !== undefined) m.observatii = x.observatii;
     if (x.formulaIncheiere !== undefined) m.formulaIncheiere = x.formulaIncheiere;
+    if (x.puncteRich) m.puncteRich = x.puncteRich;
+    if (x.observatiiRich) m.observatiiRich = x.observatiiRich;
+    if (x.formulaRich) m.formulaRich = x.formulaRich;
     if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
     if (x.asezare) m.asezare = x.asezare;
     if (x.inchisLa) m.inchisLa = x.inchisLa;
@@ -72,6 +82,26 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     if (obs !== undefined) x.observatii = obs;
     const formula = str(m.formulaIncheiere, 300);
     if (formula) x.formulaIncheiere = formula;
+    // Rich text: only documents that pass the editor's schema; they then decide the plain text
+    // (a file whose rich and plain texts disagree keeps the rich one, as the app would show it).
+    const richPoints = Array.isArray(m.puncteRich) && m.puncteRich.length <= MAX_POINTS ? m.puncteRich.map(storedRich) : null;
+    const rich = minutesFromRich({
+      puncteRich: richPoints && richPoints.every(Boolean) ? (richPoints as RichDoc[]) : null,
+      observatiiRich: storedRich(m.observatiiRich),
+      formulaRich: storedRich(m.formulaRich),
+    });
+    if (rich.puncte && rich.puncte.every((p) => p.length <= POINT_MAX)) {
+      x.puncte = rich.puncte;
+      if (rich.puncteRich) x.puncteRich = rich.puncteRich;
+    }
+    if (rich.observatii !== undefined && rich.observatii.length <= 20000) {
+      x.observatii = rich.observatii;
+      if (rich.observatiiRich) x.observatiiRich = rich.observatiiRich;
+    }
+    if (rich.formulaIncheiere !== undefined && rich.formulaIncheiere.length <= 300) {
+      x.formulaIncheiere = rich.formulaIncheiere;
+      if (rich.formulaRich) x.formulaRich = rich.formulaRich;
+    }
     if (Array.isArray(m.semnaturi)) {
       const list = m.semnaturi
         .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)

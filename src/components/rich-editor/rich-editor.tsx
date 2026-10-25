@@ -27,7 +27,8 @@ export function RichEditor({
   onChange,
   editorRef,
 }: {
-  name: string;
+  /** The hidden input carrying the JSON; omitted when the parent collects the documents (minutes points). */
+  name?: string;
   initial: RichDoc | null;
   /** Accessible name of the editable area. */
   label: string;
@@ -103,7 +104,7 @@ export function RichEditor({
 
   return (
     <div ref={wrapper} className={`rt${invalid ? " rt-invalid" : ""}`}>
-      <input type="hidden" name={name} value={json} />
+      {name ? <input type="hidden" name={name} value={json} /> : null}
       <Toolbar editor={editor} compact={compact} />
       {editor ? <EditorContent editor={editor} /> : <div className="rt-content rt-loading font-serif" style={{ minHeight: `${minRows * 1.6}em` }} aria-hidden="true" />}
     </div>

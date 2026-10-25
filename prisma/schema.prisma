@@ -395,6 +395,11 @@ model Meeting {
   puncte           String[] @default([])
   observatii       String   @default("")
   formulaIncheiere String   @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
+  /// Rich versions from the editor (src/lib/rich-text.ts); the plain fields above keep their projection.
+  /// puncteRich is an array with one document per point, in the order of `puncte`.
+  puncteRich       Json?
+  observatiiRich   Json?
+  formulaRich      Json?
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
   asteptati        Int?
   /// This meeting's own page layout (src/lib/page-layout.ts); null = the church's default.

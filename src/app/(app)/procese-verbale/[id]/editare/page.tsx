@@ -45,6 +45,7 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
           formulaIncheiere: m.formulaIncheiere,
         }}
         points={m.puncte}
+        rich={{ puncte: m.puncteRich, observatii: m.observatiiRich, formula: m.formulaRich }}
         selected={selected}
         people={people}
         tipuri={church.nomen.tipuriSedinte}

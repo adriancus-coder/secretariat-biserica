@@ -1,6 +1,7 @@
 import "server-only";
 import { fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import type { ChecklistOption } from "@/components/person-checklist";
 import type { Ctx } from "../session";
 
@@ -65,7 +66,15 @@ export async function getMeeting(ctx: Ctx, id: string) {
         email: p.person.email,
         signature: status === "PRESENT" ? (signed.get(p.person.id) ?? null) : null,
       }));
-  return { ...m, data: fromDbDate(m.data)!, prezenti: list("PRESENT"), absenti: list("ABSENT") };
+  return {
+    ...m,
+    data: fromDbDate(m.data)!,
+    prezenti: list("PRESENT"),
+    absenti: list("ABSENT"),
+    puncteRich: storedRichList(m.puncteRich, m.puncte.length),
+    observatiiRich: storedRich(m.observatiiRich),
+    formulaRich: storedRich(m.formulaRich),
+  };
 }
 
 /**

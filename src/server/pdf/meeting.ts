@@ -25,8 +25,11 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: P
       invitati: m.invitati,
       ordine: m.ordine,
       puncte: m.puncte,
+      puncteRich: m.puncteRich,
       observatii: m.observatii,
+      observatiiRich: m.observatiiRich,
       formulaIncheiere: m.formulaIncheiere,
+      formulaRich: m.formulaRich,
       cvorum: quorumLine(m.asteptati, m.absenti.length),
       semnaturi: m.prezenti.map((p) => ({
         name: `${p.prenume} ${p.nume}`.trim(),
