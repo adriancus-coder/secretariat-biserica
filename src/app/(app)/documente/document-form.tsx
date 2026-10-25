@@ -99,6 +99,7 @@ export function DocumentForm({
   return (
     <form onSubmit={onSubmit} noValidate className="edit-split">
       <div className="edit-main">
+      {id ? <input type="hidden" name="previewId" value={id} /> : null}
       <div className="row2">
         <SelectField
           name="tip"

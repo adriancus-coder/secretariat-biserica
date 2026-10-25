@@ -2,7 +2,8 @@ import { z } from "zod";
 import { documentPrint } from "@/domain/print";
 import { DOCUMENT_TYPES } from "@/lib/labels";
 import { richField } from "@/lib/schemas/rich-text";
-import { longText, optionalInt, requiredDate, requiredEnum } from "@/lib/validation";
+import { resolveLayout } from "@/lib/page-layout";
+import { idSchema, longText, optionalInt, requiredDate, requiredEnum } from "@/lib/validation";
 import { pdfResponse, renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
@@ -18,7 +19,8 @@ const previewSchema = z.object({
 /** Previzualizarea PDF a documentului din formular, fără salvare (ca butonul „Previzualizare” din prototip). */
 export async function POST(req: Request) {
   const ctx = await requireCtx("write");
-  const parsed = previewSchema.safeParse(Object.fromEntries(await req.formData()));
+  const form = await req.formData();
+  const parsed = previewSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) {
     return new Response("Date incomplete pentru previzualizare: completați tipul, data și conținutul.", {
       status: 400,
@@ -27,6 +29,10 @@ export async function POST(req: Request) {
   }
   const church = await getChurch(ctx);
   const { tip, nr, data, text, textRich } = parsed.data;
-  const pdf = await renderPdf(documentPrint({ tip, nr: nr ?? "____", data, text, textRich }, church));
+  // An existing document keeps its own page layout in the preview; a new one gets the church's default.
+  const previewId = idSchema.safeParse(form.get("previewId"));
+  const existing = previewId.success ? await ctx.db.document.findUnique({ where: { id: previewId.data }, select: { layout: true } }) : null;
+  const spec = documentPrint({ tip, nr: nr ?? "____", data, text, textRich }, church);
+  const pdf = await renderPdf({ ...spec, layout: resolveLayout(church.docLayout, existing?.layout) });
   return pdfResponse(pdf, "previzualizare.pdf");
 }

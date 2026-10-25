@@ -16,7 +16,9 @@ import {
   layoutSummary,
   type PageLayout,
 } from "@/lib/page-layout";
-import { saveMeetingLayoutAction } from "@/server/actions/meeting-layout";
+import type { FormState } from "@/lib/form-state";
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const MARGINS = [
   ["marginTop", "Sus"],
@@ -25,24 +27,42 @@ const MARGINS = [
   ["marginRight", "Dreapta"],
 ] as const;
 
+/** What the page lays out: the minutes or a registered document (the texts differ). */
+export interface LayoutSubject {
+  /** The PDF route of the record ("/pdf/proces-verbal/<id>"); its "/word" sibling gives the Word file. */
+  pdfBase: string;
+  /** "acest proces-verbal" / "acest document". */
+  name: string;
+  /** "procesele-verbale" / "documentele" (for the default). */
+  plural: string;
+  lockedNote?: string;
+}
+
+/**
+ * "Așezare în pagină" (format, margins, text size, line spacing, alignment, letterhead) with a live
+ * PDF preview; shared by the minutes and the registered documents.
+ */
 export function LayoutEditor({
-  meetingId,
+  subject,
+  action,
   initial,
   churchDefault,
   hasOwn,
   locked,
   canSetDefault,
 }: {
-  meetingId: string;
+  subject: LayoutSubject;
+  /** The save action, bound to the record; the pressed button's `scop` is "pv" (own), "implicit" (admin) or "resetare". */
+  action: (prev: FormState, formData: FormData) => Promise<FormState>;
   initial: PageLayout;
   churchDefault: PageLayout;
-  /** The meeting has its own layout (else it follows the church's default). */
+  /** The record has its own layout (else it follows the church's default). */
   hasOwn: boolean;
   locked: boolean;
   canSetDefault: boolean;
 }) {
   const [layout, setLayout] = useState<PageLayout>(initial);
-  const { state, pending, onSubmit } = useActionForm(saveMeetingLayoutAction.bind(null, meetingId));
+  const { state, pending, onSubmit } = useActionForm(action);
   const e = state.errors ?? {};
   const set = <K extends keyof PageLayout>(k: K, v: PageLayout[K]) => setLayout((l) => ({ ...l, [k]: v }));
   const valid =
@@ -58,19 +78,19 @@ export function LayoutEditor({
     const t = setTimeout(() => setPreviewQuery(query), 700);
     return () => clearTimeout(t);
   }, [query, valid]);
-  const previewUrl = `/pdf/proces-verbal/${meetingId}?previzualizare=1&${previewQuery}`;
+  const previewUrl = `${subject.pdfBase}?previzualizare=1&${previewQuery}`;
 
   return (
     <div className="layout-editor">
       <form onSubmit={onSubmit} noValidate className="card">
         <FormMessage state={state} />
-        {locked ? (
+        {locked && subject.lockedNote ? (
           <div className="alert mb-3" role="status">
-            Procesul-verbal este închis: așezarea se poate previzualiza, dar se salvează doar după redeschidere.
+            {subject.lockedNote}
           </div>
         ) : null}
         <p className="hint !mt-0 mb-3">
-          {hasOwn ? "Acest proces-verbal are o așezare proprie." : "Acest proces-verbal folosește așezarea implicită a bisericii."}
+          {hasOwn ? `${cap(subject.name)} are o așezare proprie.` : `${cap(subject.name)} folosește așezarea implicită a bisericii pentru ${subject.plural}.`}
         </p>
 
         <fieldset className="choices mb-3">
@@ -169,7 +189,7 @@ export function LayoutEditor({
 
         <div className="actions">
           <button type="submit" name="scop" value="pv" className="btn btn-primary" disabled={pending || locked}>
-            <Icon name="bifa" className="size-[18px]" /> Salvează pentru acest proces-verbal
+            <Icon name="bifa" className="size-[18px]" /> Salvează pentru {subject.name}
           </button>
           {canSetDefault ? (
             <button type="submit" name="scop" value="implicit" className="btn" disabled={pending}>
@@ -190,12 +210,12 @@ export function LayoutEditor({
           <a className="btn" href={previewUrl} target="_blank" rel="noopener">
             Previzualizează (PDF)
           </a>
-          <a className="btn" href={`/pdf/proces-verbal/${meetingId}/word?previzualizare=1&${previewQuery}`} download>
+          <a className="btn" href={`${subject.pdfBase}/word?previzualizare=1&${previewQuery}`} download>
             Deschide în Word
           </a>
         </div>
         {/* Phones show PDFs poorly inside a page: the button above opens the preview instead. */}
-        <iframe key={previewQuery} src={previewUrl} title="Previzualizarea procesului-verbal" className="layout-frame" />
+        <iframe key={previewQuery} src={previewUrl} title="Previzualizare PDF" className="layout-frame" />
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
-import { LayoutEditor } from "./layout-editor";
+import { LayoutEditor } from "@/components/layout-editor";
+import { saveMeetingLayoutAction } from "@/server/actions/meeting-layout";
 
 export const metadata: Metadata = { title: "Așezare în pagină" };
 
@@ -26,7 +27,13 @@ export default async function MeetingLayoutPage({ params }: PageProps<"/procese-
       <BackLink href={`/procese-verbale/${id}`}>{title}</BackLink>
       <PageHead title="Așezare în pagină" sub="Pentru PDF și pentru documentul Word" />
       <LayoutEditor
-        meetingId={id}
+        subject={{
+          pdfBase: `/pdf/proces-verbal/${id}`,
+          name: "acest proces-verbal",
+          plural: "procesele-verbale",
+          lockedNote: "Procesul-verbal este închis: așezarea se poate previzualiza, dar se salvează doar după redeschidere.",
+        }}
+        action={saveMeetingLayoutAction.bind(null, id)}
         initial={resolveLayout(church.pvLayout, m.layout)}
         churchDefault={church.pvLayout}
         hasOwn={m.layout !== null}

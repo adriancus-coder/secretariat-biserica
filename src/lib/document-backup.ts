@@ -1,13 +1,16 @@
+import { storedLayout, type PageLayout } from "./page-layout";
 import { richToPlain, type RichDoc } from "./rich-text";
 import { storedRich } from "./schemas/rich-text";
 
 /**
  * Document fields beyond the prototype's JSON, on each document next to `text`: `textRich` (the
- * editor's document). Files without it import unchanged. Pure.
+ * editor's document) and `asezare` (its own page layout). Files without them import unchanged. Pure.
  */
 
 export interface DocumentExtra {
   textRich?: RichDoc;
+  /** The document's own page layout; absent = the church's default. */
+  asezare?: PageLayout;
 }
 
 /** Adds the extra fields to the exported documents (in place). */
@@ -16,12 +19,13 @@ export function addDocumentExtras(documents: Record<string, Record<string, unkno
     const d = documents[id];
     if (!d) continue;
     if (x.textRich) d.textRich = x.textRich;
+    if (x.asezare) d.asezare = x.asezare;
   }
 }
 
 /**
- * Document id (as in the file) → its extra fields. Only documents that pass the editor's schema are
- * kept, and only when their plain projection is not empty; they then decide the plain text.
+ * Document id (as in the file) → its extra fields. Only rich documents that pass the editor's schema
+ * are kept, and only when their plain projection is not empty; they then decide the plain text.
  */
 export function parseDocumentExtras(root: unknown): Map<string, DocumentExtra> {
   const out = new Map<string, DocumentExtra>();
@@ -31,9 +35,12 @@ export function parseDocumentExtras(root: unknown): Map<string, DocumentExtra> {
   for (const [key, raw] of entries) {
     if (typeof raw !== "object" || raw === null) continue;
     const d = raw as Record<string, unknown>;
+    const x: DocumentExtra = {};
     const doc = storedRich(d.textRich);
     const plain = doc ? richToPlain(doc) : "";
-    if (doc && plain.trim() && plain.length <= 100000) out.set(String(d.id ?? key).trim(), { textRich: doc });
+    if (doc && plain.trim() && plain.length <= 100000) x.textRich = doc;
+    if (typeof d.asezare === "object" && d.asezare !== null) x.asezare = storedLayout(d.asezare);
+    if (x.textRich || x.asezare) out.set(String(d.id ?? key).trim(), x);
   }
   return out;
 }

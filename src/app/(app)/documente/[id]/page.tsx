@@ -35,6 +35,11 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           Deschide în Word
         </a>
         {canWrite ? (
+          <Link href={`/documente/${x.id}/asezare`} className="btn">
+            Așezare în pagină
+          </Link>
+        ) : null}
+        {canWrite ? (
           <Link href={`/documente/${x.id}/editare`} className="btn btn-primary">
             Editează
           </Link>

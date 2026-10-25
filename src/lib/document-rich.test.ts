@@ -34,5 +34,8 @@ describe("documents with rich text", () => {
   it("backup: valid, non-empty rich documents are read; others are ignored", () => {
     const x = parseDocumentExtras({ documents: { d1: { id: "d1", textRich: adeverinta }, d2: { id: "d2", textRich: { type: "doc", content: [{ type: "image" }] } }, d3: { id: "d3", textRich: plainToRich(" ") } } });
     expect([...x.keys()]).toEqual(["d1"]);
+    const l = parseDocumentExtras({ documents: { d4: { id: "d4", asezare: { format: "A5", marginTop: 99, fontSize: 11 } } } }).get("d4");
+    // Out-of-range values fall back to the standard layout.
+    expect(l?.asezare).toMatchObject({ format: "A5", fontSize: 11, marginTop: 22 });
   });
 });

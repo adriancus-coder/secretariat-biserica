@@ -29,6 +29,8 @@ export interface ChurchSettings extends ChurchInfo {
   extractEnabled: boolean;
   /** Default page layout of the printed minutes. */
   pvLayout: PageLayout;
+  /** Default page layout of the registered documents. */
+  docLayout: PageLayout;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -58,6 +60,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     privacyText: c.privacyText,
     extractEnabled: c.extractEnabled,
     pvLayout: storedLayout(c.pvLayout),
+    docLayout: storedLayout(c.docLayout),
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),

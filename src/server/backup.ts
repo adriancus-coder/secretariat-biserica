@@ -275,13 +275,16 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
   );
 }
 
-/** Document id → the fields beyond the prototype's format (the rich text), for the export. */
+/** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
 export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
-  const rows = await ctx.db.document.findMany({ where: { textRich: { not: Prisma.DbNull } }, select: { id: true, textRich: true } });
+  const rows = await ctx.db.document.findMany({
+    where: { OR: [{ textRich: { not: Prisma.DbNull } }, { layout: { not: Prisma.DbNull } }] },
+    select: { id: true, textRich: true, layout: true },
+  });
   const out = new Map<string, DocumentExtra>();
   for (const r of rows) {
     const doc = storedRich(r.textRich);
-    if (doc) out.set(r.id, { textRich: doc });
+    out.set(r.id, { ...(doc ? { textRich: doc } : {}), ...(r.layout ? { asezare: storedLayout(r.layout) } : {}) });
   }
   return out;
 }
@@ -713,7 +716,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       const { docs: numbered, renumbered } = normalizeDocumentNumbers(backup.documents, taken);
       if (renumbered.length) warnings.push(`Documente renumerotate (număr lipsă sau deja folosit): ${renumbered.join("; ")}.`);
       const docData = (x: BDocument) => {
-        const rich = extras.documents?.get(x.id)?.textRich;
+        const extra = extras.documents?.get(x.id);
+        const rich = extra?.textRich;
         return {
         tip: x.tip,
         nr: x.nr,
@@ -727,6 +731,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         // The rich text, when the file has a valid one, decides the plain text (as the app shows it).
         text: rich ? richToPlain(rich) : x.text,
         textRich: rich ? (rich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
+        layout: extra?.asezare ? ({ ...extra.asezare } as Prisma.InputJsonObject) : Prisma.DbNull,
         anRaport: x.tip === "raport" ? (x.an ?? Number(x.data.slice(0, 4))) : x.an,
         };
       };
