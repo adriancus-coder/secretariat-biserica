@@ -32,7 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user || !user.active) throw new InvalidCredentials();
         // Only the network part of the IP is kept (shown to administrators in Setări → Utilizatori).
         const ip = ipFromHeaders((n) => request.headers.get(n), process.env.AUTH_TRUST_HOST === "true");
-        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: truncateIp(ip === "necunoscut" ? null : ip) || null } });
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: truncateIp(ip) || null } });
         return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
       },
     }),

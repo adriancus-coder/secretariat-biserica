@@ -82,7 +82,7 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | --- | --- | --- |
 | `DATABASE_URL` | da | Conexiunea PostgreSQL a aplicației și a migrărilor. |
 | `AUTH_SECRET` | da | Cheia de semnare a sesiunilor (min. 32 de caractere aleatoare). |
-| `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. Numai atunci limitele pe adresă IP folosesc antetul `X-Forwarded-For`. |
+| `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. Numai atunci limitele pe adresă IP citesc adresa vizitatorului: `cf-connecting-ip`, `true-client-ip` sau ultima intrare din `X-Forwarded-For` (cea adăugată de proxy). |
 | `AUTH_URL` | în spatele unui proxy | Adresa publică pentru Auth.js, aceeași valoare ca `APP_URL`. Fără ea, în spatele unui proxy (ex. Render) Auth.js vede adresa internă a serverului (`https://localhost:10000`). |
 | `APP_URL` | recomandat | Adresa publică (ex. `https://secretariat.exemplu.ro`), folosită în linkurile de invitație și resetare a parolei. Necesară pentru trimiterea e-mailurilor. |
 | `ALLOW_SIGNUP` | nu | `true` permite înregistrarea de biserici noi din `/inregistrare`. Implicit doar prima biserică. |
@@ -241,6 +241,7 @@ Notes:
   - Verify the sender's domain in Resend (DNS records) before setting `EMAIL_FROM`.
   - Turn off click tracking for that domain, so that invitation and password-reset links reach users unchanged.
   - Until `RESEND_API_KEY` is set, the app works without e-mail: admins copy the links from Setări → Utilizatori.
+- **Client IP check.** The per-IP limits use `cf-connecting-ip`, `true-client-ip`, else the last `X-Forwarded-For` entry (the one Render adds). Manual test: run `for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code} " -H "X-Forwarded-For: 1.2.3.$i" -d "email=x@y.ro&password=x" https://<your-app>/api/auth/callback/credentials; done` — the forged first entry changes every time, yet the last requests still answer 429 (the limit counts your real address).
 - **Never run `npm run db:seed` against the production database**: it is for the demo church.
 - **Backups.** Render keeps database backups for paid instance types. Each church can also download its JSON copy from Setări → Copie de siguranță.
   - `ipAllowList: []` keeps the database private. To run `pg_dump` from your own machine, temporarily allow your IP address in the database's settings.
