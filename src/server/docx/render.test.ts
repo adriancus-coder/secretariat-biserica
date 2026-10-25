@@ -3,6 +3,8 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { parseMinutesText } from "@/domain/minutes-parse";
 import { meetingPrint, printApplicationPoster } from "@/domain/print";
+import JSZip from "jszip";
+import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { renderDocx } from "./render";
 
 const church = {
@@ -87,5 +89,21 @@ describe("Word (.docx) generation", () => {
     const png = new Uint8Array(await sharp({ create: { width: 64, height: 64, channels: 3, background: "#000" } }).png().toBuffer());
     const docx = await renderDocx(printApplicationPoster(church, "https://x.org/cerere/m", png));
     expect(await docxLines(docx)).toContain("Cerere de membru online");
+  });
+
+  it("follows the page layout: A5, margins, text size, no letterhead", async () => {
+    const spec = meetingPrint(
+      { nr: 2, tip: "Comitet", data: "2026-09-11", prezenti: [], absenti: [], invitati: "", ordine: "", puncte: ["Unu"], observatii: "", formulaIncheiere: "Gata." },
+      church,
+    );
+    const docx = await renderDocx({ ...spec, layout: { ...DEFAULT_LAYOUT, format: "A5", marginTop: 35, fontSize: 11, letterhead: false, align: "left" } });
+    const lines = await docxLines(docx);
+    expect(lines[0]).toBe("Proces verbal nr. 2");
+    const xml = (await JSZip.loadAsync(docx)).file("word/document.xml")!.async("string");
+    const doc = await xml;
+    expect(doc).toContain('<w:pgSz w:w="8390"'); // 148 mm
+    expect(doc).toContain('w:top="1984"'); // 35 mm
+    expect(doc).toContain('<w:sz w:val="22"/>'); // 11 pt
+    expect(doc).not.toContain('w:jc w:val="both"');
   });
 });

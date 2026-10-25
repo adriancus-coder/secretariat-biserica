@@ -2,6 +2,7 @@ import "server-only";
 import path from "node:path";
 import PDFDocument from "pdfkit";
 import type { PrintSpec, Signature } from "@/domain/print";
+import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import type { ChurchInfo } from "@/domain/types";
 
 /**
@@ -11,9 +12,6 @@ import type { ChurchInfo } from "@/domain/types";
  */
 
 const MM = 72 / 25.4;
-const MARGIN = { top: 22 * MM, bottom: 22 * MM, left: 20 * MM, right: 20 * MM };
-const BODY_SIZE = 13;
-const LINE_HEIGHT = 1.55;
 
 const FONT_DIR = path.join(process.cwd(), "assets", "fonts");
 const FONTS = {
@@ -29,8 +27,13 @@ export function letterheadDetails(c: ChurchInfo): string {
 }
 
 export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
+  // Page layout: the spec's (minutes), else the defaults; `size` alone is used by the poster.
+  const layout = spec.layout ?? { ...DEFAULT_LAYOUT, format: spec.size ?? DEFAULT_LAYOUT.format };
+  const MARGIN = { top: layout.marginTop * MM, bottom: layout.marginBottom * MM, left: layout.marginLeft * MM, right: layout.marginRight * MM };
+  const BODY_SIZE = layout.fontSize;
+  const LINE_HEIGHT = layout.lineHeight;
   const doc = new PDFDocument({
-    size: spec.size ?? "A4",
+    size: layout.format,
     margins: MARGIN,
     bufferPages: true,
     info: {
@@ -57,23 +60,28 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   const width = doc.page.width - MARGIN.left - MARGIN.right;
   const bottomLimit = () => doc.page.height - MARGIN.bottom;
 
-  /** Distanța suplimentară între rânduri pentru o înălțime de rând de 1,55. */
+  /** The extra space between lines for the layout's line height. */
   const lineGap = (size: number) => {
     doc.fontSize(size);
     return Math.max(0, size * LINE_HEIGHT - doc.currentLineHeight());
   };
 
-  // Antetul bisericii
-  doc.fillColor("#000").font("Serif-SemiBold").fontSize(18);
-  doc.text(`Biserica ${spec.church.nume}`.trim(), left, MARGIN.top, { width });
-  const details = letterheadDetails(spec.church);
-  if (details) {
-    doc.moveDown(0.15).font("Serif").fontSize(10.5).fillColor("#333").text(details, { width });
+  // Antetul bisericii (left out for paper with a printed letterhead: the top margin leaves its room)
+  if (layout.letterhead) {
+    doc.fillColor("#000").font("Serif-SemiBold").fontSize(18);
+    doc.text(`Biserica ${spec.church.nume}`.trim(), left, MARGIN.top, { width });
+    const details = letterheadDetails(spec.church);
+    if (details) {
+      doc.moveDown(0.15).font("Serif").fontSize(10.5).fillColor("#333").text(details, { width });
+    }
+    const lineY = doc.y + 8;
+    doc.moveTo(left, lineY).lineTo(left + width, lineY).lineWidth(2).strokeColor("#000").stroke();
+    doc.fillColor("#000");
+    doc.y = lineY + 24;
+  } else {
+    doc.fillColor("#000");
+    doc.y = MARGIN.top;
   }
-  const lineY = doc.y + 8;
-  doc.moveTo(left, lineY).lineTo(left + width, lineY).lineWidth(2).strokeColor("#000").stroke();
-  doc.fillColor("#000");
-  doc.y = lineY + 24;
 
   for (const block of spec.blocks) {
     switch (block.type) {
@@ -83,11 +91,12 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         break;
       }
       case "title": {
-        doc.font("Serif-SemiBold").fontSize(17);
+        const titleSize = BODY_SIZE + 4;
+        doc.font("Serif-SemiBold").fontSize(titleSize);
         doc.text(block.asWritten ? block.text : block.text.toLocaleUpperCase("ro-RO"), left, doc.y, {
           width,
           align: "center",
-          characterSpacing: block.asWritten ? 0 : 17 * 0.06,
+          characterSpacing: block.asWritten ? 0 : titleSize * 0.06,
         });
         doc.y += 18;
         break;
@@ -112,7 +121,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.font(r.bold ? "Serif-Bold" : "Serif").fontSize(BODY_SIZE);
           doc.text(r.text, {
             width,
-            align: "justify",
+            align: layout.align,
             lineGap: gap,
             continued: i < runs.length - 1,
           });

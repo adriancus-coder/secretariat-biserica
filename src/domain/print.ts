@@ -5,6 +5,7 @@
  */
 import { fmtL, memberName } from "@/lib/format";
 import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
+import type { PageLayout } from "@/lib/page-layout";
 import type { ChurchInfo } from "./types";
 
 export type Run = { text: string; bold?: boolean };
@@ -44,8 +45,10 @@ export interface PrintSpec {
   blocks: Block[];
   /** A line at the bottom of every page (e.g. "Proces-verbal închis la …"). */
   footer?: string;
-  /** Page size; A4 by default. */
+  /** Page size; A4 by default (ignored when `layout` is given). */
   size?: "A4" | "A5";
+  /** Margins, text size, line height, alignment, letterhead (the minutes); defaults otherwise. */
+  layout?: PageLayout;
 }
 
 export const b = (text: string): Run => ({ text, bold: true });

@@ -3,6 +3,7 @@ import { cache } from "react";
 import type { ChurchInfo } from "@/domain/types";
 import { resolveAttendanceRules, type AttendanceRule } from "@/lib/attendance";
 import { resolveNomen, type Nomenclatures } from "@/lib/labels";
+import { storedLayout, type PageLayout } from "@/lib/page-layout";
 import { prisma } from "../db";
 import type { Ctx } from "../session";
 
@@ -26,6 +27,8 @@ export interface ChurchSettings extends ChurchInfo {
   privacyText: string;
   /** Reading scans with Claude accepted by an administrator. */
   extractEnabled: boolean;
+  /** Default page layout of the printed minutes. */
+  pvLayout: PageLayout;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -54,6 +57,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     require2fa: c.require2fa,
     privacyText: c.privacyText,
     extractEnabled: c.extractEnabled,
+    pvLayout: storedLayout(c.pvLayout),
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),

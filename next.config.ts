@@ -6,7 +6,6 @@ import type { NextConfig } from "next";
  */
 const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()" },
@@ -30,7 +29,12 @@ const nextConfig: NextConfig = {
     proxyClientMaxBodySize: "25mb",
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Pages are never framed; PDFs only by the app itself (the "Așezare în pagină" preview).
+      { source: "/((?!pdf/).*)", headers: [{ key: "X-Frame-Options", value: "DENY" }] },
+      { source: "/pdf/:path*", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }] },
+    ];
   },
 };
 

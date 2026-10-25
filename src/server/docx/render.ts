@@ -17,6 +17,7 @@ import {
   type ParagraphChild,
 } from "docx";
 import type { Block, PrintSpec, Signature } from "@/domain/print";
+import { DEFAULT_LAYOUT, type PageLayout } from "@/lib/page-layout";
 import { letterheadDetails } from "../pdf/render";
 
 /**
@@ -28,13 +29,10 @@ import { letterheadDetails } from "../pdf/render";
 
 const FONT = "Times New Roman";
 const BODY_PT = 12;
-const LINE = 1.4;
-const MM = { top: 22, bottom: 22, left: 20, right: 20 };
 const PAGE_MM = { A4: { width: 210, height: 297 }, A5: { width: 148, height: 210 } };
 
-/** Half-points (docx font sizes) and line spacing in 240ths of a line. */
+/** Half-points (docx font sizes). */
 const hp = (pt: number) => Math.round(pt * 2);
-const lineSpacing = { line: Math.round(LINE * 240) };
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } as const;
 const NO_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER, insideHorizontal: NO_BORDER, insideVertical: NO_BORDER };
 
@@ -64,16 +62,21 @@ function twoColumns(left: Paragraph[], right: Paragraph[]): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: NO_BORDERS, rows: [new TableRow({ children: [cell(left), gap, cell(right)] })] });
 }
 
-function blockToDocx(block: Block): (Paragraph | Table)[] {
+function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
+  // Body text in the layout's size; line spacing in 240ths of a line.
+  const t = (s: string, o: Parameters<typeof text>[1] = {}) => text(s, { ...o, size: o.size ?? L.fontSize });
+  const ln = (s: string) => lines(s, { size: L.fontSize });
+  const lineSpacing = { line: Math.round(L.lineHeight * 240) };
+  const body = L.align === "justify" ? AlignmentType.JUSTIFIED : AlignmentType.LEFT;
   switch (block.type) {
     case "nr":
-      return [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 240 }, children: [text(block.text)] })];
+      return [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 240 }, children: [t(block.text)] })];
     case "title":
       return [
         new Paragraph({
           alignment: AlignmentType.CENTER,
           spacing: { before: 120, after: 240 },
-          children: [text(block.text, { bold: true, size: 16, allCaps: !block.asWritten })],
+          children: [t(block.text, { bold: true, size: L.fontSize + 4, allCaps: !block.asWritten })],
         }),
       ];
     case "para":
@@ -82,38 +85,38 @@ function blockToDocx(block: Block): (Paragraph | Table)[] {
         const all = block.runs.map((r) => r.text).join("").split("\n");
         return all.map(
           (line, i) =>
-            new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...lineSpacing, after: i === all.length - 1 ? 120 : 0 }, children: [text(line)] }),
+            new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...lineSpacing, after: i === all.length - 1 ? 120 : 0 }, children: [t(line)] }),
         );
       }
       return [
         new Paragraph({
-          alignment: AlignmentType.JUSTIFIED,
+          alignment: body,
           spacing: { ...lineSpacing, after: 120 },
-          children: block.runs.map((r) => text(r.text, { bold: r.bold })),
+          children: block.runs.map((r) => t(r.text, { bold: r.bold })),
         }),
       ];
     case "list":
       return block.items.map(
         (item, i) =>
           new Paragraph({
-            alignment: AlignmentType.JUSTIFIED,
+            alignment: body,
             spacing: { ...lineSpacing, after: 60 },
             indent: { left: convertMillimetersToTwip(8), hanging: convertMillimetersToTwip(6) },
-            children: [text(`${block.ordered ? `${i + 1}.` : "•"}\t`), ...lines(item)],
+            children: [t(`${block.ordered ? `${i + 1}.` : "•"}\t`), ...ln(item)],
             tabStops: [{ type: "left", position: convertMillimetersToTwip(8) }],
           }),
       );
     case "signatures": {
       const col = (s: Signature) => [
-        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480 }, children: [text(s.label)] }),
-        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600 }, border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 4 } }, children: [text(s.name || " ", { size: 11 })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480 }, children: [t(s.label)] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600 }, border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 4 } }, children: [t(s.name || " ", { size: 11 })] }),
       ];
       return [twoColumns(col(block.left), col(block.right))];
     }
     case "signed": {
       const col = (s: Signature) => [
-        new Paragraph({ spacing: { before: 240 }, children: [text(`${s.label}, ${s.name}`.replace(/, $/, ","))] }),
-        new Paragraph({ spacing: { before: 120, after: 600 }, children: [text("Semnătura")] }),
+        new Paragraph({ spacing: { before: 240 }, children: [t(`${s.label}, ${s.name}`.replace(/, $/, ","))] }),
+        new Paragraph({ spacing: { before: 120, after: 600 }, children: [t("Semnătura")] }),
         new Paragraph({ border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 1 } }, children: [] }),
       ];
       return [twoColumns(col(block.left), col(block.right))];
@@ -124,17 +127,17 @@ function blockToDocx(block: Block): (Paragraph | Table)[] {
       const cell = (children: Paragraph[], pct: number) => new TableCell({ children, width: { size: pct, type: WidthType.PERCENTAGE }, borders });
       const header = new TableRow({
         tableHeader: true,
-        children: [cell([new Paragraph({ children: [text("Nume", { bold: true, size: 11 })] })], 50), cell([new Paragraph({ children: [text("Semnătura", { bold: true, size: 11 })] })], 50)],
+        children: [cell([new Paragraph({ children: [t("Nume", { bold: true, size: 11 })] })], 50), cell([new Paragraph({ children: [t("Semnătura", { bold: true, size: 11 })] })], 50)],
       });
       const rows = block.rows.map(
         (r) =>
           new TableRow({
             cantSplit: true,
             children: [
-              cell([new Paragraph({ spacing: { before: 200, after: 200 }, children: [text(r.name)] })], 50),
+              cell([new Paragraph({ spacing: { before: 200, after: 200 }, children: [t(r.name)] })], 50),
               cell(
                 r.image
-                  ? [new Paragraph({ children: [image(r.image, 180, 40)] }), new Paragraph({ children: [text(`semnat ${r.signedAt ?? ""}`, { size: 8, color: "555555" })] })]
+                  ? [new Paragraph({ children: [image(r.image, 180, 40)] }), new Paragraph({ children: [t(`semnat ${r.signedAt ?? ""}`, { size: 8, color: "555555" })] })]
                   : [new Paragraph({ spacing: { before: 400 }, children: [] })],
                 50,
               ),
@@ -144,7 +147,7 @@ function blockToDocx(block: Block): (Paragraph | Table)[] {
       return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }), new Paragraph({ spacing: { after: 120 }, children: [] })];
     }
     case "centered":
-      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [text(block.text, { bold: block.bold, size: block.size })] })];
+      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [t(block.text, { bold: block.bold, size: block.size })] })];
     case "image":
       return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [image(block.png, Math.round(block.width * 1.333), Math.round(block.width * 1.333))] })];
   }
@@ -152,9 +155,10 @@ function blockToDocx(block: Block): (Paragraph | Table)[] {
 
 /** The printed document as a .docx file. */
 export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
-  const page = PAGE_MM[spec.size ?? "A4"];
+  const L = spec.layout ?? { ...DEFAULT_LAYOUT, format: spec.size ?? DEFAULT_LAYOUT.format, fontSize: BODY_PT };
+  const page = PAGE_MM[L.format];
   const details = letterheadDetails(spec.church);
-  const letterhead = [
+  const letterhead = !L.letterhead ? [] : [
     new Paragraph({ children: [text(`Biserica ${spec.church.nume}`.trim(), { bold: true, size: 18 })] }),
     ...(details ? [new Paragraph({ children: [text(details, { size: 10.5, color: "333333" })] })] : []),
     new Paragraph({ spacing: { after: 360 }, border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000", space: 4 } }, children: [] }),
@@ -173,22 +177,22 @@ export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
   const doc = new Document({
     creator: "Secretariat Biserică",
     title: spec.title,
-    styles: { default: { document: { run: { font: FONT, size: hp(BODY_PT) } } } },
+    styles: { default: { document: { run: { font: FONT, size: hp(L.fontSize) } } } },
     sections: [
       {
         properties: {
           page: {
             size: { width: convertMillimetersToTwip(page.width), height: convertMillimetersToTwip(page.height) },
             margin: {
-              top: convertMillimetersToTwip(MM.top),
-              bottom: convertMillimetersToTwip(MM.bottom),
-              left: convertMillimetersToTwip(MM.left),
-              right: convertMillimetersToTwip(MM.right),
+              top: convertMillimetersToTwip(L.marginTop),
+              bottom: convertMillimetersToTwip(L.marginBottom),
+              left: convertMillimetersToTwip(L.marginLeft),
+              right: convertMillimetersToTwip(L.marginRight),
             },
           },
         },
         footers: { default: footer },
-        children: [...letterhead, ...spec.blocks.flatMap(blockToDocx)],
+        children: [...letterhead, ...spec.blocks.flatMap((b) => blockToDocx(b, L))],
       },
     ],
   });

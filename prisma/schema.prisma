@@ -55,6 +55,8 @@ model Church {
   gradeRudenie     String[] @default([])
   /// Attendance rule per meeting type: { "<tip>": "TOTI" | "COMITET" | "MANUAL" }. Missing = default (src/lib/attendance.ts).
   regulaPrezenta   Json     @default("{}")
+  /// Default page layout of the printed minutes (src/lib/page-layout.ts); {} = the built-in layout.
+  pvLayout         Json     @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -393,6 +395,8 @@ model Meeting {
   formulaIncheiere String   @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
   asteptati        Int?
+  /// This meeting's own page layout (src/lib/page-layout.ts); null = the church's default.
+  layout           Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

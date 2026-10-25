@@ -7,6 +7,8 @@ import { MAX_POINTS, POINT_MAX } from "./minutes";
  * come from `hotarari` / `discutii`, see splitDecisions).
  */
 
+import { storedLayout, type PageLayout } from "./page-layout";
+
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export interface MeetingExtra {
@@ -20,6 +22,8 @@ export interface MeetingExtra {
   semnaturi?: { persoanaId: string; imagine: string; semnatLa: string }[];
   /** Closed (read-only) minutes, with the closing time as ISO. */
   inchisLa?: string | null;
+  /** The meeting's own page layout (src/lib/page-layout.ts); absent = the church's default. */
+  asezare?: PageLayout;
 }
 
 /** Adds the extra fields to the exported meetings (in place). */
@@ -34,6 +38,7 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.observatii !== undefined) m.observatii = x.observatii;
     if (x.formulaIncheiere !== undefined) m.formulaIncheiere = x.formulaIncheiere;
     if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
+    if (x.asezare) m.asezare = x.asezare;
     if (x.inchisLa) m.inchisLa = x.inchisLa;
   }
 }
@@ -83,7 +88,8 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
       if (list.length) x.semnaturi = list;
     }
     if (typeof m.inchisLa === "string" && !Number.isNaN(Date.parse(m.inchisLa))) x.inchisLa = m.inchisLa;
-    if (x.absenti.length || x.asteptati !== null || x.nr || x.puncte || x.observatii !== undefined || x.formulaIncheiere || x.semnaturi || x.inchisLa) {
+    if (typeof m.asezare === "object" && m.asezare !== null) x.asezare = storedLayout(m.asezare);
+    if (x.absenti.length || x.asteptati !== null || x.nr || x.puncte || x.observatii !== undefined || x.formulaIncheiere || x.semnaturi || x.inchisLa || x.asezare) {
       out.set(String(m.id ?? key).trim(), x);
     }
   }

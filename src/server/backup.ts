@@ -1,5 +1,6 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { BAlias } from "@/lib/aliases-backup";
+import { storedLayout } from "@/lib/page-layout";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
@@ -226,6 +227,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       puncte: true,
       observatii: true,
       formulaIncheiere: true,
+      layout: true,
       locked: true,
       lockedAt: true,
       prezenti: { where: { status: "ABSENT" }, select: { personId: true } },
@@ -248,6 +250,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
           semnatLa: s.signedAt.toISOString(),
         })),
         inchisLa: m.locked ? (m.lockedAt ?? new Date()).toISOString() : null,
+        ...(m.layout ? { asezare: storedLayout(m.layout) } : {}),
       },
     ]),
   );
@@ -607,6 +610,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           asteptati: extra?.asteptati ?? null,
           locked: Boolean(extra?.inchisLa),
           lockedAt: extra?.inchisLa ? new Date(extra.inchisLa) : null,
+          ...(extra?.asezare ? { layout: { ...extra.asezare } as Prisma.InputJsonObject } : {}),
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
         const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];

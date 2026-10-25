@@ -1358,4 +1358,31 @@
     width: 100%;
     height: auto;
   }
+
+  /* "Așezare în pagină": the form, and the PDF preview beside it on wide screens. */
+  .layout-editor {
+    display: grid;
+    gap: 16px;
+    align-items: start;
+  }
+  .layout-frame {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .layout-editor {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .layout-preview {
+      position: sticky;
+      top: 16px;
+    }
+    .layout-frame {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 120px);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+  }
 }

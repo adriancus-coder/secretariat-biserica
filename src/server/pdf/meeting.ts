@@ -2,6 +2,7 @@ import "server-only";
 import { meetingPrint, type PrintSpec } from "@/domain/print";
 import { quorumLine } from "@/lib/attendance";
 import { dotDateTime } from "@/lib/dates";
+import { resolveLayout, type PageLayout } from "@/lib/page-layout";
 import { renderDocx } from "../docx/render";
 import type { ChurchSettings } from "../queries/church";
 import type { getMeeting } from "../queries/meetings";
@@ -9,9 +10,12 @@ import { renderPdf } from "./render";
 
 type MeetingRecord = NonNullable<Awaited<ReturnType<typeof getMeeting>>>;
 
-/** The minutes as a print spec: rendered as PDF (/pdf/proces-verbal/[id], e-mails) or as Word. */
-export function meetingSpec(m: MeetingRecord, church: ChurchSettings): PrintSpec {
-  return meetingPrint(
+/**
+ * The minutes as a print spec: rendered as PDF (/pdf/proces-verbal/[id], e-mails) or as Word, in the
+ * meeting's page layout (its own, else the church's default); `layout` previews unsaved changes.
+ */
+export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: PageLayout): PrintSpec {
+  const spec = meetingPrint(
     {
       nr: m.nr,
       tip: m.tip,
@@ -33,16 +37,17 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings): PrintSpec
     },
     church,
   );
+  return { ...spec, layout: layout ?? resolveLayout(church.pvLayout, m.layout) };
 }
 
 /** The minutes PDF, as served by /pdf/proces-verbal/[id] and attached to e-mails. */
-export function renderMeetingPdf(m: MeetingRecord, church: ChurchSettings): Promise<Buffer> {
-  return renderPdf(meetingSpec(m, church));
+export function renderMeetingPdf(m: MeetingRecord, church: ChurchSettings, layout?: PageLayout): Promise<Buffer> {
+  return renderPdf(meetingSpec(m, church, layout));
 }
 
 /** The minutes as an editable Word file (/pdf/proces-verbal/[id]/word), same content as the PDF. */
-export function renderMeetingDocx(m: MeetingRecord, church: ChurchSettings): Promise<Buffer> {
-  return renderDocx(meetingSpec(m, church));
+export function renderMeetingDocx(m: MeetingRecord, church: ChurchSettings, layout?: PageLayout): Promise<Buffer> {
+  return renderDocx(meetingSpec(m, church, layout));
 }
 
 /** `PV-<nr>-<AAAA>-<church slug>.pdf`; unnumbered minutes use the date: `PV-<AAAA-LL-ZZ>-<slug>.pdf`. */

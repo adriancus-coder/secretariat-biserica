@@ -28,6 +28,7 @@ export const FIELD_LABELS: Record<string, string> = {
   dataBotez: "Botez în apă",
   botezAn: "Anul botezului",
   formaNumelui: "Altă formă a numelui",
+  asezare: "Așezare în pagină",
   botezBiserica: "Biserica botezului",
   botezLocalitate: "Localitatea botezului",
   botezOficiant: "Botez oficiat de",

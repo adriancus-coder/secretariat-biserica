@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { documentPrint, meetingPrint } from "@/domain/print";
+import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { pdfFileName, renderPdf } from "./render";
 
 const church = {
@@ -80,5 +81,15 @@ describe("generarea PDF", () => {
   it("nume de fișier fără diacritice", () => {
     expect(pdfFileName("Proces-verbal 2026-09-18 — Ședință")).toBe("proces-verbal-2026-09-18-sedinta.pdf");
     expect(pdfFileName("")).toBe("document.pdf");
+  });
+
+  it("follows the page layout: A5, no letterhead, other margins", async () => {
+    const layout = { ...DEFAULT_LAYOUT, format: "A5" as const, letterhead: false, marginTop: 35, fontSize: 11 };
+    const spec = { ...documentPrint({ tip: "scrisoare", nr: 1, data: "2026-02-01", text: "Text" }, church), layout };
+    const s = (await renderPdf(spec)).toString("latin1");
+    expect(s).toMatch(/MediaBox \[0 0 419\.53 595\.28\]/);
+    const withHead = (await renderPdf({ ...spec, layout: { ...layout, letterhead: true } })).toString("latin1");
+    // Without the letterhead the church name is not drawn (the PDF is smaller).
+    expect(s.length).toBeLessThan(withHead.length);
   });
 });
