@@ -59,6 +59,10 @@ export interface MeetingPrint {
   hotarari: string;
   /** Numele prezenților, în ordine alfabetică. */
   prezenti: string[];
+  /** Expected by the type's attendance rule but not present, in alphabetical order. */
+  absenti?: string[];
+  /** "Prezenți n din m (p %)", for the types with an attendance rule; omitted otherwise. */
+  cvorum?: string | null;
 }
 
 /** Procesul-verbal în formatul oficial (printMeeting din prototip). */
@@ -71,9 +75,11 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     para(
       b(`Prezenți (${x.prezenti.length}):`),
       ` ${x.prezenti.join(", ") || "—"}.`,
+      ...(x.absenti?.length ? [b(` Absenți (${x.absenti.length}):`), ` ${x.absenti.join(", ")}.`] : []),
       ...(x.invitati ? [b(" Invitați:"), ` ${x.invitati}.`] : []),
     ),
   ];
+  if (x.cvorum) blocks.push(para(`${x.cvorum}.`));
   if (x.ordine) blocks.push(para(b("Ordinea de zi:")), pre(x.ordine));
   if (x.discutii) blocks.push(para(b("Discuții:")), pre(x.discutii));
   if (x.hotarari) blocks.push(para(b("Hotărâri:")), pre(x.hotarari));

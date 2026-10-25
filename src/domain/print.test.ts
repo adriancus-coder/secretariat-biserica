@@ -12,6 +12,30 @@ const church = {
 };
 
 describe("documente tipărite", () => {
+  it("procesul-verbal listează absenții și cvorumul când tipul are regulă de prezență", () => {
+    const spec = meetingPrint(
+      {
+        titlu: "",
+        tip: "Adunare generală",
+        data: "2026-09-18",
+        ora: "",
+        loc: "",
+        presedinte: "",
+        invitati: "Lucia Avram",
+        ordine: "",
+        discutii: "",
+        hotarari: "",
+        prezenti: ["Ionescu Mihai", "Popescu Ion"],
+        absenti: ["Pop Ioana"],
+        cvorum: "Prezenți 2 din 3 (67 %)",
+      },
+      church,
+    );
+    const lines = printToText(spec).split("\n");
+    expect(lines[3]).toBe("Prezenți (2): Ionescu Mihai, Popescu Ion. Absenți (1): Pop Ioana. Invitați: Lucia Avram.");
+    expect(lines[4]).toBe("Prezenți 2 din 3 (67 %).");
+  });
+
   it("procesul-verbal are formularea oficială din prototip", () => {
     const spec = meetingPrint(
       {

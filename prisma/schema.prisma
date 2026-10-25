@@ -44,6 +44,8 @@ model Church {
   tipuriEvenimente String[] @default([])
   tipuriMentiuni   String[] @default([])
   gradeRudenie     String[] @default([])
+  /// Attendance rule per meeting type: { "<tip>": "TOTI" | "COMITET" | "MANUAL" }. Missing = default (src/lib/attendance.ts).
+  regulaPrezenta   Json     @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -273,6 +275,8 @@ model Meeting {
   ordine     String   @default("")
   discutii   String   @default("")
   hotarari   String   @default("")
+  /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
+  asteptati  Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -283,11 +287,18 @@ model Meeting {
   @@map("meetings")
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+/// A person on a meeting's attendance list: present, or absent (expected by the type's rule but not present).
 model MeetingAttendee {
   meetingId String
   personId  String
-  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  person    Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  meeting   Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  person    Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  status    AttendanceStatus @default(PRESENT)
 
   @@id([meetingId, personId])
   @@index([personId])

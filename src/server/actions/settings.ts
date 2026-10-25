@@ -3,9 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { parsePrototypeJson } from "@/domain/backup";
 import { parseApplicationsJson } from "@/lib/application-backup";
+import { parseMeetingAttendance } from "@/lib/attendance-backup";
 import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
-import { churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
+import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
+import { attendanceRulesText, resolveAttendanceRules } from "@/lib/attendance";
+import { NOMEN_DEFAULTS } from "@/lib/labels";
 import { writeAudit } from "../audit";
 import { importBackup, type ImportMode } from "../backup";
 import { prisma } from "../db";
@@ -17,20 +20,25 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
   return runFormAction(formData, async () => {
     const ctx = await actionCtx("admin");
     const input = parseOrThrow(churchSettingsSchema, Object.fromEntries(formData));
+    // Rules only for the meeting types being saved (an empty list means the default types).
+    const tipuri = input.tipuriSedinte.length ? input.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte;
+    const regulaPrezenta = attendanceRulesInput(formData, tipuri);
     await prisma.$transaction(async (tx) => {
       // The slug is the public address of the application form: unique across all churches.
       const clash = await tx.church.findFirst({ where: { slug: input.slug, id: { not: ctx.user.churchId } }, select: { id: true } });
       if (clash) throw new ValidationError({ slug: "Această adresă este deja folosită de altă biserică. Alegeți alta." });
       const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
-      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: input });
+      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, regulaPrezenta } });
+      const rulesView = (c: typeof before) =>
+        attendanceRulesText(resolveAttendanceRules(c.tipuriSedinte.length ? c.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte, c.regulaPrezenta));
       await writeAudit(tx, ctx.user, {
         entity: "SETTINGS",
         entityId: ctx.user.churchId,
         entityLabel: after.nume,
         action: "UPDATE",
         fields: SETTINGS_FIELDS,
-        before,
-        after,
+        before: { ...before, regulaPrezenta: rulesView(before) },
+        after: { ...after, regulaPrezenta: rulesView(after) },
       });
     });
     revalidatePath("/", "layout");
@@ -77,7 +85,7 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       details = roles.errors;
       throw new ActionError(`Importul a fost oprit: ${roles.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles });
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, attendance: parseMeetingAttendance(raw) });
     details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {

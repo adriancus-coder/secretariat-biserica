@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { meetingPrint } from "@/domain/print";
+import { quorumLine } from "@/lib/attendance";
 import { pdfFileName, pdfResponse, renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
 import { getMeeting } from "@/server/queries/meetings";
@@ -24,6 +25,8 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/proces-v
         discutii: m.discutii,
         hotarari: m.hotarari,
         prezenti: m.prezenti.map((p) => p.name),
+        absenti: m.absenti.map((p) => p.name),
+        cvorum: quorumLine(m.asteptati, m.absenti.length),
       },
       church,
     ),

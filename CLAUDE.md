@@ -250,6 +250,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - The person form sends the roles as JSON in the hidden field `functii` (`personRolesSchema`); `assertPersonRoles` checks the ids belong to the church. The audit log stores them as the text field `functii`.
 - Export/import: `roles` collection and `functii` (by name) on members, in `src/lib/roles-backup.ts`.
 
+### Meeting attendance
+
+- Each meeting type has a rule (`Church.regulaPrezenta`, `src/lib/attendance.ts`): `TOTI` (members in the record), `COMITET` (holders of an active committee role) or `MANUAL`. Defaults: Adunare generală → TOTI, Comitet and Frați slujitori → COMITET.
+- `MeetingAttendee.status` is PRESENT or ABSENT. Anything that lists the persons present must filter on `status: "PRESENT"`.
+- On save, `expectedAttendees` (as of the meeting date) minus the persons present become ABSENT rows, and `Meeting.asteptati` stores the expected count. The quorum line uses it, so meetings saved before the rules show no quorum.
+- Export/import: `absenti` and `asteptati` on each meeting (`src/lib/attendance-backup.ts`).
+
 ### Database and migrations
 
 - Never edit an applied migration: Prisma checks its checksum. Add a new migration instead. Example: `note_search` has a wrong backfill, which `note_search_fix` corrects.

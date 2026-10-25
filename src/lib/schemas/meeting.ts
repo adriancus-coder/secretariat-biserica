@@ -9,6 +9,7 @@ export const MEETING_FIELDS = [
   "loc",
   "presedinte",
   "prezenti",
+  "absenti",
   "invitati",
   "ordine",
   "discutii",

@@ -6,6 +6,7 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
+import { ATTENDANCE_RULE_LABEL, ATTENDANCE_RULES, type AttendanceRule } from "@/lib/attendance";
 import type { Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 
@@ -14,11 +15,13 @@ type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pas
 export function SettingsForm({
   church,
   nomen,
+  attendanceRules,
   formUrl,
   readOnly,
 }: {
   church: Record<ChurchTextFields, string> & { applicationsOpen: boolean };
   nomen: Nomenclatures;
+  attendanceRules: Record<string, AttendanceRule>;
   /** Full address of the public application form, for the copy button. */
   formUrl: string;
   readOnly: boolean;
@@ -84,6 +87,25 @@ export function SettingsForm({
         <h3>Nomenclatoare</h3>
         <div className="hint mb-2.5">Câte o valoare pe linie. O listă goală revine la valorile implicite.</div>
         {nom("tipuriSedinte", "Tipuri de ședințe", nomen.tipuriSedinte)}
+        <div className="attendance-rules mb-3.5">
+          <div className="text-[13px] font-medium text-ink-2 mb-1">Lista de prezență la ședința nouă</div>
+          <p className="hint !mt-0 mb-2">
+            „Toți membrii” bifează membrii în evidență, „Comitetul” pe cei cu o funcție din comitet; cei bifați automat și debifați apar ca
+            absenți. Un tip nou primește regula după salvare.
+          </p>
+          {nomen.tipuriSedinte.map((t) => (
+            <label key={t} className="attendance-rule">
+              <span className="min-w-0">{t}</span>
+              <select name={`regula:${t}`} defaultValue={v?.[`regula:${t}`] ?? attendanceRules[t] ?? "MANUAL"} aria-label={`Prezența la ${t}`}>
+                {ATTENDANCE_RULES.map((r) => (
+                  <option key={r} value={r}>
+                    {ATTENDANCE_RULE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
         {nom("tipuriEvenimente", "Tipuri de evenimente", nomen.tipuriEvenimente)}
         {nom("tipuriMentiuni", "Tipuri de mențiuni", nomen.tipuriMentiuni)}
         {nom("gradeRudenie", "Grade de rudenie", nomen.rudenie)}

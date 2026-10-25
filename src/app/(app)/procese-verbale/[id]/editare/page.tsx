@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
+import { attendancePrefill } from "@/server/queries/attendance";
 import { getChurch } from "@/server/queries/church";
 import { attendeeOptions, getMeeting } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
@@ -14,7 +15,7 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
   const [m, church] = await Promise.all([getMeeting(ctx, id), getChurch(ctx)]);
   if (!m) notFound();
   const selected = m.prezenti.map((p) => p.id);
-  const people = await attendeeOptions(ctx, selected);
+  const [people, prefill] = await Promise.all([attendeeOptions(ctx, selected), attendancePrefill(ctx, m.data)]);
   return (
     <>
       <BackLink href={`/procese-verbale/${id}`}>{m.titlu || m.tip}</BackLink>
@@ -36,6 +37,8 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
         selected={selected}
         people={people}
         tipuri={church.nomen.tipuriSedinte}
+        rules={church.attendanceRules}
+        prefill={prefill}
         cancelHref={`/procese-verbale/${id}`}
       />
     </>

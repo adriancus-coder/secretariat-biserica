@@ -663,6 +663,22 @@
       grid-template-columns: auto minmax(0, 32rem);
     }
   }
+  /* Setări: attendance rule per meeting type */
+  .attendance-rule {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--ink);
+  }
+  .attendance-rule select {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 150px;
+  }
   /* Person form: church roles */
   .roles-grid {
     display: grid;

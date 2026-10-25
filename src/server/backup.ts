@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import type { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
+import type { MeetingAttendanceExtra } from "@/lib/attendance-backup";
 import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
@@ -17,7 +18,7 @@ const byName = { orderBy: { createdAt: "asc" as const } };
 export async function loadBackup(ctx: Ctx): Promise<Backup> {
   const [persons, meetings, events, documents, groups, notes, church] = await Promise.all([
     ctx.db.person.findMany({ orderBy: [{ sortKey: "asc" }, { id: "asc" }] }),
-    ctx.db.meeting.findMany({ ...byName, include: { prezenti: { select: { personId: true } } } }),
+    ctx.db.meeting.findMany({ ...byName, include: { prezenti: { where: { status: "PRESENT" }, select: { personId: true } } } }),
     ctx.db.event.findMany({ ...byName, include: { contributii: { orderBy: { pozitie: "asc" } } } }),
     ctx.db.document.findMany({ orderBy: [{ anRegistru: "asc" }, { nr: "asc" }] }),
     ctx.db.group.findMany({ ...byName, include: { membri: { select: { personId: true } } } }),
@@ -181,12 +182,23 @@ export async function loadRoles(ctx: Ctx): Promise<{ roles: BRole[]; functii: Ma
   };
 }
 
+/** Meeting id → absentees and expected count, for the meetings' `absenti` / `asteptati` in the export. */
+export async function loadMeetingAttendance(ctx: Ctx): Promise<Map<string, MeetingAttendanceExtra>> {
+  const rows = await ctx.db.meeting.findMany({
+    where: { OR: [{ asteptati: { not: null } }, { prezenti: { some: { status: "ABSENT" } } }] },
+    select: { id: true, asteptati: true, prezenti: { where: { status: "ABSENT" }, select: { personId: true } } },
+  });
+  return new Map(rows.map((m) => [m.id, { absenti: m.prezenti.map((p) => p.personId), asteptati: m.asteptati }]));
+}
+
 export type ImportMode = "merge" | "replace";
 
 /** Collections outside the prototype's format; null/absent = not in the file (existing data is kept). */
 export interface ImportExtras {
   applications?: BApplication[] | null;
   roles?: ParsedRoles | null;
+  /** Meeting id → absentees and expected count, as in the file (see parseMeetingAttendance). */
+  attendance?: ReadonlyMap<string, MeetingAttendanceExtra>;
 }
 
 export interface ImportSummary {
@@ -353,14 +365,19 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           ordine: m.ordine,
           discutii: m.discutii,
           hotarari: m.hotarari,
+          asteptati: extras.attendance?.get(m.id)?.asteptati ?? null,
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
+        const extra = extras.attendance?.get(m.id);
+        const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
+        const rows = [
+          ...prezenti.map((personId) => ({ personId, status: "PRESENT" as const })),
+          ...absenti.map((personId) => ({ personId, status: "ABSENT" as const })),
+        ];
         if (meet.existing.has(m.id)) {
-          await tx.meeting.update({ where: { id }, data: { ...data, prezenti: { deleteMany: {}, create: prezenti.map((personId) => ({ personId })) } } });
+          await tx.meeting.update({ where: { id }, data: { ...data, prezenti: { deleteMany: {}, create: rows } } });
         } else {
-          await tx.meeting.create({
-            data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: prezenti.map((personId) => ({ personId })) } },
-          });
+          await tx.meeting.create({ data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows } } });
         }
       }
 

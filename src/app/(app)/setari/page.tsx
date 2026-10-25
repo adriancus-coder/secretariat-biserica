@@ -29,7 +29,7 @@ export default async function SettingsPage() {
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
         <Link href="/cont">Contul meu</Link>
       </nav>
-      <SettingsForm church={church} nomen={church.nomen} formUrl={formUrl} readOnly={!permissions.admin(role)} />
+      <SettingsForm church={church} nomen={church.nomen} attendanceRules={church.attendanceRules} formUrl={formUrl} readOnly={!permissions.admin(role)} />
       <div className="card mt-7">
         <h3>Aspect</h3>
         <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>

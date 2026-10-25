@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
+import { quorumLine } from "@/lib/attendance";
 import { fmt } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { deleteMeetingAction } from "@/server/actions/meetings";
@@ -18,6 +19,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   const x = await getMeeting(ctx, id);
   if (!x) notFound();
   const canWrite = permissions.write(ctx.user.role);
+  const cvorum = quorumLine(x.asteptati, x.absenti.length);
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "MEETING", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -52,24 +54,27 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
           </>
         ) : null}
         <dt>Prezenți ({x.prezenti.length})</dt>
-        <dd>
-          {x.prezenti.length
-            ? x.prezenti.map((p, i) => (
-                <span key={p.id}>
-                  {i ? ", " : ""}
-                  <Link href={`/persoane/${p.id}`} className="text-ink">
-                    {p.name}
-                  </Link>
-                </span>
-              ))
-            : "—"}
-          {x.invitati ? (
-            <>
-              <br />
-              Invitați: {x.invitati}
-            </>
-          ) : null}
-        </dd>
+        <dd>{x.prezenti.length ? <PersonLinks list={x.prezenti} /> : "—"}</dd>
+        {x.absenti.length ? (
+          <>
+            <dt>Absenți ({x.absenti.length})</dt>
+            <dd>
+              <PersonLinks list={x.absenti} />
+            </dd>
+          </>
+        ) : null}
+        {x.invitati ? (
+          <>
+            <dt>Invitați</dt>
+            <dd>{x.invitati}</dd>
+          </>
+        ) : null}
+        {cvorum ? (
+          <>
+            <dt>Cvorum</dt>
+            <dd>{cvorum}</dd>
+          </>
+        ) : null}
         {x.ordine ? (
           <>
             <dt>Ordinea de zi</dt>
@@ -104,4 +109,15 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
       ) : null}
     </>
   );
+}
+
+function PersonLinks({ list }: { list: { id: string; name: string }[] }) {
+  return list.map((p, i) => (
+    <span key={p.id}>
+      {i ? ", " : ""}
+      <Link href={`/persoane/${p.id}`} className="text-ink">
+        {p.name}
+      </Link>
+    </span>
+  ));
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ATTENDANCE_RULES, type AttendanceRule } from "../attendance";
 import { ROLES } from "../labels";
 import { isValidSlug, SLUG_MAX, SLUG_MIN } from "../slug";
 import { optionalEmail, requiredEnum, requiredText, text } from "../validation";
@@ -42,6 +43,7 @@ export const SETTINGS_FIELDS = [
   "gradeRudenie",
   "slug",
   "applicationsOpen",
+  "regulaPrezenta",
 ] as const;
 
 export const churchSettingsSchema = z.object({
@@ -59,6 +61,19 @@ export const churchSettingsSchema = z.object({
   slug: slugField,
   applicationsOpen: checkbox,
 });
+
+/**
+ * The attendance rule selects of the settings form (`regula:<tip>`), kept for the given meeting
+ * types only; a missing or invalid value means "Manual".
+ */
+export function attendanceRulesInput(formData: FormData, tipuri: readonly string[]): Record<string, AttendanceRule> {
+  return Object.fromEntries(
+    tipuri.map((t) => {
+      const v = formData.get(`regula:${t}`);
+      return [t, (ATTENDANCE_RULES as readonly unknown[]).includes(v) ? (v as AttendanceRule) : "MANUAL"];
+    }),
+  );
+}
 
 export const inviteSchema = z.object({
   email: emailField,

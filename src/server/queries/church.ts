@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { ChurchInfo } from "@/domain/types";
+import { resolveAttendanceRules, type AttendanceRule } from "@/lib/attendance";
 import { resolveNomen, type Nomenclatures } from "@/lib/labels";
 import { prisma } from "../db";
 import type { Ctx } from "../session";
@@ -14,6 +15,8 @@ export interface ChurchSettings extends ChurchInfo {
   nomen: Nomenclatures;
   /** Nomenclatoarele salvate (liste goale = implicit). */
   savedNomen: Nomenclatures;
+  /** Attendance rule of every meeting type in `nomen.tipuriSedinte`. */
+  attendanceRules: Record<string, AttendanceRule>;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -25,6 +28,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     tipuriMentiuni: c.tipuriMentiuni,
     rudenie: c.gradeRudenie,
   };
+  const nomen = resolveNomen(saved);
   return {
     id: c.id,
     slug: c.slug,
@@ -36,8 +40,9 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     email: c.email,
     pastor: c.pastor,
     secretar: c.secretar,
-    nomen: resolveNomen(saved),
+    nomen,
     savedNomen: saved,
+    attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),
   };
 });
 

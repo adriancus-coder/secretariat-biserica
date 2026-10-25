@@ -12,20 +12,31 @@ export interface ChecklistOption {
 
 /**
  * Listă de persoane cu casete de bifat (prezenți la ședință, membrii unui grup), cu filtru
- * rapid și butoane „Bifează toți / Debifează”. Valorile se trimit în formular sub `name`.
+ * rapid și butoane „Bifează toți / Debifează toți”. Valorile se trimit în formular sub `name`.
+ * With `selected` + `onSelectedChange` the parent owns the selection (meeting attendance prefill).
  */
 export function PersonChecklist({
   name,
   options,
-  defaultSelected,
+  defaultSelected = [],
+  selected: controlled,
+  onSelectedChange,
   emptyText = "Adăugați întâi persoane în registru.",
 }: {
   name: string;
   options: ChecklistOption[];
-  defaultSelected: string[];
+  defaultSelected?: string[];
+  selected?: ReadonlySet<string>;
+  onSelectedChange?: (next: Set<string>) => void;
   emptyText?: string;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(defaultSelected));
+  const [own, setOwn] = useState<Set<string>>(() => new Set(defaultSelected));
+  const selected = controlled ?? own;
+  const setSelected = (update: (prev: Set<string>) => Set<string>) => {
+    const next = update(new Set(selected));
+    if (onSelectedChange) onSelectedChange(next);
+    else setOwn(next);
+  };
   const [filter, setFilter] = useState("");
   const visible = useMemo(() => {
     const f = normalizeSearch(filter);
@@ -87,7 +98,7 @@ export function PersonChecklist({
           Bifează toți
         </button>
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAll(false)}>
-          Debifează
+          Debifează toți
         </button>
         <span className="hint !mt-0">{selected.size} selectate</span>
       </div>

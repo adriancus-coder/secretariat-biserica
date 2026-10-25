@@ -15,7 +15,7 @@ export async function listMeetings(ctx: Ctx, page: number) {
     orderBy: [{ data: "desc" }, { ora: "desc" }, { createdAt: "desc" }],
     skip: (current - 1) * MEETINGS_PAGE_SIZE,
     take: MEETINGS_PAGE_SIZE,
-    select: { id: true, titlu: true, tip: true, data: true, hotarari: true, _count: { select: { prezenti: true } } },
+    select: { id: true, titlu: true, tip: true, data: true, hotarari: true, _count: { select: { prezenti: { where: { status: "PRESENT" } } } } },
   });
   return {
     items: rows.map((m) => ({
@@ -38,8 +38,12 @@ export async function getMeeting(ctx: Ctx, id: string) {
     include: { prezenti: { include: { person: { select: { id: true, nume: true, prenume: true } } } } },
   });
   if (!m) return null;
-  const prezenti = m.prezenti.map((p) => ({ id: p.person.id, name: memberName(p.person) })).sort((a, b) => compareRo(a.name, b.name));
-  return { ...m, data: fromDbDate(m.data)!, prezenti };
+  const list = (status: "PRESENT" | "ABSENT") =>
+    m.prezenti
+      .filter((p) => p.status === status)
+      .map((p) => ({ id: p.person.id, name: memberName(p.person) }))
+      .sort((a, b) => compareRo(a.name, b.name));
+  return { ...m, data: fromDbDate(m.data)!, prezenti: list("PRESENT"), absenti: list("ABSENT") };
 }
 
 /**
