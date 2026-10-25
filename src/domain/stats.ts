@@ -52,7 +52,7 @@ export interface Stats {
   inmorm: EventRecord[];
   gen: { M: number; F: number };
   bands: [label: string, count: number][];
-  /** Numărul de familii distincte (după numele de familie) în evidență. */
+  /** Number of distinct families (family records) among the persons in the record. */
   fams: number;
 }
 
@@ -90,9 +90,10 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   const membri = ev.filter(
     (p) => p.statut === "MEMBRU" || (p.statut === "FOST_MEMBRU" && p.dataIesire !== null && p.dataIesire > endDate),
   );
-  const memberFams = new Set(membri.map((p) => p.familie).filter(Boolean));
+  // Families are records: two families with the same surname are distinct (the prototype grouped by name).
+  const memberFams = new Set(membri.map((p) => p.familyId).filter(Boolean));
   const copii = ev.filter(minor);
-  const copiiMembri = copii.filter((p) => p.familie && memberFams.has(p.familie));
+  const copiiMembri = copii.filter((p) => p.familyId && memberFams.has(p.familyId));
   const apart = ev.filter((p) => p.statut === "APARTINATOR");
   const prieteni = ev.filter((p) => p.statut === "PRIETEN");
   const botezati = ev.filter((p) => p.dataBotez && p.dataBotez <= endDate);
@@ -113,7 +114,7 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
       return a !== null && a >= min && a <= max;
     }).length,
   ]);
-  const fams = new Set(ev.map((p) => p.familie).filter(Boolean)).size;
+  const fams = new Set(ev.map((p) => p.familyId).filter(Boolean)).size;
 
   return {
     y,

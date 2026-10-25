@@ -8,7 +8,7 @@ export interface DocPerson {
   nume: string;
   prenume: string;
   gen: GenderKey | null;
-  familie: string;
+  familyId: string | null;
   rudenie: string;
   dataNasterii: string | null;
   dataMembru: string | null;
@@ -22,6 +22,8 @@ export interface DocumentTemplateInput {
   person: DocPerson | null;
   /** Membrii familiei persoanei (pentru „din părinții …” în certificatul de binecuvântare). */
   family: DocPerson[];
+  /** The head of the person's family, named first among the parents. */
+  familyHeadId?: string | null;
   church: Pick<ChurchInfo, "nume" | "adresa">;
   catre: string;
   scop: string;
@@ -36,15 +38,17 @@ const BLANK = "____________";
  * Generează textul documentului — portarea șabloanelor din `genDocText` (prototip), cu aceleași
  * formulări și acorduri de gen (născut/născută, membru/membră, fratele/sora, dânsul/dânsa ...).
  */
-export function generateDocumentText({ tip, person: m, family, church: c, catre, scop, reportText }: DocumentTemplateInput): string {
+export function generateDocumentText({ tip, person: m, family, familyHeadId, church: c, catre, scop, reportText }: DocumentTemplateInput): string {
   const f = m?.gen === "F";
   const nume = m ? memberName(m) : BLANK_NAME;
   const nascut = m?.dataNasterii ? `, născut${f ? "ă" : ""} la data de ${fmtL(m.dataNasterii)}` : "";
   const bis = `Biserica ${c.nume || BLANK}`;
+  // The parents are the family's head and spouse (the prototype also took rudenie "Părinte", by family name).
   const parinti =
-    m && m.familie
+    m && m.familyId
       ? family
-          .filter((p) => p.id !== m.id && p.familie === m.familie && PARENT_RELATIONS.includes(p.rudenie))
+          .filter((p) => p.id !== m.id && p.familyId === m.familyId && (p.id === familyHeadId || PARENT_RELATIONS.includes(p.rudenie)))
+          .sort((a, b) => Number(b.id === familyHeadId) - Number(a.id === familyHeadId))
           .map(memberName)
           .join(" și ")
       : "";

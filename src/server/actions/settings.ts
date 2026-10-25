@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { parsePrototypeJson } from "@/domain/backup";
 import { parseApplicationsJson } from "@/lib/application-backup";
 import { parseMeetingAttendance } from "@/lib/attendance-backup";
+import { parseFamiliesJson } from "@/lib/families-backup";
 import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
 import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
@@ -81,16 +82,18 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       throw new ActionError(`Importul a fost oprit: ${apps.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
     const roles = parseRolesJson(raw);
-    if (roles.errors.length) {
-      details = roles.errors;
-      throw new ActionError(`Importul a fost oprit: ${roles.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
+    const families = parseFamiliesJson(raw);
+    const extraErrors = [...roles.errors, ...families.errors];
+    if (extraErrors.length) {
+      details = extraErrors;
+      throw new ActionError(`Importul a fost oprit: ${extraErrors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, attendance: parseMeetingAttendance(raw) });
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, attendance: parseMeetingAttendance(raw) });
     details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {
       ok: true,
-      message: `Importate: ${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.functii} funcții atribuite${summary.setari ? " și setările bisericii" : ""}.`,
+      message: `Importate: ${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.familii} familii, ${summary.functii} funcții atribuite${summary.setari ? " și setările bisericii" : ""}.`,
     };
   });
   return { ...state, details };

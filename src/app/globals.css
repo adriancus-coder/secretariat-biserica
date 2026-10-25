@@ -679,6 +679,19 @@
     flex: 0 0 auto;
     min-width: 150px;
   }
+  /* Familii: move a member to another family */
+  .move-member {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+  }
+  .move-member select {
+    flex: 1;
+    min-width: 0;
+    min-height: 40px;
+  }
   /* Person form: church roles */
   .roles-grid {
     display: grid;

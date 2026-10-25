@@ -54,13 +54,15 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const church = await getChurch(ctx);
   let person = null;
   let family: ReturnType<typeof toDocPerson>[] = [];
+  let familyHeadId: string | null = null;
   if (input.personId) {
     const row = await ctx.db.person.findUnique({ where: { id: input.personId }, select: personRecordSelect });
     if (row) {
       person = toDocPerson(toPersonRecord(row));
-      if (row.familie) {
+      if (row.familyId) {
+        familyHeadId = (await ctx.db.family.findUnique({ where: { id: row.familyId }, select: { headId: true } }))?.headId ?? null;
         const fam = await ctx.db.person.findMany({
-          where: { familie: row.familie },
+          where: { familyId: row.familyId },
           orderBy: [{ sortKey: "asc" }, { id: "asc" }],
           select: personRecordSelect,
         });
@@ -71,7 +73,7 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const tip = input.tip as DocumentTypeKey;
   const reportYear = input.anRaport ?? Number(input.data.slice(0, 4));
   const reportText = tip === "raport" ? await generateReportText(ctx, reportYear) : undefined;
-  const text = generateDocumentText({ tip, person, family, church, catre: input.catre, scop: input.scop, reportText });
+  const text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText });
   const titlu = tip === "raport" ? `Dare de seamă anuală ${reportYear}` : defaultDocumentTitle(tip, person, input.catre);
   return { text, titlu };
 }

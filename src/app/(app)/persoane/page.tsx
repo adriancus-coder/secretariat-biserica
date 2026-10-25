@@ -80,7 +80,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
 
       <div className="toolbar">
         <Suspense>
-          <SearchBox placeholder="Caută nume, familie, telefon" />
+          <SearchBox placeholder="Caută nume, telefon, e-mail" />
         </Suspense>
         {roleOptions.length ? (
           <Suspense>
@@ -142,9 +142,16 @@ function FamilyList({ data, today }: { data: Awaited<ReturnType<typeof listFamil
   return (
     <div className="list">
       {data.groups.map((g) => (
-        <section key={g.label} aria-label={`Familia ${g.label}`}>
+        <section key={g.familyId ?? "fara-familie"} aria-label={g.label}>
           <div className="letter">
-            Familia {g.label} <span className="hint inline">· {g.count}</span>
+            {g.familyId ? (
+              <Link href={`/familii/${g.familyId}`} className="text-inherit no-underline hover:underline">
+                {g.label}
+              </Link>
+            ) : (
+              g.label
+            )}{" "}
+            <span className="hint inline">· {g.count}</span>
           </div>
           {g.members.map((p) => (
             <PersonRow key={p.id} p={p} byFamily today={today} />

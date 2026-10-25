@@ -310,6 +310,14 @@ corecții deliberate:
 10. **„Azi”** se calculează în fusul orar configurat (`APP_TIME_ZONE`), nu în UTC.
 11. **Importul** este validat și atomic: fișierele cu erori nu modifică nimic, id-urile care aparțin
     altei biserici primesc id-uri noi, iar documentele fără număr sau cu număr dublu sunt renumerotate.
+12. **Familiile sunt înregistrări**, definite de capul familiei (pagina **Familii**), nu un nume scris pe
+    fiecare persoană. Statistica numără familiile distincte (două familii cu același nume de familie sunt
+    două familii), iar „copiii membrilor” sunt copiii din familiile cu cel puțin un membru; prototipul
+    grupa după textul familiei.
+13. **Certificatul de binecuvântare** numește ca părinți capul familiei și soția sau soțul (gradele
+    „Cap de familie”, „Soție”, „Soț”), cu capul familiei primul; prototipul lua gradele „Cap de familie”,
+    „Soție” și „Părinte” din familia cu același nume. Gradul „Soț” a fost adăugat la nomenclatorul
+    implicit.
 
 ## Limitări și pași următori
 

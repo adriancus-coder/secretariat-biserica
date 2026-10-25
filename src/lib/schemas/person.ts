@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { todayIso } from "../dates";
 import { ENTRY_MODES, EXIT_MODES, GENDERS, PERSON_STATUSES } from "../labels";
-import { longText, optionalDate, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { NEW_FAMILY } from "../families";
+import { idSchema, longText, optionalDate, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const PERSON_FIELDS = [
   "nume",
   "prenume",
   "statut",
   "gen",
-  "familie",
   "rudenie",
   "dataNasterii",
   "telefon",
@@ -32,7 +32,7 @@ const personFields = z.object({
   prenume: text(100, "Prenumele"),
   statut: requiredEnum(PERSON_STATUSES, "Alegeți statutul."),
   gen: optionalEnum(GENDERS),
-  familie: text(100, "Familia"),
+  familyId: text(64, "Familia").refine((s) => s === "" || s === NEW_FAMILY || idSchema.safeParse(s).success, "Alegeți familia din listă."),
   rudenie: text(60, "Gradul de rudenie"),
   dataNasterii: optionalDate,
   telefon: text(50, "Telefonul"),

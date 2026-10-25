@@ -21,6 +21,7 @@ import { computeStats } from "../src/domain/stats";
 import type { PersonRecord } from "../src/domain/types";
 import { inYear, todayIso } from "../src/lib/dates";
 import { noteSearchText, personDerived } from "../src/lib/person-derived";
+import { defaultFamilyName, pickHead } from "../src/lib/families";
 import { defaultRolesData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
@@ -174,7 +175,6 @@ async function main() {
       prenume: p.prenume,
       statut: p.statut ?? "MEMBRU",
       gen: p.gen,
-      familie: p.familie ?? "",
       rudenie: p.rudenie ?? "",
       dataNasterii: p.dataNasterii ? date(p.dataNasterii) : null,
       telefon: p.telefon ?? "",
@@ -191,7 +191,7 @@ async function main() {
       bisericaDestinatie: p.bisericaDestinatie ?? "",
       slujire: p.slujire ?? "",
       note: p.note ?? "",
-      ...personDerived({ nume: p.nume, prenume: p.prenume, familie: p.familie ?? "", telefon: p.telefon ?? "", email: p.email ?? "" }),
+      ...personDerived({ nume: p.nume, prenume: p.prenume, telefon: p.telefon ?? "", email: p.email ?? "" }),
       ...(p.inregistrat ? { createdAt: date(p.inregistrat) } : {}),
     };
     const created = await prisma.person.create({ data });
@@ -202,6 +202,21 @@ async function main() {
     if (!id) throw new Error(`persoană necunoscută: ${k}`);
     return id;
   };
+
+  // Familii: one per family name of the list above, head chosen like the `families` migration.
+  const byFamily = new Map<string, P[]>();
+  for (const p of PERSONS) if (p.familie) byFamily.set(p.familie, [...(byFamily.get(p.familie) ?? []), p]);
+  for (const members of byFamily.values()) {
+    const head = pickHead(
+      members.map((p) => ({ id: p.key, rudenie: p.rudenie ?? "", gen: p.gen ?? null, dataNasterii: p.dataNasterii ?? null, createdAt: p.inregistrat ?? null })),
+      TODAY,
+    )!;
+    const h = members.find((p) => p.key === head.id)!;
+    const family = await prisma.family.create({
+      data: { churchId, nume: defaultFamilyName(h), headId: pid(h.key), adresa: h.adresa ?? "" },
+    });
+    await prisma.person.updateMany({ where: { id: { in: members.map((p) => pid(p.key)) } }, data: { familyId: family.id } });
+  }
 
   // Funcții în biserică: the default list, held by the committee of the demo church.
   await prisma.churchRole.createMany({ data: defaultRolesData().map((r) => ({ ...r, churchId })) });
@@ -321,7 +336,7 @@ async function main() {
     prenume: p.prenume,
     statut: p.statut,
     gen: p.gen,
-    familie: p.familie,
+    familyId: p.familyId,
     rudenie: p.rudenie,
     dataNasterii: p.dataNasterii?.toISOString().slice(0, 10) ?? null,
     dataMembru: p.dataMembru?.toISOString().slice(0, 10) ?? null,
@@ -336,6 +351,9 @@ async function main() {
     createdAt: p.createdAt.toISOString().slice(0, 10),
   }));
   const byId = new Map(personRecords.map((p) => [p.id, p]));
+  const familyHeads = new Map(
+    (await prisma.family.findMany({ where: { churchId }, select: { id: true, headId: true } })).map((f) => [f.id, f.headId]),
+  );
   const docPerson = (k: string): DocPerson => {
     const p = byId.get(pid(k))!;
     return { ...p };
@@ -380,6 +398,7 @@ async function main() {
       tip: doc.tip,
       person,
       family: personRecords,
+      familyHeadId: person?.familyId ? familyHeads.get(person.familyId) : null,
       church,
       catre: doc.catre ?? "",
       scop: doc.scop ?? "",
@@ -462,6 +481,7 @@ async function main() {
     mentiuni: await prisma.note.count({ where: { churchId } }),
     cereri: await prisma.application.count({ where: { churchId } }),
     functii: await prisma.personRole.count({ where: { person: { churchId } } }),
+    familii: await prisma.family.count({ where: { churchId } }),
   };
   console.log("Gata:", counts);
   console.log(`Autentificare: admin@demo.ro / secretar@demo.ro / vizualizare@demo.ro — parola „${PASSWORD}”.`);

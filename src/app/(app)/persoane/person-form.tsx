@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/ui/use-action-form";
 import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
+import { FamilyField, type FamilyChoice } from "./family-field";
 import { RolesPicker, type RoleChoice } from "./roles-picker";
 
 export type PersonFormValues = Record<string, string>;
@@ -17,6 +18,7 @@ export function PersonForm({
   id,
   initial,
   families,
+  lockedFamily,
   rudenie,
   roles,
   cancelHref,
@@ -24,7 +26,9 @@ export function PersonForm({
 }: {
   id: string | null;
   initial: PersonFormValues;
-  families: string[];
+  families: FamilyChoice[];
+  /** The person heads a family with other members: the family cannot be changed here. */
+  lockedFamily?: { id: string; nume: string };
   rudenie: string[];
   /** Active roles, plus inactive ones the person already holds. */
   roles: RoleChoice[];
@@ -49,23 +53,16 @@ export function PersonForm({
         <SelectField name="statut" label="Statut" defaultValue={val("statut") || "MEMBRU"} error={e.statut} options={opts(PERSON_STATUSES, STATUS_LABEL)} />
         <SelectField name="gen" label="Gen" defaultValue={val("gen")} error={e.gen} emptyLabel="—" options={opts(GENDERS, GENDER_LABEL)} />
       </div>
+      <FamilyField families={families} defaultValue={val("familyId")} error={e.familyId} locked={lockedFamily} />
       <div className="row2">
-        <TextField name="familie" label="Familie" list="familii" placeholder="ex. Popescu" defaultValue={val("familie")} error={e.familie} autoComplete="off" />
         <SelectField name="rudenie" label="Grad de rudenie" defaultValue={val("rudenie")} error={e.rudenie} emptyLabel="—" options={nomenOptions(rudenie, val("rudenie"))} />
-      </div>
-      <datalist id="familii">
-        {families.map((f) => (
-          <option key={f} value={f} />
-        ))}
-      </datalist>
-      <div className="row2">
         <TextField name="dataNasterii" label="Data nașterii" type="date" defaultValue={val("dataNasterii")} error={e.dataNasterii} />
-        <TextField name="telefon" label="Telefon" type="tel" defaultValue={val("telefon")} error={e.telefon} />
       </div>
       <div className="row2">
+        <TextField name="telefon" label="Telefon" type="tel" defaultValue={val("telefon")} error={e.telefon} />
         <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
-        <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
       </div>
+      <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
 
       <fieldset className="card">
         <h3>Intrare în biserică</h3>

@@ -10,7 +10,8 @@ export interface PersonRecord {
   prenume: string;
   statut: PersonStatusKey;
   gen: GenderKey | null;
-  familie: string;
+  /** The family record (null: no family). The prototype grouped families by a free-text name. */
+  familyId: string | null;
   rudenie: string;
   dataNasterii: string | null;
   dataMembru: string | null;

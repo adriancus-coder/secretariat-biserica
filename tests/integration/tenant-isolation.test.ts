@@ -89,6 +89,22 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await a.person.count({ where: { roles: { some: { roleId: role.id } } } })).toBe(1);
   });
 
+  it("familiile sunt izolate pe biserici", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const fam = await a.family.create({ data: { nume: "Fam. Ion Popescu", headId: personA } as never });
+    expect(fam.churchId).toBe(churchA);
+    await a.person.update({ where: { id: personA }, data: { familyId: fam.id } });
+    expect(await b.family.findUnique({ where: { id: fam.id } })).toBeNull();
+    expect(await b.family.findMany()).toHaveLength(0);
+    expect(await b.family.count()).toBe(0);
+    expect((await b.family.updateMany({ data: { nume: "X" } })).count).toBe(0);
+    await expect(b.family.update({ where: { id: fam.id }, data: { nume: "X" } })).rejects.toMatchObject({ code: "P2025" });
+    expect((await b.family.deleteMany({})).count).toBe(0);
+    expect(await b.person.count({ where: { familyId: fam.id } })).toBe(0);
+    expect((await prisma.family.findUniqueOrThrow({ where: { id: fam.id } })).nume).toBe("Fam. Ion Popescu");
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

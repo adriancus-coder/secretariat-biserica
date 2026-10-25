@@ -9,7 +9,7 @@ describe("validarea persoanei", () => {
     expect(r.gen).toBeNull();
     expect(r.dataNasterii).toBeNull();
     expect(r.email).toBe("");
-    expect(r.familie).toBe("");
+    expect(r.familyId).toBe("");
   });
 
   it("numele este obligatoriu; datele și e-mailul se validează", () => {

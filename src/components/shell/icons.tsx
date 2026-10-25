@@ -91,6 +91,15 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   bifa: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  familii: (
+    <>
+      <path d="M3 11 12 4l9 7" />
+      <path d="M5 9.5V20h14V9.5" />
+      <circle cx="9.5" cy="13" r="1.8" />
+      <circle cx="14.5" cy="13" r="1.8" />
+      <path d="M7 19a2.6 2.6 0 0 1 5 0M12 19a2.6 2.6 0 0 1 5 0" />
+    </>
+  ),
   cereri: (
     <>
       <path d="M6 3h9l4 4v14H6z" />

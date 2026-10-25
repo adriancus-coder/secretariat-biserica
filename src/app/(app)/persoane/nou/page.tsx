@@ -6,7 +6,7 @@ import { memberName } from "@/lib/format";
 import { idSchema } from "@/lib/validation";
 import { getApplication } from "@/server/queries/applications";
 import { getChurch } from "@/server/queries/church";
-import { familyNames } from "@/server/queries/persons";
+import { familyOptions } from "@/server/queries/families";
 import { roleChoices } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { PersonForm, type PersonFormValues } from "../person-form";
@@ -16,8 +16,9 @@ export const metadata: Metadata = { title: "Persoană nouă" };
 export default async function NewPersonPage({ searchParams }: PageProps<"/persoane/nou">) {
   const ctx = await requireCtx("write");
   const sp = await searchParams;
-  const [church, families, roles] = await Promise.all([getChurch(ctx), familyNames(ctx), roleChoices(ctx, null)]);
-  const familie = typeof sp.familie === "string" ? sp.familie.slice(0, 100) : "";
+  const [church, families, roles] = await Promise.all([getChurch(ctx), familyOptions(ctx), roleChoices(ctx, null)]);
+  // "+ Membru de familie" from a person's page: the new person joins that family.
+  const familyId = typeof sp.familie === "string" && families.some((f) => f.id === sp.familie) ? sp.familie : "";
 
   // Accepting a membership application: the form starts from the applicant's data.
   const cerere = typeof sp.cerere === "string" && idSchema.safeParse(sp.cerere).success ? sp.cerere : null;
@@ -33,7 +34,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       </>
     );
   }
-  let initial: PersonFormValues = { statut: "MEMBRU", familie };
+  let initial: PersonFormValues = { statut: "MEMBRU", familyId };
   if (app) {
     const member = app.kind !== "ALTUL";
     initial = {
@@ -41,7 +42,6 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       prenume: app.prenume,
       statut: member ? "MEMBRU" : "PRIETEN",
       gen: app.gen ?? "",
-      familie: app.familie,
       rudenie: app.rudenie,
       dataNasterii: fromDbDate(app.dataNasterii) ?? "",
       telefon: app.telefon,
@@ -59,7 +59,12 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
     <>
       <BackLink href={app ? `/cereri/${app.id}` : "/persoane"}>{app ? "Cererea" : "Persoane"}</BackLink>
       <PageHead title={app ? `Acceptă cererea: ${memberName(app)}` : "Persoană nouă"} />
-      {app ? <p className="hint mb-4">Verificați datele; la salvare persoana intră în registru și cererea devine acceptată.</p> : null}
+      {app ? (
+        <p className="hint mb-4">
+          Verificați datele; la salvare persoana intră în registru și cererea devine acceptată.
+          {app.familie ? ` Familia trecută în cerere: „${app.familie}” — alegeți familia din listă sau „Familie nouă”.` : ""}
+        </p>
+      ) : null}
       <PersonForm
         id={null}
         initial={initial}

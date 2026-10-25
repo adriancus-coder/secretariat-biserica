@@ -46,15 +46,15 @@ describe("persoane în evidență la o dată", () => {
 
 describe("computeStats", () => {
   const persons = [
-    person({ id: "a", nume: "Popescu", prenume: "Ion", gen: "M", familie: "Popescu", rudenie: "Cap de familie", dataNasterii: "1975-04-02", dataMembru: "2001-06-10", modIntrare: "BOTEZ", dataBotez: "2001-06-10" }),
-    person({ id: "b", nume: "Popescu", prenume: "Maria", gen: "F", familie: "Popescu", rudenie: "Soție", dataNasterii: "1978-11-20", dataMembru: "2003-05-01", modIntrare: "TRANSFER", dataBotez: "1996-07-07" }),
-    person({ id: "c", nume: "Popescu", prenume: "Andrei", gen: "M", statut: "COPIL", familie: "Popescu", rudenie: "Fiu", dataNasterii: "2012-03-15", dataBinecuvantare: "2012-09-02" }),
-    person({ id: "d", nume: "Ionescu", prenume: "Elena", gen: "F", statut: "APARTINATOR", familie: "Ionescu", dataNasterii: "1990-01-01", dataMembru: "2018-01-01", dataBotez: "2010-08-15" }),
-    person({ id: "e", nume: "Ionescu", prenume: "Rut", gen: "F", statut: "COPIL", familie: "Ionescu", dataNasterii: "2019-10-10" }),
+    person({ id: "a", nume: "Popescu", prenume: "Ion", gen: "M", familyId: "Popescu", rudenie: "Cap de familie", dataNasterii: "1975-04-02", dataMembru: "2001-06-10", modIntrare: "BOTEZ", dataBotez: "2001-06-10" }),
+    person({ id: "b", nume: "Popescu", prenume: "Maria", gen: "F", familyId: "Popescu", rudenie: "Soție", dataNasterii: "1978-11-20", dataMembru: "2003-05-01", modIntrare: "TRANSFER", dataBotez: "1996-07-07" }),
+    person({ id: "c", nume: "Popescu", prenume: "Andrei", gen: "M", statut: "COPIL", familyId: "Popescu", rudenie: "Fiu", dataNasterii: "2012-03-15", dataBinecuvantare: "2012-09-02" }),
+    person({ id: "d", nume: "Ionescu", prenume: "Elena", gen: "F", statut: "APARTINATOR", familyId: "Ionescu", dataNasterii: "1990-01-01", dataMembru: "2018-01-01", dataBotez: "2010-08-15" }),
+    person({ id: "e", nume: "Ionescu", prenume: "Rut", gen: "F", statut: "COPIL", familyId: "Ionescu", dataNasterii: "2019-10-10" }),
     person({ id: "f", nume: "Barbu", prenume: "Petru", gen: "M", statut: "PRIETEN", dataNasterii: "1960-02-29", createdAt: "2021-03-01" }),
-    person({ id: "g", nume: "Lungu", prenume: "Mihai", gen: "M", statut: "FOST_MEMBRU", familie: "Lungu", dataNasterii: "1985-05-05", dataMembru: "2010-01-01", dataBotez: "2010-01-01", dataIesire: "2026-02-01", modIesire: "TRANSFER", bisericaDestinatie: "Biserica Betel Oslo" }),
+    person({ id: "g", nume: "Lungu", prenume: "Mihai", gen: "M", statut: "FOST_MEMBRU", familyId: "Lungu", dataNasterii: "1985-05-05", dataMembru: "2010-01-01", dataBotez: "2010-01-01", dataIesire: "2026-02-01", modIesire: "TRANSFER", bisericaDestinatie: "Biserica Betel Oslo" }),
     person({ id: "h", nume: "Avram", prenume: "Ana", gen: "F", statut: "MEMBRU", dataNasterii: "1940-01-01", dataMembru: "1960-01-01", dataBotez: "1960-01-01", dataIesire: "2026-05-05", modIesire: "DECES" }),
-    person({ id: "i", nume: "Munteanu", prenume: "Daniel", gen: "M", familie: "Munteanu", dataNasterii: "2000-12-12", dataMembru: "2026-04-20", modIntrare: "BOTEZ", dataBotez: "2026-04-20" }),
+    person({ id: "i", nume: "Munteanu", prenume: "Daniel", gen: "M", familyId: "Munteanu", dataNasterii: "2000-12-12", dataMembru: "2026-04-20", modIntrare: "BOTEZ", dataBotez: "2026-04-20" }),
     person({ id: "j", nume: "Stan", prenume: "Ioana", gen: "F", dataNasterii: "1999-01-01", dataMembru: "2026-06-01", modIntrare: "REPRIMIRE" }),
   ];
   const events = [

@@ -13,6 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/persoane", label: "Persoane", icon: "persoane", primary: true },
   { href: "/calendar", label: "Calendar", icon: "calendar", primary: true },
   { href: "/procese-verbale", label: "Ședințe", icon: "sedinte", primary: true },
+  { href: "/familii", label: "Familii", icon: "familii", primary: false },
   { href: "/documente", label: "Documente", icon: "documente", primary: false },
   { href: "/grupuri", label: "Grupuri", icon: "grupuri", primary: false },
   { href: "/mentiuni", label: "Mențiuni", icon: "mentiuni", primary: false },

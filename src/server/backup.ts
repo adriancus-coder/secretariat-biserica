@@ -4,8 +4,10 @@ import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/
 import type { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
 import type { MeetingAttendanceExtra } from "@/lib/attendance-backup";
+import { defaultFamilyName, pickHead } from "@/lib/families";
+import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
 import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
-import { fromDbDate, toDbDate } from "@/lib/dates";
+import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
 import type { Ctx } from "./session";
@@ -17,7 +19,7 @@ const byName = { orderBy: { createdAt: "asc" as const } };
 /** Toate datele bisericii, pentru export. */
 export async function loadBackup(ctx: Ctx): Promise<Backup> {
   const [persons, meetings, events, documents, groups, notes, church] = await Promise.all([
-    ctx.db.person.findMany({ orderBy: [{ sortKey: "asc" }, { id: "asc" }] }),
+    ctx.db.person.findMany({ orderBy: [{ sortKey: "asc" }, { id: "asc" }], include: { family: { select: { nume: true } } } }),
     ctx.db.meeting.findMany({ ...byName, include: { prezenti: { where: { status: "PRESENT" }, select: { personId: true } } } }),
     ctx.db.event.findMany({ ...byName, include: { contributii: { orderBy: { pozitie: "asc" } } } }),
     ctx.db.document.findMany({ orderBy: [{ anRegistru: "asc" }, { nr: "asc" }] }),
@@ -33,7 +35,8 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
       prenume: p.prenume,
       statut: p.statut,
       gen: p.gen,
-      familie: p.familie,
+      // The prototype's text field carries the family's display name; `families` has the records.
+      familie: p.family?.nume ?? "",
       rudenie: p.rudenie,
       dataNasterii: fromDbDate(p.dataNasterii),
       telefon: p.telefon,
@@ -191,12 +194,21 @@ export async function loadMeetingAttendance(ctx: Ctx): Promise<Map<string, Meeti
   return new Map(rows.map((m) => [m.id, { absenti: m.prezenti.map((p) => p.personId), asteptati: m.asteptati }]));
 }
 
+/** Families and each person's family, for the `families` collection and members' `familyId`. */
+export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; familyOf: Map<string, string> }> {
+  const rows = await ctx.db.family.findMany({ orderBy: [{ nume: "asc" }, { id: "asc" }], include: { members: { select: { id: true } } } });
+  const familyOf = new Map<string, string>();
+  for (const f of rows) for (const m of f.members) familyOf.set(m.id, f.id);
+  return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, note: f.note })), familyOf };
+}
+
 export type ImportMode = "merge" | "replace";
 
 /** Collections outside the prototype's format; null/absent = not in the file (existing data is kept). */
 export interface ImportExtras {
   applications?: BApplication[] | null;
   roles?: ParsedRoles | null;
+  families?: ParsedFamilies | null;
   /** Meeting id → absentees and expected count, as in the file (see parseMeetingAttendance). */
   attendance?: ReadonlyMap<string, MeetingAttendanceExtra>;
 }
@@ -209,6 +221,8 @@ export interface ImportSummary {
   grupuri: number;
   mentiuni: number;
   cereri: number;
+  /** Families imported from the file, or created from the family text of an older file. */
+  familii: number;
   /** Roles held by persons, as imported. */
   functii: number;
   setari: boolean;
@@ -223,6 +237,7 @@ const TABLES = {
   groups: "groups",
   notes: "notes",
   applications: "applications",
+  families: "families",
 } as const;
 
 /**
@@ -264,12 +279,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
   const churchId = ctx.user.churchId;
   const applications = extras.applications ?? null;
   const rolesIn = extras.roles ?? null;
+  const famIn = extras.families ?? null;
   const warnings: string[] = [];
   return ctx.db.$transaction(
     async (tx) => {
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
+        await tx.family.deleteMany({});
         await tx.note.deleteMany({});
         await tx.document.deleteMany({});
         await tx.group.deleteMany({});
@@ -286,7 +303,6 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         prenume: m.prenume,
         statut: m.statut,
         gen: m.gen,
-        familie: m.familie,
         rudenie: m.rudenie,
         dataNasterii: toDbDate(m.dataNasterii),
         telefon: m.telefon,
@@ -312,6 +328,80 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         else newPersons.push({ ...personData(m), id, churchId, createdAt: ts(m.createdAt) });
       }
       await chunked(newPersons, 500, (c) => tx.person.createMany({ data: c }));
+
+      // Familii
+      const today = todayIso();
+      let familii = 0;
+      let fams: Awaited<ReturnType<typeof planIds>> | null = null;
+      const touchedFamilies = new Set<string>();
+      if (famIn?.families) {
+        fams = await planIds(tx, TABLES.families, famIn.families.map((f) => f.id), churchId);
+        for (const f of famIn.families) {
+          const id = fams.map.get(f.id)!;
+          const data = { nume: f.nume, adresa: f.adresa, note: f.note };
+          if (fams.existing.has(f.id)) await tx.family.update({ where: { id }, data });
+          else await tx.family.create({ data: { ...data, id, churchId } });
+          touchedFamilies.add(id);
+        }
+        // Every person in the file gets the family the file gives (or none).
+        const byFamily = new Map<string | null, string[]>();
+        for (const m of backup.members) {
+          const famFile = famIn.memberFamily.get(m.id);
+          const famId = famFile ? fams.map.get(famFile)! : null;
+          byFamily.set(famId, [...(byFamily.get(famId) ?? []), people.map.get(m.id)!]);
+        }
+        for (const [familyId, ids] of byFamily) await chunked(ids, 500, (c) => tx.person.updateMany({ where: { id: { in: c } }, data: { familyId } }));
+        for (const f of famIn.families) {
+          const head = pid(f.capId);
+          const id = fams.map.get(f.id)!;
+          if (!head || !(byFamily.get(id) ?? []).includes(head)) continue;
+          // A person heads one family only.
+          await tx.family.updateMany({ where: { headId: head, id: { not: id } }, data: { headId: null } });
+          await tx.family.update({ where: { id }, data: { headId: head } });
+        }
+        familii = famIn.families.length;
+      } else {
+        // Older file: one family per family text, as in the `families` migration.
+        const groups = new Map<string, Backup["members"]>();
+        for (const m of backup.members) {
+          const key = m.familie.trim();
+          if (key) groups.set(key, [...(groups.get(key) ?? []), m]);
+        }
+        for (const list of groups.values()) {
+          const ids = list.map((m) => people.map.get(m.id)!);
+          const existing = await tx.person.findFirst({ where: { id: { in: ids }, familyId: { not: null } }, select: { familyId: true } });
+          let familyId = existing?.familyId ?? null;
+          if (!familyId) {
+            const head = pickHead(
+              list.map((m) => ({ ...m, id: people.map.get(m.id)! })),
+              today,
+            )!;
+            familyId = (await tx.family.create({ data: { churchId, nume: defaultFamilyName(head), headId: head.id, adresa: head.adresa } })).id;
+            familii++;
+          }
+          await tx.person.updateMany({ where: { id: { in: ids }, familyId: null }, data: { familyId } });
+          touchedFamilies.add(familyId);
+        }
+      }
+      // Families without a head get one (pickHead); empty ones are removed.
+      for (const familyId of touchedFamilies) {
+        const f = await tx.family.findUnique({ where: { id: familyId }, select: { headId: true } });
+        const members = await tx.person.findMany({
+          where: { familyId },
+          select: { id: true, rudenie: true, gen: true, dataNasterii: true, createdAt: true },
+        });
+        if (!members.length) {
+          await tx.family.delete({ where: { id: familyId } });
+          continue;
+        }
+        if (f?.headId && members.some((m) => m.id === f.headId)) continue;
+        const head = pickHead(
+          members.map((m) => ({ ...m, dataNasterii: fromDbDate(m.dataNasterii), createdAt: m.createdAt.toISOString() })),
+          today,
+        )!;
+        await tx.family.updateMany({ where: { headId: head.id }, data: { headId: null } });
+        await tx.family.update({ where: { id: familyId }, data: { headId: head.id } });
+      }
 
       // Funcții: matched by name (unique per church); unknown names in `functii` create the role.
       let functii = 0;
@@ -535,7 +625,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         });
       }
 
-      const remapped = [people, meet, evs, docs, grs, nts, apps].reduce(
+      const remapped = [people, meet, evs, docs, grs, nts, apps, ...(fams ? [fams] : [])].reduce(
         (n, p) => n + [...p.map].filter(([a, b]) => a !== b).length,
         0,
       );
@@ -549,6 +639,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         grupuri: backup.groups.length,
         mentiuni: backup.notes.length,
         cereri: applications?.length ?? 0,
+        familii,
         functii,
         setari: Boolean(backup.settings),
         avertismente: warnings,
@@ -561,7 +652,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         fields: ["mod", "inregistrari"],
         after: {
           mod: mode === "replace" ? "înlocuire" : "îmbinare",
-          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.functii} funcții atribuite`,
+          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.familii} familii, ${summary.functii} funcții atribuite`,
         },
       });
       return summary;

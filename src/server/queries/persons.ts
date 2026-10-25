@@ -33,7 +33,7 @@ export function filterWhere(filter: PersonFilter): Prisma.PersonWhereInput {
   }
 }
 
-/** Fiecare termen trebuie să apară în textul de căutare (nume, familie, telefon, e-mail — fără diacritice). */
+/** Fiecare termen trebuie să apară în textul de căutare (nume, telefon, e-mail — fără diacritice). */
 export function searchWhere(q: string): Prisma.PersonWhereInput {
   const terms = searchTerms(q);
   return terms.length ? { AND: terms.map((t) => ({ searchText: { contains: t } })) } : {};
@@ -44,7 +44,8 @@ const listSelect = {
   nume: true,
   prenume: true,
   statut: true,
-  familie: true,
+  familyId: true,
+  family: { select: { nume: true } },
   rudenie: true,
   telefon: true,
   dataNasterii: true,
@@ -56,6 +57,7 @@ export interface PersonListItem {
   nume: string;
   prenume: string;
   statut: PersonStatusKey;
+  /** Display name of the person's family ("Fam. Daniel Mureșan"), or "". */
   familie: string;
   rudenie: string;
   telefon: string;
@@ -64,7 +66,17 @@ export interface PersonListItem {
 }
 
 function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>): PersonListItem {
-  return { ...p, dataNasterii: fromDbDate(p.dataNasterii), dataIesire: fromDbDate(p.dataIesire) };
+  return {
+    id: p.id,
+    nume: p.nume,
+    prenume: p.prenume,
+    statut: p.statut,
+    familie: p.family?.nume ?? "",
+    rudenie: p.rudenie,
+    telefon: p.telefon,
+    dataNasterii: fromDbDate(p.dataNasterii),
+    dataIesire: fromDbDate(p.dataIesire),
+  };
 }
 
 /**
@@ -106,30 +118,51 @@ export async function listPersons(ctx: Ctx, { filter, q, page, functie = "" }: L
 }
 
 export interface FamilyGroup {
-  familie: string;
+  familyId: string | null;
   label: string;
   count: number;
   members: PersonListItem[];
 }
 
-/** Vederea pe familii, paginată după familii (ordonate alfabetic), membrii ordonați după gradul de rudenie. */
+/**
+ * Vederea pe familii, paginată după familii: one group per family record (two families with the same
+ * surname stay separate), sorted by the head's name; persons without a family come last.
+ * Members are ordered by kinship.
+ */
 export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: ListParams, rudenieOrder: string[]) {
   const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
   const [groups, inRecord, anyPerson] = await Promise.all([
-    ctx.db.person.groupBy({ by: ["familie"], where, _count: { _all: true } }),
+    ctx.db.person.groupBy({ by: ["familyId"], where, _count: { _all: true } }),
     ctx.db.person.count({ where: { dataIesire: null } }),
     ctx.db.person.count(),
   ]);
+  const ids = groups.map((g) => g.familyId).filter((x): x is string => x !== null);
+  const records = new Map(
+    (
+      await ctx.db.family.findMany({ where: { id: { in: ids } }, select: { id: true, nume: true, head: { select: { sortKey: true } } } })
+    ).map((f) => [f.id, f]),
+  );
+  const key = (id: string | null) => (id ? (records.get(id)?.head?.sortKey ?? "~") : "~~~");
   const families = groups
-    .map((g) => ({ familie: g.familie, label: g.familie || NO_FAMILY, count: g._count._all }))
-    .sort((a, b) => compareRo(a.label, b.label));
+    .map((g) => ({ familyId: g.familyId, label: g.familyId ? (records.get(g.familyId)?.nume ?? NO_FAMILY) : NO_FAMILY, count: g._count._all }))
+    .sort((a, b) => key(a.familyId).localeCompare(key(b.familyId)) || compareRo(a.label, b.label));
   const total = families.reduce((s, f) => s + f.count, 0);
   const pages = Math.max(1, Math.ceil(families.length / FAMILY_PAGE_SIZE));
   const current = Math.min(Math.max(1, page), pages);
   const pageFamilies = families.slice((current - 1) * FAMILY_PAGE_SIZE, current * FAMILY_PAGE_SIZE);
   const rows = pageFamilies.length
     ? await ctx.db.person.findMany({
-        where: { AND: [where, { familie: { in: pageFamilies.map((f) => f.familie) } }] },
+        where: {
+          AND: [
+            where,
+            {
+              OR: [
+                { familyId: { in: pageFamilies.map((f) => f.familyId).filter((x): x is string => x !== null) } },
+                ...(pageFamilies.some((f) => f.familyId === null) ? [{ familyId: null }] : []),
+              ],
+            },
+          ],
+        },
         orderBy: ORDER,
         select: listSelect,
       })
@@ -141,7 +174,7 @@ export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: 
   const result: FamilyGroup[] = pageFamilies.map((f) => ({
     ...f,
     members: rows
-      .filter((r) => r.familie === f.familie)
+      .filter((r) => r.familyId === f.familyId)
       .map(toItem)
       .sort((a, b) => rank(a.rudenie) - rank(b.rudenie)),
   }));
@@ -160,13 +193,14 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
       groups: { include: { group: { select: { id: true, nume: true } } } },
       application: { select: { id: true, createdAt: true } },
       roles: { include: { role: { select: { nume: true, sortOrder: true, inCommittee: true } } } },
+      family: { select: { id: true, nume: true, headId: true } },
     },
   });
   if (!person) return null;
   const [family, notes, notesCount, documents, audit] = await Promise.all([
-    person.familie
+    person.familyId
       ? ctx.db.person.findMany({
-          where: { familie: person.familie, id: { not: id } },
+          where: { familyId: person.familyId, id: { not: id } },
           orderBy: ORDER,
           select: { id: true, nume: true, prenume: true, rudenie: true, dataIesire: true },
         })
@@ -194,14 +228,10 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
   };
 }
 
-/** Numele de familie existente (pentru sugestii în formulare). */
+/** The families' names (suggestions for the free-text family of a note). */
 export async function familyNames(ctx: Ctx): Promise<string[]> {
-  const rows = await ctx.db.person.findMany({
-    where: { familie: { not: "" } },
-    distinct: ["familie"],
-    select: { familie: true },
-  });
-  return rows.map((r) => r.familie).sort(compareRo);
+  const rows = await ctx.db.family.findMany({ select: { nume: true } });
+  return [...new Set(rows.map((r) => r.nume))].sort(compareRo);
 }
 
 export interface PersonOption {

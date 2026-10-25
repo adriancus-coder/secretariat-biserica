@@ -49,7 +49,13 @@ function maxIso(...d: (string | null)[]): string {
  * Persoană aleatoare, consistentă cronologic (naștere ≤ înregistrare ≤ intrare), astfel încât
  * prototipul și aplicația să aplice aceleași reguli (vezi diferența documentată în stats.ts).
  */
-export function randomPerson(r: Rng, id: string, today: string, families: string[]): PersonRecord {
+/**
+ * A generated person: the prototype groups families by the text `familie`; the app by `familyId`.
+ * Fixtures derive one from the other ("fam:<text>"), so both see the same families.
+ */
+export type FixturePerson = PersonRecord & { familie: string };
+
+export function randomPerson(r: Rng, id: string, today: string, families: string[]): FixturePerson {
   const gen = r.chance(0.08) ? null : r.chance(0.5) ? "M" : "F";
   const statut = r.pick(PERSON_STATUSES);
   const dataNasterii = r.chance(0.85) ? isoBetween(r, "1935-01-01", today) : null;
@@ -64,13 +70,17 @@ export function randomPerson(r: Rng, id: string, today: string, families: string
   const exits = r.chance(0.3);
   const dataIesire = exits ? isoBetween(r, maxIso(dataMembru, createdAt, "2012-01-01"), "2027-06-30") : null;
   const modIesire: ExitModeKey | null = exits && r.chance(0.85) ? r.pick(EXIT_MODES) : null;
+  const nume = r.pick(NUME);
+  const prenume = gen === "F" ? r.pick(PRENUME_F) : r.pick(PRENUME_M);
+  const familie = r.chance(0.8) ? r.pick(families) : "";
   return {
     id,
-    nume: r.pick(NUME),
-    prenume: gen === "F" ? r.pick(PRENUME_F) : r.pick(PRENUME_M),
+    nume,
+    prenume,
     statut,
     gen,
-    familie: r.chance(0.8) ? r.pick(families) : "",
+    familie,
+    familyId: familie ? `fam:${familie}` : null,
     rudenie: r.chance(0.8) ? r.pick(NOMEN_DEFAULTS.rudenie) : "",
     dataNasterii,
     dataMembru,
@@ -92,7 +102,7 @@ export function randomEvent(r: Rng, id: string): EventRecord {
 }
 
 /** Conversia unei persoane în formatul prototipului (etichete românești, '' pentru valori lipsă). */
-export function toPrototypeMember(p: PersonRecord): Record<string, unknown> {
+export function toPrototypeMember(p: FixturePerson): Record<string, unknown> {
   return {
     id: p.id,
     nume: p.nume,
@@ -125,7 +135,7 @@ export function toPrototypeEvent(e: EventRecord): Record<string, unknown> {
 }
 
 export interface Dataset {
-  persons: PersonRecord[];
+  persons: FixturePerson[];
   events: EventRecord[];
   meetings: { id: string; data: string }[];
   documents: { id: string; data: string; tip: string }[];

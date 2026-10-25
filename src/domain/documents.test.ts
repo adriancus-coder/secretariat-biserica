@@ -6,7 +6,7 @@ const base: DocPerson = {
   nume: "Popescu",
   prenume: "Ion",
   gen: "M",
-  familie: "Popescu",
+  familyId: "Popescu",
   rudenie: "Fiu",
   dataNasterii: "2010-03-05",
   dataMembru: "2020-06-10",
@@ -41,7 +41,7 @@ describe("șabloanele de documente", () => {
       { ...base, id: "t", prenume: "Petru", rudenie: "Cap de familie" },
       { ...base, id: "m", prenume: "Rut", gen: "F", rudenie: "Soție" },
       { ...base, id: "s", prenume: "Ana", gen: "F", rudenie: "Fiică" },
-      { ...base, id: "o", familie: "Alta", prenume: "Străin", rudenie: "Părinte" },
+      { ...base, id: "o", familyId: "Alta", prenume: "Străin", rudenie: "Părinte" },
     ];
     const text = generateDocumentText({ tip: "binecuvantare", person: { ...base, gen: "F", prenume: "Lia" }, family, church, catre: "", scop: "" });
     expect(text).toBe(

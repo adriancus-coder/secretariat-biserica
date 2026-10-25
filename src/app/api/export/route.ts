@@ -4,7 +4,8 @@ import { permissions } from "@/lib/permissions";
 import { applicationsToJson } from "@/lib/application-backup";
 import { addMemberRoles, rolesToJson } from "@/lib/roles-backup";
 import { addMeetingAttendance } from "@/lib/attendance-backup";
-import { loadApplications, loadBackup, loadMeetingAttendance, loadRoles } from "@/server/backup";
+import { addMemberFamilies, familiesToJson } from "@/lib/families-backup";
+import { loadApplications, loadBackup, loadFamilies, loadMeetingAttendance, loadRoles } from "@/server/backup";
 import { getCurrentUser } from "@/server/session";
 import { tenantDb } from "@/server/tenant-db";
 
@@ -14,16 +15,18 @@ export async function GET() {
   if (!user) return new Response("Neautentificat.", { status: 401 });
   if (!permissions.export(user.role)) return new Response("Nu aveți drept de export.", { status: 403 });
   const ctx = { user, db: tenantDb(user.churchId) };
-  const [backup, applications, roles, attendance] = await Promise.all([
+  const [backup, applications, roles, attendance, families] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
     loadMeetingAttendance(ctx),
+    loadFamilies(ctx),
   ]);
   const data = toPrototypeJson(backup);
+  addMemberFamilies(data.members as Record<string, Record<string, unknown>>, families.familyOf);
   addMeetingAttendance(data.meetings as Record<string, Record<string, unknown>>, attendance);
   addMemberRoles(data.members as Record<string, Record<string, unknown>>, roles.functii);
-  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roles: rolesToJson(roles.roles) }, null, 2);
+  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roles: rolesToJson(roles.roles), families: familiesToJson(families.families) }, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (backup.settings?.nume || "biserica")
     .normalize("NFD")

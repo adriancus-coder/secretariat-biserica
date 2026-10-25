@@ -39,7 +39,7 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
     [
       ["Statut", STATUS_LABEL[x.statut]],
       ["Gen", x.gen ? GENDER_LABEL[x.gen] : ""],
-      ["Familie", x.familie ? x.familie + (x.rudenie ? ` — ${x.rudenie}` : "") : ""],
+      ["Familie", x.family ? x.family.nume + (x.family.headId === x.id ? " — capul familiei" : x.rudenie ? ` — ${x.rudenie}` : "") : ""],
       ["Data nașterii", dn ? `${fmt(dn)} (${ageAt(dn, today)} ani)` : ""],
       ["Telefon", x.telefon],
       ["E-mail", x.email],
@@ -105,9 +105,14 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
       </dl>
 
       <div className="two">
-        {family.length ? (
+        {x.family ? (
           <div className="card">
-            <h3>Familia</h3>
+            <h3>
+              <Link href={`/familii/${x.family.id}`} className="text-ink">
+                {x.family.nume}
+              </Link>
+            </h3>
+            {!family.length ? <p className="hint">Singurul membru al familiei.</p> : null}
             {family.map((m) => (
               <Link key={m.id} href={`/persoane/${m.id}`} className="pill">
                 {memberName(m)}
@@ -117,7 +122,7 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
             ))}
             {canWrite ? (
               <div className="mt-2">
-                <Link href={`/persoane/nou?familie=${encodeURIComponent(x.familie)}`} className="btn btn-sm">
+                <Link href={`/persoane/nou?familie=${x.family.id}`} className="btn btn-sm">
                   + Membru de familie
                 </Link>
               </div>

@@ -257,6 +257,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - On save, `expectedAttendees` (as of the meeting date) minus the persons present become ABSENT rows, and `Meeting.asteptati` stores the expected count. The quorum line uses it, so meetings saved before the rules show no quorum.
 - Export/import: `absenti` and `asteptati` on each meeting (`src/lib/attendance-backup.ts`).
 
+### Families
+
+- `Family` is a tenant model with a head (`headId`, unique) and members (`Person.familyId`). The old text column is `Person.familieVeche`: kept for one release, then dropped by a later migration. Never write it.
+- `pickHead()` / `defaultFamilyName()` (`src/lib/families.ts`) choose the head ("Cap de familie", else the oldest adult man, else the oldest adult) and the name ("Fam. Prenume Nume"). The `families` migration applies the same rule in SQL; keep them in sync.
+- Membership changes go through `settleFamily()` (`src/server/families.ts`): an empty family is deleted, and a headless one gets a head. The head of a family with other members changes family only after a new head is chosen on `/familii/[id]`.
+- Domain records carry `familyId`. `computeStats` and the blessing certificate use it; the parity tests document both deviations.
+- Export/import: `families` collection and `familyId` on members (`src/lib/families-backup.ts`). Members keep the prototype's `familie` text with the family's name. Older files get one family per text.
+
 ### Database and migrations
 
 - Never edit an applied migration: Prisma checks its checksum. Add a new migration instead. Example: `note_search` has a wrong backfill, which `note_search_fix` corrects.

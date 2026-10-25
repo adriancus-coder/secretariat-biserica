@@ -10,7 +10,7 @@ export function person(p: Partial<PersonRecord> & Pick<PersonRecord, "nume">): P
     prenume: "",
     statut: "MEMBRU",
     gen: null,
-    familie: "",
+    familyId: null,
     rudenie: "",
     dataNasterii: null,
     dataMembru: null,

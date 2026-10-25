@@ -11,7 +11,7 @@ export function statusTagClass(statut: string): string {
 /** Rândul din listă, ca în prototip: inițială, nume, (familie / rudenie) · telefon · vârstă, statut. */
 export function PersonRow({ p, byFamily, today }: { p: PersonListItem; byFamily: boolean; today: string }) {
   const meta = [
-    p.rudenie && byFamily ? p.rudenie : p.familie ? `Fam. ${p.familie}` : "",
+    byFamily ? p.rudenie : p.familie,
     p.telefon,
     p.dataNasterii ? `${ageAt(p.dataNasterii, today)} ani` : "",
   ]

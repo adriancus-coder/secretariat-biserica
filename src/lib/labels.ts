@@ -106,7 +106,7 @@ export const NOMEN_DEFAULTS = {
     "Altele",
   ],
   tipuriMentiuni: ["Generală", "Pastorală", "Disciplină", "Familie", "Slujire", "Altele"],
-  rudenie: ["Cap de familie", "Soție", "Fiu", "Fiică", "Părinte", "Altul"],
+  rudenie: ["Cap de familie", "Soție", "Soț", "Fiu", "Fiică", "Părinte", "Altul"],
 } as const;
 export type NomenKey = keyof typeof NOMEN_DEFAULTS;
 
@@ -126,8 +126,11 @@ export function resolveNomen(saved: Partial<Record<NomenKey, string[] | null | u
   };
 }
 
-/** Gradele de rudenie considerate „părinți” în certificatul de binecuvântare. */
-export const PARENT_RELATIONS = ["Cap de familie", "Soție", "Părinte"];
+/**
+ * The parents named in the blessing certificate ("din părinții …"): the family's head and spouse.
+ * The prototype used ["Cap de familie", "Soție", "Părinte"] on the family text (see README).
+ */
+export const PARENT_RELATIONS = ["Cap de familie", "Soție", "Soț"];
 export const HEAD_OF_FAMILY = "Cap de familie";
 
 /** Tipurile de eveniment numărate în darea de seamă. */

@@ -11,4 +11,5 @@ export type AuditEntityKey =
   | "USER"
   | "IMPORT"
   | "APPLICATION"
-  | "CHURCH_ROLE";
+  | "CHURCH_ROLE"
+  | "FAMILY";

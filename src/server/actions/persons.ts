@@ -11,16 +11,29 @@ import { applyExitRule, PERSON_FIELDS, personSchema, type PersonInput } from "@/
 import { APPLICATION_FIELDS } from "@/lib/schemas/application";
 import { personRolesSchema } from "@/lib/schemas/roles";
 import { idSchema } from "@/lib/validation";
+import { NEW_FAMILY, defaultFamilyName } from "@/lib/families";
 import { writeAudit } from "../audit";
+import { createFamilyFor, settleFamily } from "../families";
 import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
 import { findDuplicatePerson } from "../queries/applications";
-import { actionCtx, ActionError } from "../session";
-import { parseOrThrow, runFormAction } from "./run";
+import { actionCtx, ActionError, type Ctx } from "../session";
+import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
-/** Fields tracked by the audit log: the person's columns plus the roles held (as names). */
-const PERSON_AUDIT_FIELDS = [...PERSON_FIELDS, "functii"] as const;
+/** Fields tracked by the audit log: the person's columns plus the family and the roles held (as names). */
+const PERSON_AUDIT_FIELDS = [...PERSON_FIELDS, "familie", "functii"] as const;
 
-function toPersonData(input: PersonInput) {
+type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
+
+/** The person's family and roles as names, for the audit log. */
+async function auditExtras(tx: Tx, personId: string) {
+  const p = await tx.person.findUnique({ where: { id: personId }, select: { family: { select: { nume: true } } } });
+  return { familie: p?.family?.nume ?? "", functii: await personRolesAudit(tx, personId) };
+}
+
+function toPersonData(person: PersonInput) {
+  // The family is written separately (an id, or a new family created after the person).
+  const input: Omit<PersonInput, "familyId"> & { familyId?: string } = { ...person };
+  delete input.familyId;
   return {
     ...input,
     dataNasterii: toDbDate(input.dataNasterii),
@@ -50,6 +63,10 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
     const data = toPersonData(input);
     const roles = parseOrThrow(personRolesSchema, formData.get("functii"));
     await assertPersonRoles(ctx.db, id, roles);
+    const familyChoice = input.familyId;
+    if (familyChoice && familyChoice !== NEW_FAMILY && !(await ctx.db.family.findUnique({ where: { id: familyChoice }, select: { id: true } }))) {
+      throw new ValidationError({ familyId: "Familia aleasă nu mai există." });
+    }
 
     if (applicationId) {
       const app = await ctx.db.application.findUnique({ where: { id: applicationId }, select: { status: true } });
@@ -66,10 +83,28 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
 
     savedId = await ctx.db.$transaction(async (tx) => {
       if (id) {
-        const before = await tx.person.findUnique({ where: { id } });
+        const before = await tx.person.findUnique({ where: { id }, include: { headOf: { select: { id: true, nume: true } } } });
         if (!before) throw new ActionError("Persoana nu mai există în registru.");
-        const rolesBefore = await personRolesAudit(tx, id);
-        const after = await tx.person.update({ where: { id }, data });
+        const extrasBefore = await auditExtras(tx, id);
+        const target = familyChoice === NEW_FAMILY ? NEW_FAMILY : familyChoice || null;
+        // The head of a family with other members changes family only after a new head is chosen.
+        if (before.headOf && target !== before.headOf.id) {
+          const others = await tx.person.count({ where: { familyId: before.headOf.id, id: { not: id } } });
+          if (others) {
+            throw new ValidationError({
+              familyId: `Este capul familiei „${before.headOf.nume}”. Alegeți alt cap din pagina familiei înainte de a o muta.`,
+            });
+          }
+        }
+        const after = await tx.person.update({ where: { id }, data: { ...data, familyId: target === NEW_FAMILY ? null : target } });
+        // The old family first: a lone head leaves it (and it is deleted) before heading a new one.
+        if (before.familyId && before.familyId !== target) await settleFamily(tx, ctx.user, before.familyId);
+        if (target === NEW_FAMILY) await createFamilyFor(tx, ctx.user, after);
+        if (target && target !== NEW_FAMILY && target !== before.familyId) await settleFamily(tx, ctx.user, target);
+        // A family still named after its head follows a rename of the head.
+        if (before.headOf && target === before.headOf.id && before.headOf.nume === defaultFamilyName(before)) {
+          await tx.family.update({ where: { id: target }, data: { nume: defaultFamilyName(after) } });
+        }
         await writePersonRoles(tx, id, roles);
         await writeAudit(tx, ctx.user, {
           entity: "PERSON",
@@ -77,12 +112,15 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
           entityLabel: memberName(after),
           action: "UPDATE",
           fields: PERSON_AUDIT_FIELDS,
-          before: { ...before, functii: rolesBefore },
-          after: { ...after, functii: await personRolesAudit(tx, id) },
+          before: { ...before, ...extrasBefore },
+          after: { ...after, ...(await auditExtras(tx, id)) },
         });
         return id;
       }
-      const created = await tx.person.create({ data: { ...data, churchId: ctx.user.churchId } });
+      const joining = familyChoice && familyChoice !== NEW_FAMILY ? familyChoice : null;
+      const created = await tx.person.create({ data: { ...data, familyId: joining, churchId: ctx.user.churchId } });
+      if (familyChoice === NEW_FAMILY) await createFamilyFor(tx, ctx.user, created);
+      if (joining) await settleFamily(tx, ctx.user, joining);
       await writePersonRoles(tx, created.id, roles);
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
@@ -90,7 +128,7 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         entityLabel: memberName(created),
         action: "CREATE",
         fields: PERSON_AUDIT_FIELDS,
-        after: { ...created, functii: await personRolesAudit(tx, created.id) },
+        after: { ...created, ...(await auditExtras(tx, created.id)) },
         ...(applicationId ? { extra: { sursa: "cerere de membru" } } : {}),
       });
       if (applicationId) {
@@ -125,15 +163,17 @@ export async function deletePersonAction(id: string): Promise<FormState> {
     await ctx.db.$transaction(async (tx) => {
       const before = await tx.person.findUnique({ where: { id } });
       if (!before) throw new ActionError("Persoana nu mai există în registru.");
-      const functii = await personRolesAudit(tx, id);
+      const extras = await auditExtras(tx, id);
       await tx.person.delete({ where: { id } });
+      // The family loses a member: it gets a new head, or is deleted when empty.
+      if (before.familyId) await settleFamily(tx, ctx.user, before.familyId, before);
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: id,
         entityLabel: memberName(before),
         action: "DELETE",
         fields: PERSON_AUDIT_FIELDS,
-        before: { ...before, functii },
+        before: { ...before, ...extras },
       });
     });
   });

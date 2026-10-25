@@ -114,7 +114,7 @@ export function SettingsForm({
         </p>
         <div className="hint">
           Statistica folosește tipurile de eveniment „Nuntă” și „Înmormântare”, iar certificatul de binecuvântare
-          gradele „Cap de familie”, „Soție” și „Părinte” — păstrați aceste denumiri.
+          gradele „Cap de familie”, „Soție” și „Soț” (părinții sunt capul familiei și soția sau soțul) — păstrați aceste denumiri.
         </div>
       </fieldset>
       <FormMessage state={state} />
