@@ -26,14 +26,18 @@ enum Role {
 }
 
 model Church {
-  id       String @id @default(cuid())
-  nume     String
-  adresa   String @default("")
-  orgNr    String @default("")
-  telefon  String @default("")
-  email    String @default("")
-  pastor   String @default("")
-  secretar String @default("")
+  id               String  @id @default(cuid())
+  nume             String
+  /// Public address of the membership application form: /cerere/<slug> (a-z, 0-9, hyphens; 3-40 chars).
+  slug             String  @unique
+  /// Whether the public form accepts membership applications.
+  applicationsOpen Boolean @default(false)
+  adresa           String  @default("")
+  orgNr            String  @default("")
+  telefon          String  @default("")
+  email            String  @default("")
+  pastor           String  @default("")
+  secretar         String  @default("")
 
   // Nomenclatoare editabile. O listă goală înseamnă „valorile implicite” din aplicație.
   tipuriSedinte    String[] @default([])
@@ -54,6 +58,7 @@ model Church {
   notes          Note[]
   auditLogs      AuditLog[]
   passwordResets PasswordReset[]
+  applications   Application[]
 
   @@map("churches")
 }
@@ -78,10 +83,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  auditLogs       AuditLog[]
-  invitationsSent Invitation[]    @relation("InvitedBy")
-  passwordResets  PasswordReset[] @relation("ResetFor")
-  resetsIssued    PasswordReset[] @relation("ResetIssuedBy")
+  auditLogs           AuditLog[]
+  invitationsSent     Invitation[]    @relation("InvitedBy")
+  passwordResets      PasswordReset[] @relation("ResetFor")
+  resetsIssued        PasswordReset[] @relation("ResetIssuedBy")
+  applicationsDecided Application[]   @relation("ApplicationDecidedBy")
 
   @@index([churchId])
   @@map("users")
@@ -196,10 +202,11 @@ model Person {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meetings  MeetingAttendee[]
-  groups    GroupMember[]
-  mentiuni  Note[]
-  documents Document[]
+  meetings    MeetingAttendee[]
+  groups      GroupMember[]
+  mentiuni    Note[]
+  documents   Document[]
+  application Application?
 
   @@index([churchId, sortKey])
   @@index([churchId, familie])
@@ -411,6 +418,7 @@ enum AuditEntity {
   SETTINGS
   USER
   IMPORT
+  APPLICATION
 }
 
 enum AuditAction {
@@ -442,4 +450,54 @@ model AuditLog {
   @@index([churchId, entity, entityId, createdAt])
   @@index([churchId, createdAt])
   @@map("audit_logs")
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ApplicationKind {
+  TRANSFER
+  BOTEZ
+  ALTUL
+}
+
+/// Membership application sent through the public form /cerere/<slug>.
+model Application {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  status ApplicationStatus @default(PENDING)
+  kind   ApplicationKind
+
+  nume                String
+  prenume             String    @default("")
+  gen                 Gender?
+  dataNasterii        DateTime? @db.Date
+  telefon             String    @default("")
+  email               String    @default("")
+  adresa              String    @default("")
+  familie             String    @default("")
+  rudenie             String    @default("")
+  bisericaProvenienta String    @default("")
+  dataBotez           DateTime? @db.Date
+  locBotez            String    @default("")
+  mesaj               String    @default("")
+  /// The applicant agreed that the church keeps the data for its membership records.
+  consent             Boolean   @default(false)
+
+  createdAt    DateTime  @default(now())
+  decidedAt    DateTime?
+  decidedById  String?
+  decidedBy    User?     @relation("ApplicationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  /// The person created in the register when the application was accepted.
+  personId     String?   @unique
+  person       Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
+  rejectReason String    @default("")
+
+  @@index([churchId, status, createdAt])
+  @@map("applications")
 }

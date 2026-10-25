@@ -7,6 +7,9 @@ import type { Ctx } from "../session";
 
 export interface ChurchSettings extends ChurchInfo {
   id: string;
+  /** Public address of the application form: /cerere/<slug>. */
+  slug: string;
+  applicationsOpen: boolean;
   /** Nomenclatoarele efective (cele salvate sau cele implicite). */
   nomen: Nomenclatures;
   /** Nomenclatoarele salvate (liste goale = implicit). */
@@ -24,6 +27,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
   };
   return {
     id: c.id,
+    slug: c.slug,
+    applicationsOpen: c.applicationsOpen,
     nume: c.nume,
     adresa: c.adresa,
     orgNr: c.orgNr,

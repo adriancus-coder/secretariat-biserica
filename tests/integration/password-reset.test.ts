@@ -28,7 +28,7 @@ describe.skipIf(!hasTestDb)("forgot password: requestPasswordReset", () => {
 
   beforeAll(async () => {
     await resetDatabase(prisma);
-    const church = await prisma.church.create({ data: { nume: "Maranata Stavanger" } });
+    const church = await prisma.church.create({ data: { nume: "Maranata Stavanger", slug: "maranata-stavanger" } });
     userId = (
       await prisma.user.create({
         data: { churchId: church.id, email: "ana@example.org", name: "Ana Pop", passwordHash: "x", role: "SECRETAR" },

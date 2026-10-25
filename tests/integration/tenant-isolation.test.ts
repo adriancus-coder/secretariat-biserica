@@ -10,8 +10,8 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
 
   beforeAll(async () => {
     await resetDatabase(prisma);
-    churchA = (await prisma.church.create({ data: { nume: "Betel" } })).id;
-    churchB = (await prisma.church.create({ data: { nume: "Maranata" } })).id;
+    churchA = (await prisma.church.create({ data: { nume: "Betel", slug: "betel" } })).id;
+    churchB = (await prisma.church.create({ data: { nume: "Maranata", slug: "maranata" } })).id;
     const a = scopeToChurch(prisma, churchA);
     personA = (await a.person.create({ data: { nume: "Popescu", prenume: "Ion" } as never })).id;
     await a.document.create({
@@ -49,6 +49,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await expect(b.person.delete({ where: { id: personA } })).rejects.toMatchObject({ code: "P2025" });
     const p = await prisma.person.findUniqueOrThrow({ where: { id: personA } });
     expect(p.nume).toBe("Popescu");
+  });
+
+  it("cererile de membru sunt izolate pe biserici", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const app = await a.application.create({ data: { kind: "TRANSFER", nume: "Ionescu", consent: true } as never });
+    expect(app.churchId).toBe(churchA);
+    expect(await b.application.findUnique({ where: { id: app.id } })).toBeNull();
+    expect(await b.application.findMany()).toHaveLength(0);
+    expect(await b.application.count()).toBe(0);
+    expect((await b.application.updateMany({ data: { status: "REJECTED" } })).count).toBe(0);
+    await expect(b.application.update({ where: { id: app.id }, data: { status: "ACCEPTED" } })).rejects.toMatchObject({
+      code: "P2025",
+    });
+    expect((await b.application.deleteMany({})).count).toBe(0);
+    expect((await prisma.application.findUniqueOrThrow({ where: { id: app.id } })).status).toBe("PENDING");
+    expect(await a.application.count()).toBe(1);
   });
 
   it("filtrul se păstrează în tranzacții interactive", async () => {

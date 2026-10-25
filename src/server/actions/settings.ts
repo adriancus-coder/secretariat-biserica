@@ -8,7 +8,7 @@ import { writeAudit } from "../audit";
 import { importBackup, type ImportMode } from "../backup";
 import { prisma } from "../db";
 import { actionCtx, ActionError } from "../session";
-import { parseOrThrow, runFormAction } from "./run";
+import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
 /** Datele organizației și nomenclatoarele (doar administratorul). */
 export async function saveChurchSettingsAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -16,6 +16,9 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
     const ctx = await actionCtx("admin");
     const input = parseOrThrow(churchSettingsSchema, Object.fromEntries(formData));
     await prisma.$transaction(async (tx) => {
+      // The slug is the public address of the application form: unique across all churches.
+      const clash = await tx.church.findFirst({ where: { slug: input.slug, id: { not: ctx.user.churchId } }, select: { id: true } });
+      if (clash) throw new ValidationError({ slug: "Această adresă este deja folosită de altă biserică. Alegeți alta." });
       const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
       const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: input });
       await writeAudit(tx, ctx.user, {

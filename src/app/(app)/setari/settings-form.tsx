@@ -1,25 +1,32 @@
 "use client";
 
 import { useActionState } from "react";
+import { CopyButton } from "@/components/ui/copy-button";
 import { TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
 import type { Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 
+type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "slug";
+
 export function SettingsForm({
   church,
   nomen,
+  formUrl,
   readOnly,
 }: {
-  church: { nume: string; adresa: string; orgNr: string; telefon: string; email: string; pastor: string; secretar: string };
+  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean };
   nomen: Nomenclatures;
+  /** Full address of the public application form, for the copy button. */
+  formUrl: string;
   readOnly: boolean;
 }) {
   const [state, action, pending] = useActionState(saveChurchSettingsAction, initialFormState);
   const v = state.values;
   const e = state.errors ?? {};
-  const val = (k: keyof typeof church) => v?.[k] ?? church[k];
+  const val = (k: ChurchTextFields) => v?.[k] ?? church[k];
+  const applicationsOpen = v ? v.applicationsOpen === "on" : church.applicationsOpen;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
       name={name}
@@ -45,6 +52,32 @@ export function SettingsForm({
           <TextField name="pastor" label="Pastor" defaultValue={val("pastor")} error={e.pastor} hint="Semnează documentele." />
           <TextField name="secretar" label="Secretar" defaultValue={val("secretar")} error={e.secretar} hint="Semnează documentele și PV-urile." />
         </div>
+        <TextField
+          name="slug"
+          label="Adresă publică a cererii"
+          defaultValue={val("slug")}
+          error={e.slug}
+          autoComplete="off"
+          spellCheck={false}
+          hint={
+            <>
+              Formularul de cerere de membru:{" "}
+              <a href={formUrl} target="_blank" rel="noopener noreferrer" className="break-all">
+                {formUrl}
+              </a>
+            </>
+          }
+        />
+        <div className="-mt-1.5 mb-3.5">
+          <CopyButton text={formUrl} label="Copiază adresa" />
+        </div>
+        <label className="switch-row">
+          <input type="checkbox" role="switch" name="applicationsOpen" defaultChecked={applicationsOpen} />
+          <span>
+            <span className="block font-medium">Primește cereri de membru online</span>
+            <span className="hint block !mt-0">Când este pornit, oricine are adresa de mai sus poate trimite o cerere.</span>
+          </span>
+        </label>
       </fieldset>
       <fieldset className="card" disabled={readOnly}>
         <h3>Nomenclatoare</h3>

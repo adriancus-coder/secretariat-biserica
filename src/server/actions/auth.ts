@@ -14,6 +14,7 @@ import {
   signupSchema,
 } from "@/lib/schemas/auth";
 import { formValues } from "@/lib/validation";
+import { uniqueChurchSlug } from "../church-slug";
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "../password";
 import { passwordResetRequests, requestPasswordReset, RESET_REQUEST_WINDOW_MINUTES } from "../password-reset";
@@ -66,7 +67,8 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
     }
     const passwordHash = await hashPassword(data.password);
     await prisma.$transaction(async (tx) => {
-      const church = await tx.church.create({ data: { nume: data.churchName } });
+      const slug = await uniqueChurchSlug(tx, data.churchName);
+      const church = await tx.church.create({ data: { nume: data.churchName, slug } });
       await tx.user.create({
         data: { churchId: church.id, email: data.email, name: data.name, passwordHash, role: "ADMIN" },
       });

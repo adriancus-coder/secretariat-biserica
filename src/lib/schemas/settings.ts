@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ROLES } from "../labels";
+import { isValidSlug, SLUG_MAX, SLUG_MIN } from "../slug";
 import { optionalEmail, requiredEnum, requiredText, text } from "../validation";
 import { emailField } from "./auth";
 
@@ -13,6 +14,20 @@ export const nomenLines = z
   .refine((l) => l.length <= NOMEN_MAX_ITEMS, `Cel mult ${NOMEN_MAX_ITEMS} de valori.`)
   .refine((l) => l.every((x) => x.length <= NOMEN_MAX_LENGTH), `Fiecare valoare poate avea cel mult ${NOMEN_MAX_LENGTH} de caractere.`);
 
+/** Spaces become hyphens and letters lowercase; anything else must already be valid. */
+const slugField = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toLowerCase().replace(/\s+/g, "-") : ""),
+  z
+    .string()
+    .refine(
+      isValidSlug,
+      `Între ${SLUG_MIN} și ${SLUG_MAX} caractere: litere mici fără diacritice, cifre și cratimă (ex. maranata-stavanger).`,
+    ),
+);
+
+/** A checkbox: present ("on") when ticked, absent otherwise. */
+const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean());
+
 export const SETTINGS_FIELDS = [
   "nume",
   "adresa",
@@ -25,6 +40,8 @@ export const SETTINGS_FIELDS = [
   "tipuriEvenimente",
   "tipuriMentiuni",
   "gradeRudenie",
+  "slug",
+  "applicationsOpen",
 ] as const;
 
 export const churchSettingsSchema = z.object({
@@ -39,6 +56,8 @@ export const churchSettingsSchema = z.object({
   tipuriEvenimente: nomenLines,
   tipuriMentiuni: nomenLines,
   gradeRudenie: nomenLines,
+  slug: slugField,
+  applicationsOpen: checkbox,
 });
 
 export const inviteSchema = z.object({

@@ -12,6 +12,7 @@ export const TENANT_MODELS = new Set([
   "Group",
   "Note",
   "AuditLog",
+  "Application",
 ]);
 
 const WHERE_OPERATIONS = new Set([

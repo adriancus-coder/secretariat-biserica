@@ -6,7 +6,9 @@ import { PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { getChurch } from "@/server/queries/church";
+import { requestOrigin } from "@/server/request-origin";
 import { requireCtx } from "@/server/session";
+import { appUrl } from "@/server/tokens";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Setări" };
@@ -16,6 +18,7 @@ export default async function SettingsPage() {
   const church = await getChurch(ctx);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const role = ctx.user.role;
+  const formUrl = appUrl(`/cerere/${church.slug}`, await requestOrigin());
   return (
     <>
       <PageHead title="Setări" sub="Organizația, semnături, nomenclatoare" />
@@ -25,7 +28,7 @@ export default async function SettingsPage() {
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
         <Link href="/cont">Contul meu</Link>
       </nav>
-      <SettingsForm church={church} nomen={church.nomen} readOnly={!permissions.admin(role)} />
+      <SettingsForm church={church} nomen={church.nomen} formUrl={formUrl} readOnly={!permissions.admin(role)} />
       <div className="card mt-7">
         <h3>Aspect</h3>
         <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>

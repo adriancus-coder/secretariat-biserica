@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import type { FormState } from "@/lib/form-state";
 import { ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import { inviteSchema } from "@/lib/schemas/settings";
@@ -9,6 +8,7 @@ import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { prisma } from "../db";
 import { sendInvitationEmail, sendPasswordResetEmail, type EmailResult } from "../email";
+import { requestOrigin } from "../request-origin";
 import { actionCtx, ActionError } from "../session";
 import { appUrl, newToken } from "../tokens";
 import { parseOrThrow, runFormAction } from "./run";
@@ -28,13 +28,6 @@ function emailWarning(result: EmailResult): string | undefined {
 
 const INVITE_DAYS = 7;
 const RESET_HOURS = 48;
-
-async function origin(): Promise<string | null> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  return host ? `${proto}://${host}` : null;
-}
 
 /** Invitație pentru un utilizator nou: link valabil 7 zile, trimis pe e-mail când e configurat. */
 export async function inviteUserAction(_prev: LinkState, formData: FormData): Promise<LinkState> {
@@ -71,7 +64,7 @@ export async function inviteUserAction(_prev: LinkState, formData: FormData): Pr
         extra: { sursa: "invitație" },
       });
     });
-    link = appUrl(`/invitatie/${token}`, await origin());
+    link = appUrl(`/invitatie/${token}`, await requestOrigin());
     invitedEmail = email;
     emailed = await sendInvitationEmail({
       to: email,
@@ -203,7 +196,7 @@ export async function passwordResetLinkAction(userId: string): Promise<LinkState
         extra: { sursa: "link de resetare a parolei" },
       });
     });
-    link = appUrl(`/resetare-parola/${token}`, await origin());
+    link = appUrl(`/resetare-parola/${token}`, await requestOrigin());
     userEmail = user.email;
     emailed = await sendPasswordResetEmail({
       to: user.email,

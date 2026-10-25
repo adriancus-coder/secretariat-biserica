@@ -1,4 +1,13 @@
-import { DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, ROLE_LABEL, STATUS_LABEL } from "./labels";
+import {
+  APPLICATION_KIND_LABEL,
+  APPLICATION_STATUS_LABEL,
+  DOCUMENT_TYPE_LABEL,
+  ENTRY_LABEL,
+  EXIT_LABEL,
+  GENDER_LABEL,
+  ROLE_LABEL,
+  STATUS_LABEL,
+} from "./labels";
 import { fmt } from "./format";
 
 /** Etichetele câmpurilor afișate în jurnalul de modificări. */
@@ -60,6 +69,12 @@ export const FIELD_LABELS: Record<string, string> = {
   nomenclatoare: "Nomenclatoare",
   inregistrari: "Înregistrări",
   mod: "Mod",
+  slug: "Adresa publică a cererii",
+  applicationsOpen: "Primește cereri online",
+  stare: "Stare",
+  tipCerere: "Tip cerere",
+  mesaj: "Mesaj",
+  motiv: "Motivul respingerii",
 };
 
 const DATE_FIELDS = new Set(["dataNasterii", "dataMembru", "dataBotez", "dataBinecuvantare", "dataIesire", "data"]);
@@ -75,6 +90,8 @@ export function displayAuditValue(field: string, value: unknown): string {
   if (field === "gen") return GENDER_LABEL[v as keyof typeof GENDER_LABEL] ?? v;
   if (field === "role" || field === "rol") return ROLE_LABEL[v as keyof typeof ROLE_LABEL] ?? v;
   if (field === "tip" && v in DOCUMENT_TYPE_LABEL) return DOCUMENT_TYPE_LABEL[v as keyof typeof DOCUMENT_TYPE_LABEL];
+  if (field === "stare") return APPLICATION_STATUS_LABEL[v as keyof typeof APPLICATION_STATUS_LABEL] ?? v;
+  if (field === "tipCerere") return APPLICATION_KIND_LABEL[v as keyof typeof APPLICATION_KIND_LABEL] ?? v;
   if (typeof value === "boolean") return value ? "da" : "nu";
   return v.length > 160 ? `${v.slice(0, 157)}…` : v;
 }
@@ -90,4 +107,5 @@ export const ENTITY_LABEL = {
   SETTINGS: "Setări",
   USER: "Utilizator",
   IMPORT: "Import",
+  APPLICATION: "Cerere de membru",
 } as const;

@@ -21,9 +21,12 @@ import { computeStats } from "../src/domain/stats";
 import type { PersonRecord } from "../src/domain/types";
 import { inYear, todayIso } from "../src/lib/dates";
 import { noteSearchText, personDerived } from "../src/lib/person-derived";
+import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
 
 const DEMO_CHURCH_ID = "demo";
+/** Public application form of the demo church: /cerere/maranata-stavanger */
+const DEMO_SLUG = "maranata-stavanger";
 const PASSWORD = "demo1234";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
@@ -128,9 +131,21 @@ async function main() {
   await prisma.church.deleteMany({ where: { id: DEMO_CHURCH_ID } });
   await prisma.user.deleteMany({ where: { email: { in: ["admin@demo.ro", "secretar@demo.ro", "vizualizare@demo.ro"] } } });
 
+  // A local database can hold leftover churches (from signup tests) that got the demo slug in the
+  // migration backfill; they move to the next free variant so the demo keeps its address.
+  const holder = await prisma.church.findUnique({ where: { slug: DEMO_SLUG } });
+  if (holder) {
+    let n = 2;
+    while (await prisma.church.findUnique({ where: { slug: slugVariant(DEMO_SLUG, n) } })) n++;
+    await prisma.church.update({ where: { id: holder.id }, data: { slug: slugVariant(DEMO_SLUG, n) } });
+    console.log(`Adresa ${DEMO_SLUG} era folosită de biserica ${holder.id}; aceasta a primit ${slugVariant(DEMO_SLUG, n)}.`);
+  }
+
   const church = await prisma.church.create({
     data: {
       id: DEMO_CHURCH_ID,
+      slug: DEMO_SLUG,
+      applicationsOpen: true,
       nume: "Maranata Stavanger",
       adresa: "Kongsgårdbakken 1, 4005 Stavanger, Norvegia",
       orgNr: "912 345 678",
@@ -380,6 +395,44 @@ async function main() {
     });
   }
 
+  // Membership applications waiting for a decision (public form /cerere/maranata-stavanger)
+  await prisma.application.createMany({
+    data: [
+      {
+        churchId,
+        kind: "TRANSFER",
+        nume: "Munteanu",
+        prenume: "Andrei",
+        gen: "M",
+        dataNasterii: date("1990-04-12"),
+        telefon: "+47 412 34 567",
+        email: "andrei.munteanu@example.com",
+        adresa: "Tjensvollveien 12, 4021 Stavanger",
+        familie: "Munteanu",
+        rudenie: "Cap de familie",
+        bisericaProvenienta: "Biserica Penticostală Elim Timișoara",
+        dataBotez: date("2008-07-20"),
+        locBotez: "Timișoara",
+        mesaj: "Ne-am mutat în Stavanger în august și dorim să ne transferăm la biserica dumneavoastră.",
+        consent: true,
+        createdAt: date(addDays(TODAY, -3)),
+      },
+      {
+        churchId,
+        kind: "BOTEZ",
+        nume: "Rusu",
+        prenume: "Elena",
+        gen: "F",
+        dataNasterii: date("1999-11-03"),
+        telefon: "+47 987 65 432",
+        adresa: "Madlaveien 40, 4009 Stavanger",
+        mesaj: "Aș dori să mă pregătesc pentru botez. Vin la biserică de câteva luni.",
+        consent: true,
+        createdAt: date(addDays(TODAY, -1)),
+      },
+    ],
+  });
+
   const counts = {
     persoane: await prisma.person.count({ where: { churchId } }),
     evenimente: await prisma.event.count({ where: { churchId } }),
@@ -387,6 +440,7 @@ async function main() {
     documente: await prisma.document.count({ where: { churchId } }),
     grupuri: await prisma.group.count({ where: { churchId } }),
     mentiuni: await prisma.note.count({ where: { churchId } }),
+    cereri: await prisma.application.count({ where: { churchId } }),
   };
   console.log("Gata:", counts);
   console.log(`Autentificare: admin@demo.ro / secretar@demo.ro / vizualizare@demo.ro — parola „${PASSWORD}”.`);

@@ -9,8 +9,8 @@ describe.skipIf(!hasTestDb)("numerotarea registrului de ieșire", () => {
 
   beforeAll(async () => {
     await resetDatabase(prisma);
-    churchA = (await prisma.church.create({ data: { nume: "A" } })).id;
-    churchB = (await prisma.church.create({ data: { nume: "B" } })).id;
+    churchA = (await prisma.church.create({ data: { nume: "A", slug: "biserica-a" } })).id;
+    churchB = (await prisma.church.create({ data: { nume: "B", slug: "biserica-b" } })).id;
   });
   afterAll(async () => {
     await resetDatabase(prisma);

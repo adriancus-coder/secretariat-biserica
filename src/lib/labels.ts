@@ -35,6 +35,22 @@ export const EXIT_LABEL: Record<ExitModeKey, string> = {
   ALTUL: "Altul",
 };
 
+export const APPLICATION_KINDS = ["TRANSFER", "BOTEZ", "ALTUL"] as const;
+export type ApplicationKindKey = (typeof APPLICATION_KINDS)[number];
+export const APPLICATION_KIND_LABEL: Record<ApplicationKindKey, string> = {
+  TRANSFER: "Transfer de la altă biserică",
+  BOTEZ: "Botez nou-testamentar",
+  ALTUL: "Altul",
+};
+
+export const APPLICATION_STATUSES = ["PENDING", "ACCEPTED", "REJECTED"] as const;
+export type ApplicationStatusKey = (typeof APPLICATION_STATUSES)[number];
+export const APPLICATION_STATUS_LABEL: Record<ApplicationStatusKey, string> = {
+  PENDING: "În așteptare",
+  ACCEPTED: "Acceptată",
+  REJECTED: "Respinsă",
+};
+
 export const GENDERS = ["M", "F"] as const;
 export type GenderKey = (typeof GENDERS)[number];
 export const GENDER_LABEL: Record<GenderKey, string> = { M: "Masculin", F: "Feminin" };
