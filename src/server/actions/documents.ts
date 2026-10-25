@@ -16,6 +16,7 @@ import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
 import { buildDocumentDraft } from "../queries/documents";
 import { recommendationDiscipline } from "../discipline";
 import { permissions } from "@/lib/permissions";
+import { hasActivePastor } from "../pastor-approval";
 import { actionCtx, ActionError, type Ctx } from "../session";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
@@ -83,6 +84,8 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
       exceptieDomiciliu,
     };
 
+    // Without an active pastor in the app documents are issued directly (no approval step).
+    const approval = await hasActivePastor(ctx.user.churchId);
     try {
       savedId = await ctx.db.$transaction(async (tx) => {
         // Serializează alocarea numerelor pe (biserică, an): două salvări simultane nu pot primi același număr.
@@ -96,7 +99,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
           const after = auditView(await tx.document.update({ where: { id }, data: { ...fields, nr, persoana } }))!;
           // A changed document goes back to a draft: its signatures (and an approval) no longer apply.
           const changed = DOCUMENT_FIELDS.some((f) => JSON.stringify(before[f]) !== JSON.stringify(after[f]));
-          if (changed) await resetApproval(tx, ctx, { id, label: label(after), stare: before.stare });
+          if (changed) await resetApproval(tx, ctx, { id, label: label(after), stare: before.stare }, approval);
           await writeAudit(tx, ctx.user, {
             entity: "DOCUMENT",
             entityId: id,
@@ -109,7 +112,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
           return id;
         }
         const created = await tx.document.create({
-          data: { ...fields, nr, persoana: person ? memberName(person) : "", churchId: ctx.user.churchId },
+          data: { ...fields, nr, persoana: person ? memberName(person) : "", stare: approval ? "CIORNA" : "APROBAT", churchId: ctx.user.churchId },
         });
         await writeAudit(tx, ctx.user, {
           entity: "DOCUMENT",
@@ -135,20 +138,23 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
 
 /**
  * Back to CIORNA after an edit: an approved (or pending) document loses its approval and both
- * signatures; audited with the old state and the removed signatures (names only).
+ * signatures; audited with the old state and the removed signatures (names only). Without the
+ * approval step (no pastor in the app) only the signatures are removed.
  */
-async function resetApproval(tx: Tx, ctx: Ctx, doc: { id: string; label: string; stare: DocumentStateKey }) {
+async function resetApproval(tx: Tx, ctx: Ctx, doc: { id: string; label: string; stare: DocumentStateKey }, approval: boolean) {
   const sigs = await tx.documentSignature.findMany({ where: { documentId: doc.id }, select: { role: true, name: true } });
-  if (doc.stare === "CIORNA" && !sigs.length) return;
+  const toDraft = approval && doc.stare !== "CIORNA";
+  if (!toDraft && !sigs.length) return;
   await tx.documentSignature.deleteMany({ where: { documentId: doc.id } });
-  await tx.document.update({ where: { id: doc.id }, data: { stare: "CIORNA", trimisLaSemnatLa: null, aprobatDeUserId: null, aprobatLa: null } });
+  if (toDraft) await tx.document.update({ where: { id: doc.id }, data: { stare: "CIORNA", trimisLaSemnatLa: null, aprobatDeUserId: null, aprobatLa: null } });
+  const signed = sigs.map((s) => `${s.role === "PASTOR" ? "pastor" : "secretar"}: ${s.name}`).join(", ");
   await writeAudit(tx, ctx.user, {
     entity: "DOCUMENT",
     entityId: doc.id,
     entityLabel: doc.label,
     action: "UPDATE",
-    fields: ["stare", "semnaturi"],
-    before: { stare: DOCUMENT_STATE_LABEL[doc.stare], semnaturi: sigs.map((s) => `${s.role === "PASTOR" ? "pastor" : "secretar"}: ${s.name}`).join(", ") },
+    fields: toDraft ? ["stare", "semnaturi"] : ["semnaturi"],
+    before: { stare: DOCUMENT_STATE_LABEL[doc.stare], semnaturi: signed },
     after: { stare: DOCUMENT_STATE_LABEL.CIORNA, semnaturi: "" },
   });
 }

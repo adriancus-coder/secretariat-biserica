@@ -12,6 +12,7 @@ import { loadStatistics } from "./statistics";
 import { permissions } from "@/lib/permissions";
 import { recommendationDiscipline } from "../discipline";
 import { generateReportText } from "./stats";
+import { hasActivePastor } from "../pastor-approval";
 
 export const DOCUMENTS_PAGE_SIZE = 30;
 
@@ -30,8 +31,9 @@ export async function listDocuments(ctx: Ctx, { page, year }: { page: number; ye
     take: DOCUMENTS_PAGE_SIZE,
     select: { id: true, tip: true, nr: true, anRegistru: true, data: true, titlu: true, persoana: true, catre: true, stare: true },
   });
+  const approval = await hasActivePastor(ctx.user.churchId);
   return {
-    items: rows.map((d) => ({ ...d, data: fromDbDate(d.data)! })),
+    items: rows.map((d) => ({ ...d, data: fromDbDate(d.data)!, stare: approval ? d.stare : ("APROBAT" as const) })),
     total,
     page: current,
     pages,
@@ -52,7 +54,9 @@ export async function documentsToSign(ctx: Ctx) {
 export async function getDocument(ctx: Ctx, id: string) {
   const d = await ctx.db.document.findUnique({ where: { id } });
   if (!d) return null;
-  return { ...d, data: fromDbDate(d.data)!, textRich: storedRich(d.textRich) };
+  // Without a pastor in the app there is no approval: the document is issued as it is.
+  const stare = (await hasActivePastor(ctx.user.churchId)) ? d.stare : ("APROBAT" as const);
+  return { ...d, stare, data: fromDbDate(d.data)!, textRich: storedRich(d.textRich) };
 }
 
 /** Următorul număr liber în registrul anului dat (informativ; alocarea finală se face la salvare). */

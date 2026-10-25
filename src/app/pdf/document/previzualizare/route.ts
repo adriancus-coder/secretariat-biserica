@@ -8,6 +8,7 @@ import { idSchema, longText, optionalInt, requiredDate, requiredEnum } from "@/l
 import { pdfResponse, renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
+import { hasActivePastor } from "@/server/pastor-approval";
 
 const previewSchema = z.object({
   tip: requiredEnum(DOCUMENT_TYPES),
@@ -33,7 +34,9 @@ export async function POST(req: Request) {
   // An existing document keeps its own page layout in the preview; a new one gets the church's default.
   const previewId = idSchema.safeParse(form.get("previewId"));
   const existing = previewId.success ? await ctx.db.document.findUnique({ where: { id: previewId.data }, select: { layout: true } }) : null;
-  const spec = documentPrint({ tip, nr: nr ?? "____", data, text, textRich, watermark: DRAFT_WATERMARK }, church);
+  // Unsaved, so not approved: the draft mark whenever the church's documents need the pastor's approval.
+  const draft = await hasActivePastor(ctx.user.churchId);
+  const spec = documentPrint({ tip, nr: nr ?? "____", data, text, textRich, ...(draft ? { watermark: DRAFT_WATERMARK } : {}) }, church);
   const pdf = await renderPdf({ ...spec, layout: resolveLayout(church.docLayout, existing?.layout) });
   return pdfResponse(pdf, "previzualizare.pdf");
 }

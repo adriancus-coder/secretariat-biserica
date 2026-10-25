@@ -13,6 +13,7 @@ import { sendDocumentApprovalEmail } from "../email";
 import { signatureImage, writeDocumentSignature, type SignInput, type SignatureRoleKey } from "../document-signatures";
 import { PasskeyError, PURPOSE, verifyUserPresence } from "../passkeys";
 import { verifyPassword } from "../password";
+import { hasActivePastor } from "../pastor-approval";
 import { actionCtx, ActionError, getCurrentUser } from "../session";
 import { normalizeSignature, SignatureImageError } from "../signature-image";
 import { runFormAction } from "./run";
@@ -79,8 +80,8 @@ export async function deleteMySignatureAction(): Promise<FormState> {
 }
 
 /**
- * Signs a document in the secretary's place (write roles) or the pastor's (pastors): drawn now, or
- * the saved signature after a device confirmation for this exact document.
+ * Signs a document in the secretary's place (write roles): drawn now, or the saved signature after a
+ * device confirmation for this exact document. The pastor's place is signed only by the approval.
  */
 export async function signDocumentAction(documentId: string, role: SignatureRoleKey, input: SignInput): Promise<FormState> {
   const state = await runFormAction(null, async () => {
@@ -92,7 +93,7 @@ export async function signDocumentAction(documentId: string, role: SignatureRole
     if (!doc) throw new ActionError("Documentul nu mai există.");
     // The pastor signs by approving; an approved document is changed only by editing it (back to a draft).
     if (role === "PASTOR") throw new ActionError("Pastorul semnează prin „Aprobă și semnează”.");
-    if (doc.stare === "APROBAT") throw new ActionError("Documentul este aprobat; modificați-l întâi (devine ciornă).");
+    if (doc.stare === "APROBAT" && (await hasActivePastor(ctx.user.churchId))) throw new ActionError("Documentul este aprobat; modificați-l întâi (devine ciornă).");
     const image = await signatureImage(ctx, doc.id, doc.tip, input);
     const label = `${doc.titlu || DOCUMENT_TYPE_LABEL[doc.tip]} nr. ${doc.nr}/${doc.anRegistru}`;
     await ctx.db.$transaction((tx) => writeDocumentSignature(tx, ctx, { id: doc.id, label }, role, image, input.mode));

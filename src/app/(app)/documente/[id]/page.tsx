@@ -13,6 +13,7 @@ import { permissions } from "@/lib/permissions";
 import { deleteDocumentAction } from "@/server/actions/documents";
 import { getDocument } from "@/server/queries/documents";
 import { requireCtx } from "@/server/session";
+import { hasActivePastor } from "@/server/pastor-approval";
 import { prisma } from "@/server/db";
 import { freshSignatureRequired, signatureNote } from "@/lib/signatures";
 import { approveDocumentAction, rejectDocumentAction, sendToPastorAction, signDocumentAction } from "@/server/actions/document-signatures";
@@ -31,18 +32,20 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
   // A dare de seamă: its year's figures as links to the persons behind them.
   const reportCats = x.tip === "raport" && x.anRaport ? await loadCategories(ctx, x.anRaport) : null;
   // Signatures (reached through the document found above with the church-scoped client).
-  const [sigRows, me, church, passkeys] = await Promise.all([
+  const [sigRows, me, church, passkeys, approval] = await Promise.all([
     prisma.documentSignature.findMany({ where: { documentId: x.id } }),
     prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { signatureSavedAt: true } }),
     prisma.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { semnaturaUnica: true, semnaturaUnicaTipuri: true } }),
     prisma.userPasskey.count({ where: { userId: ctx.user.id } }),
+    hasActivePastor(ctx.user.churchId),
   ]);
   const signatures = Object.fromEntries(
     sigRows.map((r) => [r.role, { name: r.name, image: `data:image/png;base64,${Buffer.from(r.imagePng).toString("base64")}`, note: signatureNote(r) }]),
   );
-  // The pastor signs by approving (below); the secretary signs before the approval.
+  // The pastor signs by approving (below); the secretary signs before the approval (any time when
+  // the church has no pastor in the app, so no approval step).
   const steps =
-    canWrite && x.stare !== "APROBAT" ? [{ role: "SECRETAR" as const, label: "Semnează ca secretar", sign: signDocumentAction.bind(null, x.id, "SECRETAR") }] : [];
+    canWrite && (x.stare !== "APROBAT" || !approval) ? [{ role: "SECRETAR" as const, label: "Semnează ca secretar", sign: signDocumentAction.bind(null, x.id, "SECRETAR") }] : [];
   const approver = x.aprobatDeUserId ? await prisma.user.findFirst({ where: { id: x.aprobatDeUserId, churchId: ctx.user.churchId }, select: { name: true } }) : null;
   const approvalInfo =
     x.stare === "APROBAT" && x.aprobatLa
@@ -114,27 +117,29 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
         )}
       </dl>
-      <ApprovalCard
-        stare={x.stare}
-        stareLabel={DOCUMENT_STATE_LABEL[x.stare]}
-        info={approvalInfo}
-        motiv={x.motivRespingere}
-        canSend={canWrite}
-        send={sendToPastorAction.bind(null, x.id)}
-        pastor={
-          permissions.pastor(ctx.user)
-            ? {
-                documentId: x.id,
-                me: ctx.user.name,
-                approve: approveDocumentAction.bind(null, x.id),
-                reject: rejectDocumentAction.bind(null, x.id),
-                canUseSaved: passkeys > 0 && Boolean(me.signatureSavedAt),
-                savedHint,
-                freshOnly: freshSignatureRequired(church, x.tip),
-              }
-            : null
-        }
-      />
+      {approval ? (
+        <ApprovalCard
+          stare={x.stare}
+          stareLabel={DOCUMENT_STATE_LABEL[x.stare]}
+          info={approvalInfo}
+          motiv={x.motivRespingere}
+          canSend={canWrite}
+          send={sendToPastorAction.bind(null, x.id)}
+          pastor={
+            permissions.pastor(ctx.user)
+              ? {
+                  documentId: x.id,
+                  me: ctx.user.name,
+                  approve: approveDocumentAction.bind(null, x.id),
+                  reject: rejectDocumentAction.bind(null, x.id),
+                  canUseSaved: passkeys > 0 && Boolean(me.signatureSavedAt),
+                  savedHint,
+                  freshOnly: freshSignatureRequired(church, x.tip),
+                }
+              : null
+          }
+        />
+      ) : null}
       <SignaturesCard
         documentId={x.id}
         me={ctx.user.name}
