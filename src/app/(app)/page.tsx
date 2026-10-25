@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
+import { ageKey } from "@/domain/categories";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
+import { categoryHref } from "@/lib/category-params";
 import { ageAt, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
@@ -11,20 +13,33 @@ import { loadStats } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 
-function Bar({ label, n, width, warn }: { label: string; n: number; width: number; warn?: boolean }) {
+/** A bar whose number opens the list of persons behind it. */
+function Bar({ label, n, width, warn, href }: { label: string; n: number; width: number; warn?: boolean; href?: string }) {
   return (
     <div className="bar">
       <span>{label}</span>
       <div className="track">
         <span style={{ width: `${width}%`, background: warn ? "var(--warn)" : undefined }} />
       </div>
-      <em>{n}</em>
+      {href ? (
+        <Link href={href} className="stat-link" aria-label={`${label}: ${n} — vezi lista`}>
+          <em>{n}</em>
+        </Link>
+      ) : (
+        <em>{n}</em>
+      )}
     </div>
   );
 }
 
-function Stat({ value, label }: { value: React.ReactNode; label: string }) {
-  return (
+/** A figure; with `href` it opens the exact list of persons it counts. */
+function Stat({ value, label, href }: { value: React.ReactNode; label: React.ReactNode; href?: string }) {
+  return href ? (
+    <Link href={href} className="stat stat-link">
+      <b>{value}</b>
+      <span>{label}</span>
+    </Link>
+  ) : (
     <div className="stat">
       <b>{value}</b>
       <span>{label}</span>
@@ -45,6 +60,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const yearOptions = years.includes(selectedYear) ? years : [selectedYear, ...years];
   const maxBand = Math.max(1, ...s.bands.map(([, n]) => n));
   const move = (n: number) => Math.min(100, n * 10);
+  // Every figure opens its list, computed for the same year as here (`an` only when one was chosen).
+  const cat = (key: string) => categoryHref(key, year);
 
   const committee = await loadCommittee(ctx);
   const upcoming = await ctx.db.event.findMany({
@@ -77,30 +94,41 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </div>
       ) : null}
       <div className="stats">
-        <Stat value={s.ev.length} label="persoane în evidență" />
-        <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} />
-        <Stat value={s.fams} label="familii" />
+        <Stat value={s.ev.length} label="persoane în evidență" href={cat("toti")} />
+        <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} href={cat("membri")} />
+        <Stat value={s.fams} label="familii" href="/familii" />
       </div>
       <div className="stats">
-        <Stat value={s.botezati.length} label="botezați" />
-        <Stat value={s.apart.length} label="aparținători" />
-        <Stat value={s.prieteni.length} label="prieteni nebotezați" />
+        <Stat value={s.botezati.length} label="botezați" href={cat("botezati")} />
+        <Stat value={s.apart.length} label="aparținători" href={cat("apartinatori")} />
+        <Stat value={s.prieteni.length} label="prieteni nebotezați" href={cat("prieteni")} />
       </div>
       <div className="stats mb-4">
-        <Stat value={s.copii.length} label="copii minori" />
-        <Stat value={s.copiiMembri.length} label="copii ai membrilor" />
-        <Stat value={`${s.gen.M}/${s.gen.F}`} label="bărbați / femei" />
+        <Stat value={s.copii.length} label="copii minori" href={cat("copii-minori")} />
+        <Stat value={s.copiiMembri.length} label="copii ai membrilor" href={cat("copii-membri")} />
+        <div className="stat">
+          <b>
+            <Link href={cat("barbati")} className="stat-link" aria-label={`${s.gen.M} bărbați — vezi lista`}>
+              {s.gen.M}
+            </Link>
+            /
+            <Link href={cat("femei")} className="stat-link" aria-label={`${s.gen.F} femei — vezi lista`}>
+              {s.gen.F}
+            </Link>
+          </b>
+          <span>bărbați / femei</span>
+        </div>
       </div>
 
       <div className="two">
         <div className="card">
           <h3>Anul {s.y}</h3>
           <div className="bars">
-            <Bar label="Botezați" n={s.intrBotez.length} width={move(s.intrBotez.length)} />
-            <Bar label="Transferați" n={s.intrTransfer.length} width={move(s.intrTransfer.length)} />
-            <Bar label="Reprimiți" n={s.reprimiri.length} width={move(s.reprimiri.length)} />
-            <Bar label="Binecuv." n={s.binecuv.length} width={move(s.binecuv.length)} />
-            <Bar label="Ieșiri" n={s.iesiri.length} width={move(s.iesiri.length)} warn />
+            <Bar label="Botezați" n={s.intrBotez.length} width={move(s.intrBotez.length)} href={cat("intrati-botez")} />
+            <Bar label="Transferați" n={s.intrTransfer.length} width={move(s.intrTransfer.length)} href={cat("intrati-transfer")} />
+            <Bar label="Reprimiți" n={s.reprimiri.length} width={move(s.reprimiri.length)} href={cat("reprimiti")} />
+            <Bar label="Binecuv." n={s.binecuv.length} width={move(s.binecuv.length)} href={cat("binecuvantati")} />
+            <Bar label="Ieșiri" n={s.iesiri.length} width={move(s.iesiri.length)} warn href={cat("iesiti-an")} />
           </div>
           <form method="get" className="flex gap-2 items-center mt-3 flex-wrap">
             <label htmlFor="an" className="sr-only">
@@ -128,10 +156,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           <h3>Vârste</h3>
           <div className="bars">
             {s.bands.map(([label, n], i) => (
-              <Bar key={label} label={AGE_BANDS[i][0]} n={n} width={(n / maxBand) * 100} />
+              <Bar key={label} label={AGE_BANDS[i][0]} n={n} width={(n / maxBand) * 100} href={cat(ageKey(AGE_BANDS[i][1], AGE_BANDS[i][2]))} />
             ))}
           </div>
-          <div className="hint mt-2">{s.ev.filter((p) => !p.dataNasterii).length} persoane fără dată de naștere</div>
+          <div className="hint mt-2">
+            <Link href={cat("fara-data-nasterii")}>{s.ev.filter((p) => !p.dataNasterii).length} persoane fără dată de naștere</Link>
+          </div>
         </div>
 
         {committee.length ? (

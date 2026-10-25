@@ -18,7 +18,7 @@ export async function loadPersonRecords(ctx: Ctx): Promise<PersonRecord[]> {
 }
 
 /** Evenimentele relevante pentru statistici (nunți și înmormântări). */
-async function loadStatEvents(ctx: Ctx) {
+export async function loadStatEvents(ctx: Ctx) {
   const rows = await ctx.db.event.findMany({
     where: { tip: { in: [EVENT_TYPE_WEDDING, EVENT_TYPE_FUNERAL] } },
     select: { id: true, titlu: true, tip: true, data: true },

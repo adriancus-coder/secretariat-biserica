@@ -20,6 +20,9 @@ import {
   type PersonFilter,
 } from "@/server/queries/persons";
 import { listRoleGroups } from "@/server/queries/roles";
+import { selectionIds } from "@/server/queries/categories";
+import { CATEGORIES } from "@/domain/categories";
+import { parseCategorySelection, selectionLabel } from "@/lib/category-params";
 import { requireCtx } from "@/server/session";
 import { PersonRow } from "./person-row";
 
@@ -43,19 +46,25 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
     rawRole === COMMITTEE_FILTER || rawRole === NO_FAMILY_FILTER || (idSchema.safeParse(rawRole).success && roles.some((r) => r.id === rawRole))
       ? rawRole
       : "";
+  // ?categorie=…&an=…: the persons behind a statistic (several categories = any of them).
+  const selection = parseCategorySelection((k) => sp[k], Number(today.slice(0, 4)));
+  const categoryIds = selection.keys.length ? await selectionIds(ctx, { ...selection, functie }) : null;
   const params = {
-    filtru: filter === "membri" ? undefined : filter,
+    filtru: filter === "membri" || categoryIds ? undefined : filter,
     vedere: byFamily ? "familii" : undefined,
     q: q || undefined,
     functie: functie || undefined,
+    categorie: selection.keys.join(",") || undefined,
+    an: selection.keys.length && selection.year ? String(selection.year) : undefined,
   };
 
   // Person pages opened from here follow this list with "‹ Anterior" / "Următorul ›".
   const din = listQuery(params);
   const church = byFamily ? await getChurch(ctx) : null;
   const data = byFamily
-    ? await listFamilies(ctx, { filter, q, page, functie }, church!.nomen.rudenie)
-    : await listPersons(ctx, { filter, q, page, functie });
+    ? await listFamilies(ctx, { filter, q, page, functie, ids: categoryIds }, church!.nomen.rudenie)
+    : await listPersons(ctx, { filter, q, page, functie, ids: categoryIds });
+  const categoryOptions = CATEGORIES.map((c) => ({ value: c.key, label: c.label, group: c.group }));
   const roleOptions = [
     { value: COMMITTEE_FILTER, label: "Comitet" },
     { value: NO_FAMILY_FILTER, label: "Fără familie" },
@@ -78,21 +87,37 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
         ) : null}
       </PageHead>
 
-      <nav className="segs" aria-label="Filtru">
-        {PERSON_FILTERS.map((f) => (
-          <Link
-            key={f}
-            href={hrefWith("/persoane", params, { filtru: f === "membri" ? null : f, pagina: null })}
-            aria-current={filter === f ? "true" : undefined}
-          >
-            {PERSON_FILTER_LABEL[f]}
-          </Link>
-        ))}
-      </nav>
+      {categoryIds ? (
+        <div className="category-head">
+          <h2>
+            {selectionLabel(selection)} ({categoryIds.length})
+          </h2>
+          <p className="hint !mt-0">
+            {selection.year ? `Anul ${selection.year}` : "Situația la zi"}
+            {q || functie ? " · filtrată și după căutare sau funcție" : ""} ·{" "}
+            <Link href={hrefWith("/persoane", params, { categorie: null, an: null, pagina: null })}>Arată toată lista</Link>
+          </p>
+        </div>
+      ) : (
+        <nav className="segs" aria-label="Filtru">
+          {PERSON_FILTERS.map((f) => (
+            <Link
+              key={f}
+              href={hrefWith("/persoane", params, { filtru: f === "membri" ? null : f, pagina: null })}
+              aria-current={filter === f ? "true" : undefined}
+            >
+              {PERSON_FILTER_LABEL[f]}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       <div className="toolbar">
         <Suspense>
           <SearchBox placeholder="Caută nume, telefon, e-mail" />
+        </Suspense>
+        <Suspense>
+          <ParamSelect param="categorie" label="Categorie din statistică" emptyLabel="Toate categoriile" options={categoryOptions} />
         </Suspense>
         {roleOptions.length ? (
           <Suspense>

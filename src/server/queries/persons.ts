@@ -4,7 +4,9 @@ import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
 import { searchTerms, compareRo } from "@/lib/text";
 import type { PersonStatusKey } from "@/lib/labels";
+import { parseCategorySelection, type CategorySelection } from "@/lib/category-params";
 import { ActionError, type Ctx } from "../session";
+import { selectionIds } from "./categories";
 
 export const PERSON_FILTERS = ["membri", "toate", "foste"] as const;
 export type PersonFilter = (typeof PERSON_FILTERS)[number];
@@ -97,10 +99,17 @@ export interface ListParams {
   page: number;
   /** See roleWhere. */
   functie?: string;
+  /** The persons of the selected categories (src/domain/categories.ts); replaces the status filter. */
+  ids?: string[] | null;
 }
 
-export async function listPersons(ctx: Ctx, { filter, q, page, functie = "" }: ListParams) {
-  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
+/** The list's conditions: a category selection replaces the status filter (its own definition decides). */
+function listWhere({ filter, q, functie = "", ids }: Pick<ListParams, "filter" | "q" | "functie" | "ids">): Prisma.PersonWhereInput {
+  return { AND: [ids ? { id: { in: ids } } : filterWhere(filter), searchWhere(q), roleWhere(functie)] };
+}
+
+export async function listPersons(ctx: Ctx, { filter, q, page, functie = "", ids }: ListParams) {
+  const where = listWhere({ filter, q, functie, ids });
   const [total, inRecord, anyPerson] = await Promise.all([
     ctx.db.person.count({ where }),
     ctx.db.person.count({ where: { dataIesire: null } }),
@@ -150,8 +159,8 @@ const kinshipRank = (rudenieOrder: string[]) => (r: string) => {
   return i < 0 ? 99 : i;
 };
 
-export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: ListParams, rudenieOrder: string[]) {
-  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
+export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "", ids }: ListParams, rudenieOrder: string[]) {
+  const where = listWhere({ filter, q, functie, ids });
   const [families, inRecord, anyPerson] = await Promise.all([
     orderedFamilies(ctx, where),
     ctx.db.person.count({ where: { dataIesire: null } }),
@@ -198,9 +207,11 @@ export interface PersonListSpec {
   byFamily: boolean;
   q: string;
   functie: string;
+  /** Category selection of the list (`categorie`, `an`), if any. */
+  categories: CategorySelection;
 }
 
-const ALL_PERSONS: PersonListSpec = { filter: null, byFamily: false, q: "", functie: "" };
+const ALL_PERSONS: PersonListSpec = { filter: null, byFamily: false, q: "", functie: "", categories: { keys: [], functie: "" } };
 
 /** Reads the list query ("filtru=toate&q=pop…"); anything unknown falls back to the defaults. */
 export function parseListSpec(din: string | undefined): PersonListSpec {
@@ -213,14 +224,14 @@ export function parseListSpec(din: string | undefined): PersonListSpec {
     byFamily: sp.get("vedere") === "familii",
     q: (sp.get("q") ?? "").slice(0, 100),
     functie: functie === COMMITTEE_FILTER || functie === NO_FAMILY_FILTER || /^[A-Za-z0-9_-]{1,64}$/.test(functie) ? functie : "",
+    categories: parseCategorySelection((k) => sp.getAll(k), Number(todayIso().slice(0, 4))),
   };
 }
 
 /** The ids of the list, in the order it shows them (alphabetical, or by family then kinship). */
 export async function personOrder(ctx: Ctx, spec: PersonListSpec, rudenieOrder: string[]): Promise<string[]> {
-  const where: Prisma.PersonWhereInput = spec.filter
-    ? { AND: [filterWhere(spec.filter), searchWhere(spec.q), roleWhere(spec.functie)] }
-    : {};
+  const ids = spec.categories.keys.length ? await selectionIds(ctx, spec.categories) : null;
+  const where: Prisma.PersonWhereInput = spec.filter ? listWhere({ filter: spec.filter, q: spec.q, functie: spec.functie, ids }) : {};
   const rows = await ctx.db.person.findMany({ where, orderBy: ORDER, select: { id: true, familyId: true, rudenie: true } });
   if (!spec.byFamily) return rows.map((r) => r.id);
   const rank = kinshipRank(rudenieOrder);

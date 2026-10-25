@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
 import { RichView } from "@/components/rich-editor/rich-view";
+import { StatLinks } from "@/components/stat-links";
+import { loadCategories } from "@/server/queries/categories";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fmt } from "@/lib/format";
@@ -20,6 +22,8 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
   const x = await getDocument(ctx, id);
   if (!x) notFound();
   const canWrite = permissions.write(ctx.user.role);
+  // A dare de seamă: its year's figures as links to the persons behind them.
+  const reportCats = x.tip === "raport" && x.anRaport ? await loadCategories(ctx, x.anRaport) : null;
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "DOCUMENT", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -77,6 +81,12 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
         )}
       </dl>
+      {reportCats && x.anRaport ? (
+        <div className="card">
+          <h3>Persoanele din spatele cifrelor ({x.anRaport})</h3>
+          <StatLinks ctx={reportCats.ctx} year={x.anRaport} />
+        </div>
+      ) : null}
       {audit.length ? (
         <div className="card">
           <h3>Istoric modificări</h3>

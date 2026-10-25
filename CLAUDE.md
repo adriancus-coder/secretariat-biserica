@@ -185,6 +185,11 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - A new searchable field needs the derivation updated and a backfill migration.
 - Lists are paginated on the server and their filters live in the URL. The helpers `hrefWith`, `pageParam`, `stringParam` and `<Pager>` are in `components/ui/pager.tsx`.
 
+### Statistics categories
+
+- `src/domain/categories.ts` (pure): every person category (statut, copii, botez și intrare, vârstă, slujire, familie, ieșiri) as ids. The figures shown on Acasă reuse computeStats' own lists, so a list has exactly as many rows as its number (`categories.test.ts`). `categoryContext(input)` computes once; `combineCategories` gives union ("oricare") or intersection ("toate"). Copii ai membrilor / aparținătorilor follow the stats' family rule (a member, resp. an aparținător and no member, in the family).
+- `/persoane?categorie=<key>[&categorie=…][&an=YYYY][&functie=<role>]` (`src/lib/category-params.ts`, `loadCategories()` / `selectionIds()` in `src/server/queries/categories.ts`): the selection replaces the status filter and keeps search, "Pe familii", pagination and Anterior/Următorul (`din` carries it). Every figure on Acasă links there with the same year (`an` only when one was chosen); a dare de seamă's page lists its year's figures as links.
+
 ### Domain logic and prototype parity
 
 - `src/domain/` is pure: no Prisma, no `server-only`. `src/server/mappers.ts` turns database rows into domain records.
