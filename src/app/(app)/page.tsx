@@ -11,6 +11,8 @@ import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
 import { loadStats } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
+import { deleteExpiredContactsAction } from "@/server/actions/statute";
+import { expiredContactWhere } from "@/server/retention";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 
 /** A bar whose number opens the list of persons behind it. */
@@ -79,6 +81,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const away = (months: number) => persons.filter((p) => !p.dataIesire && p.plecatDin && p.plecatDin <= monthsBefore(today, months)).length;
   const away3 = away(3);
   const away6 = away(6);
+  // Privacy notice point 6: contact data of persons who left more than 12 months ago (administrators).
+  const expiredContacts = permissions.admin(ctx.user.role)
+    ? await ctx.db.person.findMany({ where: expiredContactWhere(), orderBy: [{ sortKey: "asc" }, { id: "asc" }], select: { id: true, nume: true, prenume: true } })
+    : [];
   // Administrators are reminded of the monthly JSON export (backup policy, docs/SECURITY.md).
   const exportDays = permissions.admin(ctx.user.role) ? await daysSinceLastExport(ctx) : undefined;
   const exportDue = exportDays !== undefined && (exportDays === null || exportDays > EXPORT_REMINDER_DAYS);
@@ -101,6 +107,28 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </>
           ) : null}
           {" "}— Statut art. 23 alin. 4–5.
+        </div>
+      ) : null}
+      {expiredContacts.length ? (
+        <div className="card mb-4">
+          <h3>Date de contact de șters (ieșiți de peste 12 luni)</h3>
+          <p className="hint mb-2">
+            Telefonul, e-mailul și adresa se șterg; datele de registru rămân (Statut art. 14 alin. 3 lit. a).
+          </p>
+          <ul className="list scroll-panel mb-3">
+            {expiredContacts.map((p) => (
+              <li key={p.id}>
+                <Link href={`/persoane/${p.id}`} className="item">
+                  {memberName(p)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <form action={deleteExpiredContactsAction}>
+            <button type="submit" className="btn">
+              Șterge acum ({expiredContacts.length})
+            </button>
+          </form>
         </div>
       ) : null}
       {exportDue ? (

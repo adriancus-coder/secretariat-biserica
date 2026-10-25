@@ -96,6 +96,7 @@ export const FIELD_LABELS: Record<string, string> = {
   formulaIncheiere: "Formula de încheiere",
   formatare: "Formatare",
   forma: "Forma măsurii",
+  comunitate: "Comunitatea",
   dataInceput: "Data",
   dataSfarsit: "Data încheierii",
   procesVerbal: "Procesul-verbal",

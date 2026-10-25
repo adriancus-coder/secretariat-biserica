@@ -53,6 +53,12 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
   addMemberBaptism(data.members as Coll, baptism);
   addMemberRegister(data.members as Coll, register);
   addMemberRoles(data.members as Coll, roles.functii);
+  // Contact data of persons who left reach only an administrator's export.
+  if (!permissions.admin(ctx.user.role)) {
+    for (const m of Object.values(data.members as Coll)) {
+      if (m.dataIesire || m.statut === "Fost membru") Object.assign(m, { telefon: "", email: "", adresa: "" });
+    }
+  }
   addMemberCommittee(data.members as Coll, roles.committee);
   return {
     data: {

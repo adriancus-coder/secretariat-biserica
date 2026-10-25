@@ -23,6 +23,7 @@ import { canBeHead } from "@/lib/families";
 import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
 import { returnedAction } from "@/server/actions/statute";
+import { contactRestricted } from "@/lib/contact-access";
 
 export async function generateMetadata({ params }: PageProps<"/persoane/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -60,6 +61,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         {m.nr !== null ? `PV nr. ${m.nr}/${m.anRegistru}` : "Procesul-verbal"} ({m.tip}, {fmt(fromDbDate(m.data)!)})
       </Link>
     ) : null;
+  const restricted = contactRestricted(x, ctx.user.role);
   const dcas = fromDbDate(x.dataCasatoriei);
   const dcr = fromDbDate(x.dataCerereRetragere);
   const plecat = fromDbDate(x.plecatDin);
@@ -70,9 +72,13 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
       ["Gen", x.gen ? GENDER_LABEL[x.gen] : ""],
       ["Familie", x.family ? x.family.nume + (x.family.headId === x.id ? " — capul familiei" : x.rudenie ? ` — ${x.rudenie}` : "") : ""],
       ["Data nașterii", dn ? `${fmt(dn)} (${ageAt(dn, today)} ani)` : ""],
-      ["Telefon", x.telefon],
-      ["E-mail", x.email],
-      ["Adresă", x.adresa],
+      ...((restricted
+        ? [["Date de contact", x.telefon || x.email || x.adresa ? "restricționate după ieșirea din evidență (doar administratorii)" : ""]]
+        : [
+            ["Telefon", x.telefon],
+            ["E-mail", x.email],
+            ["Adresă", x.adresa],
+          ]) as [string, React.ReactNode][]),
       ["Data căsătoriei", dcas ? fmt(dcas) : ""],
       ["Părinți", parents],
       [
@@ -316,6 +322,23 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         <div className="card">
           <h3>Istoric modificări</h3>
           <AuditTrail rows={audit} />
+        </div>
+      ) : null}
+
+      {permissions.admin(ctx.user.role) ? (
+        <div className="card">
+          <h3>Copie a datelor (art. 15 GDPR)</h3>
+          <form method="get" action={`/api/persoane/${x.id}/copie`} className="flex flex-wrap gap-2 items-center">
+            <label className="check !border-0">
+              <input type="checkbox" name="disciplina" value="1" /> Include măsurile disciplinare
+            </label>
+            <button type="submit" name="format" value="pdf" className="btn btn-sm">
+              Descarcă PDF
+            </button>
+            <button type="submit" name="format" value="json" className="btn btn-sm">
+              Descarcă JSON
+            </button>
+          </form>
         </div>
       ) : null}
 

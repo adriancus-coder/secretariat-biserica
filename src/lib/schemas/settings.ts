@@ -47,6 +47,7 @@ export const SETTINGS_FIELDS = [
   "applicationsOpen",
   "require2fa",
   "privacyText",
+  "comunitate",
   "extractEnabled",
   "regulaPrezenta",
 ] as const;
@@ -56,6 +57,7 @@ export const churchSettingsSchema = z.object({
   adresa: text(300, "Adresa"),
   orgNr: text(60, "Org.nr."),
   telefon: text(60, "Telefonul"),
+  comunitate: text(200, "Comunitatea"),
   email: optionalEmail,
   pastor: text(120, "Numele pastorului"),
   secretar: text(120, "Numele secretarului"),

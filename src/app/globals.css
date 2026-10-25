@@ -1016,6 +1016,19 @@
     font-weight: 700;
     line-height: 1;
   }
+  /* "Vezi diferențele": removed lines struck through, new lines highlighted. */
+  .diff p {
+    margin: 0 0 4px;
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+  }
+  .diff .diff-add {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .diff .diff-del {
+    text-decoration: line-through;
+    color: var(--ink-3);
+  }
   /* A long list that scrolls inside its card. */
   .scroll-panel {
     max-height: 50vh;

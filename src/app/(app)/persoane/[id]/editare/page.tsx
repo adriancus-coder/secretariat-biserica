@@ -11,6 +11,7 @@ import { withDin } from "@/lib/person-nav";
 import { personRoles, roleChoices, rolesFieldValue } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { meetingChoices } from "@/server/queries/meetings";
+import { contactRestricted } from "@/lib/contact-access";
 import { PersonForm } from "../../person-form";
 
 export const metadata: Metadata = { title: "Editează persoana" };
@@ -36,6 +37,9 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
     const v = person[f];
     initial[f] = v instanceof Date ? fromDbDate(v)! : v == null ? "" : String(v);
   }
+  // Contact data of a person who left are restricted to administrators: not sent, kept on save.
+  const restricted = contactRestricted(person, ctx.user.role);
+  if (restricted) for (const f of ["telefon", "email", "adresa"] as const) initial[f] = "";
   initial.functii = rolesFieldValue(held);
   initial.inComitet = person.inComitet ? "on" : "";
   initial.familyId = person.familyId ?? "";
@@ -56,6 +60,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
         rudenie={church.nomen.rudenie}
         roles={roles}
         meetings={meetings}
+        contactRestricted={restricted}
         cancelHref={withDin(`/persoane/${id}`, din)}
         din={din}
         nav={{

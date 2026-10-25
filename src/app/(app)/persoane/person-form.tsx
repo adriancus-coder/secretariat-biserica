@@ -27,6 +27,7 @@ export function PersonForm({
   rudenie,
   roles,
   meetings = [],
+  contactRestricted = false,
   cancelHref,
   applicationId,
   din,
@@ -42,6 +43,8 @@ export function PersonForm({
   roles: RoleChoiceGroup[];
   /** Minutes to link an entry (transfer, reabilitare) or an exclusion to. */
   meetings?: MeetingChoice[];
+  /** A person who left, edited by a non-administrator: contact data are not shown and are kept as they are. */
+  contactRestricted?: boolean;
   cancelHref: string;
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
@@ -104,11 +107,17 @@ export function PersonForm({
         <SelectField name="rudenie" label="Grad de rudenie" defaultValue={val("rudenie")} error={e.rudenie} emptyLabel="—" options={nomenOptions(rudenie, val("rudenie"))} />
         <TextField name="dataNasterii" label="Data nașterii" type="date" defaultValue={val("dataNasterii")} error={e.dataNasterii} />
       </div>
-      <div className="row2">
-        <TextField name="telefon" label="Telefon" type="tel" defaultValue={val("telefon")} error={e.telefon} />
-        <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
-      </div>
-      <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
+      {contactRestricted ? (
+        <p className="hint mb-3">Datele de contact sunt restricționate după ieșirea din evidență; doar administratorii le văd și le modifică.</p>
+      ) : (
+        <>
+          <div className="row2">
+            <TextField name="telefon" label="Telefon" type="tel" defaultValue={val("telefon")} error={e.telefon} />
+            <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
+          </div>
+          <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
+        </>
+      )}
       <div className="row2">
         <TextField name="dataCasatoriei" label="Data căsătoriei" type="date" defaultValue={val("dataCasatoriei")} error={e.dataCasatoriei} />
         <div />

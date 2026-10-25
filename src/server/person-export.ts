@@ -1,4 +1,5 @@
 import "server-only";
+import { contactRestricted } from "@/lib/contact-access";
 import ExcelJS from "exceljs";
 import { fmtDot, type PrintSpec } from "@/domain/print";
 import type { ChurchInfo } from "@/domain/types";
@@ -21,6 +22,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       gen: true,
       dataNasterii: true,
       statut: true,
+      dataIesire: true,
       familyId: true,
       family: { select: { nume: true } },
       rudenie: true,
@@ -55,9 +57,8 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       familie: p.family?.nume ?? "",
       familyId: p.familyId,
       rudenie: p.rudenie,
-      telefon: p.telefon,
-      email: p.email,
-      adresa: p.adresa,
+      // Contact data of a person who left: administrators only (Statut art. 14; privacy notice point 6).
+      ...(contactRestricted(p, ctx.user.role) ? { telefon: "", email: "", adresa: "" } : { telefon: p.telefon, email: p.email, adresa: p.adresa }),
       dataMembru: fromDbDate(p.dataMembru),
       modIntrare: p.modIntrare,
       dataBotez: fromDbDate(p.dataBotez),

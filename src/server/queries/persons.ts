@@ -1,4 +1,6 @@
 import "server-only";
+import { contactRestricted } from "@/lib/contact-access";
+import type { RoleKey } from "@/lib/labels";
 import type { Prisma } from "@/generated/prisma/client";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
@@ -68,7 +70,7 @@ export interface PersonListItem {
   dataIesire: string | null;
 }
 
-function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>): PersonListItem {
+function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>, role: RoleKey): PersonListItem {
   return {
     id: p.id,
     nume: p.nume,
@@ -76,7 +78,8 @@ function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>): Pers
     statut: p.statut,
     familie: p.family?.nume ?? "",
     rudenie: p.rudenie,
-    telefon: p.telefon,
+    // Restricted after an exit (administrators only).
+    telefon: contactRestricted(p, role) ? "" : p.telefon,
     dataNasterii: fromDbDate(p.dataNasterii),
     dataIesire: fromDbDate(p.dataIesire),
   };
@@ -125,7 +128,7 @@ export async function listPersons(ctx: Ctx, { filter, q, page, functie = "", ids
     take: PAGE_SIZE,
     select: listSelect,
   });
-  return { items: rows.map(toItem), total, page: current, pages, inRecord, anyPerson };
+  return { items: rows.map((r) => toItem(r, ctx.user.role)), total, page: current, pages, inRecord, anyPerson };
 }
 
 export interface FamilyGroup {
@@ -188,7 +191,7 @@ export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "", id
     ...f,
     members: rows
       .filter((r) => r.familyId === f.familyId)
-      .map(toItem)
+      .map((r) => toItem(r, ctx.user.role))
       .sort((a, b) => rank(a.rudenie) - rank(b.rudenie)),
   }));
   return { groups: result, total, families: families.length, page: current, pages, inRecord, anyPerson };

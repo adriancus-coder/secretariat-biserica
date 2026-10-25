@@ -1,29 +1,34 @@
+import { fmtL } from "./format";
+import { PRIVACY_NOTICE_1_1 } from "./privacy-notice";
+
+export interface PrivacyChurch {
+  nume: string;
+  email: string;
+  adresa: string;
+  orgNr?: string;
+  telefon?: string;
+  comunitate?: string;
+  /** When the church adopted the model (Church.privacyAdoptedAt), "[data]" in the notice. */
+  privacyAdoptedAt?: string | null;
+}
+
 /**
- * The built-in privacy notice of a church (Romanian; a template the administrator edits in Setări →
- * Organizația). Lines starting with "## " are headings; blank lines separate paragraphs. Pure.
+ * The model privacy notice (version 1.1, docs/privacy-notice-1.1.md) filled with the church's
+ * settings; an empty setting leaves its bracketed placeholder visible. Pure.
  */
-export function privacyTemplate(c: { nume: string; email: string; adresa: string }): string {
-  const church = c.nume ? `Biserica ${c.nume}` : "Biserica";
-  const contact = c.email || "[adresa de e-mail a bisericii]";
+export function privacyTemplate(c: PrivacyChurch): string {
+  const fill = (placeholder: string, value: string | undefined | null) => (text: string) => (value?.trim() ? text.split(placeholder).join(value.trim()) : text);
+  // The model names Maranata Stavanger; another church gets its own name, the general model a placeholder.
+  const name = c.nume.trim() ? (/^biserica\b/i.test(c.nume.trim()) ? c.nume.trim() : `Biserica Penticostală ${c.nume.trim()}`) : "Biserica [numele bisericii]";
   return [
-    `## Cine prelucrează datele`,
-    `${church}${c.adresa ? `, cu sediul în ${c.adresa}` : ""}, este operatorul datelor personale din evidența membrilor. Pentru orice întrebare privind datele dumneavoastră ne puteți scrie la ${contact}.`,
-    ``,
-    `## Ce date păstrăm`,
-    `Numele, data nașterii, genul, datele de contact (telefon, e-mail, adresă), familia și gradul de rudenie, datele intrării în biserică (botez, transfer, binecuvântare), funcțiile și slujirile, prezența la ședințe, precum și documentele eliberate la cererea dumneavoastră.`,
-    ``,
-    `## De ce și pe ce temei`,
-    `Datele sunt prelucrate pentru evidența membrilor și viața bisericii (ședințe, evenimente, documente, darea de seamă anuală), în cadrul activităților legitime ale unei organizații religioase fără scop lucrativ, față de membrii și persoanele aflate în contact regulat cu ea (art. 9 alin. 2 lit. d din Regulamentul (UE) 2016/679), și, pentru cererile online, pe baza acordului dumneavoastră.`,
-    ``,
-    `## Cine are acces`,
-    `Doar persoanele desemnate de biserică (pastorul, secretariatul și administratorii aplicației), fiecare cu drepturile rolului său. Datele nu sunt vândute și nu sunt folosite pentru reclame. Aplicația este găzduită de furnizori de servicii (găzduire, e-mail), care prelucrează datele doar în numele bisericii.`,
-    ``,
-    `## Cât timp`,
-    `Cât timp sunteți în evidența bisericii și apoi atât cât cer obligațiile legale și istoria bisericii (de exemplu registrele de botez). Puteți cere oricând ștergerea sau anonimizarea datelor care nu mai sunt necesare.`,
-    ``,
-    `## Drepturile dumneavoastră`,
-    `Aveți dreptul de acces, rectificare, ștergere, restricționare, opoziție și portabilitate, precum și dreptul de a vă retrage acordul. Scrieți-ne la ${contact}. Aveți și dreptul de a depune o plângere la autoritatea de protecție a datelor din țara în care locuiți.`,
-  ].join("\n");
+    fill("Biserica Penticostală Maranata Stavanger", name),
+    fill("[adresa]", c.adresa),
+    fill("[nr.]", c.orgNr),
+    fill("[e-mail]", c.email),
+    fill("[telefon]", c.telefon),
+    fill("[Comunitatea de care aparține biserica]", c.comunitate),
+    fill("[data]", c.privacyAdoptedAt ? fmtL(c.privacyAdoptedAt) : ""),
+  ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_1);
 }
 
 /** The paragraph added to the public notice while reading scans with Claude is on (Church.extractEnabled). */
@@ -34,20 +39,39 @@ export const EXTRACTION_NOTICE = [
 
 /** The notice as published: the church's text (or the template), plus the extraction paragraph while it is on. */
 export function publicPrivacyText(text: string, extractEnabled: boolean): string {
-  return extractEnabled ? `${text.trimEnd()}\n\n${EXTRACTION_NOTICE}` : text;
+  if (!extractEnabled) return text;
+  // The 1.1 model has no "## " headings: the paragraph's heading becomes a plain capitalised line.
+  const notice = text.includes("## ") ? EXTRACTION_NOTICE : EXTRACTION_NOTICE.replace(/^## (.*)$/m, (_, h: string) => h.toLocaleUpperCase("ro"));
+  return `${text.trimEnd()}\n\n${notice}`;
 }
 
-export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string };
+export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string } | { type: "li"; text: string };
 
-/** "## Titlu" → heading; other non-empty lines (joined until a blank line) → paragraph. */
+/**
+ * "## Titlu" → heading; other non-empty lines (joined until a blank line) → paragraph. A text without
+ * "## " headings (the 1.1 model) is read line by line: "1. Cine suntem" and an all-capitals line are
+ * headings, "- …" lines are list items, every other line is a paragraph.
+ */
 export function privacyBlocks(text: string): PrivacyBlock[] {
   const out: PrivacyBlock[] = [];
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  if (!lines.some((l) => l.trim().startsWith("## "))) {
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (/^\d{1,2}\.\s+\S/.test(line) && line.length <= 80 && !/[.;:]$/.test(line)) out.push({ type: "h", text: line });
+      else if (line.length <= 120 && line === line.toLocaleUpperCase("ro") && /\p{L}/u.test(line)) out.push({ type: "h", text: line });
+      else if (line.startsWith("- ")) out.push({ type: "li", text: line.slice(2).trim() });
+      else out.push({ type: "p", text: line });
+    }
+    return out;
+  }
   let para: string[] = [];
   const flush = () => {
     if (para.length) out.push({ type: "p", text: para.join(" ") });
     para = [];
   };
-  for (const raw of text.replace(/\r\n?/g, "\n").split("\n")) {
+  for (const raw of lines) {
     const line = raw.trim();
     if (line.startsWith("## ")) {
       flush();

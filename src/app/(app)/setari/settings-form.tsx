@@ -10,7 +10,7 @@ import { ATTENDANCE_RULE_LABEL, ATTENDANCE_RULES, type AttendanceRule } from "@/
 import type { Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 
-type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug";
+type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
 
 export function SettingsForm({
   church,
@@ -65,6 +65,14 @@ export function SettingsForm({
           <TextField name="telefon" label="Telefon" defaultValue={val("telefon")} error={e.telefon} />
         </div>
         <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
+        <TextField
+          name="comunitate"
+          label="Comunitatea de care aparține biserica"
+          placeholder="ex. Comunitatea Bisericilor Penticostale …"
+          defaultValue={val("comunitate")}
+          error={e.comunitate}
+          hint="Apare în nota de informare și în informările către Comunitate."
+        />
         <div className="row2 stack-sm">
           <TextField name="pastor" label="Pastor" defaultValue={val("pastor")} error={e.pastor} hint="Semnează documentele." />
           <TextField name="secretar" label="Secretar" defaultValue={val("secretar")} error={e.secretar} hint="Semnează documentele și PV-urile." />
@@ -117,7 +125,7 @@ export function SettingsForm({
           <a href={privacyUrl} target="_blank" rel="noopener noreferrer" className="break-all">
             {privacyUrl}
           </a>
-          . Rândurile care încep cu „## ” sunt titluri. Șters complet, textul revine la model.
+          . Șters complet, textul revine la modelul bisericii (versiunea 1.1), completat cu datele de mai sus.
         </p>
         <TextAreaField
           name="privacyText"

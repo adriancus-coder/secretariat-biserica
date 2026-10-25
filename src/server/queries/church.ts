@@ -25,6 +25,11 @@ export interface ChurchSettings extends ChurchInfo {
   require2fa: boolean;
   /** Saved privacy notice ("" = template). */
   privacyText: string;
+  /** The model notice version adopted ("" = none yet) and when (ISO date). */
+  privacyVersion: string;
+  privacyAdoptedAt: string | null;
+  /** The Comunitate the church belongs to. */
+  comunitate: string;
   /** Reading scans with Claude accepted by an administrator. */
   extractEnabled: boolean;
   /** Default page layout of the printed minutes. */
@@ -58,6 +63,9 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     secretarEmail: c.secretarEmail,
     require2fa: c.require2fa,
     privacyText: c.privacyText,
+    privacyVersion: c.privacyVersion,
+    privacyAdoptedAt: c.privacyAdoptedAt ? c.privacyAdoptedAt.toISOString().slice(0, 10) : null,
+    comunitate: c.comunitate,
     extractEnabled: c.extractEnabled,
     pvLayout: storedLayout(c.pvLayout),
     docLayout: storedLayout(c.docLayout),

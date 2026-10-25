@@ -7,6 +7,7 @@ import { toDbDate } from "@/lib/dates";
 import type { FormState, PersonFormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
 import { personDerived } from "@/lib/person-derived";
+import { contactRestricted } from "@/lib/contact-access";
 import { applyExitRule, PERSON_FIELDS, personSchema, type PersonInput } from "@/lib/schemas/person";
 import { APPLICATION_FIELDS } from "@/lib/schemas/application";
 import { personRolesSchema } from "@/lib/schemas/roles";
@@ -104,6 +105,8 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         const before = await tx.person.findUnique({ where: { id }, include: { headOf: { select: { id: true, nume: true } } } });
         if (!before) throw new ActionError("Persoana nu mai există în registru.");
         const extrasBefore = await auditExtras(tx, id);
+        // A non-administrator never sees the contact data of a person who left: keep them as stored.
+        if (contactRestricted(before, ctx.user.role)) Object.assign(data, { telefon: before.telefon, email: before.email, adresa: before.adresa }, personDerived({ ...input, telefon: before.telefon, email: before.email }));
         const target = familyChoice === NEW_FAMILY ? NEW_FAMILY : familyChoice || null;
         // The head of a family with other members changes family only after a new head is chosen.
         if (before.headOf && target !== before.headOf.id) {

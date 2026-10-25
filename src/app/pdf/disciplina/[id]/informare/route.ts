@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
       data: fromDbDate(m.dataInceput)!,
       procesVerbal: pv,
       today: todayIso(),
-      comunitate: "",
+      comunitate: church.comunitate,
     },
     church,
   );

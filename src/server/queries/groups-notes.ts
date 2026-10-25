@@ -1,4 +1,5 @@
 import "server-only";
+import { contactRestricted } from "@/lib/contact-access";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ChecklistOption } from "@/components/person-checklist";
 import { ANONYMOUS_NAME } from "@/lib/anonymous";
@@ -30,7 +31,7 @@ export async function getGroup(ctx: Ctx, id: string) {
   });
   if (!g) return null;
   const membri = g.membri
-    .map((m) => ({ ...m.person, auto: m.sursa === "AUTO" }))
+    .map((m) => ({ ...m.person, telefon: contactRestricted(m.person, ctx.user.role) ? "" : m.person.telefon, auto: m.sursa === "AUTO" }))
     .sort((a, b) => compareRo(memberName(a), memberName(b)));
   // The responsible person's name from the register, else the old free text.
   return { ...g, membri, responsabilName: g.responsabilP ? memberName(g.responsabilP) : g.responsabil };

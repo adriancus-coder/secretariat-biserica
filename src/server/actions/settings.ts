@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { todayIso, toDbDate } from "@/lib/dates";
+import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import type { FormState } from "@/lib/form-state";
 import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
 import { attendanceRulesText, resolveAttendanceRules } from "@/lib/attendance";
@@ -27,7 +30,7 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
       if (clash) throw new ValidationError({ slug: "Această adresă este deja folosită de altă biserică. Alegeți alta." });
       const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
       // The template itself is not stored: the notice then follows changes of the church's details.
-      const template = privacyTemplate({ nume: input.nume, email: input.email, adresa: input.adresa }).trim();
+      const template = privacyTemplate({ ...input, privacyAdoptedAt: before.privacyAdoptedAt?.toISOString().slice(0, 10) ?? null }).trim();
       const privacyText = input.privacyText.trim() === template ? "" : input.privacyText;
       const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, privacyText, regulaPrezenta } });
       const rulesView = (c: typeof before) =>
@@ -85,4 +88,36 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
     };
   });
   return { ...state, details };
+}
+
+/**
+ * "Folosește modelul nou": the church publishes the model notice (version 1.1) filled with its
+ * settings, from today ("[data]"). Its own edited text is replaced only by this explicit choice.
+ */
+export async function adoptPrivacyModelAction(): Promise<void> {
+  let done = false;
+  await runFormAction(null, async () => {
+    const ctx = await actionCtx("admin");
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
+      const after = await tx.church.update({
+        where: { id: ctx.user.churchId },
+        data: { privacyText: "", privacyVersion: PRIVACY_NOTICE_VERSION, privacyAdoptedAt: toDbDate(todayIso()) },
+      });
+      await writeAudit(tx, ctx.user, {
+        entity: "SETTINGS",
+        entityId: ctx.user.churchId,
+        entityLabel: after.nume,
+        action: "UPDATE",
+        fields: ["privacyText"],
+        before,
+        after,
+        extra: { observatie: `nota de informare: modelul ${PRIVACY_NOTICE_VERSION}` },
+      });
+    });
+    done = true;
+  });
+  if (!done) return;
+  revalidatePath("/", "layout");
+  redirect("/setari?salvat=1");
 }

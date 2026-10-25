@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { memberName } from "@/lib/format";
+import { personDerived } from "@/lib/person-derived";
 import { PERSON_FIELDS } from "@/lib/schemas/person";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { expiredContactWhere } from "../retention";
 import { actionCtx } from "../session";
 import { parseOrThrow, runFormAction } from "./run";
 
@@ -58,4 +60,31 @@ export async function returnedAction(personId: string): Promise<void> {
   if (!done) return;
   revalidatePath("/", "layout");
   redirect(`/persoane/${personId}?salvat=1`);
+}
+
+/** "Șterge acum": deletes those contact data in one transaction; audited with the count only. Register data stay. */
+export async function deleteExpiredContactsAction(): Promise<void> {
+  let done = false;
+  await runFormAction(null, async () => {
+    const ctx = await actionCtx("admin");
+    const where = expiredContactWhere();
+    await ctx.db.$transaction(async (tx) => {
+      const rows = await tx.person.findMany({ where, select: { id: true, nume: true, prenume: true, botezBiserica: true, botezOficiant: true, numeTata: true, numeMama: true } });
+      for (const p of rows) {
+        await tx.person.update({ where: { id: p.id }, data: { telefon: "", email: "", adresa: "", ...personDerived({ ...p, telefon: "", email: "" }) } });
+      }
+      await writeAudit(tx, ctx.user, {
+        entity: "SECURITY",
+        entityId: ctx.user.churchId,
+        entityLabel: "Ștergerea datelor de contact (ieșiți de peste 12 luni)",
+        action: "DELETE",
+        fields: [],
+        extra: { persoane: rows.length },
+      });
+    });
+    done = true;
+  });
+  if (!done) return;
+  revalidatePath("/", "layout");
+  redirect("/?sters=1");
 }

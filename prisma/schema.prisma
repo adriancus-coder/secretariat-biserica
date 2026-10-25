@@ -36,6 +36,11 @@ model Church {
   require2fa       Boolean @default(false)
   /// The public privacy notice (/confidentialitate/<slug>); "" = the built-in template.
   privacyText      String  @default("")
+  /// The model notice version the church adopted ("1.1"), and when; "[data]" in the notice.
+  privacyVersion   String    @default("")
+  privacyAdoptedAt DateTime? @db.Date
+  /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
+  comunitate       String    @default("")
   /// Reading scans with Claude (Anthropic) is off until an administrator accepts the processing terms.
   extractEnabled   Boolean @default(false)
   adresa           String  @default("")
