@@ -12,7 +12,7 @@ import { burnPasswordCheck, hashPassword, needsRehash, verifyPassword } from "./
 export async function checkPassword(rawEmail: string, password: string) {
   const email = rawEmail.trim().toLowerCase();
   if (!email || !password || password.length > 200 || email.length > 200) return { ok: false as const, reason: "invalid" as const };
-  const user = await prisma.user.findUnique({ where: { email }, include: { church: { select: { nume: true, require2fa: true } } } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { church: { select: { nume: true, require2fa: true, passkeyPolicy: true } }, _count: { select: { passkeys: true } } } });
   if (!user || !user.active) {
     await burnPasswordCheck(password);
     return { ok: false as const, reason: "invalid" as const };

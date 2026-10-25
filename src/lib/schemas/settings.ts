@@ -46,6 +46,7 @@ export const SETTINGS_FIELDS = [
   "slug",
   "applicationsOpen",
   "require2fa",
+  "passkeyPolicy",
   "privacyText",
   "comunitate",
   "extractEnabled",
@@ -72,6 +73,7 @@ export const churchSettingsSchema = z.object({
   slug: slugField,
   applicationsOpen: checkbox,
   require2fa: checkbox,
+  passkeyPolicy: checkbox,
   privacyText: longText(20000, "Nota de confidențialitate"),
   extractEnabled: checkbox,
 });

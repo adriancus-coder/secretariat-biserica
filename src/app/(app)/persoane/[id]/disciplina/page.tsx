@@ -1,3 +1,5 @@
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import { ReinstateForm } from "./reinstate-form";
 import { appealDeadline } from "@/lib/discipline-print";
 import { APPEAL_RESULT_LABEL } from "@/lib/schemas/discipline";
@@ -24,6 +26,16 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
   if (!idSchema.safeParse(id).success) notFound();
   const person = await ctx.db.person.findUnique({ where: { id }, select: { id: true, nume: true, prenume: true, inComitet: true } });
   if (!person) notFound();
+  // Step-up: the device unlock (or the password) once per 15 minutes before discipline data is shown.
+  if (!(await hasStepUp(ctx.user))) {
+    return (
+      <>
+        <BackLink href={`/persoane/${id}`}>{memberName(person)}</BackLink>
+        <PageHead title="Disciplină" sub="Vizibil doar pastorilor și administratorilor (Statut art. 27)" />
+        <StepUpGate method={await stepUpMethod(ctx.user.id)} what="Datele disciplinare sunt confidențiale." />
+      </>
+    );
+  }
   const [measures, meetings] = await Promise.all([
     ctx.db.disciplinaryMeasure.findMany({
       where: { personId: id },

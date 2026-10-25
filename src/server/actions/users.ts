@@ -6,6 +6,7 @@ import { ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import { inviteSchema } from "@/lib/schemas/settings";
 import { booleanArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { hasStepUp, STEP_UP_REQUIRED } from "../step-up";
 import { prisma } from "../db";
 import { sendInvitationEmail, sendPasswordResetEmail, type EmailResult } from "../email";
 import { requestOrigin } from "../request-origin";
@@ -110,6 +111,7 @@ async function otherActiveAdmins(churchId: string, exceptUserId: string) {
 export async function changeRoleAction(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, userId);
     const role = String(formData.get("role")) as RoleKey;
     if (!(ROLES as readonly string[]).includes(role)) throw new ActionError("Rol invalid.");
@@ -247,6 +249,7 @@ const PASTOR_TITLES = ["", "pastor coordonator", "pastor asistent"] as const;
 export async function setPastorAction(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, userId);
     const isPastor = formData.get("isPastor") === "on";
     const titlu = String(formData.get("pastorTitlu") ?? "");

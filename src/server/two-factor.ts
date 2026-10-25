@@ -142,7 +142,7 @@ export async function currentChallenge() {
   if (!token) return null;
   const c = await prisma.loginChallenge.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: { include: { church: { select: { nume: true, require2fa: true } } } } },
+    include: { user: { include: { church: { select: { nume: true, require2fa: true, passkeyPolicy: true } } } } },
   });
   if (!c || c.expiresAt < new Date() || !c.user.active) return null;
   return { ...c, token };

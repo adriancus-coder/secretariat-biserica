@@ -8,6 +8,7 @@ import { excerptsField, excerptsText, isDefaultExcerpts, storedExcerpts, type St
 import { looksLikePdf, STATUTE, STATUTE_KINDS, STATUTE_MAX_BYTES, type StatuteKind } from "@/lib/statutes";
 import { writeAudit } from "../audit";
 import { actionCtx, ActionError, type Ctx } from "../session";
+import { hasStepUp, STEP_UP_REQUIRED } from "../step-up";
 import { parseOrThrow, runFormAction } from "./run";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
@@ -29,6 +30,7 @@ async function view(tx: Tx, kind: StatuteKind): Promise<Record<string, string>> 
 export async function uploadStatuteAction(kind: string, _prev: FormState, formData: FormData): Promise<FormState> {
   return runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     const k = checkKind(kind);
     const file = formData.get("fisier");
     if (!(file instanceof File) || file.size === 0) throw new ActionError("Alegeți fișierul PDF.");
@@ -60,6 +62,7 @@ export async function uploadStatuteAction(kind: string, _prev: FormState, formDa
 export async function deleteStatuteAction(kind: string): Promise<FormState> {
   return runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     const k = checkKind(kind);
     await ctx.db.$transaction(async (tx) => {
       const before = await view(tx, k);
@@ -102,6 +105,7 @@ async function saveExcerpts(ctx: Ctx, list: StatuteExcerpt[] | null) {
 export async function saveStatuteExcerptsAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     const list = parseOrThrow(z.object({ extrase: excerptsField }), { extrase: String(formData.get("extrase") ?? "") }).extrase;
     await saveExcerpts(ctx, list);
   });
@@ -113,7 +117,9 @@ export async function saveStatuteExcerptsAction(_prev: FormState, formData: Form
 /** "Revino la textul implicit": the defaults of docs/statut-extrase.md (administrators). */
 export async function resetStatuteExcerptsAction(): Promise<FormState> {
   const state = await runFormAction(null, async () => {
-    await saveExcerpts(await actionCtx("admin"), null);
+    const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
+    await saveExcerpts(ctx, null);
   });
   if (!state.ok) return state;
   revalidatePath("/", "layout");

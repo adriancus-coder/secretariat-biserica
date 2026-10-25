@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { hasStepUp } from "@/server/step-up";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { hearingConvocationPrint } from "@/lib/discipline-print";
 import { idSchema } from "@/lib/validation";
@@ -14,6 +15,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
   if (!idSchema.safeParse(id).success) notFound();
   const m = await loadMeasureForPrint(ctx, id);
   if (!m || !m.audiereLa) notFound();
+  if (!(await hasStepUp(ctx.user))) redirect(`/persoane/${m.personId}/disciplina`);
   const church = await getChurch(ctx);
   const spec = hearingConvocationPrint(
     { person: m.person, data: fromDbDate(m.audiereLa)!, ora: m.audiereOra, loc: m.audiereLoc, today: todayIso(), adresa: church.adresa },

@@ -27,6 +27,7 @@ import { passwordProblem } from "../password-policy";
 import { hasSecondFactor, setChallengeCookie, startChallenge } from "../two-factor";
 import { sendSignupExistsEmail } from "../email";
 import { finishSignIn } from "../sign-in";
+import { isPasskeyConfigured, passkeyPolicyApplies } from "../passkeys";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { signupAllowed } from "../queries/auth";
 import { logError } from "../log";
@@ -48,14 +49,19 @@ async function signInOrMessage(email: string, password: string, redirectTo: stri
     };
   }
   const user = check.user;
-  const needsCode = !trusted && hasSecondFactor(user);
+  // A passkey is a second factor too (Face ID / fingerprint / screen PIN after the password).
+  const hasPasskey = user._count.passkeys > 0 && isPasskeyConfigured();
+  const needsCode = !trusted && (hasSecondFactor(user) || hasPasskey);
   const needsSetup = !trusted && !needsCode && user.church.require2fa;
-  const token = await startChallenge(user.id, { verified: !needsCode && !needsSetup, setupRequired: needsSetup, callbackUrl: redirectTo });
+  // Under the policy "parolă + Face ID / amprentă", a pastor or administrator without a passkey is sent
+  // to register one right after this sign-in.
+  const callbackUrl = !hasPasskey && passkeyPolicyApplies(user, user.church) && isPasskeyConfigured() ? "/cont?dispozitiv=necesar#dispozitive" : redirectTo;
+  const token = await startChallenge(user.id, { verified: !needsCode && !needsSetup, setupRequired: needsSetup, callbackUrl });
   if (needsCode || needsSetup) {
     await setChallengeCookie(token);
     redirect(needsSetup ? "/autentificare/configurare" : "/autentificare/cod");
   }
-  return finishSignIn(token, redirectTo, email);
+  return finishSignIn(token, callbackUrl, email);
 }
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {

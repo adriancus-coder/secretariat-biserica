@@ -4,7 +4,7 @@ import { PageHead } from "@/components/ui/page-head";
 import { ageKey } from "@/domain/categories";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
 import { categoryHref } from "@/lib/category-params";
-import { addDays, ageAt, fromDbDate, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
+import { addDays, ageAt, dotDateTime, fromDbDate, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assembly";
 import { permissions } from "@/lib/permissions";
@@ -125,6 +125,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         })
       ).map((m) => ({ ...m, deadline: appealDeadline(fromDbDate(m.comunicatLa)!) }))
     : [];
+  // Policy "parolă + Face ID / amprentă": every sign-in with a backup code in the last 30 days (administrators).
+  const recoverySignIns = permissions.admin(ctx.user.role)
+    ? await ctx.db.auditLog.findMany({
+        where: { entity: "SECURITY", createdAt: { gte: toDbDate(addDays(today, -30))! }, changes: { path: ["intrareRezerva"], string_contains: "cod" } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, userName: true, createdAt: true },
+      })
+    : [];
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -134,6 +143,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {recoverySignIns.length ? (
+        <div className="alert mb-4" role="status">
+          {recoverySignIns.map((r) => (
+            <div key={r.id}>
+              Intrare cu cod de rezervă: {r.userName}, {dotDateTime(r.createdAt)}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {appeals.length ? (
         <div className="alert mb-4" role="status">
           <p className="m-0">Termene de contestare la Comunitate (Statut art. 27 alin. 11):</p>

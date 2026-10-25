@@ -14,6 +14,7 @@ import { importBackup, type ImportMode } from "../backup";
 import { parseImportJson } from "../backup-json";
 import { prisma } from "../db";
 import { actionCtx, ActionError } from "../session";
+import { hasStepUp, STEP_UP_REQUIRED } from "../step-up";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
 /** Datele organizației și nomenclatoarele (doar administratorul). */
@@ -35,6 +36,9 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
       // The template itself is not stored: the notice then follows changes of the church's details.
       const template = privacyTemplate({ ...input, privacyAdoptedAt: before.privacyAdoptedAt?.toISOString().slice(0, 10) ?? null }).trim();
       const privacyText = input.privacyText.trim() === template ? "" : input.privacyText;
+      // Privacy and sign-in security settings are sensitive: step-up first.
+      const sensitive = privacyText.trim() !== before.privacyText.trim() || input.require2fa !== before.require2fa || input.passkeyPolicy !== before.passkeyPolicy;
+      if (sensitive && !(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
       const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, privacyText, regulaPrezenta, tipuriAG, tipuriCvorum } });
       const rulesView = (c: typeof before) =>
         attendanceRulesText(resolveAttendanceRules(c.tipuriSedinte.length ? c.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte, c.regulaPrezenta));
@@ -101,6 +105,7 @@ export async function adoptPrivacyModelAction(): Promise<void> {
   let done = false;
   await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     await prisma.$transaction(async (tx) => {
       const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
       const after = await tx.church.update({

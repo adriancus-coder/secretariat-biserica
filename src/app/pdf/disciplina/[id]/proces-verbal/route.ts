@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { hasStepUp } from "@/server/step-up";
 import { disciplinaryMinutesPrint } from "@/lib/discipline-print";
 import { DISCIPLINARY_FORM_LABEL } from "@/lib/labels";
 import { idSchema } from "@/lib/validation";
@@ -17,6 +18,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
   if (!idSchema.safeParse(id).success) notFound();
   const m = await loadMeasureForPrint(ctx, id);
   if (!m || m.stare === "CERCETARE" || !m.meetingId) notFound();
+  if (!(await hasStepUp(ctx.user))) redirect(`/persoane/${m.personId}/disciplina`);
   const church = await getChurch(ctx);
   const spec = disciplinaryMinutesPrint(
     {

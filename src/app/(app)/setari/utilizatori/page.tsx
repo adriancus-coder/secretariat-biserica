@@ -1,3 +1,5 @@
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import { formatDateTime } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
@@ -11,6 +13,7 @@ export const metadata: Metadata = { title: "Utilizatori" };
 export default async function UsersPage() {
   const ctx = await requireCtx("admin");
   const emailEnabled = isEmailConfigured();
+  const [stepMethod, stepped] = await Promise.all([stepUpMethod(ctx.user.id), hasStepUp(ctx.user)]);
   const [users, invitations] = await Promise.all([
     ctx.db.user.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
@@ -26,6 +29,7 @@ export default async function UsersPage() {
     <>
       <BackLink href="/setari">Setări</BackLink>
       <PageHead title="Utilizatori și roluri" sub={`${users.filter((u) => u.active).length} conturi active`} />
+      {!stepped ? <StepUpGate method={stepMethod} what="Rolurile și calitatea de pastor se schimbă după confirmarea identității." compact /> : null}
 
       <div className="card">
         <h3>Invită un utilizator</h3>

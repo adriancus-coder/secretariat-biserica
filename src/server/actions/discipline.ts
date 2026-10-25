@@ -14,6 +14,7 @@ import { disciplineView } from "../discipline";
 import { syncRoleGroups } from "../group-sync";
 import { getChurch } from "../queries/church";
 import { actionCtx, ActionError } from "../session";
+import { hasStepUp, STEP_UP_REQUIRED } from "../step-up";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
 /**
@@ -25,6 +26,7 @@ export async function saveDisciplineAction(personId: string, measureId: string |
   let saved = false;
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("disciplina");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, personId);
     if (measureId !== null) parseOrThrow(idSchema, measureId);
     const input = parseOrThrow(disciplineSchema, Object.fromEntries(formData));
@@ -108,6 +110,7 @@ export async function deleteDisciplineAction(personId: string, measureId: string
   let done = false;
   await runFormAction(null, async () => {
     const ctx = await actionCtx("disciplina");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, personId);
     parseOrThrow(idSchema, measureId);
     await ctx.db.$transaction(async (tx) => {
@@ -136,6 +139,7 @@ export async function removeFromCommitteeAction(personId: string): Promise<void>
   let done = false;
   await runFormAction(null, async () => {
     const ctx = await actionCtx("disciplina");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, personId);
     await ctx.db.$transaction(async (tx) => {
       const before = await tx.person.findUnique({ where: { id: personId } });
@@ -160,6 +164,7 @@ export async function reinstateAction(personId: string, measureId: string, _prev
   let saved = false;
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("disciplina");
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
     parseOrThrow(idSchema, personId);
     parseOrThrow(idSchema, measureId);
     const input = parseOrThrow(reinstateSchema, Object.fromEntries(formData));

@@ -5,6 +5,8 @@ import { safeCallbackUrl } from "@/lib/schemas/auth";
 import { signupAllowed } from "@/server/queries/auth";
 import { getCurrentUser } from "@/server/session";
 import { LoginForm } from "./login-form";
+import { PasskeyLogin } from "./passkey-login";
+import { isPasskeyConfigured } from "@/server/passkeys";
 
 export const metadata: Metadata = { title: "Autentificare" };
 
@@ -29,6 +31,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/autentific
         </div>
       ) : null}
       <LoginForm callbackUrl={callbackUrl} />
+      {isPasskeyConfigured() ? <PasskeyLogin callbackUrl={callbackUrl} /> : null}
       <p className="text-center mt-2">
         <Link href="/am-uitat-parola" className="inline-flex min-h-11 items-center px-2">
           Ați uitat parola?

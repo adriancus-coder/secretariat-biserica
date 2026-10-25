@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { hasStepUp } from "@/server/step-up";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { fmtL } from "@/lib/format";
 import { exclusionNoticePrint } from "@/lib/discipline-print";
@@ -20,6 +21,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
     },
   });
   if (!m || m.forma !== "EXCLUDERE") notFound();
+  if (!(await hasStepUp(ctx.user))) redirect(`/persoane/${m.personId}/disciplina`);
   const church = await getChurch(ctx);
   const pv = m.meeting ? `${m.meeting.nr !== null ? `PV nr. ${m.meeting.nr}/${m.meeting.anRegistru}` : "procesul-verbal"} din ${fmtL(fromDbDate(m.meeting.data)!)}` : "";
   const spec = exclusionNoticePrint(

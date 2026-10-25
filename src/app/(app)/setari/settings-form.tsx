@@ -28,7 +28,7 @@ export function SettingsForm({
 }: {
   /** The QR / share panel of the application link (outside the read-only fieldset). */
   applicationLink?: ReactNode;
-  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean; extractEnabled: boolean };
+  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean; passkeyPolicy: boolean; extractEnabled: boolean };
   /** The notice as published (the saved text, or the template filled with the church's details). */
   privacyText: string;
   privacyUrl: string;
@@ -48,6 +48,7 @@ export function SettingsForm({
   const val = (k: ChurchTextFields) => v?.[k] ?? church[k];
   const applicationsOpen = v ? v.applicationsOpen === "on" : church.applicationsOpen;
   const require2fa = v ? v.require2fa === "on" : church.require2fa;
+  const passkeyPolicy = v ? v.passkeyPolicy === "on" : church.passkeyPolicy;
   const extractEnabled = v ? v.extractEnabled === "on" : church.extractEnabled;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
@@ -118,6 +119,16 @@ export function SettingsForm({
             <span className="block font-medium">Autentificare în doi pași obligatorie</span>
             <span className="hint block !mt-0">
               La următoarea autentificare, utilizatorii fără cod (aplicație sau e-mail) sunt îndrumați să-l configureze.
+            </span>
+          </span>
+        </label>
+        <label className="switch-row">
+          <input type="checkbox" role="switch" name="passkeyPolicy" defaultChecked={passkeyPolicy} />
+          <span>
+            <span className="block font-medium">Pastorii și administratorii intră cu parolă + Face ID / amprentă</span>
+            <span className="hint block !mt-0">
+              Pentru ei nu se mai oferă intrarea doar cu Face ID, iar al doilea pas este deblocarea telefonului. Codurile rămân doar de rezervă: fiecare
+              folosire este înregistrată și apare pe Acasă pentru administratori.
             </span>
           </span>
         </label>

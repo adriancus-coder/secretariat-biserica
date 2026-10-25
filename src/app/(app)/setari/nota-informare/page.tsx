@@ -1,3 +1,5 @@
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { lineDiff } from "@/lib/line-diff";
@@ -17,10 +19,12 @@ export default async function PrivacyModelPage() {
   const current = church.privacyText.trim() || privacyTemplate(church);
   const next = privacyTemplate({ ...church, privacyAdoptedAt: todayIso() });
   const diff = lineDiff(current, next);
+  const [stepMethod, stepped] = await Promise.all([stepUpMethod(ctx.user.id), hasStepUp(ctx.user)]);
   return (
     <>
       <BackLink href="/setari">Setări</BackLink>
       <PageHead title={`Modelul notei de informare (${PRIVACY_NOTICE_VERSION})`} sub="Rândurile scoase sunt tăiate, cele noi sunt evidențiate" />
+      {!stepped ? <StepUpGate method={stepMethod} what="Adoptarea modelului nou cere confirmarea identității." compact /> : null}
       <div className="card diff scroll-panel">
         {diff.map((d, i) =>
           d.op === "same" ? (

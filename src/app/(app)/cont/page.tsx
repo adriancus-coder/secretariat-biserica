@@ -10,6 +10,9 @@ import { logoutAction, logoutEverywhereAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { ChangePasswordForm } from "./change-password-form";
 import { SecurityCard } from "./security-card";
+import { PasskeysCard } from "./passkeys-card";
+import { isPasskeyConfigured, passkeyPolicyApplies } from "@/server/passkeys";
+import { dotDateTime } from "@/lib/dates";
 import { prisma } from "@/server/db";
 import { isEmailConfigured } from "@/server/email";
 
@@ -24,8 +27,15 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
   const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   const security = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { totpEnabled: true, emailOtpEnabled: true, recoveryCodes: true, church: { select: { require2fa: true } } },
+    select: {
+      totpEnabled: true,
+      emailOtpEnabled: true,
+      recoveryCodes: true,
+      church: { select: { require2fa: true, passkeyPolicy: true } },
+      passkeys: { orderBy: { createdAt: "asc" }, select: { id: true, deviceName: true, lastUsedAt: true, createdAt: true } },
+    },
   });
+  const policy = passkeyPolicyApplies(user, security.church);
   return (
     <>
       <PageHead title="Contul meu" sub={user.churchName} />
@@ -50,6 +60,21 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           Mai aveți puține coduri de recuperare. Generați coduri noi mai jos.
         </div>
       ) : null}
+      {sp.dispozitiv === "necesar" && !security.passkeys.length ? (
+        <div className="alert" role="status">
+          Biserica cere pastorilor și administratorilor intrarea cu parolă + Face ID / amprentă. Adăugați acum acest dispozitiv.
+        </div>
+      ) : null}
+      <PasskeysCard
+        configured={isPasskeyConfigured()}
+        required={policy}
+        rows={security.passkeys.map((p) => ({
+          id: p.id,
+          deviceName: p.deviceName,
+          created: dotDateTime(p.createdAt),
+          lastUsed: p.lastUsedAt ? dotDateTime(p.lastUsedAt) : null,
+        }))}
+      />
       <SecurityCard
         totpEnabled={security.totpEnabled}
         emailOtpEnabled={security.emailOtpEnabled}

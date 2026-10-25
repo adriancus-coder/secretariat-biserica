@@ -30,6 +30,8 @@
     "@fontsource/source-serif-4": "^5.3.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@simplewebauthn/browser": "14.0.0",
+    "@simplewebauthn/server": "14.0.3",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-bold": "3.31.4",
     "@tiptap/extension-document": "3.31.4",
@@ -77,6 +79,10 @@
   "overrides": {
     "exceljs": {
       "uuid": "11.1.1"
+    },
+    "next-auth": {
+      "@simplewebauthn/browser": "$@simplewebauthn/browser",
+      "@simplewebauthn/server": "$@simplewebauthn/server"
     }
   }
 }

@@ -9,12 +9,15 @@ import { EXPORT_GRANT_COOKIE, hasGrant } from "@/server/export-grant";
 import { listRoleGroups } from "@/server/queries/roles";
 import { loadPersonRecords } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import { ExportForm } from "./export-form";
 
 export const metadata: Metadata = { title: "Exportă persoane" };
 
 const ERRORS: Record<string, string> = {
   parola: "Parola nu este corectă. Nimic nu a fost exportat.",
+  confirmare: "Confirmați întâi identitatea pe dispozitiv. Nimic nu a fost exportat.",
   date: "Alegeți cel puțin o categorie și o coloană.",
 };
 
@@ -28,12 +31,15 @@ export default async function PersonExportPage({ searchParams }: PageProps<"/per
   const coloane = list(sp.coloane).filter((c): c is ExportColumn => (EXPORT_COLUMN_KEYS as string[]).includes(c));
   const ordine = typeof sp.ordine === "string" && (EXPORT_SORTS as readonly string[]).includes(sp.ordine) ? (sp.ordine as ExportSort) : "alfabetic";
   const [persons, groups] = await Promise.all([loadPersonRecords(ctx), listRoleGroups(ctx)]);
-  const granted = hasGrant((await cookies()).get(EXPORT_GRANT_COOKIE)?.value, ctx.user.id);
+  const [stepMethod, stepped] = await Promise.all([stepUpMethod(ctx.user.id), hasStepUp(ctx.user)]);
+  // A user with a passkey confirms on the device (15 minutes); the others give the password every 10 minutes.
+  const granted = stepped || (stepMethod === "password" && hasGrant((await cookies()).get(EXPORT_GRANT_COOKIE)?.value, ctx.user.id));
   const eroare = typeof sp.eroare === "string" ? (ERRORS[sp.eroare] ?? null) : null;
   return (
     <>
       <BackLink href="/persoane">Persoane</BackLink>
       <PageHead title="Exportă persoane" sub="Excel, CSV sau PDF, din orice combinație de categorii" />
+      {stepMethod === "passkey" && !stepped ? <StepUpGate method="passkey" what="Lista conține date personale." compact /> : null}
       <ExportForm
         initial={{
           categorie: sel.keys,
@@ -45,7 +51,7 @@ export default async function PersonExportPage({ searchParams }: PageProps<"/per
         }}
         years={reportYears(persons, Number(today.slice(0, 4)))}
         roles={groups.flatMap((g) => g.roles.map((r) => ({ id: r.id, nume: r.nume, group: g.nume })))}
-        needPassword={!granted}
+        needPassword={!granted && stepMethod === "password"}
         error={eroare}
       />
     </>

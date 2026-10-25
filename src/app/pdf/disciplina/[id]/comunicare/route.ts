@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { hasStepUp } from "@/server/step-up";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { sanctionNoticePrint } from "@/lib/discipline-print";
 import { DISCIPLINARY_FORM_LABEL } from "@/lib/labels";
@@ -18,6 +19,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
   if (!idSchema.safeParse(id).success) notFound();
   const m = await loadMeasureForPrint(ctx, id);
   if (!m || m.stare !== "APLICATA") notFound();
+  if (!(await hasStepUp(ctx.user))) redirect(`/persoane/${m.personId}/disciplina`);
   const church = await getChurch(ctx);
   const spec = sanctionNoticePrint(
     {

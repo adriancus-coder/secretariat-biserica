@@ -1,3 +1,4 @@
+import { sensitiveCheck, stepUpMethod } from "@/server/step-up";
 import { cookies } from "next/headers";
 import { statsEndDate } from "@/domain/stats";
 import { kinshipRank } from "@/lib/kinship";
@@ -7,7 +8,6 @@ import { exportFileName, exportRows, columnLabel, selectionTitle, sortForExport,
 import { personExportInput, personExportSchema } from "@/lib/schemas/person-export";
 import { prisma } from "@/server/db";
 import { EXPORT_GRANT_COOKIE, grantCookieHeader, hasGrant } from "@/server/export-grant";
-import { verifyPassword } from "@/server/password";
 import { exportPdfSpec, exportXlsx, loadExportPersons } from "@/server/person-export";
 import { renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
@@ -40,11 +40,11 @@ export async function POST(req: Request) {
   if (!parsed.success) return back(req, form, "date");
   const granted = hasGrant((await cookies()).get(EXPORT_GRANT_COOKIE)?.value, ctx.user.id);
   let grant: string | null = null;
-  if (!granted) {
-    const password = String(form.get("parola") ?? "");
-    const account = await prisma.user.findUnique({ where: { id: ctx.user.id }, select: { passwordHash: true } });
-    if (!password || !account || !(await verifyPassword(password, account.passwordHash))) return back(req, form, "parola");
-    grant = grantCookieHeader(ctx.user.id, (process.env.APP_URL ?? "").startsWith("https://"));
+  if (!granted || (await stepUpMethod(ctx.user.id)) === "passkey") {
+    // With a passkey: the device confirmation (step-up, 15 minutes); otherwise the password (10-minute grant).
+    const check = await sensitiveCheck(ctx.user, String(form.get("parola") ?? ""));
+    if (check !== "ok") return back(req, form, check === "device" ? "confirmare" : "parola");
+    if (!granted) grant = grantCookieHeader(ctx.user.id, (process.env.APP_URL ?? "").startsWith("https://"));
   }
   const { categorie, mod, an, functie, coloane, ordine, format } = parsed.data;
   const today = todayIso();

@@ -1,3 +1,5 @@
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
     ctx.db.person.findMany({ where: { inComitet: true, dataIesire: null }, orderBy: [{ sortKey: "asc" }, { id: "asc" }], select: { id: true, nume: true, prenume: true } }),
   ]);
   const jar = await cookies();
+  const [stepMethod, stepped] = await Promise.all([stepUpMethod(ctx.user.id), hasStepUp(ctx.user)]);
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   const role = ctx.user.role;
@@ -60,6 +63,9 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHead title="Setări" sub="Organizația, semnături, nomenclatoare" />
+      {permissions.admin(role) && !stepped ? (
+        <StepUpGate method={stepMethod} what="Nota de informare, securitatea autentificării și statutele se modifică după confirmarea identității." compact />
+      ) : null}
       <nav className="moremenu mb-4" aria-label="Secțiuni">
         {permissions.admin(role) ? <Link href="/setari/utilizatori">Utilizatori și roluri</Link> : null}
         {permissions.export(role) ? <Link href="/setari/date">Copie de siguranță (export / import)</Link> : null}

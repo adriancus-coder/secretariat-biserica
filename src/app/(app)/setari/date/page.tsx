@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
 import { requireCtx } from "@/server/session";
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { memberName } from "@/lib/format";
 import Link from "next/link";
@@ -25,6 +27,7 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
       ).map((f) => ({ id: f.id, nume: f.nume, head: f.head ? memberName(f.head) : "", members: f._count.members }))
     : [];
   const exportDays = await daysSinceLastExport(ctx);
+  const [stepMethod, stepped] = await Promise.all([stepUpMethod(user.id), hasStepUp(user)]);
   const adjusted = permissions.admin(user.role)
     ? await ctx.db.person.findMany({
         where: { statutAjustat: { not: null } },
@@ -45,18 +48,30 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
         <p className={exportDays === null || exportDays > EXPORT_REMINDER_DAYS ? "alert mb-3" : "hint mb-3"} role="status">
           {exportAgeText(exportDays)} Recomandăm un export cel puțin o dată pe lună (săptămânal cât timp baza de date este pe planul gratuit).
         </p>
+        {stepMethod === "passkey" && !stepped ? <StepUpGate method="passkey" what="Exportul conține toate datele bisericii." compact /> : null}
         <form method="post" action="/api/export" className="grid gap-2 max-w-sm">
           {sp.export === "parola" ? (
             <div className="alert" role="alert">
               Parola nu este corectă.
             </div>
           ) : null}
-          <label htmlFor="export-parola" className="text-sm font-medium text-ink-2">
-            Parola dumneavoastră (pentru confirmare)
-          </label>
-          <input id="export-parola" name="parola" type="password" autoComplete="current-password" required />
+          {sp.export === "confirmare" ? (
+            <div className="alert" role="alert">
+              Confirmați întâi identitatea pe dispozitiv.
+            </div>
+          ) : null}
+          {stepped ? (
+            <p className="hint !mt-0">Identitatea a fost confirmată; exportul nu mai cere parola timp de 15 minute.</p>
+          ) : stepMethod === "password" ? (
+            <>
+              <label htmlFor="export-parola" className="text-sm font-medium text-ink-2">
+                Parola dumneavoastră (pentru confirmare)
+              </label>
+              <input id="export-parola" name="parola" type="password" autoComplete="current-password" required />
+            </>
+          ) : null}
           <div>
-            <button type="submit" className="btn">
+            <button type="submit" className="btn" disabled={stepMethod === "passkey" && !stepped}>
               Exportă datele (JSON)
             </button>
           </div>

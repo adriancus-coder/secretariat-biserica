@@ -27,6 +27,7 @@ import {
   spendRecoveryCode,
 } from "../two-factor";
 import { hashToken } from "../tokens";
+import { passkeyPolicyApplies } from "../passkeys";
 
 export interface TwoFactorState extends FormState {
   /** Shown once, right after they are created. */
@@ -94,6 +95,11 @@ export async function verifyLoginCodeAction(_prev: FormState, formData: FormData
     return { message: `Cod greșit. Mai aveți ${MAX_CODE_ATTEMPTS - attempts} ${MAX_CODE_ATTEMPTS - attempts === 1 ? "încercare" : "încercări"}.` };
   }
 
+  // Under the policy "parolă + Face ID / amprentă" a code is only a recovery: audited, shown on Acasă to
+  // the administrators.
+  if (passkeyPolicyApplies(user, user.church) && (await prisma.userPasskey.count({ where: { userId: user.id } })) > 0) {
+    await securityAudit(user, user.name, { intrareRezerva: "intrare cu cod de rezervă în loc de Face ID / amprentă" });
+  }
   // The e-mail code works once.
   await prisma.loginChallenge.update({ where: { id: challenge.id }, data: { verifiedAt: new Date(), emailCodeHash: null } });
   await clearChallengeCookie();
@@ -207,8 +213,8 @@ export async function confirmTotpAction(prev: TwoFactorState, formData: FormData
   return { ok: true, message: "Aplicația de autentificare este activă.", recoveryCodes: recovery?.codes };
 }
 
-async function refuseIfLast(user: { totpEnabled: boolean; emailOtpEnabled: boolean; church: { require2fa: boolean } }, leaving: "totp" | "email") {
-  const left = leaving === "totp" ? user.emailOtpEnabled : user.totpEnabled;
+async function refuseIfLast(user: { id: string; totpEnabled: boolean; emailOtpEnabled: boolean; church: { require2fa: boolean } }, leaving: "totp" | "email") {
+  const left = (leaving === "totp" ? user.emailOtpEnabled : user.totpEnabled) || (await prisma.userPasskey.count({ where: { userId: user.id } })) > 0;
   return user.church.require2fa && !left ? "Biserica cere autentificarea în doi pași: activați întâi cealaltă metodă." : null;
 }
 

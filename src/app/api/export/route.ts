@@ -3,7 +3,7 @@ import { permissions } from "@/lib/permissions";
 import { buildExportJson } from "@/server/backup-json";
 import { getCurrentUser } from "@/server/session";
 import { prisma } from "@/server/db";
-import { verifyPassword } from "@/server/password";
+import { sensitiveCheck } from "@/server/step-up";
 import { tenantDb } from "@/server/tenant-db";
 
 /** The export starts from the form in Setări → Date (with the password), never from a plain link. */
@@ -20,11 +20,9 @@ export async function POST(req: Request) {
   if (!user) return new Response("Neautentificat.", { status: 401 });
   if (!permissions.export(user.role)) return new Response("Nu aveți drept de export.", { status: 403 });
   const form = await req.formData().catch(() => null);
-  const password = String(form?.get("parola") ?? "");
-  const account = await prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } });
-  if (!password || !account || !(await verifyPassword(password, account.passwordHash))) {
-    return Response.redirect(new URL("/setari/date?export=parola", req.url), 303);
-  }
+  // The device confirmation (step-up) when the user has a passkey, otherwise the password.
+  const check = await sensitiveCheck(user, String(form?.get("parola") ?? ""));
+  if (check !== "ok") return Response.redirect(new URL(`/setari/date?export=${check === "device" ? "confirmare" : "parola"}`, process.env.APP_URL || req.url), 303);
   const ctx = { user, db: tenantDb(user.churchId) };
   const { data, churchName } = await buildExportJson(ctx);
   const json = JSON.stringify(data, null, 2);

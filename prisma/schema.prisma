@@ -64,6 +64,9 @@ model Church {
   tipuriAG         String[] @default([])
   /// Meeting types whose minutes show the quorum line (default: none).
   tipuriCvorum     String[] @default([])
+  /// "Pastorii și administratorii intră cu parolă + Face ID / amprentă": for pastors and administrators the
+  /// second factor must be a passkey (codes remain as audited recovery) and passkey-only sign-in is refused.
+  passkeyPolicy    Boolean  @default(false)
   /// Committee mandate (Statut art. 45): elected on, the minutes of the election (a meeting id, checked
   /// against the church on save; no FK), extended once by 5 years.
   comitetAlesLa           DateTime? @db.Date
@@ -149,6 +152,8 @@ model User {
   signaturesCollected MeetingSignature[] @relation("SignatureCollectedBy")
   meetingSends        MeetingSend[]
   loginChallenges     LoginChallenge[]
+  passkeys            UserPasskey[]
+  webauthnChallenges  WebAuthnChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
   disciplinaryMeasures DisciplinaryMeasure[]
@@ -749,6 +754,42 @@ model MeetingSignature {
 
 /// The second step of a login, after a correct password: identified by a random token kept in an
 /// httpOnly cookie (only its hash is stored). Used with the global client (authentication).
+/// A passkey (WebAuthn credential) of a user: Face ID, fingerprint or the screen PIN of a device. Reached
+/// only through the user. No biometric data ever reaches the server: only the public key and a counter.
+model UserPasskey {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// base64url credential id
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String[]  @default([])
+  deviceName   String    @default("")
+  backedUp     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+  @@map("user_passkeys")
+}
+
+/// A server-issued WebAuthn challenge: stored hashed, single use, 2 minutes, bound to a purpose
+/// ("inregistrare", "login", "login-factor-2", "confirmare", "semnatura:<id>", …) and, except for the
+/// passkey-only sign-in, to the user.
+model WebAuthnChallenge {
+  id            String   @id @default(cuid())
+  challengeHash String   @unique
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose       String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@map("webauthn_challenges")
+}
+
 model LoginChallenge {
   id                 String    @id @default(cuid())
   tokenHash          String    @unique
