@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { importBackup } from "@/server/backup";
 import { buildExportJson, parseImportJson } from "@/server/backup-json";
+import { printToText } from "@/domain/print";
 import { expectedAttendees } from "@/server/queries/attendance";
+import { getMeeting } from "@/server/queries/meetings";
+import { meetingSpec } from "@/server/pdf/meeting";
+import type { ChurchSettings } from "@/server/queries/church";
+import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
@@ -43,6 +48,24 @@ describe.skipIf(!hasTestDb)("disciplinary measures", () => {
     const ids = await expectedAttendees(admin.db, "TOTI", "2026-10-01");
     expect(ids).toContain(member);
     expect(ids).not.toContain(suspended);
+  });
+
+  it("the ordinary minutes of a disciplinary decision say only „Punct tratat în ședință închisă”", async () => {
+    const meeting = await prisma.meeting.create({ data: { churchId: admin.user.churchId, tip: "Comitet", data: new Date("2026-03-01"), puncte: ["Planificare"] } });
+    const m = await prisma.disciplinaryMeasure.create({
+      data: { churchId: admin.user.churchId, personId: member, forma: "MUSTRARE_COMITET", stare: "CERCETARE", dataInceput: new Date("2026-02-01"), meetingId: meeting.id, abatere: "abatere secretă", temei: "art. 27" },
+    });
+    expect((await getMeeting(secretar, meeting.id))!.sedintaInchisa).toBe(false);
+    await prisma.disciplinaryMeasure.update({ where: { id: m.id }, data: { stare: "APLICATA" } });
+    const record = (await getMeeting(secretar, meeting.id))!;
+    expect(record.sedintaInchisa).toBe(true);
+    // The church settings by hand: getChurch reads through the app's global client.
+    const church = { nume: "disc-a", pastor: "", secretar: "", tipuriAG: [], tipuriCvorum: [], attendanceRules: { Comitet: "COMITET" }, pvLayout: DEFAULT_LAYOUT } as unknown as ChurchSettings;
+    const text = printToText(meetingSpec(record, church));
+    expect(text).toContain("Punct tratat în ședință închisă.");
+    expect(text).not.toMatch(/abatere secretă|disciplin|sancțiun/i);
+    await prisma.disciplinaryMeasure.delete({ where: { id: m.id } });
+    await prisma.meeting.delete({ where: { id: meeting.id } });
   });
 
   it("only an administrator's export carries the measures; a secretary's has no trace", async () => {

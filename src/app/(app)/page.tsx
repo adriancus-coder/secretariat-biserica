@@ -4,10 +4,11 @@ import { PageHead } from "@/components/ui/page-head";
 import { ageKey } from "@/domain/categories";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
 import { categoryHref } from "@/lib/category-params";
-import { ageAt, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
+import { addDays, ageAt, fromDbDate, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assembly";
 import { permissions } from "@/lib/permissions";
+import { APPEAL_DAYS, appealDeadline } from "@/lib/discipline-print";
 import { mandateNotice } from "@/lib/committee";
 import { committeeAbsences } from "@/server/queries/committee";
 import { getChurch } from "@/server/queries/church";
@@ -110,6 +111,20 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // Statut art. 45: the committee's mandate (write roles) and 5 unexcused absences in a row (administrators).
   const mandate = canWrite ? mandateNotice(today, church.comitetAlesLa, church.comitetPrelungit) : null;
   const absences = permissions.admin(ctx.user.role) ? await committeeAbsences(ctx, church) : [];
+  // Administrators only (`disciplina`): open appeal windows (Statut art. 27 alin. 11) and pending appeals.
+  const appeals = permissions.disciplina(ctx.user.role)
+    ? (
+        await ctx.db.disciplinaryMeasure.findMany({
+          where: {
+            stare: "APLICATA",
+            contestatieRezultat: null,
+            OR: [{ comunicatLa: { gte: toDbDate(addDays(today, -APPEAL_DAYS))! } }, { comunicatLa: { not: null }, contestatieLa: { not: null } }],
+          },
+          orderBy: { comunicatLa: "asc" },
+          select: { id: true, personId: true, comunicatLa: true, contestatieLa: true, person: { select: { nume: true, prenume: true } } },
+        })
+      ).map((m) => ({ ...m, deadline: appealDeadline(fromDbDate(m.comunicatLa)!) }))
+    : [];
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -119,6 +134,19 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {appeals.length ? (
+        <div className="alert mb-4" role="status">
+          <p className="m-0">Termene de contestare la Comunitate (Statut art. 27 alin. 11):</p>
+          <ul className="m-0 mt-1 pl-5 list-disc">
+            {appeals.map((a) => (
+              <li key={a.id}>
+                <Link href={`/persoane/${a.personId}/disciplina`}>{memberName(a.person)}</Link>:{" "}
+                {a.contestatieLa ? `contestație depusă la ${fmt(fromDbDate(a.contestatieLa)!)}, fără rezultat` : `până la ${fmt(a.deadline)}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {mandate ? (
         <div className="alert mb-4" role="status">
           {mandate} <Link href="/setari">Setări</Link>

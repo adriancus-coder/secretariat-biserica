@@ -62,6 +62,7 @@ export async function POST(req: Request) {
         },
         church,
       ),
+      sedintaInchisa: existing?.sedintaInchisa ?? false,
       semnaturi: present.map((p) => {
         const s = signed.get(p.id);
         return { name: `${p.prenume} ${p.nume}`.trim(), image: s ? new Uint8Array(s.png) : null, signedAt: s ? dotDateTime(s.signedAt) : null };

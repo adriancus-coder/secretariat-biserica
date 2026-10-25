@@ -11,7 +11,7 @@ import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
 import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
 import { dotDateTime } from "@/lib/dates";
-import { fmtDot } from "@/domain/print";
+import { CLOSED_SESSION_LINE, fmtDot } from "@/domain/print";
 import { Signatures } from "./signatures";
 import { ExcusedForm } from "./excused";
 import { SendMinutesButton, ShareMinutesButton, type Recipient } from "./send-minutes";
@@ -170,6 +170,12 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             "—"
           )}
         </dd>
+        {x.sedintaInchisa ? (
+          <>
+            <dt>Ședință închisă</dt>
+            <dd>{CLOSED_SESSION_LINE}</dd>
+          </>
+        ) : null}
         {x.observatii ? (
           <>
             <dt>Observații</dt>

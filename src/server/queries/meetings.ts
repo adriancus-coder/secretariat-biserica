@@ -55,6 +55,8 @@ export async function getMeeting(ctx: Ctx, id: string) {
     },
   });
   if (!m) return null;
+  // Whether a disciplinary matter was decided in this meeting: the ordinary minutes say only that.
+  const closed = await ctx.db.disciplinaryMeasure.count({ where: { OR: [{ meetingId: id, stare: { not: "CERCETARE" } }, { repunereMeetingId: id }] } });
   const signed = new Map(m.signatures.map((s) => [s.personId, { signedAt: s.signedAt, png: Buffer.from(s.imagePng) }]));
   const list = (status: "PRESENT" | "ABSENT") =>
     m.prezenti
@@ -79,6 +81,7 @@ export async function getMeeting(ctx: Ctx, id: string) {
     formulaRich: storedRich(m.formulaRich),
     convocatLa: fromDbDate(m.convocatLa),
     voturi: storedVotes(m.voturi),
+    sedintaInchisa: closed > 0,
   };
 }
 

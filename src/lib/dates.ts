@@ -102,3 +102,8 @@ export function monthsBefore(iso: string, n: number): string {
   const t = addMonths(y, m - 1, -n);
   return isoFromParts(t.year, t.month0, Math.min(d, daysInMonth(t.year, t.month0)));
 }
+
+/** The date `n` days later: "2026-10-25", 15 → "2026-11-09". */
+export function addDays(iso: string, n: number): string {
+  return new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+}

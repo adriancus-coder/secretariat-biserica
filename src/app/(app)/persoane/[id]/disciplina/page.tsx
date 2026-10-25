@@ -1,3 +1,6 @@
+import { ReinstateForm } from "./reinstate-form";
+import { appealDeadline } from "@/lib/discipline-print";
+import { APPEAL_RESULT_LABEL } from "@/lib/schemas/discipline";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -72,6 +75,33 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
                   </>
                 ) : null}
                 {m.motiv ? <div className="hint whitespace-pre-wrap">{m.motiv}</div> : null}
+                {m.comunicatLa ? (
+                  <div className="hint">
+                    Comunicată la {fmt(fromDbDate(m.comunicatLa)!)} · termen de contestare {fmt(appealDeadline(fromDbDate(m.comunicatLa)!))}
+                    {m.contestatieLa ? ` · contestație din ${fmt(fromDbDate(m.contestatieLa)!)}` : ""}
+                    {m.contestatieRezultat ? ` (${APPEAL_RESULT_LABEL[m.contestatieRezultat]})` : ""}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-x-3 text-sm mt-1">
+                  {m.audiereLa ? (
+                    <a href={`/pdf/disciplina/${m.id}/convocare`} target="_blank" rel="noopener">
+                      Convocare la audiere (PDF)
+                    </a>
+                  ) : null}
+                  {m.stare !== "CERCETARE" && m.meetingId && m.abatere ? (
+                    <a href={`/pdf/disciplina/${m.id}/proces-verbal`} target="_blank" rel="noopener">
+                      PV disciplinar (PDF)
+                    </a>
+                  ) : null}
+                  {m.stare === "APLICATA" ? (
+                    <a href={`/pdf/disciplina/${m.id}/comunicare`} target="_blank" rel="noopener">
+                      Comunicarea sancțiunii (PDF)
+                    </a>
+                  ) : null}
+                </div>
+                {m.stare === "APLICATA" && ["SUSPENDARE", "RETRAGERE_DREPTURI", "EXCLUDERE"].includes(m.forma) ? (
+                  <ReinstateForm personId={id} measureId={m.id} exclusion={m.forma === "EXCLUDERE"} meetings={meetingOptions} />
+                ) : null}
               </div>
               <div className="flex gap-2 flex-wrap">
                 <Link href={`/persoane/${id}/disciplina?masura=${m.id}`} className="btn btn-sm">
@@ -106,6 +136,17 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
                   meetingId: editing.meetingId ?? "",
                   motiv: editing.motiv,
                   decisByForum: editing.decisByForum,
+                  audiereLa: fromDbDate(editing.audiereLa) ?? "",
+                  audiereOra: editing.audiereOra,
+                  audiereLoc: editing.audiereLoc,
+                  abatere: editing.abatere,
+                  raspuns: editing.raspuns,
+                  nuSaPrezentat: editing.nuSaPrezentat ? "on" : "",
+                  incadrare: editing.incadrare,
+                  temei: editing.temei,
+                  comunicatLa: fromDbDate(editing.comunicatLa) ?? "",
+                  contestatieLa: fromDbDate(editing.contestatieLa) ?? "",
+                  contestatieRezultat: editing.contestatieRezultat ?? "",
                 }
               : {}
           }

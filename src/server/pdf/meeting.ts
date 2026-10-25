@@ -32,6 +32,7 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: P
       formulaIncheiere: m.formulaIncheiere,
       formulaRich: m.formulaRich,
       ...lines,
+      sedintaInchisa: m.sedintaInchisa,
       semnaturi: m.prezenti.map((p) => ({
         name: `${p.prenume} ${p.nume}`.trim(),
         image: p.signature ? new Uint8Array(p.signature.png) : null,

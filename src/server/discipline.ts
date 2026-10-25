@@ -2,6 +2,7 @@ import "server-only";
 import { fromDbDate } from "@/lib/dates";
 import { permissions } from "@/lib/permissions";
 import { DISCIPLINARY_FORM_LABEL, DISCIPLINARY_FORUM_LABEL, DISCIPLINARY_STATE_LABEL, type DisciplinaryFormKey, type DisciplinaryStateKey } from "@/lib/labels";
+import { APPEAL_RESULT_LABEL } from "@/lib/schemas/discipline";
 import { ActionError, type Ctx } from "./session";
 
 /**
@@ -35,17 +36,33 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 export async function disciplineView(tx: Tx, id: string) {
   const m = await tx.disciplinaryMeasure.findUnique({
     where: { id },
-    include: { meeting: { select: { nr: true, anRegistru: true, tip: true, data: true } } },
+    include: {
+      meeting: { select: { nr: true, anRegistru: true, tip: true, data: true } },
+      repunereMeeting: { select: { nr: true, anRegistru: true, tip: true, data: true } },
+    },
   });
   if (!m) return null;
+  const pv = (x: { nr: number | null; anRegistru: number | null; tip: string; data: Date } | null) =>
+    x ? `${x.nr !== null ? `PV nr. ${x.nr}/${x.anRegistru} ` : ""}${x.tip} ${fromDbDate(x.data)}` : "";
   return {
     forma: DISCIPLINARY_FORM_LABEL[m.forma],
     stare: DISCIPLINARY_STATE_LABEL[m.stare],
     dataInceput: fromDbDate(m.dataInceput),
     dataSfarsit: fromDbDate(m.dataSfarsit),
-    procesVerbal: m.meeting ? `${m.meeting.nr !== null ? `PV nr. ${m.meeting.nr}/${m.meeting.anRegistru} ` : ""}${m.meeting.tip} ${fromDbDate(m.meeting.data)}` : "",
+    procesVerbal: pv(m.meeting),
     motivMasura: m.motiv,
     forul: DISCIPLINARY_FORUM_LABEL[m.decisByForum],
+    audiere: m.audiereLa ? [fromDbDate(m.audiereLa), m.audiereOra, m.audiereLoc].filter(Boolean).join(" ") : "",
+    abatere: m.abatere,
+    raspuns: m.raspuns,
+    nuSaPrezentat: m.nuSaPrezentat ? "da" : "",
+    incadrare: m.incadrare,
+    temei: m.temei,
+    comunicatLa: fromDbDate(m.comunicatLa) ?? "",
+    contestatieLa: fromDbDate(m.contestatieLa) ?? "",
+    contestatieRezultat: m.contestatieRezultat ? APPEAL_RESULT_LABEL[m.contestatieRezultat] : "",
+    cerereRepunereLa: fromDbDate(m.cerereRepunereLa) ?? "",
+    repunere: pv(m.repunereMeeting),
   };
 }
 

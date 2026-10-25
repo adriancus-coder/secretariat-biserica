@@ -67,6 +67,19 @@ export async function loadDiscipline(ctx: Ctx): Promise<BDiscipline[]> {
     pv: m.meetingId,
     motiv: m.motiv,
     forul: m.decisByForum,
+    audiereLa: fromDbDate(m.audiereLa),
+    audiereOra: m.audiereOra,
+    audiereLoc: m.audiereLoc,
+    abatere: m.abatere,
+    raspuns: m.raspuns,
+    nuSaPrezentat: m.nuSaPrezentat,
+    incadrare: m.incadrare,
+    temei: m.temei,
+    comunicatLa: fromDbDate(m.comunicatLa),
+    contestatieLa: fromDbDate(m.contestatieLa),
+    contestatieRezultat: m.contestatieRezultat,
+    cerereRepunereLa: fromDbDate(m.cerereRepunereLa),
+    pvRepunere: m.repunereMeetingId,
   }));
 }
 
@@ -835,6 +848,19 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           meetingId: d.pv ? (meet.map.get(d.pv) ?? null) : null,
           motiv: d.motiv,
           decisByForum: d.forul,
+          audiereLa: toDbDate(d.audiereLa ?? null),
+          audiereOra: d.audiereOra ?? "",
+          audiereLoc: d.audiereLoc ?? "",
+          abatere: d.abatere ?? "",
+          raspuns: d.raspuns ?? "",
+          nuSaPrezentat: d.nuSaPrezentat ?? false,
+          incadrare: d.incadrare ?? "",
+          temei: d.temei ?? "",
+          comunicatLa: toDbDate(d.comunicatLa ?? null),
+          contestatieLa: toDbDate(d.contestatieLa ?? null),
+          contestatieRezultat: d.contestatieRezultat ?? null,
+          cerereRepunereLa: toDbDate(d.cerereRepunereLa ?? null),
+          repunereMeetingId: d.pvRepunere ? (meet.map.get(d.pvRepunere) ?? null) : null,
         };
         if (plan.existing.has(d.id)) await tx.disciplinaryMeasure.update({ where: { id }, data });
         else await tx.disciplinaryMeasure.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });

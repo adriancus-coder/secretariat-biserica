@@ -6,12 +6,13 @@ import { toDbDate } from "@/lib/dates";
 import type { FormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
 import { DISCIPLINARY_FORM_LABEL } from "@/lib/labels";
-import { DISCIPLINE_FIELDS, disciplineSchema } from "@/lib/schemas/discipline";
+import { closingErrors, DISCIPLINE_FIELDS, disciplineSchema, reinstateSchema } from "@/lib/schemas/discipline";
 import { PERSON_FIELDS } from "@/lib/schemas/person";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { disciplineView } from "../discipline";
 import { syncRoleGroups } from "../group-sync";
+import { getChurch } from "../queries/church";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
@@ -27,12 +28,19 @@ export async function saveDisciplineAction(personId: string, measureId: string |
     parseOrThrow(idSchema, personId);
     if (measureId !== null) parseOrThrow(idSchema, measureId);
     const input = parseOrThrow(disciplineSchema, Object.fromEntries(formData));
-    if (input.meetingId && !(await ctx.db.meeting.findUnique({ where: { id: input.meetingId }, select: { id: true } }))) {
-      throw new ValidationError({ meetingId: "Procesul-verbal ales nu mai există." });
-    }
+    const meeting = input.meetingId ? await ctx.db.meeting.findUnique({ where: { id: input.meetingId }, select: { id: true, tip: true } }) : null;
+    if (input.meetingId && !meeting) throw new ValidationError({ meetingId: "Procesul-verbal ales nu mai există." });
+    const church = await getChurch(ctx);
     await ctx.db.$transaction(async (tx) => {
       const person = await tx.person.findUnique({ where: { id: personId } });
       if (!person) throw new ActionError("Persoana nu mai există în registru.");
+      // Closing an investigation (art. 272 lit. c): committee minutes and the mandatory contents.
+      const previous = measureId ? await tx.disciplinaryMeasure.findFirst({ where: { id: measureId, personId }, select: { stare: true } }) : null;
+      if (previous?.stare === "CERCETARE" && input.stare !== "CERCETARE") {
+        const errors = closingErrors(input);
+        if (meeting && church.attendanceRules[meeting.tip] !== "COMITET") errors.meetingId = "Alegeți procesul-verbal al unei ședințe de comitet (Statut art. 272).";
+        if (Object.keys(errors).length) throw new ValidationError(errors);
+      }
       const data = {
         forma: input.forma,
         stare: input.stare,
@@ -41,6 +49,17 @@ export async function saveDisciplineAction(personId: string, measureId: string |
         meetingId: input.meetingId,
         motiv: input.motiv,
         decisByForum: input.decisByForum,
+        audiereLa: toDbDate(input.audiereLa),
+        audiereOra: input.audiereOra,
+        audiereLoc: input.audiereLoc,
+        abatere: input.abatere,
+        raspuns: input.raspuns,
+        nuSaPrezentat: input.nuSaPrezentat,
+        incadrare: input.incadrare,
+        temei: input.temei,
+        comunicatLa: toDbDate(input.comunicatLa),
+        contestatieLa: toDbDate(input.contestatieLa),
+        contestatieRezultat: input.contestatieRezultat,
       };
       let id = measureId;
       const before = id ? await disciplineView(tx, id) : null;
@@ -127,6 +146,67 @@ export async function removeFromCommitteeAction(personId: string): Promise<void>
     done = true;
   });
   if (!done) return;
+  revalidatePath("/", "layout");
+  redirect(`/persoane/${personId}/disciplina?salvat=1`);
+}
+
+/**
+ * "Repunere în drepturi / reprimire" (Statut art. 271) on an applied suspension, withdrawal of rights or
+ * exclusion: needs the written request's date (alin. 1 lit. e) and the committee minutes (alin. 2). It
+ * closes the measure; after an exclusion the person is a member again, entered by "Reabilitare
+ * spirituală" (REPRIMIRE) on the minutes' date. Administrators only, audited.
+ */
+export async function reinstateAction(personId: string, measureId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  let saved = false;
+  const state = await runFormAction(formData, async () => {
+    const ctx = await actionCtx("disciplina");
+    parseOrThrow(idSchema, personId);
+    parseOrThrow(idSchema, measureId);
+    const input = parseOrThrow(reinstateSchema, Object.fromEntries(formData));
+    const meeting = await ctx.db.meeting.findUnique({ where: { id: input.meetingId! }, select: { id: true, data: true } });
+    if (!meeting) throw new ValidationError({ meetingId: "Procesul-verbal ales nu mai există." });
+    await ctx.db.$transaction(async (tx) => {
+      const m = await tx.disciplinaryMeasure.findFirst({ where: { id: measureId, personId } });
+      const person = await tx.person.findUnique({ where: { id: personId } });
+      if (!m || !person) throw new ActionError("Măsura nu mai există.");
+      if (m.stare !== "APLICATA" || !["SUSPENDARE", "RETRAGERE_DREPTURI", "EXCLUDERE"].includes(m.forma)) {
+        throw new ActionError("Repunerea în drepturi se aplică unei suspendări, retrageri de drepturi sau excluderi aplicate (Statut art. 271).");
+      }
+      const before = await disciplineView(tx, measureId);
+      await tx.disciplinaryMeasure.update({
+        where: { id: measureId },
+        data: { stare: "INCHEIATA", dataSfarsit: meeting.data, cerereRepunereLa: toDbDate(input.cerereLa), repunereMeetingId: meeting.id },
+      });
+      await writeAudit(tx, ctx.user, {
+        entity: "DISCIPLINE",
+        entityId: measureId,
+        entityLabel: `${memberName(person)} — ${DISCIPLINARY_FORM_LABEL[m.forma]}`,
+        action: "UPDATE",
+        fields: DISCIPLINE_FIELDS,
+        before,
+        after: await disciplineView(tx, measureId),
+      });
+      if (m.forma === "EXCLUDERE") {
+        const after = await tx.person.update({
+          where: { id: personId },
+          data: {
+            statut: "MEMBRU",
+            dataIesire: null,
+            modIesire: null,
+            iesireMeetingId: null,
+            modIntrare: "REPRIMIRE",
+            dataMembru: meeting.data,
+            intrareMeetingId: meeting.id,
+          },
+        });
+        const roles = await tx.personRole.findMany({ where: { personId }, select: { roleId: true } });
+        await syncRoleGroups(tx, ctx.user, { roleIds: roles.map((r) => r.roleId) });
+        await writeAudit(tx, ctx.user, { entity: "PERSON", entityId: personId, entityLabel: memberName(after), action: "UPDATE", fields: PERSON_FIELDS, before: person, after });
+      }
+    });
+    saved = true;
+  });
+  if (!saved) return state;
   revalidatePath("/", "layout");
   redirect(`/persoane/${personId}/disciplina?salvat=1`);
 }

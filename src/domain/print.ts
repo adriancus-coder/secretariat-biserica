@@ -86,6 +86,9 @@ export function pastorSecretarySignatures(c: ChurchInfo, secretaryFirst = false)
     : { type: "signatures", left: pastor, right: secretar };
 }
 
+/** The ordinary minutes' line for a disciplinary matter (its content is only in the administrators' "PV disciplinar"). */
+export const CLOSED_SESSION_LINE = "Punct tratat în ședință închisă.";
+
 export interface MeetingPrint {
   nr: number | null;
   tip: string;
@@ -108,6 +111,8 @@ export interface MeetingPrint {
   adunare?: string | null;
   /** "Votat: pentru …" under each point (aligned with `puncte`, null = no vote recorded). */
   voturi?: (string | null)[] | null;
+  /** A disciplinary matter was handled in closed session: only this line, never its content (Statut art. 272). */
+  sedintaInchisa?: boolean;
   /** The signature table, one row per person present (in the order of `prezenti`). */
   semnaturi?: SignatureCell[];
   /** "11.09.2026 14:03" when the minutes were closed. */
@@ -152,6 +157,7 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
       if (vote) blocks.push(para(vote));
     });
   } else if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
+  if (x.sedintaInchisa) blocks.push(para(CLOSED_SESSION_LINE));
   if (x.observatii || x.observatiiRich) blocks.push(para("Observații:"), x.observatiiRich ? { type: "rich", doc: x.observatiiRich } : pre(x.observatii));
   // With recorded votes the default "votate în unanimitate" would contradict them: it is left out.
   if (!(votes && x.formulaIncheiere === DEFAULT_CLOSING)) blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
