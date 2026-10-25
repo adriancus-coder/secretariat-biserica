@@ -2,11 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/generated/prisma/client";
 import { toDbDate } from "@/lib/dates";
 import type { FormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
 import { DOCUMENT_TYPE_LABEL } from "@/lib/labels";
+import { richFormatSummary } from "@/lib/rich-text";
 import { DOCUMENT_FIELDS, documentSchema, draftSchema } from "@/lib/schemas/document";
+import { storedRich } from "@/lib/schemas/rich-text";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
@@ -39,6 +42,11 @@ export async function documentDraftAction(input: {
   }
 }
 
+/** The document for the audit log: its fields plus the formatting the rich text uses ("Formatare"). */
+function auditView<T extends { textRich: unknown }>(d: T | null): (T & { formatare: string }) | null {
+  return d ? { ...d, formatare: richFormatSummary(storedRich(d.textRich)) } : null;
+}
+
 export async function saveDocumentAction(id: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
   let savedId: string | undefined;
   const state = await runFormAction(formData, async () => {
@@ -60,6 +68,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
       scop: input.scop,
       titlu: input.titlu,
       text: input.text,
+      textRich: input.textRich ? (input.textRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
       anRaport: input.tip === "raport" ? (input.anRaport ?? anRegistru) : null,
     };
 
@@ -69,11 +78,11 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
         await lockDocumentRegister(tx, ctx.user.churchId, anRegistru);
         const nr = input.nr ?? (await nextFreeNumber(tx, ctx.user.churchId, anRegistru));
         if (id) {
-          const before = await tx.document.findUnique({ where: { id } });
+          const before = auditView(await tx.document.findUnique({ where: { id } }));
           if (!before) throw new ActionError("Documentul nu mai există în registru.");
           // Numele persoanei rămâne cel de la emitere, dacă persoana nu s-a schimbat.
           const persoana = person ? (person.id === before.personId && before.persoana ? before.persoana : memberName(person)) : "";
-          const after = await tx.document.update({ where: { id }, data: { ...fields, nr, persoana } });
+          const after = auditView(await tx.document.update({ where: { id }, data: { ...fields, nr, persoana } }))!;
           await writeAudit(tx, ctx.user, {
             entity: "DOCUMENT",
             entityId: id,
@@ -94,7 +103,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
           entityLabel: label(created),
           action: "CREATE",
           fields: DOCUMENT_FIELDS,
-          after: created,
+          after: auditView(created),
         });
         return created.id;
       });
@@ -115,7 +124,7 @@ export async function deleteDocumentAction(id: string): Promise<FormState> {
     const ctx = await actionCtx("write");
     parseOrThrow(idSchema, id);
     await ctx.db.$transaction(async (tx) => {
-      const before = await tx.document.findUnique({ where: { id } });
+      const before = auditView(await tx.document.findUnique({ where: { id } }));
       if (!before) throw new ActionError("Documentul nu mai există în registru.");
       await tx.document.delete({ where: { id } });
       await writeAudit(tx, ctx.user, {

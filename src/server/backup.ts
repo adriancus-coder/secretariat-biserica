@@ -4,11 +4,12 @@ import { storedLayout } from "@/lib/page-layout";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
+import type { DocumentExtra } from "@/lib/document-backup";
 import type { MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
-import type { RichDoc } from "@/lib/rich-text";
+import { richToPlain, type RichDoc } from "@/lib/rich-text";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
@@ -274,6 +275,17 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
   );
 }
 
+/** Document id → the fields beyond the prototype's format (the rich text), for the export. */
+export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
+  const rows = await ctx.db.document.findMany({ where: { textRich: { not: Prisma.DbNull } }, select: { id: true, textRich: true } });
+  const out = new Map<string, DocumentExtra>();
+  for (const r of rows) {
+    const doc = storedRich(r.textRich);
+    if (doc) out.set(r.id, { textRich: doc });
+  }
+  return out;
+}
+
 /** Families and each person's family, for the `families` collection and members' `familyId`. */
 export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; familyOf: Map<string, string> }> {
   const rows = await ctx.db.family.findMany({ orderBy: [{ nume: "asc" }, { id: "asc" }], include: { members: { select: { id: true } } } });
@@ -296,6 +308,8 @@ export interface ImportExtras {
   families?: ParsedFamilies | null;
   /** Meeting id → the fields beyond the prototype's format, as in the file (see parseMeetingExtras). */
   meetings?: ReadonlyMap<string, MeetingExtra>;
+  /** Document id → the rich text, as in the file (see parseDocumentExtras). */
+  documents?: ReadonlyMap<string, DocumentExtra>;
   /**
    * Older files (no `families` collection): create one family per family text (true), or keep the
    * text on the person only (false, the default: "Nu crea familii din text").
@@ -698,7 +712,9 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       for (const r of takenRows) taken.set(r.anRegistru, (taken.get(r.anRegistru) ?? new Set()).add(r.nr));
       const { docs: numbered, renumbered } = normalizeDocumentNumbers(backup.documents, taken);
       if (renumbered.length) warnings.push(`Documente renumerotate (număr lipsă sau deja folosit): ${renumbered.join("; ")}.`);
-      const docData = (x: BDocument) => ({
+      const docData = (x: BDocument) => {
+        const rich = extras.documents?.get(x.id)?.textRich;
+        return {
         tip: x.tip,
         nr: x.nr,
         anRegistru: Number(x.data.slice(0, 4)),
@@ -708,9 +724,12 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         catre: x.catre,
         scop: x.scop,
         titlu: x.titlu,
-        text: x.text,
+        // The rich text, when the file has a valid one, decides the plain text (as the app shows it).
+        text: rich ? richToPlain(rich) : x.text,
+        textRich: rich ? (rich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
         anRaport: x.tip === "raport" ? (x.an ?? Number(x.data.slice(0, 4))) : x.an,
-      });
+        };
+      };
       // Actualizările întâi pe numere temporare negative, ca să nu se ciocnească între ele.
       for (const x of numbered.filter((d) => docs.existing.has(d.id))) {
         await tx.document.update({ where: { id: docs.map.get(x.id)! }, data: { nr: -Math.abs(x.nr) - 1_000_000 } });

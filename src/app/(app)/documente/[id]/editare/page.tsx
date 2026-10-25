@@ -31,6 +31,7 @@ export default async function EditDocumentPage({ params }: PageProps<"/documente
           scop: doc.scop,
           titlu: doc.titlu,
           text: doc.text,
+          textRich: doc.textRich,
           anRaport: doc.anRaport ? String(doc.anRaport) : "",
         }}
         people={people}

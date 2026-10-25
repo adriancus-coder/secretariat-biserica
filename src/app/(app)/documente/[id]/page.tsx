@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
+import { RichView } from "@/components/rich-editor/rich-view";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fmt } from "@/lib/format";
@@ -29,6 +30,9 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
       <PageHead title={x.titlu || DOCUMENT_TYPE_LABEL[x.tip]} sub={DOCUMENT_TYPE_LABEL[x.tip]}>
         <a href={`/pdf/document/${x.id}`} target="_blank" rel="noopener" className="btn">
           Tipărește (PDF)
+        </a>
+        <a href={`/pdf/document/${x.id}/word`} className="btn" download>
+          Deschide în Word
         </a>
         {canWrite ? (
           <Link href={`/documente/${x.id}/editare`} className="btn btn-primary">
@@ -60,7 +64,13 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           </>
         ) : null}
         <dt>Conținut</dt>
-        <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
+        {x.textRich ? (
+          <dd className="card !mt-1">
+            <RichView doc={x.textRich} />
+          </dd>
+        ) : (
+          <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
+        )}
       </dl>
       {audit.length ? (
         <div className="card">

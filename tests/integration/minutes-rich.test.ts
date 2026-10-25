@@ -1,15 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parsePrototypeJson, toPrototypeJson } from "@/domain/backup";
+import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMeetingExtras, parseMeetingExtras } from "@/lib/meeting-backup";
 import type { RichDoc } from "@/lib/rich-text";
-import { importBackup, loadBackup, loadMeetingExtras } from "@/server/backup";
+import { importBackup, loadBackup, loadDocumentExtras, loadMeetingExtras } from "@/server/backup";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
 
 const bold = (t: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: t, marks: [{ type: "bold" }] }] }] }) as RichDoc;
 
-describe.skipIf(!hasTestDb)("rich minutes in the JSON backup", () => {
+describe.skipIf(!hasTestDb)("rich minutes and documents in the JSON backup", () => {
   const prisma = hasTestDb ? testPrisma() : (undefined as never);
   const ctxFor = (churchId: string, userId: string): Ctx =>
     ({ user: { id: userId, name: "A", email: `${userId}@x.ro`, role: "ADMIN", churchId, churchName: "X" }, db: scopeToChurch(prisma, churchId) }) as Ctx;
@@ -37,6 +38,9 @@ describe.skipIf(!hasTestDb)("rich minutes in the JSON backup", () => {
         formulaRich: bold("Gata."),
       },
     });
+    await prisma.document.create({
+      data: { churchId: a.id, tip: "adeverinta", nr: 1, anRegistru: 2026, data: new Date("2026-02-01T00:00:00Z"), text: "Adeverință", textRich: bold("Adeverință") },
+    });
   });
 
   afterAll(async () => {
@@ -62,5 +66,18 @@ describe.skipIf(!hasTestDb)("rich minutes in the JSON backup", () => {
       "Gata.",
       bold("Gata."),
     ]);
+  });
+
+  it("export -> import keeps a document's rich text, plain text still searchable", async () => {
+    const data = toPrototypeJson(await loadBackup(source));
+    addDocumentExtras(data.documents as Record<string, Record<string, unknown>>, await loadDocumentExtras(source));
+    const json = JSON.parse(JSON.stringify(data));
+    expect((Object.values(json.documents)[0] as Record<string, unknown>).textRich).toEqual(bold("Adeverință"));
+    const parsed = parsePrototypeJson(json);
+    if (!parsed.ok) throw new Error("parse");
+    await importBackup(target, parsed.backup, "merge", { documents: parseDocumentExtras(json) });
+    // The earlier test imported the same file without document extras: look for the copy with rich text.
+    const docs = await target.db.document.findMany({ where: { text: { contains: "Adever" } } });
+    expect(docs.map((d) => [d.text, d.textRich])).toContainEqual(["Adeverință", bold("Adeverință")]);
   });
 });

@@ -3,6 +3,7 @@ import { defaultDocumentTitle, generateDocumentText } from "@/domain/documents";
 import { fromDbDate } from "@/lib/dates";
 import type { DocumentTypeKey } from "@/lib/labels";
 import type { DraftInput } from "@/lib/schemas/document";
+import { storedRich } from "@/lib/schemas/rich-text";
 import { personRecordSelect, toDocPerson, toPersonRecord } from "../mappers";
 import type { Ctx } from "../session";
 import { getChurch } from "./church";
@@ -37,7 +38,7 @@ export async function listDocuments(ctx: Ctx, { page, year }: { page: number; ye
 export async function getDocument(ctx: Ctx, id: string) {
   const d = await ctx.db.document.findUnique({ where: { id } });
   if (!d) return null;
-  return { ...d, data: fromDbDate(d.data)! };
+  return { ...d, data: fromDbDate(d.data)!, textRich: storedRich(d.textRich) };
 }
 
 /** Următorul număr liber în registrul anului dat (informativ; alocarea finală se face la salvare). */

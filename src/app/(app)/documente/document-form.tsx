@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { PreviewButton } from "@/components/rich-editor/preview-frame";
+import { RichEditor, type RichEditorHandle } from "@/components/rich-editor/rich-editor";
 import { Field, SelectField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { DOCUMENT_TYPE_LABEL, DOCUMENT_TYPES, type DocumentTypeKey } from "@/lib/labels";
+import { plainToRich, richToPlain, type RichDoc } from "@/lib/rich-text";
 import { documentDraftAction, saveDocumentAction } from "@/server/actions/documents";
 
 export interface DocumentFormInitial {
@@ -17,6 +20,8 @@ export interface DocumentFormInitial {
   scop: string;
   titlu: string;
   text: string;
+  /** The saved rich text, when the document has one (else built from `text`). */
+  textRich?: RichDoc | null;
   anRaport: string;
 }
 
@@ -41,7 +46,12 @@ export function DocumentForm({
   const [scop, setScop] = useState(initial.scop);
   const [anRaport, setAnRaport] = useState(initial.anRaport);
   const [titlu, setTitlu] = useState(initial.titlu);
+  // The plain text of the editor's content (the template check below and the preview use it).
   const [text, setText] = useState(initial.text);
+  const [initialDoc] = useState(() => initial.textRich ?? plainToRich(initial.text));
+  const editor = useRef<RichEditorHandle>(null);
+  /** Set while the template fills the editor, so that change does not count as a manual edit. */
+  const filling = useRef(false);
   // Ca în prototip: textul modificat manual nu se suprascrie automat (doar cu „Regenerează”).
   // La editarea unui document existent, textul salvat e considerat modificat manual.
   const textTouched = useRef(id !== null);
@@ -74,6 +84,9 @@ export function DocumentForm({
       return;
     }
     setText(res.text);
+    filling.current = true;
+    editor.current?.setContent(plainToRich(res.text));
+    filling.current = false;
     textTouched.current = false;
     if (force || !titleTouched.current) {
       setTitlu(res.titlu);
@@ -81,8 +94,11 @@ export function DocumentForm({
     }
   }
 
+  const previewHost = `preview-doc-${id ?? "nou"}`;
+
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate className="edit-split">
+      <div className="edit-main">
       <div className="row2">
         <SelectField
           name="tip"
@@ -190,20 +206,24 @@ export function DocumentForm({
           </>
         }
         htmlFor="f-text"
-        error={e.text ?? genError ?? undefined}
+        error={e.text ?? e.textRich ?? genError ?? undefined}
       >
-        <textarea
-          id="f-text"
-          name="text"
-          value={text}
-          onChange={(ev) => {
-            setText(ev.target.value);
-            textTouched.current = true;
-          }}
-          className="font-serif !min-h-[300px]"
-          aria-busy={generating || undefined}
-          aria-invalid={e.text ? true : undefined}
-        />
+        <input type="hidden" name="text" value={text} />
+        <div aria-busy={generating || undefined}>
+          <RichEditor
+            name="textRich"
+            id="f-text"
+            label="Conținut"
+            initial={initialDoc}
+            minRows={14}
+            invalid={Boolean(e.text ?? e.textRich)}
+            editorRef={editor}
+            onChange={(doc) => {
+              setText(richToPlain(doc));
+              if (!filling.current) textTouched.current = true;
+            }}
+          />
+        </div>
         <div className="flex items-center gap-2 mt-1">
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => void regenerate(true)} disabled={generating}>
             Regenerează din șablon
@@ -218,21 +238,13 @@ export function DocumentForm({
           Renunță
         </Link>
         <div className="spacer" />
-        <button
-          type="submit"
-          className="btn"
-          formAction="/pdf/document/previzualizare"
-          formMethod="post"
-          formTarget="_blank"
-          formNoValidate
-          data-native-submit=""
-        >
-          Previzualizare PDF
-        </button>
+        <PreviewButton action="/pdf/document/previzualizare" frameHostId={previewHost} />
         <button type="submit" className="btn btn-primary" disabled={pending || generating}>
           {pending ? "Se salvează…" : "Salvează"}
         </button>
       </div>
+      </div>
+      <aside id={previewHost} className="edit-preview" hidden aria-label="Previzualizare" />
     </form>
   );
 }

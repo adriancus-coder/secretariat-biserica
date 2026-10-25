@@ -195,4 +195,11 @@ describe("rich text in Word", () => {
     const { value } = await mammoth.extractRawText({ buffer: await renderDocx(spec) });
     expect(parseMinutesText(value).draft.puncte).toEqual(["Ziua Recoltei pe 4 octombrie.", "Conferința se amână."]);
   });
+
+  it("a registered document in Word: letterhead, number, heading, body and signatures", async () => {
+    const docx = await renderDocx(documentPrint({ tip: "adeverinta", nr: 12, data: "2026-02-01", text: "", textRich: formatted }, church));
+    const lines = await docxLines(docx);
+    expect(lines.slice(0, 4)).toEqual(["Biserica Maranata Stavanger", "Kongsgårdbakken 1 · Org.nr. 912 345 678", "Nr. 12 din 1 februarie 2026", "Adeverință"]);
+    expect(lines.slice(-4)).toEqual(["Pastor", "Daniel Mureșan", "Secretar", "Ioana Pop"]);
+  });
 });

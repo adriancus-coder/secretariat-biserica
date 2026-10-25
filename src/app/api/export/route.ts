@@ -3,11 +3,12 @@ import { todayIso } from "@/lib/dates";
 import { permissions } from "@/lib/permissions";
 import { applicationsToJson } from "@/lib/application-backup";
 import { addMemberCommittee, addMemberRoles, roleGroupsToJson, rolesToJson } from "@/lib/roles-backup";
+import { addDocumentExtras } from "@/lib/document-backup";
 import { addMeetingExtras } from "@/lib/meeting-backup";
 import { addMemberFamilies, familiesToJson } from "@/lib/families-backup";
 import { aliasesToJson } from "@/lib/aliases-backup";
 import { addMemberBaptism } from "@/lib/baptism-backup";
-import { loadApplications, loadBackup, loadAliases, loadBaptism, loadFamilies, loadMeetingExtras, loadRoles } from "@/server/backup";
+import { loadApplications, loadBackup, loadAliases, loadBaptism, loadDocumentExtras, loadFamilies, loadMeetingExtras, loadRoles } from "@/server/backup";
 import { getCurrentUser } from "@/server/session";
 import { prisma } from "@/server/db";
 import { verifyPassword } from "@/server/password";
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     return Response.redirect(new URL("/setari/date?export=parola", req.url), 303);
   }
   const ctx = { user, db: tenantDb(user.churchId) };
-  const [backup, applications, roles, attendance, families, baptism, aliases] = await Promise.all([
+  const [backup, applications, roles, attendance, families, baptism, aliases, documentExtras] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
@@ -41,10 +42,12 @@ export async function POST(req: Request) {
     loadFamilies(ctx),
     loadBaptism(ctx),
     loadAliases(ctx),
+    loadDocumentExtras(ctx),
   ]);
   const data = toPrototypeJson(backup);
   addMemberFamilies(data.members as Record<string, Record<string, unknown>>, families.familyOf);
   addMeetingExtras(data.meetings as Record<string, Record<string, unknown>>, attendance);
+  addDocumentExtras(data.documents as Record<string, Record<string, unknown>>, documentExtras);
   addMemberBaptism(data.members as Record<string, Record<string, unknown>>, baptism);
   addMemberRoles(data.members as Record<string, Record<string, unknown>>, roles.functii);
   addMemberCommittee(data.members as Record<string, Record<string, unknown>>, roles.committee);

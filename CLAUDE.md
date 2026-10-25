@@ -224,6 +224,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Allocate numbers in an interactive transaction: first `lockDocumentRegister(tx, churchId, year)` (advisory lock), then `nextFreeNumber`.
 - The register year is the year of the document date.
 - A unique index `(churchId, anRegistru, nr)` guarantees there are no duplicates.
+- Rich text: `Document.textRich` (editor JSON) next to `text`, which keeps the projection (search, register, exports, parity). `documentSchema` derives `text` from `textRich`; "Regenerează din șablon" fills the editor with `plainToRich()` of the generated text, and a saved or hand-edited text is never overwritten automatically. `documentSpec()` (`src/server/pdf/document.ts`) feeds the PDF and `/pdf/document/[id]/word` ("Deschide în Word", all roles). The audit log adds `formatare`. Export/import: `textRich` on documents (`src/lib/document-backup.ts`).
 
 ### Import and export
 

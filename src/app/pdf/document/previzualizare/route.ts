@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { documentPrint } from "@/domain/print";
 import { DOCUMENT_TYPES } from "@/lib/labels";
+import { richField } from "@/lib/schemas/rich-text";
 import { longText, optionalInt, requiredDate, requiredEnum } from "@/lib/validation";
 import { pdfResponse, renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
@@ -11,6 +12,7 @@ const previewSchema = z.object({
   nr: optionalInt(1, 999999),
   data: requiredDate(),
   text: longText(100000),
+  textRich: richField,
 });
 
 /** Previzualizarea PDF a documentului din formular, fără salvare (ca butonul „Previzualizare” din prototip). */
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
     });
   }
   const church = await getChurch(ctx);
-  const { tip, nr, data, text } = parsed.data;
-  const pdf = await renderPdf(documentPrint({ tip, nr: nr ?? "____", data, text }, church));
+  const { tip, nr, data, text, textRich } = parsed.data;
+  const pdf = await renderPdf(documentPrint({ tip, nr: nr ?? "____", data, text, textRich }, church));
   return pdfResponse(pdf, "previzualizare.pdf");
 }

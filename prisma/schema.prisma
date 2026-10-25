@@ -605,6 +605,8 @@ model Document {
   scop  String @default("")
   titlu String @default("")
   text  String
+  /// The rich version from the editor (src/lib/rich-text.ts); `text` keeps its plain projection.
+  textRich Json?
 
   /// Pentru darea de seamă: anul raportat.
   anRaport Int?
