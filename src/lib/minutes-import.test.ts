@@ -6,6 +6,7 @@ const draft: ImportDraft = {
   initial: { invitati: "Lucia Avram" },
   points: [],
   selected: ["p1"],
+  approx: [],
   unmatched: [
     { name: "Ion Popscu", candidates: [] },
     { name: "Ana Pop", candidates: ["p2", "p3"] },

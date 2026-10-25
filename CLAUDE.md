@@ -304,7 +304,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 ### Importing old minutes
 
 - `/procese-verbale/import` (`write`): Word files and scans on one page. `.docx` (≤ 5 MB, ≤ 30 per batch) are read in memory with mammoth (`src/server/minutes-import.ts`) and parsed by `parseMinutesText()` (`src/domain/minutes-parse.ts`, pure; fixtures `docs/samples/*.docx`). Scans go through the extraction below. Nothing is stored.
-- `reviewDraft()` matches names (`matchPersonName`): a unique match is an attendee, the rest are "Nepotriviți" with a picker (`resolveImport()` in `src/lib/minutes-import.ts`); unpicked names become guests.
+- `reviewDraft()` matches names (`matchPersonName`, `src/lib/name-match.ts`; diacritics, case, word order and hyphens ignored): exact name first, then partial (every written word among an active person's words, at least two words). A unique match is an attendee (partial ones listed under "Potriviri de verificat" with "potrivit aproximativ"); the rest are "Nepotriviți" with a picker, candidates first (`resolveImport()` in `src/lib/minutes-import.ts`); unpicked names become guests.
 - The review saves through `saveMeetingAction` with the hidden field `import=1`: no redirect (batch "Următorul"), and a taken number falls back to the next free one with a notice.
 
 ### Reading documents with Claude (extraction)

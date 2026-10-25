@@ -153,6 +153,19 @@ function ReviewOne({
           </ul>
         </div>
       ) : null}
+      {draft.approx.length ? (
+        <div className="card">
+          <h3>Potriviri de verificat</h3>
+          <p className="hint mb-3">Numele scrise altfel decât în registru; debifați persoana în lista prezenților dacă nu este cea bună.</p>
+          <ul className="space-y-1.5">
+            {draft.approx.map((a) => (
+              <li key={a.name}>
+                „{a.name}” → <b>{byId.get(a.personId)?.name ?? "?"}</b> <span className="hint inline">· potrivit aproximativ</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {draft.unmatched.length ? (
         <div className="card">
           <h3>Nepotriviți</h3>

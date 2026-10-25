@@ -5,22 +5,46 @@ export interface NamedPerson {
   id: string;
   nume: string;
   prenume: string;
+  /** Persons who left the register (false) are matched only by their exact name. Default true. */
+  active?: boolean;
 }
 
-export type NameMatch = { status: "unique"; id: string } | { status: "ambiguous"; ids: string[] } | { status: "none" };
+/** How a unique match was found: the exact name, or every written word among the person's words. */
+export type MatchHow = "exact" | "partial";
 
-const tokens = (s: string) => normalizeSearch(s).split(/[\s-]+/).filter(Boolean).sort();
+export type NameMatch = { status: "unique"; id: string; how: MatchHow } | { status: "ambiguous"; ids: string[] } | { status: "none" };
+
+/** Words without diacritics, lower-case; hyphens split words ("Vasile-Pop" = "Vasile Pop"). */
+const words = (s: string) => normalizeSearch(s).split(/[\s-]+/).filter(Boolean);
+
+/** The normalized form of a name: words without diacritics, lower-case, sorted ("pop vasile"). */
+export function nameKey(name: string): string {
+  return words(name).sort().join(" ");
+}
 
 /**
- * Diacritic- and case-insensitive, in either order ("Prenume Nume" or "Nume Prenume"): the words of
- * the name must be exactly the words of the person's first name and surname.
+ * Diacritic- and case-insensitive, in any word order. In this order:
+ * 1. exact: the words of the name are exactly the person's first name and surname;
+ * 2. partial: every word of the name is among the words of an active person ("Adrian Cușniriuc" →
+ *    "Cușniriuc Adrian Emanuel"); needs at least two words, so a first name alone is never matched
+ *    automatically. One person → unique; several → ambiguous with those persons as candidates.
  */
 export function matchPersonName(name: string, persons: readonly NamedPerson[]): NameMatch {
-  const wanted = tokens(name).join(" ");
-  if (!wanted) return { status: "none" };
-  const ids = persons.filter((p) => tokens(`${p.prenume} ${p.nume}`).join(" ") === wanted).map((p) => p.id);
-  if (ids.length === 1) return { status: "unique", id: ids[0] };
-  return ids.length ? { status: "ambiguous", ids } : { status: "none" };
+  const wanted = words(name);
+  if (!wanted.length) return { status: "none" };
+  const key = [...wanted].sort().join(" ");
+  const exact = persons.filter((p) => nameKey(`${p.prenume} ${p.nume}`) === key).map((p) => p.id);
+  if (exact.length === 1) return { status: "unique", id: exact[0], how: "exact" };
+  if (exact.length) return { status: "ambiguous", ids: exact };
+  const partial = persons
+    .filter((p) => p.active !== false)
+    .filter((p) => {
+      const own = words(`${p.prenume} ${p.nume}`);
+      return wanted.every((w) => own.includes(w));
+    })
+    .map((p) => p.id);
+  if (partial.length === 1 && wanted.length >= 2) return { status: "unique", id: partial[0], how: "partial" };
+  return partial.length ? { status: "ambiguous", ids: partial } : { status: "none" };
 }
 
 /** The meeting type in the church's list closest to the written one ("de comitet" → "Comitet"); else `fallback`. */

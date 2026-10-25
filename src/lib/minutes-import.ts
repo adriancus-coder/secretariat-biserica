@@ -7,6 +7,13 @@ export interface UnmatchedName {
   candidates: string[];
 }
 
+/** An attendee matched automatically but not by the exact name: shown with a hint so it can be checked. */
+export interface ApproxMatch {
+  name: string;
+  personId: string;
+  how: "partial";
+}
+
 export interface ImportDraft {
   fileName: string;
   /** Meeting form values; `invitati` holds only the guests written as such. */
@@ -14,6 +21,8 @@ export interface ImportDraft {
   points: string[];
   /** Attendees matched to exactly one person. */
   selected: string[];
+  /** The ones among `selected` matched approximately ("potrivit aproximativ"). */
+  approx: ApproxMatch[];
   /** "Nepotriviți": names to pick a person for, or to keep as guests. */
   unmatched: UnmatchedName[];
   warnings: string[];

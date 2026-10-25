@@ -33,12 +33,18 @@ export async function docxText(file: File): Promise<string> {
  * (default "Comitet").
  */
 export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraft, warnings: string[]): Promise<ImportDraft> {
-  const [church, persons] = await Promise.all([getChurch(ctx), ctx.db.person.findMany({ select: { id: true, nume: true, prenume: true } })]);
+  const [church, persons] = await Promise.all([getChurch(ctx), ctx.db.person.findMany({ select: { id: true, nume: true, prenume: true, statut: true } })]);
+  // Former members are matched only by their exact name.
+  const named = persons.map((p) => ({ ...p, active: p.statut !== "FOST_MEMBRU" }));
   const selected = new Set<string>();
+  const approx: ImportDraft["approx"] = [];
   const unmatched: ImportDraft["unmatched"] = [];
   for (const name of draft.prezenti) {
-    const m = matchPersonName(name, persons);
-    if (m.status === "unique") selected.add(m.id);
+    const m = matchPersonName(name, named);
+    if (m.status === "unique") {
+      selected.add(m.id);
+      if (m.how !== "exact" && !approx.some((a) => a.name === name)) approx.push({ name, personId: m.id, how: m.how });
+    }
     else if (!unmatched.some((u) => u.name === name)) unmatched.push({ name, candidates: m.status === "ambiguous" ? m.ids : [] });
   }
   const tipuri = church.nomen.tipuriSedinte;
@@ -55,6 +61,7 @@ export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraf
     },
     points: draft.puncte,
     selected: [...selected],
+    approx,
     unmatched,
     warnings: [...warnings, ...(unmatched.length ? [`${unmatched.length === 1 ? "Un nume nu a fost găsit" : `${unmatched.length} nume nu au fost găsite`} în registru: alegeți persoana la „Nepotriviți”.`] : [])],
   };
