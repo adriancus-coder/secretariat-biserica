@@ -180,6 +180,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             {groups.map((g) => (
               <Link key={g.id} href={`/grupuri/${g.id}`} className="pill">
                 {g.nume}
+                {g.auto ? " (automat)" : ""}
               </Link>
             ))}
           </div>

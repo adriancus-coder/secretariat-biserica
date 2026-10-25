@@ -6,6 +6,7 @@ import { roleKey } from "@/lib/roles";
 import { GROUP_FIELDS, ROLE_FIELDS, roleGroupSchema, roleSchema } from "@/lib/schemas/roles";
 import { booleanArg, directionArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { syncRoleGroups } from "../group-sync";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
@@ -304,6 +305,8 @@ export async function setRoleActiveAction(id: string, active: boolean): Promise<
         if (!group?.active) throw new ActionError("Reactivați întâi grupul.");
       }
       const after = await tx.churchRole.update({ where: { id }, data: { active }, include: { group: { select: { nume: true } } } });
+      // Holders of a deactivated role stay automatic members of its groups until the role is taken from them.
+      await syncRoleGroups(tx, ctx.user, { roleIds: [id] });
       await writeAudit(tx, ctx.user, {
         entity: "CHURCH_ROLE",
         entityId: id,

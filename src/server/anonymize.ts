@@ -1,13 +1,14 @@
 import "server-only";
+import { ANONYMOUS_NAME } from "@/lib/anonymous";
 import { defaultFamilyName } from "@/lib/families";
 import { personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
+import { syncRoleGroups } from "./group-sync";
 import type { Ctx } from "./session";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
-/** What an anonymised person is called everywhere. */
-export const ANONYMOUS_NAME = "Persoană ștearsă";
+export { ANONYMOUS_NAME };
 
 /**
  * The strings to remove when a person is anonymised: the name in both orders ("Ion Popescu" in the
@@ -88,6 +89,7 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
         ...personDerived(blank),
       },
     });
+    const heldRoles = (await tx.personRole.findMany({ where: { personId: id }, select: { roleId: true } })).map((r) => r.roleId);
     await tx.personRole.deleteMany({ where: { personId: id } });
     await tx.personAlias.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
@@ -110,6 +112,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
       await tx.auditLog.updateMany({ where: { entity: "APPLICATION", entityId: application.id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
     }
     await scrubPersonTraces(tx, ctx.user.churchId, needles);
+    // Its group memberships were deleted above; the groups of its former roles are re-synced (no-op unless they drifted).
+    await syncRoleGroups(tx, ctx.user, { roleIds: heldRoles });
     await writeAudit(tx, ctx.user, {
       entity: "PERSON",
       entityId: id,

@@ -1555,6 +1555,21 @@
     }
   }
 
+  /* The automatic members of a group linked to roles (read-only list in the group form). */
+  .auto-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .auto-members li {
+    padding: 6px 10px;
+    border-radius: 99px;
+    background: var(--panel);
+    font-size: 0.875rem;
+  }
+
   /* A⁻ / A⁺ (src/components/text-size-control.tsx). */
   .text-size {
     display: inline-flex;

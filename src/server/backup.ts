@@ -12,6 +12,7 @@ import type { MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { richToPlain, type RichDoc } from "@/lib/rich-text";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
+import { syncRoleGroups } from "./group-sync";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
 import type { BPersonRole, BRole, BRoleGroup, ParsedRoles } from "@/lib/roles-backup";
@@ -276,10 +277,17 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
   );
 }
 
-/** Group id → the fields beyond the prototype's format (linked roles by name), for the export. */
+/** Group id → the fields beyond the prototype's format (linked roles by name, AUTO members), for the export. */
 export async function loadGroupExtras(ctx: Ctx): Promise<Map<string, GroupExtra>> {
-  const rows = await ctx.db.group.findMany({ select: { id: true, functie: { select: { nume: true } }, functieLider: { select: { nume: true } } } });
-  return new Map(rows.map((g) => [g.id, { functie: g.functie?.nume, functieLider: g.functieLider?.nume }]));
+  const rows = await ctx.db.group.findMany({
+    select: { id: true, functie: { select: { nume: true } }, functieLider: { select: { nume: true } }, membri: { where: { sursa: "AUTO" }, select: { personId: true } } },
+  });
+  return new Map(
+    rows.map((g) => [
+      g.id,
+      { functie: g.functie?.nume, functieLider: g.functieLider?.nume, sursa: Object.fromEntries(g.membri.map((m) => [m.personId, "AUTO" as const])) },
+    ]),
+  );
 }
 
 /** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
@@ -761,15 +769,19 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       const roleOf = (n: string | undefined) => (n ? (roleByKey.get(roleKey(n)) ?? null) : null);
       for (const g of backup.groups) {
         const id = grs.map.get(g.id)!;
-        const membri = [...new Set(g.membri.map(pid).filter((x): x is string => x !== null))];
         const gx = extras.groups?.get(g.id);
+        const membri = [...new Map(g.membri.map((m) => [pid(m), gx?.sursa?.[m] === "AUTO" ? ("AUTO" as const) : ("MANUAL" as const)] as const)).entries()]
+          .filter((e): e is [string, "AUTO" | "MANUAL"] => e[0] !== null)
+          .map(([personId, sursa]) => ({ personId, sursa }));
         const data = { nume: g.nume, responsabil: g.responsabil, descriere: g.descriere, functieId: roleOf(gx?.functie), functieLiderId: roleOf(gx?.functieLider) };
         if (grs.existing.has(g.id)) {
-          await tx.group.update({ where: { id }, data: { ...data, membri: { deleteMany: {}, create: membri.map((personId) => ({ personId })) } } });
+          await tx.group.update({ where: { id }, data: { ...data, membri: { deleteMany: {}, create: membri } } });
         } else {
-          await tx.group.create({ data: { ...data, id, churchId, createdAt: ts(g.createdAt), membri: { create: membri.map((personId) => ({ personId })) } } });
+          await tx.group.create({ data: { ...data, id, churchId, createdAt: ts(g.createdAt), membri: { create: membri } } });
         }
       }
+      // Groups linked to roles: the holders become AUTO members (older files: every member was MANUAL).
+      await syncRoleGroups(tx, ctx.user);
 
       // Mențiuni
       const nts = await planIds(tx, TABLES.notes, backup.notes.map((n) => n.id), churchId);

@@ -132,16 +132,6 @@ export function rolesFieldValue(roles: PersonRoleView[]): string {
   return JSON.stringify(roles.map((r) => ({ id: r.roleId, din: r.since ?? "" })));
 }
 
-/** Current holders of a role (in the record, no past end date), for a one-off copy into a group. */
-export async function roleHolders(ctx: Ctx, roleId: string): Promise<string[]> {
-  const today = toDbDate(todayIso())!;
-  const rows = await ctx.db.person.findMany({
-    where: { dataIesire: null, roles: { some: { roleId, OR: [{ until: null }, { until: { gte: today } }] } } },
-    select: { id: true },
-  });
-  return rows.map((r) => r.id);
-}
-
 export interface CommitteeMember {
   id: string;
   name: string;

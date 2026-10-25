@@ -284,7 +284,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
   ]);
   return {
     person,
-    groups: person.groups.map((g) => g.group).sort((a, b) => compareRo(a.nume, b.nume)),
+    groups: person.groups.map((g) => ({ ...g.group, auto: g.sursa === "AUTO" })).sort((a, b) => compareRo(a.nume, b.nume)),
     roles: person.roles
       .map((r) => ({ ...r.role, since: fromDbDate(r.since) }))
       .sort((a, b) => a.group.sortOrder - b.group.sortOrder || a.sortOrder - b.sortOrder || compareRo(a.nume, b.nume)),

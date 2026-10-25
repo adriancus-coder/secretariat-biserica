@@ -10,6 +10,7 @@ import { GROUP_FIELDS, groupFormInput, groupSchema, NOTE_FIELDS, noteSchema } fr
 import { compareRo } from "@/lib/text";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { syncRoleGroups } from "../group-sync";
 import { assertPersonsInChurch } from "../queries/persons";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -51,17 +52,22 @@ export async function saveGroupAction(id: string | null, _prev: FormState, formD
       if (id) {
         const before = await groupView(tx, id);
         if (!before) throw new ActionError("Grupul nu mai există.");
+        // The form sends the manual members only: AUTO rows stay, MANUAL rows are replaced, then the
+        // group is synced with its (possibly new) roles before the audit entry is written.
         await tx.group.update({
           where: { id },
-          data: { ...fields, membri: { deleteMany: {}, create: membri.map((personId) => ({ personId })) } },
+          data: { ...fields, membri: { deleteMany: { sursa: "MANUAL" } } },
         });
+        await tx.groupMember.createMany({ data: membri.map((personId) => ({ groupId: id, personId, sursa: "MANUAL" as const })), skipDuplicates: true });
+        await syncRoleGroups(tx, ctx.user, { groupIds: [id], quietGroupIds: [id] });
         const after = await groupView(tx, id);
         await writeAudit(tx, ctx.user, { entity: "GROUP", entityId: id, entityLabel: after!.nume, action: "UPDATE", fields: GROUP_FIELDS, before, after });
         return id;
       }
       const created = await tx.group.create({
-        data: { ...fields, churchId: ctx.user.churchId, membri: { create: membri.map((personId) => ({ personId })) } },
+        data: { ...fields, churchId: ctx.user.churchId, membri: { create: membri.map((personId) => ({ personId, sursa: "MANUAL" as const })) } },
       });
+      await syncRoleGroups(tx, ctx.user, { groupIds: [created.id], quietGroupIds: [created.id] });
       await writeAudit(tx, ctx.user, {
         entity: "GROUP",
         entityId: created.id,

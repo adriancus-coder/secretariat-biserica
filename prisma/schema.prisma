@@ -659,11 +659,19 @@ model Group {
   @@map("groups")
 }
 
+/// How a person is in a group: kept in sync from the group's roles (AUTO) or added by hand (MANUAL).
+enum GroupMemberSource {
+  AUTO
+  MANUAL
+}
+
 model GroupMember {
   groupId  String
   personId String
   group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// AUTO rows are added and removed by syncRoleGroups (src/server/group-sync.ts); MANUAL rows never are.
+  sursa    GroupMemberSource @default(MANUAL)
 
   @@id([groupId, personId])
   @@index([personId])

@@ -30,8 +30,11 @@ export async function assertPersonRoles(db: Db, personId: string | null, roles: 
   if (added) throw new ValidationError({ functii: `Funcția „${added.nume}” este dezactivată și nu mai poate fi atribuită.` });
 }
 
-/** Replaces the person's roles; an existing end date (`until`) of a kept role is preserved. */
-export async function writePersonRoles(tx: Tx, personId: string, roles: PersonRolesInput): Promise<void> {
+/**
+ * Replaces the person's roles; an existing end date (`until`) of a kept role is preserved. Returns
+ * every role held before or after (the groups linked to them are re-synced by the caller).
+ */
+export async function writePersonRoles(tx: Tx, personId: string, roles: PersonRolesInput): Promise<string[]> {
   const existing = await tx.personRole.findMany({ where: { personId }, select: { roleId: true, until: true } });
   const until = new Map(existing.map((r) => [r.roleId, r.until]));
   await tx.personRole.deleteMany({ where: { personId } });
@@ -40,6 +43,7 @@ export async function writePersonRoles(tx: Tx, personId: string, roles: PersonRo
       data: roles.map((r) => ({ personId, roleId: r.roleId, since: toDbDate(r.since), until: until.get(r.roleId) ?? null })),
     });
   }
+  return [...new Set([...existing.map((r) => r.roleId), ...roles.map((r) => r.roleId)])];
 }
 
 /** The person's roles as text for the audit log ("Diacon (din …), Lider cor"), in the church's role order. */

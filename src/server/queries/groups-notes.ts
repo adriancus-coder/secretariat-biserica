@@ -1,7 +1,8 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ChecklistOption } from "@/components/person-checklist";
-import { fromDbDate } from "@/lib/dates";
+import { ANONYMOUS_NAME } from "@/lib/anonymous";
+import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { compareRo, searchTerms } from "@/lib/text";
 import type { Ctx } from "../session";
@@ -28,7 +29,7 @@ export async function getGroup(ctx: Ctx, id: string) {
   });
   if (!g) return null;
   const membri = g.membri
-    .map((m) => m.person)
+    .map((m) => ({ ...m.person, auto: m.sursa === "AUTO" }))
     .sort((a, b) => compareRo(memberName(a), memberName(b)));
   return { ...g, membri };
 }
@@ -94,4 +95,15 @@ export async function getNote(ctx: Ctx, id: string) {
   });
   if (!n) return null;
   return { ...n, data: fromDbDate(n.data)! };
+}
+
+/** Role id → its current holders who count for groups (see activeHoldersWhere): the form's preview of automatic members. */
+export async function roleHoldersMap(ctx: Ctx): Promise<Record<string, string[]>> {
+  const rows = await ctx.db.person.findMany({
+    where: { statut: { not: "FOST_MEMBRU" }, dataIesire: null, nume: { not: ANONYMOUS_NAME } },
+    select: { id: true, roles: { where: { OR: [{ until: null }, { until: { gte: toDbDate(todayIso())! } }] }, select: { roleId: true } } },
+  });
+  const out: Record<string, string[]> = {};
+  for (const p of rows) for (const r of p.roles) (out[r.roleId] ??= []).push(p.id);
+  return out;
 }

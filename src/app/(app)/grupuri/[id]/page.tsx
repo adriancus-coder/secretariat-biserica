@@ -18,6 +18,8 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
   const g = await getGroup(ctx, id);
   if (!g) notFound();
   const canWrite = permissions.write(ctx.user.role);
+  const auto = g.membri.filter((m) => m.auto);
+  const manual = g.membri.filter((m) => !m.auto);
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "GROUP", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -59,17 +61,24 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
             <dd className="whitespace-pre-wrap">{g.descriere}</dd>
           </>
         ) : null}
-        <dt>Persoane ({g.membri.length})</dt>
-        <dd>
-          {g.membri.length
-            ? g.membri.map((m) => (
-                <Link key={m.id} href={`/persoane/${m.id}`} className="pill">
-                  {memberName(m)}
-                  {m.dataIesire ? " (ieșit)" : ""}
-                </Link>
-              ))
-            : "—"}
-        </dd>
+        {g.functie || g.functieLider ? (
+          <>
+            <dt>Din slujirea „{[g.functie?.nume, g.functieLider?.nume].filter(Boolean).join("” și „")}” ({auto.length})</dt>
+            <dd>
+              <p className="hint !mt-0 mb-1">
+                Se actualizează singur din funcțiile persoanelor. Pentru a scoate pe cineva din listă, modificați funcțiile pe fișa persoanei.
+              </p>
+              {auto.length ? auto.map((m) => <MemberPill key={m.id} m={m} edit={canWrite} />) : "—"}
+            </dd>
+            <dt>Adăugați manual ({manual.length})</dt>
+            <dd>{manual.length ? manual.map((m) => <MemberPill key={m.id} m={m} />) : "—"}</dd>
+          </>
+        ) : (
+          <>
+            <dt>Persoane ({g.membri.length})</dt>
+            <dd>{g.membri.length ? g.membri.map((m) => <MemberPill key={m.id} m={m} />) : "—"}</dd>
+          </>
+        )}
       </dl>
       {audit.length ? (
         <div className="card">
@@ -83,5 +92,15 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
         </div>
       ) : null}
     </>
+  );
+}
+
+/** A member as a link to the person; automatic members link to the person's form for writers (to change their roles). */
+function MemberPill({ m, edit }: { m: { id: string; nume: string; prenume: string; dataIesire: Date | null }; edit?: boolean }) {
+  return (
+    <Link href={edit ? `/persoane/${m.id}/editare` : `/persoane/${m.id}`} className="pill">
+      {memberName(m)}
+      {m.dataIesire ? " (ieșit)" : ""}
+    </Link>
   );
 }

@@ -16,6 +16,7 @@ import { todayIso } from "@/lib/dates";
 import { writeAudit } from "../audit";
 import { anonymizePerson } from "../anonymize";
 import { createFamilyFor, markEdited, settleFamily } from "../families";
+import { syncRoleGroups } from "../group-sync";
 import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
 import { findDuplicatePerson } from "../queries/applications";
 import { getChurch } from "../queries/church";
@@ -118,7 +119,8 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         if (before.headOf && target === before.headOf.id && before.headOf.nume === defaultFamilyName(before)) {
           await tx.family.update({ where: { id: target }, data: { nume: defaultFamilyName(after) } });
         }
-        await writePersonRoles(tx, id, roles);
+        // Groups linked to a role held before or after follow (also when the person left the register).
+        await syncRoleGroups(tx, ctx.user, { roleIds: await writePersonRoles(tx, id, roles) });
         await writeAudit(tx, ctx.user, {
           entity: "PERSON",
           entityId: id,
@@ -137,7 +139,7 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         await markEdited(tx, joining);
         await settleFamily(tx, ctx.user, joining);
       }
-      await writePersonRoles(tx, created.id, roles);
+      await syncRoleGroups(tx, ctx.user, { roleIds: await writePersonRoles(tx, created.id, roles) });
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: created.id,

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { idSchema } from "@/lib/validation";
-import { groupMemberOptions } from "@/server/queries/groups-notes";
-import { groupRoleChoices, roleHolders } from "@/server/queries/roles";
+import { groupMemberOptions, roleHoldersMap } from "@/server/queries/groups-notes";
+import { groupRoleChoices } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { GroupForm } from "../group-form";
 
@@ -11,27 +11,27 @@ export const metadata: Metadata = { title: "Grup nou" };
 export default async function NewGroupPage({ searchParams }: PageProps<"/grupuri/nou">) {
   const ctx = await requireCtx("write");
   const sp = await searchParams;
-  // "Creează din funcție": the holders of the role are copied once into the new group (no live link).
+  // "Creează din funcție": the group is linked to the role and keeps its holders as automatic members.
   const roleId = typeof sp.functie === "string" && idSchema.safeParse(sp.functie).success ? sp.functie : null;
   const role = roleId ? await ctx.db.churchRole.findUnique({ where: { id: roleId }, select: { id: true, nume: true } }) : null;
-  const selected = role ? await roleHolders(ctx, role.id) : [];
-  const [people, roles] = await Promise.all([groupMemberOptions(ctx, selected), groupRoleChoices(ctx, [role?.id ?? null])]);
+  const [people, roles, holders] = await Promise.all([groupMemberOptions(ctx, []), groupRoleChoices(ctx, [role?.id ?? null]), roleHoldersMap(ctx)]);
   return (
     <>
       <BackLink href="/grupuri">Grupuri</BackLink>
       <PageHead title={role ? `Grup nou din funcția „${role.nume}”` : "Grup nou"} />
       {role ? (
         <p className="hint mb-4">
-          Persoanele care au acum funcția „{role.nume}” sunt bifate ({selected.length}). Grupul este o copie: schimbările ulterioare ale funcției nu
-          îl modifică.
+          Persoanele care au funcția „{role.nume}” sunt membri automați ({holders[role.id]?.length ?? 0}): grupul se actualizează singur când funcția
+          este dată sau luată cuiva pe fișa persoanei.
         </p>
       ) : null}
       <GroupForm
         id={null}
         initial={{ nume: role?.nume ?? "", functieId: role?.id ?? "", functieLiderId: "", responsabil: "", descriere: "" }}
-        roles={roles}
-        selected={selected}
+        manual={[]}
         people={people}
+        roles={roles}
+        holders={holders}
         cancelHref="/grupuri"
       />
     </>
