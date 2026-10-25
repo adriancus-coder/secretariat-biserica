@@ -1,5 +1,5 @@
 import "server-only";
-import { categoryContext, combineCategories, type CategoryContext, type CombineMode } from "@/domain/categories";
+import { categoryContext, combineCategories, type CategoryContext, type CategoryInput, type CombineMode } from "@/domain/categories";
 import type { PersonRecord } from "@/domain/types";
 import { todayIso, toDbDate } from "@/lib/dates";
 import type { CategorySelection } from "@/lib/category-params";
@@ -11,8 +11,8 @@ export interface LoadedCategories {
   persons: PersonRecord[];
 }
 
-/** Everything the categories need, for the selected year (undefined = today, as on Acasă). */
-export async function loadCategories(ctx: Ctx, year?: number): Promise<LoadedCategories> {
+/** Everything the categories need, for any year. */
+export async function loadCategoryInput(ctx: Ctx): Promise<Omit<CategoryInput, "year">> {
   const today = todayIso();
   const [persons, events, committee, families, roles] = await Promise.all([
     loadPersonRecords(ctx),
@@ -27,22 +27,17 @@ export async function loadCategories(ctx: Ctx, year?: number): Promise<LoadedCat
   ]);
   const holders = new Map<string, Set<string>>();
   for (const p of roles) for (const r of p.roles) holders.set(r.roleId, (holders.get(r.roleId) ?? new Set()).add(p.id));
-  return {
-    persons,
-    ctx: categoryContext({
-      persons,
-      events,
-      today,
-      year,
-      committee: new Set(committee.map((p) => p.id)),
-      heads: new Set(families.map((f) => f.headId!)),
-      holders,
-    }),
-  };
+  return { persons, events, today, committee: new Set(committee.map((p) => p.id)), heads: new Set(families.map((f) => f.headId!)), holders };
+}
+
+/** The categories for the selected year (undefined = today, as on Acasă). */
+export async function loadCategories(ctx: Ctx, year?: number): Promise<LoadedCategories> {
+  const input = await loadCategoryInput(ctx);
+  return { persons: input.persons, ctx: categoryContext({ ...input, year }) };
 }
 
 /** The ids of a selection of categories, in register order. */
-export async function selectionIds(ctx: Ctx, sel: CategorySelection, mode: CombineMode = "oricare"): Promise<string[]> {
+export async function selectionIds(ctx: Ctx, sel: CategorySelection, mode?: CombineMode): Promise<string[]> {
   const loaded = await loadCategories(ctx, sel.year);
-  return combineCategories(loaded.ctx, loaded.persons, sel.keys, mode, sel.functie);
+  return combineCategories(loaded.ctx, loaded.persons, sel.keys, mode ?? sel.mode ?? "oricare", sel.functie);
 }

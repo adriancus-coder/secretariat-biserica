@@ -7,6 +7,8 @@ import { storedRich } from "@/lib/schemas/rich-text";
 import { personRecordSelect, toDocPerson, toPersonRecord } from "../mappers";
 import type { Ctx } from "../session";
 import { getChurch } from "./church";
+import { evolutionText } from "@/lib/statistics-report";
+import { loadStatistics } from "./statistics";
 import { generateReportText } from "./stats";
 
 export const DOCUMENTS_PAGE_SIZE = 30;
@@ -74,7 +76,9 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const tip = input.tip as DocumentTypeKey;
   const reportYear = input.anRaport ?? Number(input.data.slice(0, 4));
   const reportText = tip === "raport" ? await generateReportText(ctx, reportYear) : undefined;
-  const text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText });
+  let text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText });
+  // The 5-year table is appended after the parity-tested text, which stays unchanged.
+  if (tip === "raport" && input.evolutie) text = `${text.trimEnd()}\n\n${evolutionText((await loadStatistics(ctx, reportYear)).rows.slice(-5))}`;
   const titlu = tip === "raport" ? `Dare de seamă anuală ${reportYear}` : defaultDocumentTitle(tip, person, input.catre);
   return { text, titlu };
 }

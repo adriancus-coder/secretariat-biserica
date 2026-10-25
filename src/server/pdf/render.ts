@@ -1,7 +1,7 @@
 import "server-only";
 import path from "node:path";
 import PDFDocument from "pdfkit";
-import type { PrintSpec, Signature } from "@/domain/print";
+import type { Block, PrintSpec, Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { richLines, TEXT_SIZE_DELTA, type RichRun } from "@/lib/rich-text";
 import type { ChurchInfo } from "@/domain/types";
@@ -44,6 +44,84 @@ function joinableRuns<R extends { text: string }>(runs: readonly R[]): R[] {
 /** Linia de detalii din antet: adresă · Org.nr. · telefon · e-mail. */
 export function letterheadDetails(c: ChurchInfo): string {
   return [c.adresa, c.orgNr ? `Org.nr. ${c.orgNr}` : "", c.telefon, c.email].filter(Boolean).join(" · ");
+}
+
+const CHART_COLORS = ["#2f5d8a", "#c0862b", "#7a4e8c", "#3f8a5a"];
+
+/** A chart block drawn as vectors: title, three grid lines, the marks and their values, a legend. */
+function drawChart(doc: PDFKit.PDFDocument, block: Extract<Block, { type: "chart" }>, left: number, width: number, bottomLimit: () => number) {
+  const rowH = 16;
+  const plotH = block.kind === "pyramid" ? block.labels.length * rowH : 130;
+  const total = 18 + plotH + 34;
+  if (doc.y + total > bottomLimit()) doc.addPage();
+  const top = doc.y;
+  doc.font("Serif-Bold").fontSize(10).fillColor("#000").text(block.title, left, top, { width, lineBreak: false });
+  const y0 = top + 18;
+  doc.font("Serif").fontSize(7.5);
+  if (block.kind === "pyramid") {
+    const [m, f] = block.series;
+    const mid = left + width / 2;
+    const half = width / 2 - 40;
+    const max = Math.max(1, ...m.values, ...f.values);
+    block.labels.forEach((l, i) => {
+      const y = y0 + i * rowH;
+      const lm = (half * (m.values[i] ?? 0)) / max;
+      const lf = (half * (f.values[i] ?? 0)) / max;
+      doc.rect(mid - 22 - lm, y, Math.max(lm, 0.5), rowH - 4).fill(CHART_COLORS[0]);
+      doc.rect(mid + 22, y, Math.max(lf, 0.5), rowH - 4).fill(CHART_COLORS[2]);
+      doc.fillColor("#000").text(l, mid - 22, y + 3, { width: 44, align: "center", lineBreak: false });
+      doc.text(String(m.values[i] ?? 0), mid - 52 - lm, y + 3, { width: 28, align: "right", lineBreak: false });
+      doc.text(String(f.values[i] ?? 0), mid + 26 + lf, y + 3, { width: 28, lineBreak: false });
+    });
+  } else {
+    const plotL = left + 26;
+    const plotW = width - 30;
+    const totals = block.labels.map((_, i) => (block.kind === "bars" ? block.series.reduce((a, s) => a + (s.values[i] ?? 0), 0) : Math.max(0, ...block.series.map((s) => s.values[i] ?? 0))));
+    const raw = Math.max(1, ...totals);
+    const p = raw <= 5 ? 1 : 10 ** Math.floor(Math.log10(raw));
+    const max = raw <= 5 ? 5 : Math.ceil(raw / p) * p;
+    const yOf = (v: number) => y0 + plotH - (plotH * v) / max;
+    for (const f of [0, 0.5, 1]) {
+      doc.moveTo(plotL, yOf(max * f)).lineTo(plotL + plotW, yOf(max * f)).lineWidth(0.3).strokeColor("#999").stroke();
+      doc.fillColor("#555").text(String(Math.round(max * f)), left, yOf(max * f) - 3, { width: 22, align: "right", lineBreak: false });
+    }
+    const slot = plotW / block.labels.length;
+    const xOf = (i: number) => plotL + slot * i + slot / 2;
+    block.labels.forEach((l, i) => doc.fillColor("#555").text(l, xOf(i) - slot / 2, y0 + plotH + 3, { width: slot, align: "center", lineBreak: false }));
+    if (block.kind === "bars") {
+      const bw = Math.min(22, slot * 0.6);
+      block.labels.forEach((_, i) => {
+        let base = y0 + plotH;
+        block.series.forEach((s, si) => {
+          const h = (plotH * (s.values[i] ?? 0)) / max;
+          if (!h) return;
+          base -= h;
+          doc.rect(xOf(i) - bw / 2, base, bw, h).fill(CHART_COLORS[si % CHART_COLORS.length]);
+        });
+        if (totals[i]) doc.fillColor("#000").text(String(totals[i]), xOf(i) - slot / 2, base - 9, { width: slot, align: "center", lineBreak: false });
+      });
+    } else {
+      block.series.forEach((s, si) => {
+        const color = CHART_COLORS[si % CHART_COLORS.length];
+        s.values.forEach((v, i) => (i ? doc.lineTo(xOf(i), yOf(v)) : doc.moveTo(xOf(i), yOf(v))));
+        doc.lineWidth(1.5).strokeColor(color).stroke();
+        s.values.forEach((v, i) => {
+          doc.circle(xOf(i), yOf(v), 2).fill(color);
+          doc.fillColor("#000").text(String(v), xOf(i) - slot / 2, yOf(v) - 10, { width: slot, align: "center", lineBreak: false });
+        });
+      });
+    }
+  }
+  // Legend.
+  let lx = left;
+  const ly = y0 + plotH + 16;
+  block.series.forEach((s, si) => {
+    doc.rect(lx, ly, 7, 7).fill(CHART_COLORS[block.kind === "pyramid" ? si * 2 : si % CHART_COLORS.length]);
+    doc.fillColor("#000").font("Serif").fontSize(8).text(s.name, lx + 10, ly - 1, { lineBreak: false });
+    lx += 16 + doc.widthOfString(s.name);
+  });
+  doc.x = left;
+  doc.y = top + total;
 }
 
 export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
@@ -279,6 +357,10 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         for (const r of block.rows) drawRow(r, "Serif", 0.3);
         doc.x = left;
         doc.y += 10;
+        break;
+      }
+      case "chart": {
+        drawChart(doc, block, left, width, bottomLimit);
         break;
       }
       case "centered": {

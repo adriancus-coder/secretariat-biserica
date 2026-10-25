@@ -56,6 +56,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
     functie: functie || undefined,
     categorie: selection.keys.join(",") || undefined,
     an: selection.keys.length && selection.year ? String(selection.year) : undefined,
+    mod: selection.keys.length > 1 && selection.mode === "toate" ? "toate" : undefined,
   };
 
   // Person pages opened from here follow this list with "‹ Anterior" / "Următorul ›".
@@ -67,6 +68,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   const exportQuery = new URLSearchParams();
   for (const k of selection.keys) exportQuery.append("categorie", k);
   if (selection.year) exportQuery.set("an", String(selection.year));
+  if (selection.mode === "toate") exportQuery.set("mod", "toate");
   if (functie && /^[A-Za-z0-9_-]+$/.test(functie)) exportQuery.set("functie", functie);
   const exportHref = `/persoane/export?${exportQuery}`;
   const categoryOptions = CATEGORIES.map((c) => ({ value: c.key, label: c.label, group: c.group }));
@@ -100,7 +102,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
           <p className="hint !mt-0">
             {selection.year ? `Anul ${selection.year}` : "Situația la zi"}
             {q || functie ? " · filtrată și după căutare sau funcție" : ""} ·{" "}
-            <Link href={hrefWith("/persoane", params, { categorie: null, an: null, pagina: null })}>Arată toată lista</Link>
+            <Link href={hrefWith("/persoane", params, { categorie: null, an: null, mod: null, pagina: null })}>Arată toată lista</Link>
           </p>
           {permissions.export(ctx.user.role) ? (
             <Link href={exportHref} className="btn btn-sm mt-2">

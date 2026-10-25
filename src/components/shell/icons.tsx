@@ -16,6 +16,11 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M15.5 14.5a5 5 0 0 1 6 5" />
     </>
   ),
+  statistici: (
+    <>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3" y="5" width="18" height="16" rx="2" />

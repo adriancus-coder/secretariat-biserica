@@ -16,7 +16,7 @@ import {
   WidthType,
   type ParagraphChild,
 } from "docx";
-import type { Block, PrintSpec, Signature } from "@/domain/print";
+import { chartTable, type Block, type PrintSpec, type Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT, type PageLayout } from "@/lib/page-layout";
 import { richLines, TEXT_SIZE_DELTA, type Align, type RichRun } from "@/lib/rich-text";
 import { letterheadDetails } from "../pdf/render";
@@ -193,6 +193,11 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
         new Paragraph({ spacing: { after: 120 }, children: [] }),
       ];
     }
+    case "chart":
+      return [
+        new Paragraph({ spacing: { before: 120, after: 60 }, children: [t(block.title, { bold: true })] }),
+        ...blockToDocx({ type: "table", columns: chartTable(block)[0], rows: chartTable(block).slice(1) }, L),
+      ];
     case "centered":
       return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [t(block.text, { bold: block.bold, size: block.size })] })];
     case "image":

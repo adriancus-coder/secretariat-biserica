@@ -36,6 +36,11 @@ export type Block =
   | { type: "rich"; doc: RichDoc; marker?: string }
   /** A table with a header row (person lists); repeated header on every page. */
   | { type: "table"; columns: string[]; rows: string[][] }
+  /**
+   * A vector chart (Statistici): a line per series, stacked bars, or the age pyramid (series[0] men to
+   * the left, series[1] women to the right). Word and printToText show it as a table.
+   */
+  | { type: "chart"; kind: "line" | "bars" | "pyramid"; title: string; labels: string[]; series: { name: string; values: number[] }[] }
   /** A centered PNG (the application QR code), `width` in points; `alt` stands for it in printToText. */
   | { type: "image"; png: Uint8Array; width: number; alt: string };
 
@@ -285,6 +290,11 @@ function richToText(doc: RichDoc, marker: string | undefined, marks: boolean): s
   return lines.map((l, i) => (i ? `${" ".repeat(marker.length + 1)}${l}` : `${marker} ${l}`));
 }
 
+/** A chart as table rows: header (label column, then one per series), then one row per label. */
+export function chartTable(blk: Extract<Block, { type: "chart" }>): string[][] {
+  return [["", ...blk.series.map((s) => s.name)], ...blk.labels.map((l, i) => [l, ...blk.series.map((s) => String(s.values[i] ?? 0))])];
+}
+
 /** Textul simplu al unui document tipărit (pentru teste și previzualizare). */
 export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): string {
   const lines: string[] = [`Biserica ${spec.church.nume}`.trim()];
@@ -293,6 +303,7 @@ export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): strin
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
     else if (blk.type === "rich") lines.push(...richToText(blk.doc, blk.marker, opts.marks ?? false));
     else if (blk.type === "table") lines.push(blk.columns.join(" | "), ...blk.rows.map((r) => r.join(" | ")));
+    else if (blk.type === "chart") lines.push(blk.title, ...chartTable(blk).map((r) => r.join(" | ")));
     else if (blk.type === "centered") lines.push(blk.text);
     else if (blk.type === "image") lines.push(blk.alt);
     else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${(blk.start ?? 1) + i}.` : "•"} ${it}`));

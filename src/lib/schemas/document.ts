@@ -40,6 +40,8 @@ export const draftSchema = z.object({
   scop: text(300),
   anRaport: optionalInt(1800, 2200),
   data: requiredDate(),
+  /** Dare de seamă: append the 5-year evolution table (outside the prototype's text). */
+  evolutie: z.boolean().optional(),
 });
 
 export type DraftInput = z.output<typeof draftSchema>;

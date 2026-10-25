@@ -22,6 +22,11 @@
   --warn-soft: #f6e3db;
   --accent: var(--navy);
   --shadow: 0 12px 30px rgba(30, 36, 54, 0.14);
+  /* Chart series (Statistici): distinct in both themes. */
+  --chart-1: #243458;
+  --chart-2: #2f7d5b;
+  --chart-3: #b58a2b;
+  --chart-4: #9b4b2e;
   color-scheme: light;
 }
 
@@ -44,6 +49,10 @@
     --warn-soft: #3a2620;
     --accent: var(--gold);
     --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    --chart-1: #8fa8e0;
+    --chart-2: #7fc49f;
+    --chart-3: #d2a44a;
+    --chart-4: #e39a7b;
     color-scheme: dark;
   }
 }
@@ -66,6 +75,10 @@
   --warn-soft: #3a2620;
   --accent: var(--gold);
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  --chart-1: #8fa8e0;
+  --chart-2: #7fc49f;
+  --chart-3: #d2a44a;
+  --chart-4: #e39a7b;
   color-scheme: dark;
 }
 
@@ -1553,6 +1566,78 @@
       border-radius: 12px;
       background: #fff;
     }
+  }
+
+  /* Statistici: SVG charts and tables (src/components/charts.tsx). */
+  .chart {
+    margin: 0 0 12px;
+  }
+  .chart svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .chart-grid {
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .chart-axis {
+    fill: var(--ink-3);
+    font-size: 13px;
+  }
+  .chart-value {
+    fill: var(--ink);
+    font-size: 13px;
+  }
+  .chart a:focus-visible rect,
+  .chart a:focus-visible circle {
+    outline: 2px solid var(--gold);
+  }
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 0.8125rem;
+    color: var(--ink-2);
+  }
+  .chart-legend span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
+  .table-scroll {
+    overflow-x: auto;
+    margin: 8px 0;
+  }
+  .stats-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  .stats-table th,
+  .stats-table td {
+    padding: 2px 6px;
+    text-align: right;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .stats-table th:first-child {
+    text-align: left;
+  }
+  .stats-table .neg {
+    color: var(--warn);
+  }
+  .num-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--ink);
+    font-weight: 600;
   }
 
   /* A statistic that opens its list of persons (Acasă, Statistici). */

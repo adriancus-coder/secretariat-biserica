@@ -1,4 +1,4 @@
-import { categoryDef } from "@/domain/categories";
+import { categoryDef, type CombineMode } from "@/domain/categories";
 
 /**
  * The category part of a Persoane URL: `?categorie=<key>` (several = any of them) `&an=YYYY`
@@ -10,6 +10,8 @@ export interface CategorySelection {
   year?: number;
   /** A role id for "cu-functie" ("" = any role). */
   functie: string;
+  /** `mod=toate`: persons in all the categories (intersection); default any of them. */
+  mode?: CombineMode;
 }
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -23,12 +25,13 @@ export function parseCategorySelection(get: (k: string) => string | string[] | u
   const year = Number.isInteger(an) && an > 1800 && an <= currentYear + 1 ? an : undefined;
   const fRaw = get("functie");
   const f = Array.isArray(fRaw) ? fRaw[0] : fRaw;
-  return { keys, year, functie: f && ID.test(f) ? f : "" };
+  const m = get("mod");
+  return { keys, year, functie: f && ID.test(f) ? f : "", mode: (Array.isArray(m) ? m[0] : m) === "toate" ? "toate" : "oricare" };
 }
 
 /** "Aparținători", or "Copii minori + Copii ai aparținătorilor". */
-export function selectionLabel(sel: CategorySelection, joiner = " + "): string {
-  return sel.keys.map((k) => categoryDef(k)?.label ?? k).join(joiner);
+export function selectionLabel(sel: CategorySelection): string {
+  return sel.keys.map((k) => categoryDef(k)?.label ?? k).join(sel.mode === "toate" ? " ∧ " : " + ");
 }
 
 /** The URL of a category list (`an` only when the statistics had an explicit year). */

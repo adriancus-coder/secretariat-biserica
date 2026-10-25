@@ -55,8 +55,13 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "comitet", label: "În comitet", group: "Slujire" },
   { key: "cu-functie", label: "Cu funcție sau slujire", group: "Slujire" },
   { key: "fara-familie", label: "Fără familie", group: "Familie" },
+  { key: "singuri-in-familie", label: "Singuri în familie (familie de o persoană)", group: "Familie" },
   { key: "capi-familie", label: "Capi de familie", group: "Familie" },
   { key: "iesiti-an", label: "Ieșiți în anul ales", group: "Ieșiri", yearly: true },
+  { key: "iesiti-transfer", label: "Ieșiți prin transfer în anul ales", group: "Ieșiri", yearly: true },
+  { key: "iesiti-retragere", label: "Retrași în anul ales", group: "Ieșiri", yearly: true },
+  { key: "iesiti-deces", label: "Decedați în anul ales", group: "Ieșiri", yearly: true },
+  { key: "iesiti-excludere", label: "Excluși în anul ales", group: "Ieșiri", yearly: true },
   { key: "iesiti", label: "Foști membri / ieșiți (oricând)", group: "Ieșiri" },
 ];
 
@@ -103,6 +108,9 @@ export function categoryContext(input: CategoryInput): CategoryContext {
   const apartFams = new Set(s.apart.map((p) => p.familyId).filter((f) => f && !memberFams.has(f)));
   const baptised = new Set(ids(s.botezati));
   const anyHolder = new Set([...input.holders.values()].flatMap((set) => [...set]));
+  // Members of each family among the persons in the record.
+  const familySize = new Map<string, number>();
+  for (const p of s.ev) if (p.familyId) familySize.set(p.familyId, (familySize.get(p.familyId) ?? 0) + 1);
 
   return {
     stats: s,
@@ -156,6 +164,16 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return inRecord((p) => input.heads.has(p.id));
         case "iesiti-an":
           return ids(s.iesiri);
+        case "iesiti-transfer":
+          return ids(s.iesiri.filter((p) => p.modIesire === "TRANSFER"));
+        case "iesiti-retragere":
+          return ids(s.iesiri.filter((p) => p.modIesire === "RETRAGERE"));
+        case "iesiti-deces":
+          return ids(s.iesiri.filter((p) => p.modIesire === "DECES"));
+        case "iesiti-excludere":
+          return ids(s.iesiri.filter((p) => p.modIesire === "EXCLUDERE"));
+        case "singuri-in-familie":
+          return inRecord((p) => Boolean(p.familyId) && familySize.get(p.familyId!) === 1);
         case "iesiti":
           return ids(input.persons.filter((p) => p.dataIesire !== null || p.statut === "FOST_MEMBRU"));
       }

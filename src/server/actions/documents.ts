@@ -29,6 +29,7 @@ export async function documentDraftAction(input: {
   scop: string;
   anRaport: string;
   data: string;
+  evolutie?: boolean;
 }): Promise<{ text: string; titlu: string } | { error: string }> {
   try {
     const ctx = await actionCtx("write");

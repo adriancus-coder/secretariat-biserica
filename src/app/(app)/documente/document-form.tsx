@@ -45,6 +45,7 @@ export function DocumentForm({
   const [catre, setCatre] = useState(initial.catre);
   const [scop, setScop] = useState(initial.scop);
   const [anRaport, setAnRaport] = useState(initial.anRaport);
+  const [evolutie, setEvolutie] = useState(false);
   const [titlu, setTitlu] = useState(initial.titlu);
   // The plain text of the editor's content (the template check below and the preview use it).
   const [text, setText] = useState(initial.text);
@@ -63,7 +64,7 @@ export function DocumentForm({
   /** Destinatarul și scopul folosite la ultima generare (regenerăm la ieșirea din câmp doar dacă s-au schimbat). */
   const used = useRef({ catre: initial.catre, scop: initial.scop });
 
-  async function regenerate(force: boolean, next: Partial<{ tip: DocumentTypeKey; personId: string; catre: string; scop: string; anRaport: string }> = {}) {
+  async function regenerate(force: boolean, next: Partial<{ tip: DocumentTypeKey; personId: string; catre: string; scop: string; anRaport: string; evolutie: boolean }> = {}) {
     if (!force && text.trim() && textTouched.current) return;
     used.current = { catre: next.catre ?? catre, scop: next.scop ?? scop };
     const current = ++request.current;
@@ -75,6 +76,7 @@ export function DocumentForm({
       catre: next.catre ?? catre,
       scop: next.scop ?? scop,
       anRaport: next.anRaport ?? anRaport,
+      evolutie: next.evolutie ?? evolutie,
       data: dataRef.current?.value ?? initial.data,
     });
     if (current !== request.current) return; // un răspuns mai vechi decât ultima cerere
@@ -154,6 +156,19 @@ export function DocumentForm({
           error={e.anRaport}
           className="max-w-[200px]"
         />
+      ) : null}
+      {tip === "raport" ? (
+        <label className="check mb-3">
+          <input
+            type="checkbox"
+            checked={evolutie}
+            onChange={(ev) => {
+              setEvolutie(ev.target.checked);
+              void regenerate(true, { evolutie: ev.target.checked });
+            }}
+          />
+          Include evoluția pe 5 ani
+        </label>
       ) : (
         <input type="hidden" name="anRaport" value="" />
       )}
