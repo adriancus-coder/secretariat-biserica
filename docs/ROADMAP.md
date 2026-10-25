@@ -18,6 +18,12 @@ All 9 modules from the original brief are implemented on `dev`:
 | 8 | Mențiuni | done |
 | 9 | Setări: organisation, nomenclatures, users and roles, JSON export/import, audit log | done |
 
+Since the original brief:
+
+- Membership applications: public form `/cerere/<slug>`, review and acceptance into the register (`/cereri`).
+- Church roles (funcții) per person, with the committee shown on Acasă and usable as a Persoane filter.
+- Attendance rules per meeting type: automatic attendee lists, absentees and quorum in the minutes.
+
 Also in place:
 
 - Multi-church data isolation.
@@ -66,6 +72,8 @@ Also in place:
 
 - Existing screens predate the UI rules in `CLAUDE.md`: most primary buttons have no icon. Audit and align these screen by screen.
   - Button heights are fixed: `.btn` is at least 44 px and `.btn-sm` at least 40 px. Small controls that are not `.btn` (calendar day cells, pager links, inline text links) have not been audited yet.
+- Absentees are computed from today's register as of the meeting date (who was a member, who held a committee role then). Editing a meeting saved before the attendance rules computes its absentees for the first time; role history only exists from the `din` dates entered.
+- Role end dates (`until`) are stored and exported but not yet editable in the UI.
 - The `/am-uitat-parola` limit is kept in process memory: 3 requests per e-mail address per 15 minutes.
   - It resets when the app restarts and is not shared between instances. That is fine for the single Render instance.
   - Move it to PostgreSQL or Redis before running more than one instance; this belongs with step 4.

@@ -125,6 +125,21 @@ Utilizatorii își pot reseta singuri parola din **`/am-uitat-parola`** (link di
 primesc pe e-mail un link valabil o oră. Răspunsul este același indiferent dacă adresa are cont, iar
 pentru aceeași adresă se acceptă cel mult 3 cereri la 15 minute.
 
+## Funcții și prezență
+
+- **Funcții în biserică** (Setări → Funcții în biserică): lista proprie a bisericii, pornită cu Pastor,
+  Prezbiter, Diacon, Secretar, Casier, Membru comitet (acestea alcătuiesc **comitetul**), Lider tineret,
+  Lider cor, Lider copii și Responsabil media. Administratorul le poate redenumi, reordona, marca „din
+  comitet” sau dezactiva; o funcție atribuită cuiva nu poate fi dezactivată.
+- Funcțiile se atribuie din fișa persoanei, opțional cu data de la care sunt deținute. Lista de persoane
+  se poate filtra după o funcție sau după „Comitet”; pe Acasă apare comitetul actual, iar din Grupuri se
+  poate crea un grup cu deținătorii unei funcții (copie, nu legătură permanentă).
+- **Prezența la ședințe**: fiecare tip de ședință are o regulă (Setări → Nomenclatoare): *Toți membrii*
+  (Adunare generală), *Comitetul* (Comitet, Frați slujitori) sau *Manual* (celelalte). La ședința nouă
+  lista se bifează după regulă și rămâne editabilă; cei așteptați și nebifați se salvează ca **absenți**.
+  Procesul-verbal (pagina și PDF-ul) arată prezenții, absenții, invitații și cvorumul
+  („Prezenți n din m”). Ședințele salvate înainte de această funcție rămân neschimbate.
+
 ## Teste
 
 ```bash

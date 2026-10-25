@@ -6,6 +6,7 @@ import { ageAt, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { getChurch } from "@/server/queries/church";
+import { committee as loadCommittee } from "@/server/queries/roles";
 import { loadStats } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
 
@@ -44,6 +45,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const maxBand = Math.max(1, ...s.bands.map(([, n]) => n));
   const move = (n: number) => Math.min(100, n * 10);
 
+  const committee = await loadCommittee(ctx);
   const upcoming = await ctx.db.event.findMany({
     where: { data: { gte: toDbDate(today)! } },
     orderBy: [{ data: "asc" }, { ora: "asc" }],
@@ -121,6 +123,22 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </div>
           <div className="hint mt-2">{s.ev.filter((p) => !p.dataNasterii).length} persoane fără dată de naștere</div>
         </div>
+
+        {committee.length ? (
+          <div className="card">
+            <h3>Comitetul</h3>
+            <ul>
+              {committee.map((m) => (
+                <li key={m.id}>
+                  <Link href={`/persoane/${m.id}`} className="flex gap-3 py-1.5 no-underline text-ink hover:underline">
+                    <span className="min-w-0 truncate">{m.name}</span>
+                    <span className="hint !mt-0 ml-auto shrink-0 text-right">{m.roles.join(", ")}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="card">
           <h3>Evenimente următoare</h3>
