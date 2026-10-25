@@ -9,6 +9,7 @@ import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
 import { loadStats } from "@/server/queries/stats";
 import { requireCtx } from "@/server/session";
+import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 
 function Bar({ label, n, width, warn }: { label: string; n: number; width: number; warn?: boolean }) {
   return (
@@ -57,6 +58,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     .filter((p) => p.dataNasterii && p.dataNasterii.slice(5, 7) === month && !p.dataIesire)
     .sort((a, b) => a.dataNasterii!.slice(8).localeCompare(b.dataNasterii!.slice(8)));
   const canWrite = permissions.write(ctx.user.role);
+  // Administrators are reminded of the monthly JSON export (backup policy, docs/SECURITY.md).
+  const exportDays = permissions.admin(ctx.user.role) ? await daysSinceLastExport(ctx) : undefined;
+  const exportDue = exportDays !== undefined && (exportDays === null || exportDays > EXPORT_REMINDER_DAYS);
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -66,6 +70,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {exportDue ? (
+        <div className="alert mb-4" role="status">
+          {exportAgeText(exportDays ?? null)} Descărcați o copie de siguranță a datelor din{" "}
+          <Link href="/setari/date">Setări → Copie de siguranță</Link>.
+        </div>
+      ) : null}
       <div className="stats">
         <Stat value={s.ev.length} label="persoane în evidență" />
         <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} />

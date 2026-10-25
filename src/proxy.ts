@@ -39,12 +39,7 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    {
-      source: "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico|jpg|jpeg|webp|woff2?|ttf|webmanifest)$).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
+    // Prefetch requests included: they get the same CSP and the same login redirect.
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico|jpg|jpeg|webp|woff2?|ttf|webmanifest)$).*)",
   ],
 };

@@ -243,7 +243,7 @@ Notes:
   - Until `RESEND_API_KEY` is set, the app works without e-mail: admins copy the links from Setări → Utilizatori.
 - **Client IP check.** The per-IP limits use `cf-connecting-ip`, `true-client-ip`, else the last `X-Forwarded-For` entry (the one Render adds). Manual test: run `for i in $(seq 1 12); do curl -s -o /dev/null -w "%{http_code} " -H "X-Forwarded-For: 1.2.3.$i" -d "email=x@y.ro&password=x" https://<your-app>/api/auth/callback/credentials; done` — the forged first entry changes every time, yet the last requests still answer 429 (the limit counts your real address).
 - **Never run `npm run db:seed` against the production database**: it is for the demo church.
-- **Backups.** Render keeps database backups for paid instance types. Each church can also download its JSON copy from Setări → Copie de siguranță.
+- **Backups.** See `docs/SECURITY.md` (backup policy): Render logical backups are kept 7 days and point-in-time recovery covers only a few days (3 on Hobby, 7 on Professional), so each church downloads its JSON copy from Setări → Copie de siguranță weekly on Hobby, monthly otherwise; the app reminds administrators after 30 days.
   - `ipAllowList: []` keeps the database private. To run `pg_dump` from your own machine, temporarily allow your IP address in the database's settings.
 - **Going live from `main`.** When production should follow `main`, change `branch: dev` to `branch: main` in `render.yaml`, or change the branch in the service settings.
 - **Custom domain.** After adding a custom domain in Render, update both `APP_URL` and `AUTH_URL`.

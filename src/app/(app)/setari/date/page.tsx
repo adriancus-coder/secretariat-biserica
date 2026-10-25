@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
 import { requireCtx } from "@/server/session";
+import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
 
@@ -12,6 +13,7 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
   const ctx = await requireCtx("export");
   const user = ctx.user;
   const autoFamilies = permissions.admin(user.role) ? await ctx.db.family.count({ where: { autoCreated: true } }) : 0;
+  const exportDays = await daysSinceLastExport(ctx);
   return (
     <>
       <BackLink href="/setari">Setări</BackLink>
@@ -21,6 +23,9 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
         <p className="hint mb-3">
           Toate datele bisericii (persoane, ședințe, evenimente, documente, grupuri, mențiuni și setări) într-un fișier
           JSON. Fișierul conține date personale — păstrați-l în siguranță.
+        </p>
+        <p className={exportDays === null || exportDays > EXPORT_REMINDER_DAYS ? "alert mb-3" : "hint mb-3"} role="status">
+          {exportAgeText(exportDays)} Recomandăm un export cel puțin o dată pe lună (săptămânal cât timp baza de date este pe planul gratuit).
         </p>
         <form method="post" action="/api/export" className="grid gap-2 max-w-sm">
           {sp.export === "parola" ? (

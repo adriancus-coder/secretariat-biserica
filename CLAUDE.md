@@ -54,7 +54,7 @@ Never run `prisma migrate reset` / `npm run db:reset` or any other destructive d
   - Import from `@/generated/prisma/client`.
   - Configuration is in `prisma.config.ts`, with the driver adapter `@prisma/adapter-pg`.
   - The package is ESM (`"type": "module"`).
-- **Auth.js v5 beta** (`next-auth@5.0.0-beta.32`): Credentials provider with 7-day JWT sessions.
+- **Auth.js v5 beta** (`next-auth@5.0.0-beta.32`): Credentials provider with 24-hour sliding JWT sessions (renewed at most once an hour).
   - `src/auth.config.ts` has no database access; the proxy uses it.
   - `src/auth.ts` adds the database-backed provider. It accepts only a verified login challenge (see "Two-step authentication"), never an e-mail and password directly.
 - **Other libraries**:

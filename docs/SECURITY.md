@@ -88,7 +88,14 @@ Act in this order. Write down what happened and when; tell the affected churches
 
 ## Backup policy
 
-- **Render PostgreSQL backups**: daily, with point-in-time recovery for the plan's retention window. Test a restore into a new database at least twice a year.
-- **Monthly JSON export**: an administrator of each church downloads Setări → Copie de siguranță → Export on the first working day of the month and keeps it on an encrypted, church-owned drive (not a personal e-mail). The export contains every record, signatures included, so treat it as sensitive.
-- Keep at least the last 12 monthly exports; delete older ones.
+What Render actually provides (check the dashboard when the plan changes):
+
+- **Logical backups** (a database dump): created on demand from the database's page in Render (Recovery → Export), kept for 7 days. Download one before risky changes (a large import, a migration by hand).
+- **Point-in-time recovery**: restores the database as it was at a chosen moment, into a new database. How far back depends on the workspace plan: about 3 days on Hobby, 7 days on Professional. It is not a long-term archive.
+- So the long-term copy is the church's own JSON export:
+  - **weekly** while the workspace is on the Hobby plan, **at least monthly** on a paid plan;
+  - an administrator downloads Setări → Copie de siguranță → Export and keeps it on an encrypted, church-owned drive (not a personal e-mail); the file contains every record, signatures included, so treat it as sensitive;
+  - keep at least the last 12 exports; delete older ones;
+  - the app reminds administrators: a banner on Acasă and a line in Setări → Copie de siguranță when the last export (the SECURITY audit entry "Export date") is older than 30 days, or there has never been one.
 - Before any import in "replace" mode, export first.
+- **Test a restore** twice a year: restore a point in time (or a logical backup) into a new Render database, point a local copy of the app at it (`DATABASE_URL`), check that the latest records are there, then delete the test database. Also import the latest JSON export into an empty local database (`npm run db:deploy`, then Setări → Import with "înlocuire") to prove the file is complete.

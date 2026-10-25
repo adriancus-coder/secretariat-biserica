@@ -90,3 +90,8 @@ export function dotDateTime(d: Date, timeZone: string = appTimeZone()): string {
   );
   return `${parts.day}.${parts.month}.${parts.year} ${parts.hour}:${parts.minute}`;
 }
+
+/** Whole days from one ISO date to another (calendar arithmetic on the strings; negative if earlier). */
+export function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86_400_000);
+}

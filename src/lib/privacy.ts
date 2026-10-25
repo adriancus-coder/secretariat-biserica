@@ -26,6 +26,17 @@ export function privacyTemplate(c: { nume: string; email: string; adresa: string
   ].join("\n");
 }
 
+/** The paragraph added to the public notice while reading scans with Claude is on (Church.extractEnabled). */
+export const EXTRACTION_NOTICE = [
+  `## Citirea automată a documentelor`,
+  `Pentru a completa mai repede formularele, documentele scanate sau fotografiate (de exemplu un certificat de transfer sau un proces-verbal vechi) pot fi citite de un serviciu automat al companiei Anthropic (Statele Unite ale Americii). Documentele sunt trimise doar de personalul bisericii, numai pentru a precompleta formularele, iar serviciul nu le păstrează. Transferul în afara Spațiului Economic European se face pe baza clauzelor contractuale standard.`,
+].join("\n");
+
+/** The notice as published: the church's text (or the template), plus the extraction paragraph while it is on. */
+export function publicPrivacyText(text: string, extractEnabled: boolean): string {
+  return extractEnabled ? `${text.trimEnd()}\n\n${EXTRACTION_NOTICE}` : text;
+}
+
 export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string };
 
 /** "## Titlu" → heading; other non-empty lines (joined until a blank line) → paragraph. */
