@@ -48,3 +48,19 @@ export function createRateLimiter({
     size: () => attempts.size,
   };
 }
+
+const globalForLimiters = globalThis as unknown as { rateLimiters?: Map<string, RateLimiter> };
+
+/**
+ * A limiter shared by every route bundle in the process (and kept across dev hot reloads),
+ * identified by `name`. The options of the first call win.
+ */
+export function sharedRateLimiter(name: string, options: Parameters<typeof createRateLimiter>[0]): RateLimiter {
+  const all = (globalForLimiters.rateLimiters ??= new Map());
+  let limiter = all.get(name);
+  if (!limiter) {
+    limiter = createRateLimiter(options);
+    all.set(name, limiter);
+  }
+  return limiter;
+}

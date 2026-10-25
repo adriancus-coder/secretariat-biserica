@@ -570,6 +570,90 @@
     opacity: 0.5;
     cursor: default;
   }
+  /* Selectable cards (radio): selected = accent border, check mark, bold */
+  .choices {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 14px;
+    border: 0;
+    padding: 0;
+  }
+  .choices legend {
+    font-size: 13px;
+    color: var(--ink-2);
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  .choice {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--field);
+    font-size: 15px;
+    color: var(--ink);
+    font-weight: 400;
+    margin: 0;
+    cursor: pointer;
+  }
+  .choice input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .choice .tick {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    color: transparent;
+  }
+  .choice:has(input:checked) {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    font-weight: 600;
+  }
+  .choice:has(input:checked) .tick {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .choice:has(input:focus-visible) {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  /* Honeypot field: hidden from people, visible to naive bots */
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    padding: 6px 0;
+    font-size: 15px;
+    color: var(--ink);
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .consent input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+  }
   .checklist {
     max-height: 280px;
     overflow: auto;

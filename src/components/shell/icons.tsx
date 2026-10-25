@@ -84,6 +84,20 @@ const PATHS: Record<string, ReactNode> = {
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
     </>
+  ),  trimite: (
+    <>
+      <path d="M21 3 10 14" />
+      <path d="M21 3l-7 18-4-7-7-4z" />
+    </>
+  ),
+  bifa: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  cereri: (
+    <>
+      <path d="M6 3h9l4 4v14H6z" />
+      <path d="M15 3v4h4" />
+      <circle cx="12.5" cy="12" r="2.2" />
+      <path d="M8.8 18a3.8 3.8 0 0 1 7.4 0" />
+    </>
   ),
 };
 

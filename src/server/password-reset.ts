@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "./db";
 import { isEmailConfigured, sendPasswordResetEmail, type EmailResult } from "./email";
-import { createRateLimiter, type RateLimiter } from "./rate-limit";
+import { sharedRateLimiter } from "./rate-limit";
 import { newToken } from "./tokens";
 
 /** Links requested from "Am uitat parola" are valid for one hour (admin-issued links: 48 hours). */
@@ -10,14 +10,11 @@ export const SELF_SERVICE_RESET_HOURS = 1;
 export const RESET_REQUESTS_PER_WINDOW = 3;
 export const RESET_REQUEST_WINDOW_MINUTES = 15;
 
-// On globalThis so every route bundle (and dev hot reloads) share one counter.
-const globalForLimiter = globalThis as unknown as { passwordResetRequests?: RateLimiter };
-
 /** At most 3 requests per e-mail address per 15 minutes (in memory, see docs/ROADMAP.md). */
-export const passwordResetRequests = (globalForLimiter.passwordResetRequests ??= createRateLimiter({
+export const passwordResetRequests = sharedRateLimiter("password-reset", {
   limit: RESET_REQUESTS_PER_WINDOW,
   windowMs: RESET_REQUEST_WINDOW_MINUTES * 60_000,
-}));
+});
 
 export type PasswordResetOutcome = EmailResult | "no-account";
 

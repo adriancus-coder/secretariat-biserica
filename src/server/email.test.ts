@@ -3,8 +3,10 @@ import {
   DEFAULT_EMAIL_FROM,
   invitationEmail,
   isEmailConfigured,
+  newApplicationEmail,
   passwordResetEmail,
   sendInvitationEmail,
+  sendNewApplicationEmail,
   sendPasswordResetEmail,
 } from "./email";
 
@@ -161,5 +163,27 @@ describe("content", () => {
     const i = { link: "https://x.example/i/t", churchName: "B", invitedBy: "I", roleLabel: "R" };
     expect(invitationEmail({ ...i, validDays: 1 }).text).toContain("valabil o zi");
     expect(invitationEmail({ ...i, validDays: 7 }).text).toContain("valabil 7 zile");
+  });
+});
+
+describe("new application notice", () => {
+  it("sends one message per administrator with the link to the application", async () => {
+    const r = await sendNewApplicationEmail({
+      to: ["a@example.org", "b@example.org"],
+      applicationId: "app123",
+      churchName: "Maranata Stavanger",
+      applicantName: "Munteanu Andrei",
+      kindLabel: "Transfer de la altă biserică",
+    });
+    expect(r).toBe("sent");
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls.map((c) => c[0].to)).toEqual(["a@example.org", "b@example.org"]);
+    expect(send.mock.calls[0][0].text).toContain(`${APP_URL}/cereri/app123`);
+    expect(send.mock.calls[0][0].subject).toBe("Cerere nouă de membru: Munteanu Andrei");
+  });
+
+  it("escapes the applicant name in HTML", () => {
+    const { html } = newApplicationEmail({ link: "https://x.example/cereri/1", churchName: "B", applicantName: "<b>X</b>", kindLabel: "Altul" });
+    expect(html).toContain("&lt;b&gt;X&lt;/b&gt;");
   });
 });

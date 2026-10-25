@@ -219,3 +219,43 @@ export async function sendPasswordResetEmail(p: {
   const link = new URL(`/resetare-parola/${p.token}`, config.appUrl).toString();
   return deliver(config, "password reset", p.to, passwordResetEmail({ ...p, link }), p.token);
 }
+
+export function newApplicationEmail(p: { link: string; churchName: string; applicantName: string; kindLabel: string }): EmailContent {
+  return {
+    subject: `Cerere nouă de membru: ${p.applicantName}`,
+    text: [
+      "Bună ziua,",
+      "",
+      `${p.applicantName} a trimis o cerere de membru (${p.kindLabel}) prin formularul online al bisericii ${p.churchName}.`,
+      "",
+      "Cererea poate fi văzută aici:",
+      p.link,
+    ].join("\n"),
+    html: htmlLayout([
+      htmlParagraph("Bună ziua,"),
+      htmlParagraph(
+        `<b>${esc(p.applicantName)}</b> a trimis o cerere de membru (${esc(p.kindLabel)}) prin formularul online al bisericii <b>${esc(p.churchName)}</b>.`,
+      ),
+      htmlButton(p.link, "Vezi cererea"),
+    ]),
+  };
+}
+
+/** Tells the church administrators about a new application; one message per recipient. */
+export async function sendNewApplicationEmail(p: {
+  to: string[];
+  applicationId: string;
+  churchName: string;
+  applicantName: string;
+  kindLabel: string;
+}): Promise<EmailResult> {
+  const config = emailConfig();
+  if (!config) return disabled();
+  const link = new URL(`/cereri/${p.applicationId}`, config.appUrl).toString();
+  const content = newApplicationEmail({ ...p, link });
+  let result: EmailResult = "sent";
+  for (const to of p.to) {
+    if ((await deliver(config, "new application", to, content, p.applicationId)) !== "sent") result = "failed";
+  }
+  return result;
+}
