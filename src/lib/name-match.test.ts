@@ -51,6 +51,16 @@ describe("matchPersonName", () => {
     expect(matchPersonName("Cușniriuc", register)).toEqual({ status: "ambiguous", ids: ["6"] });
   });
 
+  it("an alias (a name matched by hand before) wins over the partial rule", () => {
+    const aliases = new Map([[nameKey("Ion Pop"), "9"]]);
+    expect(matchPersonName("Ion Pop", register)).toEqual({ status: "ambiguous", ids: ["8", "9"] });
+    // Resolved once by hand → the next import of the same name matches automatically.
+    expect(matchPersonName("POP Ion", register, aliases)).toEqual({ status: "unique", id: "9", how: "alias" });
+    // The exact name still wins; an alias of a removed person is ignored.
+    expect(matchPersonName("Ioana Pop", register, new Map([["ioana pop", "6"]]))).toEqual({ status: "unique", id: "1", how: "exact" });
+    expect(matchPersonName("Ion Pop", register, new Map([["ion pop", "gone"]]))).toEqual({ status: "ambiguous", ids: ["8", "9"] });
+  });
+
   it("reports unknown names", () => {
     expect(matchPersonName("Ioana Popp", register)).toEqual({ status: "none" });
     expect(matchPersonName("  ", register)).toEqual({ status: "none" });

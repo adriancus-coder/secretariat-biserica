@@ -5,8 +5,9 @@ import { applicationsToJson } from "@/lib/application-backup";
 import { addMemberCommittee, addMemberRoles, roleGroupsToJson, rolesToJson } from "@/lib/roles-backup";
 import { addMeetingExtras } from "@/lib/meeting-backup";
 import { addMemberFamilies, familiesToJson } from "@/lib/families-backup";
+import { aliasesToJson } from "@/lib/aliases-backup";
 import { addMemberBaptism } from "@/lib/baptism-backup";
-import { loadApplications, loadBackup, loadBaptism, loadFamilies, loadMeetingExtras, loadRoles } from "@/server/backup";
+import { loadApplications, loadBackup, loadAliases, loadBaptism, loadFamilies, loadMeetingExtras, loadRoles } from "@/server/backup";
 import { getCurrentUser } from "@/server/session";
 import { prisma } from "@/server/db";
 import { verifyPassword } from "@/server/password";
@@ -32,13 +33,14 @@ export async function POST(req: Request) {
     return Response.redirect(new URL("/setari/date?export=parola", req.url), 303);
   }
   const ctx = { user, db: tenantDb(user.churchId) };
-  const [backup, applications, roles, attendance, families, baptism] = await Promise.all([
+  const [backup, applications, roles, attendance, families, baptism, aliases] = await Promise.all([
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
     loadMeetingExtras(ctx),
     loadFamilies(ctx),
     loadBaptism(ctx),
+    loadAliases(ctx),
   ]);
   const data = toPrototypeJson(backup);
   addMemberFamilies(data.members as Record<string, Record<string, unknown>>, families.familyOf);
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
   addMemberBaptism(data.members as Record<string, Record<string, unknown>>, baptism);
   addMemberRoles(data.members as Record<string, Record<string, unknown>>, roles.functii);
   addMemberCommittee(data.members as Record<string, Record<string, unknown>>, roles.committee);
-  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roleGroups: roleGroupsToJson(roles.groups), roles: rolesToJson(roles.roles), families: familiesToJson(families.families) }, null, 2);
+  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roleGroups: roleGroupsToJson(roles.groups), roles: rolesToJson(roles.roles), families: familiesToJson(families.families), aliases: aliasesToJson(aliases) }, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (backup.settings?.nume || "biserica")
     .normalize("NFD")

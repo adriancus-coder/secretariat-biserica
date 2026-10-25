@@ -7,7 +7,7 @@ import { Icon } from "@/components/shell/icons";
 import { DocumentUploadFields } from "@/components/ui/document-upload";
 import { FormMessage } from "@/components/ui/form-bits";
 import type { AttendanceRule } from "@/lib/attendance";
-import { resolveImport, type ImportDraft } from "@/lib/minutes-import";
+import { pickedNames, resolveImport, type ImportDraft } from "@/lib/minutes-import";
 import { extractMinutesAction, type ExtractMinutesState } from "@/server/actions/extract";
 import type { MeetingFormState } from "@/server/actions/meetings";
 import { importDocxMinutesAction, type DocxImportState } from "@/server/actions/minutes-import";
@@ -160,7 +160,7 @@ function ReviewOne({
           <ul className="space-y-1.5">
             {draft.approx.map((a) => (
               <li key={a.name}>
-                „{a.name}” → <b>{byId.get(a.personId)?.name ?? "?"}</b> <span className="hint inline">· potrivit aproximativ</span>
+                „{a.name}” → <b>{byId.get(a.personId)?.name ?? "?"}</b> <span className="hint inline">· {a.how === "alias" ? "potrivit după o alegere anterioară" : "potrivit aproximativ"}</span>
               </li>
             ))}
           </ul>
@@ -169,7 +169,10 @@ function ReviewOne({
       {draft.unmatched.length ? (
         <div className="card">
           <h3>Nepotriviți</h3>
-          <p className="hint mb-3">Alegeți persoana din registru pentru fiecare nume, înainte de a completa restul formularului.</p>
+          <p className="hint mb-3">
+            Alegeți persoana din registru pentru fiecare nume, înainte de a completa restul formularului. Alegerea se ține minte pentru
+            importurile următoare.
+          </p>
           {draft.unmatched.map((u) => (
             <div className="field" key={u.name}>
               <label htmlFor={`nep-${u.name}`}>„{u.name}”</label>
@@ -209,6 +212,7 @@ function ReviewOne({
         people={people}
         cancelHref="/procese-verbale"
         onImported={onImported}
+        pickedNames={pickedNames(draft, choices)}
         {...form}
       />
       {onSkip ? (

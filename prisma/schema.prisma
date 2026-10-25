@@ -74,6 +74,7 @@ model Church {
   roleGroups      RoleGroup[]
   families        Family[]
   churchDocuments ChurchDocument[]
+  personAliases   PersonAlias[]
 
   @@map("churches")
 }
@@ -118,6 +119,7 @@ model User {
   meetingSends        MeetingSend[]
   loginChallenges     LoginChallenge[]
   churchDocuments     ChurchDocument[]
+  personAliases       PersonAlias[]
 
   @@index([churchId])
   @@map("users")
@@ -253,12 +255,32 @@ model Person {
   roles       PersonRole[]
   headOf      Family?            @relation("FamilyHead")
   signatures  MeetingSignature[]
+  aliases     PersonAlias[]
 
   @@index([churchId, sortKey])
   @@index([churchId, familyId])
   @@index([churchId, statut])
   @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("persons")
+}
+
+/// Another written form of a person's name, remembered when a "Nepotrivit" name was matched to the
+/// person by hand (minutes import). `alias` is normalized: no diacritics, lower-case, words sorted.
+model PersonAlias {
+  id          String   @id @default(cuid())
+  churchId    String
+  church      Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  alias       String
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([churchId, alias])
+  @@index([churchId])
+  @@index([personId])
+  @@map("person_aliases")
 }
 
 /// A family, defined by its head. Members point to it through Person.familyId.

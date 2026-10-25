@@ -264,7 +264,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     },
   });
   if (!person) return null;
-  const [family, notes, notesCount, documents, audit] = await Promise.all([
+  const [family, notes, notesCount, documents, audit, aliases] = await Promise.all([
     person.familyId
       ? ctx.db.person.findMany({
           where: { familyId: person.familyId, id: { not: id } },
@@ -280,6 +280,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
       select: { id: true, nr: true, anRegistru: true, data: true, titlu: true, tip: true },
     }),
     ctx.db.auditLog.findMany({ where: { entity: "PERSON", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 }),
+    ctx.db.personAlias.findMany({ where: { personId: id }, orderBy: { alias: "asc" }, select: { id: true, alias: true } }),
   ]);
   return {
     person,
@@ -292,6 +293,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     notesCount,
     documents,
     audit,
+    aliases,
   };
 }
 

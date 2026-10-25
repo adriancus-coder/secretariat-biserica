@@ -9,15 +9,15 @@ export interface NamedPerson {
   active?: boolean;
 }
 
-/** How a unique match was found: the exact name, or every written word among the person's words. */
-export type MatchHow = "exact" | "partial";
+/** How a unique match was found: the exact name, a remembered alias, or every written word among the person's words. */
+export type MatchHow = "exact" | "alias" | "partial";
 
 export type NameMatch = { status: "unique"; id: string; how: MatchHow } | { status: "ambiguous"; ids: string[] } | { status: "none" };
 
 /** Words without diacritics, lower-case; hyphens split words ("Vasile-Pop" = "Vasile Pop"). */
 const words = (s: string) => normalizeSearch(s).split(/[\s-]+/).filter(Boolean);
 
-/** The normalized form of a name: words without diacritics, lower-case, sorted ("pop vasile"). */
+/** The normalized form of a name: words without diacritics, lower-case, sorted ("pop vasile"). Also the alias key. */
 export function nameKey(name: string): string {
   return words(name).sort().join(" ");
 }
@@ -25,17 +25,24 @@ export function nameKey(name: string): string {
 /**
  * Diacritic- and case-insensitive, in any word order. In this order:
  * 1. exact: the words of the name are exactly the person's first name and surname;
- * 2. partial: every word of the name is among the words of an active person ("Adrian Cușniriuc" →
+ * 2. alias: the name was matched to a person by hand before (`aliases`: nameKey → person id);
+ * 3. partial: every word of the name is among the words of an active person ("Adrian Cușniriuc" →
  *    "Cușniriuc Adrian Emanuel"); needs at least two words, so a first name alone is never matched
  *    automatically. One person → unique; several → ambiguous with those persons as candidates.
  */
-export function matchPersonName(name: string, persons: readonly NamedPerson[]): NameMatch {
+export function matchPersonName(
+  name: string,
+  persons: readonly NamedPerson[],
+  aliases: ReadonlyMap<string, string> = new Map(),
+): NameMatch {
   const wanted = words(name);
   if (!wanted.length) return { status: "none" };
   const key = [...wanted].sort().join(" ");
   const exact = persons.filter((p) => nameKey(`${p.prenume} ${p.nume}`) === key).map((p) => p.id);
   if (exact.length === 1) return { status: "unique", id: exact[0], how: "exact" };
   if (exact.length) return { status: "ambiguous", ids: exact };
+  const aliased = aliases.get(key);
+  if (aliased && persons.some((p) => p.id === aliased)) return { status: "unique", id: aliased, how: "alias" };
   const partial = persons
     .filter((p) => p.active !== false)
     .filter((p) => {

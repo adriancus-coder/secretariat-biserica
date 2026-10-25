@@ -8,6 +8,7 @@ import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
+import type { PickedName } from "@/lib/minutes-import";
 import { saveMeetingAction, type MeetingFormState } from "@/server/actions/meetings";
 import { PointsEditor } from "./points-editor";
 
@@ -24,7 +25,10 @@ export function MeetingForm({
   prefill,
   cancelHref,
   onImported,
+  pickedNames,
 }: {
+  /** Import review: the "Nepotriviți" names matched by hand, remembered as aliases on save. */
+  pickedNames?: PickedName[];
   id: string | null;
   initial: Record<string, string>;
   /** The meeting's points ("Puncte discutate și aprobate"). */
@@ -67,6 +71,7 @@ export function MeetingForm({
   return (
     <form onSubmit={onSubmit} noValidate>
       {onImported ? <input type="hidden" name="import" value="1" /> : null}
+      {pickedNames?.length ? <input type="hidden" name="aliasuri" value={JSON.stringify(pickedNames)} /> : null}
       <div className="row2">
         <TextField
           name="nr"

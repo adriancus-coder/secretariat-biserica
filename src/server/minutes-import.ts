@@ -5,6 +5,7 @@ import type { ImportDraft } from "@/lib/minutes-import";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { matchMeetingType, matchPersonName } from "@/lib/name-match";
 import type { MinutesDraft } from "@/lib/schemas/extract";
+import { loadAliasMap } from "./person-aliases";
 import { getChurch } from "./queries/church";
 import type { Ctx } from "./session";
 
@@ -29,18 +30,19 @@ export async function docxText(file: File): Promise<string> {
 
 /**
  * A parsed or extracted minutes draft → the review draft: names matched to the church's
- * register (unique → attendee, else "Nepotriviți"), the type matched to the church's list
+ * register (exact name, then a remembered alias, then the partial rule; unique → attendee, else
+ * "Nepotriviți"), the type matched to the church's list
  * (default "Comitet").
  */
 export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraft, warnings: string[]): Promise<ImportDraft> {
-  const [church, persons] = await Promise.all([getChurch(ctx), ctx.db.person.findMany({ select: { id: true, nume: true, prenume: true, statut: true } })]);
+  const [church, aliases, persons] = await Promise.all([getChurch(ctx), loadAliasMap(ctx), ctx.db.person.findMany({ select: { id: true, nume: true, prenume: true, statut: true } })]);
   // Former members are matched only by their exact name.
   const named = persons.map((p) => ({ ...p, active: p.statut !== "FOST_MEMBRU" }));
   const selected = new Set<string>();
   const approx: ImportDraft["approx"] = [];
   const unmatched: ImportDraft["unmatched"] = [];
   for (const name of draft.prezenti) {
-    const m = matchPersonName(name, named);
+    const m = matchPersonName(name, named, aliases);
     if (m.status === "unique") {
       selected.add(m.id);
       if (m.how !== "exact" && !approx.some((a) => a.name === name)) approx.push({ name, personId: m.id, how: m.how });

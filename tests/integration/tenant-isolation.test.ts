@@ -127,6 +127,26 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect((await prisma.churchDocument.findUniqueOrThrow({ where: { id: doc.id } })).fileName).toBe("statut.pdf");
   });
 
+  it("other forms of persons' names (aliases) are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const alias = await a.personAlias.create({ data: { personId: personA, alias: "ion popescu-vechi" } as never });
+    expect(alias.churchId).toBe(churchA);
+    expect(await b.personAlias.findUnique({ where: { id: alias.id } })).toBeNull();
+    expect(await b.personAlias.findFirst({ where: { alias: "ion popescu-vechi" } })).toBeNull();
+    expect(await b.personAlias.count()).toBe(0);
+    expect((await b.personAlias.updateMany({ data: { alias: "x" } })).count).toBe(0);
+    expect((await b.personAlias.deleteMany({})).count).toBe(0);
+    await expect(b.personAlias.delete({ where: { id: alias.id } })).rejects.toMatchObject({ code: "P2025" });
+    // The same form of a name can exist once per church.
+    const personB = (await b.person.create({ data: { nume: "Rusu", prenume: "Ion" } as never })).id;
+    const other = await b.personAlias.create({ data: { personId: personB, alias: "ion popescu-vechi" } as never });
+    expect(other.churchId).toBe(churchB);
+    expect((await prisma.personAlias.findUniqueOrThrow({ where: { id: alias.id } })).personId).toBe(personA);
+    await prisma.person.delete({ where: { id: personB } });
+    expect(await b.personAlias.count()).toBe(0);
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

@@ -15,6 +15,7 @@ import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
 import { PersonRemoval } from "./person-removal";
+import { PersonAliases } from "./person-aliases";
 import { canBeHead } from "@/lib/families";
 import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
@@ -34,7 +35,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const detail = await getPersonDetail(ctx, id);
   if (!detail) notFound();
   const nav = await personNeighbors(ctx, id, parseListSpec(din), (await getChurch(ctx)).nomen.rudenie);
-  const { person: x, family, groups, roles, notes, notesCount, documents, audit } = detail;
+  const { person: x, family, groups, roles, notes, notesCount, documents, audit, aliases } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
 
@@ -183,6 +184,8 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             ))}
           </div>
         ) : null}
+
+        {aliases.length ? <PersonAliases aliases={aliases} canWrite={canWrite} /> : null}
 
         <div className="card">
           <h3>Mențiuni ({notesCount})</h3>

@@ -234,6 +234,7 @@ export async function anonymizePersonAction(id: string): Promise<FormState> {
         },
       });
       await tx.personRole.deleteMany({ where: { personId: id } });
+      await tx.personAlias.deleteMany({ where: { personId: id } });
       await tx.groupMember.deleteMany({ where: { personId: id } });
       await tx.note.deleteMany({ where: { personId: id } });
       // A family named after the person loses that name.

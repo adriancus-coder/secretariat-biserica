@@ -11,7 +11,18 @@ export interface UnmatchedName {
 export interface ApproxMatch {
   name: string;
   personId: string;
-  how: "partial";
+  how: "partial" | "alias";
+}
+
+/** A "Nepotrivit" name the secretary matched to a person: remembered as an alias when the meeting is saved. */
+export interface PickedName {
+  name: string;
+  personId: string;
+}
+
+/** The picks among the choices (a name kept as a guest is not remembered). */
+export function pickedNames(draft: ImportDraft, choices: Readonly<Record<string, string>>): PickedName[] {
+  return draft.unmatched.filter((u) => choices[u.name]).map((u) => ({ name: u.name, personId: choices[u.name] }));
 }
 
 export interface ImportDraft {

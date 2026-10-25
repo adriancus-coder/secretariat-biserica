@@ -5,6 +5,7 @@ import { parsePrototypeJson } from "@/domain/backup";
 import { parseApplicationsJson } from "@/lib/application-backup";
 import { parseMeetingExtras } from "@/lib/meeting-backup";
 import { parseMemberBaptism } from "@/lib/baptism-backup";
+import { parseAliasesJson } from "@/lib/aliases-backup";
 import { parseFamiliesJson } from "@/lib/families-backup";
 import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
@@ -93,7 +94,7 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       details = extraErrors;
       throw new ActionError(`Importul a fost oprit: ${extraErrors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw), baptism: parseMemberBaptism(raw), textFamilies: formData.get("faraFamiliiText") !== "on" });
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw), baptism: parseMemberBaptism(raw), aliases: parseAliasesJson(raw), textFamilies: formData.get("faraFamiliiText") !== "on" });
     details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {

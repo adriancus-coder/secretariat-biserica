@@ -1,4 +1,5 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
+import type { BAlias } from "@/lib/aliases-backup";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
@@ -260,6 +261,11 @@ export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; fam
   return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, note: f.note, automata: f.autoCreated })), familyOf };
 }
 
+/** Other forms of persons' names, for the `aliases` collection. */
+export async function loadAliases(ctx: Ctx): Promise<{ personId: string; alias: string }[]> {
+  return ctx.db.personAlias.findMany({ orderBy: { alias: "asc" }, select: { personId: true, alias: true } });
+}
+
 export type ImportMode = "merge" | "replace";
 
 /** Collections outside the prototype's format; null/absent = not in the file (existing data is kept). */
@@ -276,6 +282,8 @@ export interface ImportExtras {
   textFamilies?: boolean;
   /** Member id → baptism church / locality / officiant, as in the file (see parseMemberBaptism). */
   baptism?: ReadonlyMap<string, BaptismFields>;
+  /** Other forms of persons' names (see parseAliasesJson); null = not in the file. */
+  aliases?: BAlias[] | null;
 }
 
 export interface ImportSummary {
@@ -790,6 +798,15 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             gradeRudenie: s.nomen.rudenie,
           },
         });
+      }
+
+      // Other forms of names: attached to the imported persons (the latest file wins for a name).
+      for (const a of extras.aliases ?? []) {
+        const personId = pid(a.membru);
+        if (!personId) continue;
+        const existing = await tx.personAlias.findFirst({ where: { alias: a.alias } });
+        if (existing) await tx.personAlias.update({ where: { id: existing.id }, data: { personId } });
+        else await tx.personAlias.create({ data: { alias: a.alias, personId, createdById: ctx.user.id } as never });
       }
 
       const remapped = [people, meet, evs, docs, grs, nts, apps, ...(fams ? [fams] : [])].reduce(

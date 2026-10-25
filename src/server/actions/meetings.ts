@@ -11,6 +11,8 @@ import { MEETING_FIELDS, meetingFormInput, meetingSchema } from "@/lib/schemas/m
 import { compareRo } from "@/lib/text";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { rememberAliases } from "../person-aliases";
+import { pickedNamesInput, pickedNamesSchema } from "@/lib/schemas/person-alias";
 import { lockMeetingRegister, nextFreeMeetingNumber } from "../doc-numbering";
 import { expectedAttendees } from "../queries/attendance";
 import { getChurch } from "../queries/church";
@@ -71,6 +73,8 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
     if (id !== null) parseOrThrow(idSchema, id);
     const { prezenti: ids, nr: wantedNr, ...fields } = parseOrThrow(meetingSchema, meetingFormInput(formData));
     const prezenti = await assertPersonsInChurch(ctx.db, ids);
+    // Import review: the "Nepotriviți" names matched by hand are remembered as aliases of the attendees.
+    const picks = importing ? parseOrThrow(pickedNamesSchema, pickedNamesInput(formData)).filter((p) => prezenti.includes(p.personId)) : [];
     const { asteptati, rows } = await attendance(ctx, fields.tip, fields.data, prezenti);
     const year = Number(fields.data.slice(0, 4));
 
@@ -128,6 +132,7 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
         fields: MEETING_FIELDS,
         after: await auditView(tx, created.id),
       });
+      await rememberAliases(tx, ctx.user, picks);
       return created.id;
     });
   });
