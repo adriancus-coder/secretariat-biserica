@@ -14,8 +14,12 @@ export interface Series {
   hrefs?: (string | undefined)[];
 }
 
-const W = 600;
+// Narrow viewBox: text stays ≥ 11 px on a 390 px phone; the CSS caps the width on desktop.
+const W = 420;
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+
+/** Years as "17" when there are many columns; other labels as given. */
+const short = (l: string, n: number) => (n > 6 && /^\d{4}$/.test(l) ? l.slice(-2) : l);
 
 function niceMax(n: number): number {
   if (n <= 5) return 5;
@@ -68,7 +72,7 @@ export function LineChart({ title, desc, labels, series, height = 220 }: { title
         ))}
         {labels.map((l, i) => (
           <text key={l} x={x(i)} y={height - 8} textAnchor="middle" className="chart-axis">
-            {labels.length > 6 ? l.slice(-2) : l}
+            {short(l, labels.length)}
           </text>
         ))}
         {series.map((s, si) => (
@@ -126,7 +130,7 @@ export function StackedBars({ title, desc, labels, series, height = 220 }: { tit
                 );
               })}
               <text x={cx} y={height - 8} textAnchor="middle" className="chart-axis">
-                {labels.length > 6 ? l.slice(-2) : l}
+                {short(l, labels.length)}
               </text>
             </g>
           );

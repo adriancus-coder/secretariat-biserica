@@ -1571,6 +1571,16 @@
   /* Statistici: SVG charts and tables (src/components/charts.tsx). */
   .chart {
     margin: 0 0 12px;
+    max-width: 520px;
+  }
+  .chart-pair {
+    display: grid;
+    gap: 8px 24px;
+  }
+  @media (min-width: 1000px) {
+    .chart-pair {
+      grid-template-columns: 1fr 1fr;
+    }
   }
   .chart svg {
     width: 100%;
@@ -1583,11 +1593,11 @@
   }
   .chart-axis {
     fill: var(--ink-3);
-    font-size: 13px;
+    font-size: 15px;
   }
   .chart-value {
     fill: var(--ink);
-    font-size: 13px;
+    font-size: 15px;
   }
   .chart a:focus-visible rect,
   .chart a:focus-visible circle {

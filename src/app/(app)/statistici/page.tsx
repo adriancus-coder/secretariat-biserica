@@ -71,6 +71,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
 
       <section className="card">
         <h3>Evoluție ({d.rows[0].year}–{d.year})</h3>
+        <div className="chart-pair">
         <LineChart
           title="Membri la sfârșitul fiecărui an"
           desc={d.rows.map((r) => `${r.year}: ${r.membri}`).join(", ")}
@@ -88,6 +89,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
             { name: "Reprimire", values: d.rows.map((r) => r.intrari.reprimire), hrefs: d.rows.map((r) => cat(EVOLUTION_KEYS.reprimire, r.an)) },
           ]}
         />
+        </div>
         <div className="table-scroll" data-scroll>
           <table className="stats-table">
             <caption className="sr-only">Evoluția pe ani: membri, intrări, ieșiri, binecuvântări, creștere netă</caption>
