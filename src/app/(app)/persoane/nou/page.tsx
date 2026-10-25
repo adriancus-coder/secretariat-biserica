@@ -1,3 +1,4 @@
+import { officiantOptions } from "@/server/queries/officiants";
 import { committeeEligibility } from "@/server/queries/committee";
 import { fmtDot } from "@/domain/print";
 import { consentNote, STATUTE, STATUTE_KINDS } from "@/lib/statutes";
@@ -82,6 +83,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
         </p>
       ) : null}
       <PersonForm
+        officiants={await officiantOptions(ctx)}
         committeeWarnings={await committeeEligibility(ctx, null)}
         id={null}
         initial={initial}

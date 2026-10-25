@@ -24,6 +24,7 @@ import { roleKey } from "@/lib/roles";
 import { noteWithSlujire } from "@/lib/slujire";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { storedVotes } from "@/lib/general-assembly";
+import { defaultOrdination } from "@/lib/officiants";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
 import { normalizeSignature } from "./signature-image";
@@ -176,6 +177,7 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
       loc: e.loc,
       invitat: e.invitat,
       responsabil: e.responsabil,
+      oficiant: e.oficiant,
       descriere: e.descriere,
       agapa: {
         activ: e.agapaActiva,
@@ -293,7 +295,7 @@ export async function loadRoles(ctx: Ctx): Promise<{
   }
   return {
     groups: groups.map((g) => ({ id: g.id, nume: g.nume, ordine: g.sortOrder, activ: g.active })),
-    roles: rows.map((r) => ({ id: r.id, nume: r.nume, ordine: r.sortOrder, grup: r.group.nume, activ: r.active })),
+    roles: rows.map((r) => ({ id: r.id, nume: r.nume, ordine: r.sortOrder, grup: r.group.nume, activ: r.active, ordinat: r.ordinat })),
     functii,
     committee: new Set(committee.map((p) => p.id)),
   };
@@ -695,7 +697,12 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           const found = known.get(roleKey(nume));
           const groupId = from?.grup ? await ensureGroup(from.grup) : null;
           if (found) {
-            if (from) await tx.churchRole.update({ where: { id: found.id }, data: { sortOrder: from.ordine, active: from.activ, ...(groupId ? { groupId } : {}) } });
+            if (from) {
+              await tx.churchRole.update({
+                where: { id: found.id },
+                data: { sortOrder: from.ordine, active: from.activ, ...(groupId ? { groupId } : {}), ...(from.ordinat !== undefined ? { ordinat: from.ordinat } : {}) },
+              });
+            }
             return found.id;
           }
           const created = await tx.churchRole.create({
@@ -705,6 +712,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
               groupId: groupId ?? (await defaultGroup()),
               sortOrder: from?.ordine ?? nextOrder++,
               active: from?.activ ?? true,
+              ordinat: from?.ordinat !== undefined ? from.ordinat : defaultOrdination(nume),
             },
           });
           known.set(roleKey(nume), { id: created.id, nume, sortOrder: created.sortOrder });
@@ -908,6 +916,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           loc: e.loc,
           invitat: e.invitat,
           responsabil: e.responsabil,
+          oficiant: e.oficiant,
           descriere: e.descriere,
           agapaActiva: e.agapa.activ,
           agapaResponsabil: e.agapa.responsabil,

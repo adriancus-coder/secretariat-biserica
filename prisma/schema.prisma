@@ -591,6 +591,12 @@ model Family {
 }
 
 /// A function held in the church (Pastor, Diacon, Lider tineret …): the church's own nomenclature.
+enum OrdinationKind {
+  DIACON
+  PREZBITER
+  PASTOR
+}
+
 model ChurchRole {
   id        String    @id @default(cuid())
   churchId  String
@@ -601,6 +607,8 @@ model ChurchRole {
   group     RoleGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
   /// Inactive roles stay on the persons that hold them but cannot be newly assigned.
   active    Boolean   @default(true)
+  /// An ordained ministry (Statut art. 30): its holders are offered as officiants.
+  ordinat   OrdinationKind?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -841,6 +849,8 @@ model Event {
   loc         String   @default("")
   invitat     String   @default("")
   responsabil String   @default("")
+  /// Who officiated (Botez, Binecuvântare copil, Nuntă, Înmormântare, Cina Domnului): a name, free text.
+  oficiant    String   @default("")
   descriere   String   @default("")
 
   agapaActiva      Boolean @default(false)

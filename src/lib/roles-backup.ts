@@ -1,3 +1,4 @@
+import { ORDINATIONS, type Ordination } from "./officiants";
 import { isIsoDate } from "./dates";
 import { ROLE_NAME_MAX } from "./schemas/roles";
 
@@ -17,6 +18,8 @@ export interface BRole {
   /** Older files only: holders of this role formed the committee. */
   comitet: boolean;
   activ: boolean;
+  /** Ordained ministry (Statut art. 30); undefined in older files (the defaults then apply by name). */
+  ordinat?: Ordination | null;
 }
 
 export interface BRoleGroup {
@@ -122,6 +125,7 @@ export function parseRolesJson(root: unknown): ParsedRoles {
         grup: name(x.grup),
         comitet: x.comitet === true,
         activ: x.activ !== false,
+        ...("ordinat" in x ? { ordinat: (ORDINATIONS as readonly unknown[]).includes(x.ordinat) ? (x.ordinat as Ordination) : null } : {}),
       });
     }
   }

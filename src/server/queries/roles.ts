@@ -1,3 +1,4 @@
+import type { Ordination } from "@/lib/officiants";
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
@@ -24,6 +25,8 @@ export interface RoleRow {
   holders: number;
   /** Groups linked to the role (as their ministry or their leader role), by name. */
   groups: string[];
+  /** An ordained ministry (Statut art. 30). */
+  ordinat: Ordination | null;
 }
 
 export interface RoleGroupRow {
@@ -50,7 +53,8 @@ export async function listRoleGroups(ctx: Ctx): Promise<RoleGroupRow[]> {
     nume: g.nume,
     sortOrder: g.sortOrder,
     active: g.active,
-    roles: g.roles.map(({ _count, id, nume, groupId, sortOrder, active, groups, ledGroups }) => ({
+    roles: g.roles.map(({ _count, id, nume, groupId, sortOrder, active, groups, ledGroups, ordinat }) => ({
+      ordinat,
       id,
       nume,
       groupId,

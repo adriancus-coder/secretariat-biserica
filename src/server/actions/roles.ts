@@ -1,5 +1,6 @@
 "use server";
 
+import { ORDINATION_LABEL, type Ordination } from "@/lib/officiants";
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
 import { roleKey } from "@/lib/roles";
@@ -143,8 +144,8 @@ async function groupRoles(tx: Tx, groupId: string) {
 }
 
 /** Comparable audit view of a role. */
-function roleView(r: { nume: string; active: boolean; group: { nume: string } }, position: number) {
-  return { nume: r.nume, grup: r.group.nume, activ: r.active, pozitie: position + 1 };
+function roleView(r: { nume: string; active: boolean; group: { nume: string }; ordinat?: Ordination | null }, position: number) {
+  return { nume: r.nume, grup: r.group.nume, activ: r.active, pozitie: position + 1, ordinat: r.ordinat ? ORDINATION_LABEL[r.ordinat] : "" };
 }
 
 /** A role with this name (case and diacritics ignored), anywhere in the church's nomenclature. */
@@ -192,7 +193,11 @@ export async function saveRoleAction(id: string | null, groupId: string | null, 
         if (!role) throw new ActionError("Intrarea nu mai există.");
         const roles = await groupRoles(tx, role.groupId);
         const index = roles.findIndex((r) => r.id === id);
-        const after = await tx.churchRole.update({ where: { id }, data: { nume: input.nume }, include: { group: { select: { nume: true } } } });
+        const after = await tx.churchRole.update({
+          where: { id },
+          data: { nume: input.nume, ...(formData.has("ordinat") ? { ordinat: input.ordinat } : {}) },
+          include: { group: { select: { nume: true } } },
+        });
         await writeAudit(tx, ctx.user, {
           entity: "CHURCH_ROLE",
           entityId: id,

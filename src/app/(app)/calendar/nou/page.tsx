@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { isIsoDate, todayIso } from "@/lib/dates";
 import { getChurch } from "@/server/queries/church";
+import { officiantOptions } from "@/server/queries/officiants";
 import { requireCtx } from "@/server/session";
 import { EventForm } from "../event-form";
 
@@ -21,6 +22,7 @@ export default async function NewEventPage({ searchParams }: PageProps<"/calenda
         initial={{ data, tip: church.nomen.tipuriEvenimente[0] ?? "" }}
         contributii={[]}
         tipuri={church.nomen.tipuriEvenimente}
+        officiants={await officiantOptions(ctx)}
         cancelHref="/calendar"
       />
     </>

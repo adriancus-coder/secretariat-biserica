@@ -61,6 +61,12 @@ export default async function EventPage({ params }: PageProps<"/calendar/[id]">)
             <dd>{x.responsabil}</dd>
           </>
         ) : null}
+        {x.oficiant ? (
+          <>
+            <dt>Oficiat de</dt>
+            <dd>{x.oficiant}</dd>
+          </>
+        ) : null}
         {x.descriere ? (
           <>
             <dt>Descriere</dt>

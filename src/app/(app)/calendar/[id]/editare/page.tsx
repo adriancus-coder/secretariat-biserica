@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { getChurch } from "@/server/queries/church";
 import { getEvent } from "@/server/queries/events";
+import { officiantOptions } from "@/server/queries/officiants";
 import { requireCtx } from "@/server/session";
 import { EventForm } from "../../event-form";
 
@@ -27,6 +28,7 @@ export default async function EditEventPage({ params }: PageProps<"/calendar/[id
           loc: e.loc,
           invitat: e.invitat,
           responsabil: e.responsabil,
+          oficiant: e.oficiant,
           descriere: e.descriere,
           agapaActiva: e.agapaActiva ? "on" : "",
           agapaResponsabil: e.agapaResponsabil,
@@ -34,6 +36,7 @@ export default async function EditEventPage({ params }: PageProps<"/calendar/[id
         }}
         contributii={e.contributii}
         tipuri={church.nomen.tipuriEvenimente}
+        officiants={await officiantOptions(ctx)}
         cancelHref={`/calendar/${id}`}
       />
     </>

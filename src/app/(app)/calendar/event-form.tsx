@@ -5,6 +5,8 @@ import { useRef, useState } from "react";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
+import { OfficiantField } from "@/components/officiant-field";
+import { isOfficiatedEvent, type OfficiantOption } from "@/lib/officiants";
 import { saveEventAction } from "@/server/actions/events";
 
 interface Contribution {
@@ -18,12 +20,15 @@ export function EventForm({
   initial,
   contributii,
   tipuri,
+  officiants = [],
   cancelHref,
 }: {
   id: string | null;
   initial: Record<string, string>;
   contributii: { cine: string; ce: string }[];
   tipuri: string[];
+  /** Persons holding an ordained role (Statut art. 30). */
+  officiants?: OfficiantOption[];
   cancelHref: string;
 }) {
   const { state, pending, onSubmit } = useActionForm(saveEventAction.bind(null, id));
@@ -31,6 +36,7 @@ export function EventForm({
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
   const nextKey = useRef(contributii.length);
+  const [tip, setTip] = useState(val("tip"));
   const [agapa, setAgapa] = useState(initial.agapaActiva === "on");
   const [rows, setRows] = useState<Contribution[]>(() => contributii.map((c, i) => ({ key: i, ...c })));
 
@@ -48,7 +54,7 @@ export function EventForm({
     <form onSubmit={onSubmit} noValidate>
       <TextField name="titlu" label="Titlu" placeholder="ex. Seară de evanghelizare" defaultValue={val("titlu")} error={e.titlu} required />
       <div className="row2">
-        <SelectField name="tip" label="Tip" defaultValue={val("tip")} error={e.tip} options={nomenOptions(tipuri, val("tip"))} />
+        <SelectField name="tip" label="Tip" defaultValue={val("tip")} onChange={(ev) => setTip(ev.target.value)} error={e.tip} options={nomenOptions(tipuri, val("tip"))} />
         <TextField name="data" label="Data" type="date" defaultValue={val("data")} error={e.data} required />
       </div>
       <div className="row2">
@@ -59,6 +65,9 @@ export function EventForm({
         <TextField name="invitat" label="Invitat / vorbitor" defaultValue={val("invitat")} error={e.invitat} />
         <TextField name="responsabil" label="Responsabil" defaultValue={val("responsabil")} error={e.responsabil} />
       </div>
+      {isOfficiatedEvent(tip) || val("oficiant") ? (
+        <OfficiantField name="oficiant" act={tip} defaultValue={val("oficiant")} options={officiants} error={e.oficiant} />
+      ) : null}
       <TextAreaField name="descriere" label="Descriere / program" defaultValue={val("descriere")} error={e.descriere} />
 
       <fieldset className="card">

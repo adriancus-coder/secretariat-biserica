@@ -1,15 +1,18 @@
+import { ORDINATIONS } from "../officiants";
 import { z } from "zod";
-import { idSchema, optionalDate, requiredText } from "../validation";
+import { idSchema, optionalDate, optionalEnum, requiredText } from "../validation";
 
 export const ROLE_NAME_MAX = 60;
 
 /** Fields of a church role (an entry of a group) tracked by the audit log. */
-export const ROLE_FIELDS = ["nume", "grup", "activ", "pozitie"] as const;
+export const ROLE_FIELDS = ["nume", "grup", "activ", "pozitie", "ordinat"] as const;
 /** Fields of a role group tracked by the audit log. */
 export const GROUP_FIELDS = ["grup", "activ", "pozitie"] as const;
 
 export const roleSchema = z.object({
   nume: requiredText(ROLE_NAME_MAX, "Denumirea este obligatorie.", "Denumirea"),
+  /** Statut art. 30: Diacon / Prezbiter / Pastor; empty = not an ordained ministry. */
+  ordinat: optionalEnum(ORDINATIONS),
 });
 
 export const roleGroupSchema = z.object({

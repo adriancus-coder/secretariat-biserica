@@ -1,4 +1,5 @@
 /** Church roles (funcții în biserică): defaults and display helpers. Pure. */
+import { defaultOrdination } from "./officiants";
 import { fmt } from "./format";
 
 /**
@@ -14,7 +15,10 @@ export const DEFAULT_ROLE_GROUPS: readonly { nume: string; roles: readonly strin
 export function defaultRoleGroupsData(churchId: string, newId: () => string) {
   let order = 0;
   const groups = DEFAULT_ROLE_GROUPS.map((g, sortOrder) => ({ id: newId(), churchId, nume: g.nume, sortOrder }));
-  const roles = DEFAULT_ROLE_GROUPS.flatMap((g, i) => g.roles.map((nume) => ({ churchId, nume, groupId: groups[i].id, sortOrder: order++ })));
+  // Pastor, Prezbiter and Diacon are ordained ministries (Statut art. 30): offered as officiants.
+  const roles = DEFAULT_ROLE_GROUPS.flatMap((g, i) =>
+    g.roles.map((nume) => ({ churchId, nume, groupId: groups[i].id, sortOrder: order++, ordinat: defaultOrdination(nume) })),
+  );
   return { groups, roles };
 }
 

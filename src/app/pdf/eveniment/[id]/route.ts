@@ -19,6 +19,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/evenimen
         loc: e.loc,
         invitat: e.invitat,
         responsabil: e.responsabil,
+        oficiant: e.oficiant,
         descriere: e.descriere,
         agapaActiva: e.agapaActiva,
         agapaResponsabil: e.agapaResponsabil,

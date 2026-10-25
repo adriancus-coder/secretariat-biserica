@@ -57,6 +57,7 @@ const sample: Backup = {
       loc: "",
       invitat: "",
       responsabil: "",
+      oficiant: "",
       descriere: "",
       agapa: { activ: true, responsabil: "Lucia", persoane: 80, contributii: [{ cine: "Fam. Pop", ce: "cozonac" }] },
       createdAt: null,

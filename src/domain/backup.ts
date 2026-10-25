@@ -84,6 +84,8 @@ export interface BEvent {
   loc: string;
   invitat: string;
   responsabil: string;
+  /** Who officiated (Statut art. 30); not in the prototype's files ("" there). */
+  oficiant: string;
   descriere: string;
   agapa: { activ: boolean; responsabil: string; persoane: number | null; contributii: { cine: string; ce: string }[] };
   createdAt: string | null;
@@ -201,6 +203,7 @@ export function toPrototypeJson(b: Backup): Record<string, unknown> {
       loc: e.loc,
       invitat: e.invitat,
       responsabil: e.responsabil,
+      ...(e.oficiant ? { oficiant: e.oficiant } : {}),
       descriere: e.descriere,
       agapa: {
         activ: e.agapa.activ,
@@ -442,6 +445,7 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
       loc: str.parse(e.loc),
       invitat: str.parse(e.invitat),
       responsabil: str.parse(e.responsabil),
+      oficiant: str.parse(e.oficiant),
       descriere: longStr.parse(e.descriere).trim(),
       agapa: { activ: ag.activ === true || ag.activ === "true", responsabil: str.parse(ag.responsabil), persoane, contributii },
       createdAt: date(e.createdAt, what, "data înregistrării"),

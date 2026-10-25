@@ -24,8 +24,10 @@ describe("personRolesSchema", () => {
 });
 
 describe("roleSchema", () => {
-  it("requires a name and reads the committee switch", () => {
-    expect(roleSchema.parse({ nume: " Diacon " })).toEqual({ nume: "Diacon" });
+  it("requires a name and reads the ordained ministry", () => {
+    expect(roleSchema.parse({ nume: " Diacon " })).toEqual({ nume: "Diacon", ordinat: null });
+    expect(roleSchema.parse({ nume: "Diacon", ordinat: "DIACON" }).ordinat).toBe("DIACON");
+    expect(roleSchema.safeParse({ nume: "Diacon", ordinat: "EPISCOP" }).success).toBe(false);
     expect(roleSchema.safeParse({ nume: "  " }).success).toBe(false);
   });
 });

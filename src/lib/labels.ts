@@ -130,6 +130,7 @@ export const NOMEN_DEFAULTS = {
     "Tineret",
     "Nuntă",
     "Înmormântare",
+    "Cina Domnului",
     "Altele",
   ],
   tipuriMentiuni: ["Generală", "Pastorală", "Disciplină", "Familie", "Slujire", "Altele"],

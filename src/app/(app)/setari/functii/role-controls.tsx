@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Icon } from "@/components/shell/icons";
-import { TextField } from "@/components/ui/fields";
+import { SelectField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
 import { ROLE_NAME_MAX } from "@/lib/schemas/roles";
@@ -15,6 +15,7 @@ import {
   setRoleGroupActiveAction,
 } from "@/server/actions/roles";
 import type { RoleGroupRow, RoleRow } from "@/server/queries/roles";
+import { ORDINATION_LABEL, ORDINATIONS } from "@/lib/officiants";
 
 const holdersText = (n: number) => (n === 0 ? "neatribuită" : n === 1 ? "1 persoană" : `${n} persoane`);
 
@@ -105,7 +106,8 @@ function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first:
       <div className="item !cursor-default" style={{ opacity: role.active ? 1 : 0.6 }}>
         <div className="body">
           <div className="t">
-            {role.nume} {!role.active ? <span className="tag tag-warn">dezactivată</span> : null}
+            {role.nume} {role.ordinat ? <span className="tag">ordinat: {ORDINATION_LABEL[role.ordinat].toLowerCase()}</span> : null}{" "}
+            {!role.active ? <span className="tag tag-warn">dezactivată</span> : null}
           </div>
           <div className="m">{holdersText(role.holders)}</div>
           {role.groups.length ? <div className="m">Folosită de grupurile: {role.groups.join(", ")}</div> : null}
@@ -134,6 +136,15 @@ function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first:
                 {role.groups.length ? <span className="block">Folosită de grupurile: {role.groups.join(", ")}</span> : null}
               </>
             }
+          />
+          <SelectField
+            name="ordinat"
+            label="Slujire ordinată (Statut art. 30)"
+            defaultValue={saveState.values?.ordinat ?? role.ordinat ?? ""}
+            error={saveState.errors?.ordinat}
+            className="!mb-0 mt-2"
+            id={`ordinat-${role.id}`}
+            options={[{ value: "", label: "— nu —" }, ...ORDINATIONS.map((o) => ({ value: o, label: ORDINATION_LABEL[o] }))]}
           />
         </form>
         <div className="flex gap-2 flex-wrap">

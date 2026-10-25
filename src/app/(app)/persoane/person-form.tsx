@@ -12,6 +12,8 @@ import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_HINT, STATUS_LABEL, type PersonStatusKey } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
 import { FamilyField, type FamilyChoice } from "./family-field";
+import { OfficiantField } from "@/components/officiant-field";
+import type { OfficiantOption } from "@/lib/officiants";
 import { RolesPicker, type RoleChoiceGroup } from "./roles-picker";
 import type { MeetingChoice } from "@/server/queries/meetings";
 
@@ -30,6 +32,7 @@ export function PersonForm({
   contactRestricted = false,
   cancelHref,
   committeeWarnings,
+  officiants = [],
   applicationId,
   din,
   nav,
@@ -49,6 +52,8 @@ export function PersonForm({
   cancelHref: string;
   /** The art. 45 alin. 4 warnings next to "Membru în comitet" (src/server/queries/committee.ts). */
   committeeWarnings?: string[];
+  /** Persons holding an ordained role, suggested for "Oficiat de" (Statut art. 30). */
+  officiants?: OfficiantOption[];
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
   /** The Persoane list the person was opened from (see src/lib/person-nav.ts). */
@@ -199,7 +204,7 @@ export function PersonForm({
             <TextField name="botezBiserica" label="Biserica" placeholder="ex. Betel Oslo" defaultValue={val("botezBiserica")} error={e.botezBiserica} />
             <TextField name="botezLocalitate" label="Localitatea" defaultValue={val("botezLocalitate")} error={e.botezLocalitate} />
           </div>
-          <TextField name="botezOficiant" label="Oficiat de" placeholder="ex. pastor Ioan Pop" defaultValue={val("botezOficiant")} error={e.botezOficiant} />
+          <OfficiantField name="botezOficiant" act="Botez" defaultValue={val("botezOficiant")} options={officiants} error={e.botezOficiant} />
         </fieldset>
         <TextField
           name="dataBinecuvantare"

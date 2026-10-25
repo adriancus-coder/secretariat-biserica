@@ -307,6 +307,12 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Domain records keep the prototype's `locBotez`, filled from the locality (`src/server/mappers.ts`).
 - Export/import: the three fields on members (`src/lib/baptism-backup.ts`), `locBotez` written with the locality; older files import `locBotez` as the locality.
 
+### Officiants (Statut art. 30)
+
+- `ChurchRole.ordinat` (DIACON | PREZBITER | PASTOR, `src/lib/officiants.ts`): set per entry in Setări → Funcții și slujiri (admin, audited as `ordinat`); the defaults Pastor, Prezbiter and Diacon get it at signup (`defaultRoleGroupsData`) and by the `officiants` migration (by name).
+- `OfficiantField` (`src/components/officiant-field.tsx`): "Oficiat de" on the person form (`botezOficiant`) and `Event.oficiant` on events of the types in `OFFICIATED_EVENT_TYPES` (Botez, Binecuvântare copil, Nuntă, Înmormântare, Cina Domnului); suggestions are the current holders of an ordained role (`officiantOptions()`, highest ordination), free text stays allowed. A diacon named for a baptism or a wedding gets the non-blocking art. 30 alin. 1 lit. a warning (`officiantWarning`, names matched in any order, titles ignored).
+- "Cina Domnului" is a default event type. Export/import: `oficiant` on events, `ordinat` on roles (older files: the defaults by name for new roles).
+
 ### Two-step authentication
 
 - Login: `signInOrMessage` (`src/server/actions/auth.ts`) checks the password (`checkPassword`, `src/server/login.ts`, with the account lock), then starts a `LoginChallenge` (`src/server/two-factor.ts`). Without a second factor it is verified at once and passed to `signIn`; with one, the browser gets an httpOnly cookie and goes to `/autentificare/cod`; when `Church.require2fa` is on and the user has none, to `/autentificare/configurare`.

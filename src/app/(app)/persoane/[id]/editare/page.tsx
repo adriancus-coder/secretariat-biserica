@@ -1,3 +1,4 @@
+import { officiantOptions } from "@/server/queries/officiants";
 import { committeeEligibility } from "@/server/queries/committee";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -54,6 +55,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
       <BackLink href={withDin(`/persoane/${id}`, din)}>{memberName(person)}</BackLink>
       <PageHead title="Editează persoana" />
       <PersonForm
+        officiants={await officiantOptions(ctx)}
         committeeWarnings={await committeeEligibility(ctx, id)}
         id={id}
         initial={initial}

@@ -235,6 +235,8 @@ export interface EventPrint {
   loc: string;
   invitat: string;
   responsabil: string;
+  /** Who officiated (Statut art. 30); optional. */
+  oficiant?: string;
   descriere: string;
   agapaActiva: boolean;
   agapaResponsabil: string;
@@ -250,6 +252,7 @@ export function eventPrint(x: EventPrint, church: ChurchInfo): PrintSpec {
   ];
   if (x.invitat) blocks.push(para(b("Invitat:"), ` ${x.invitat}`));
   if (x.responsabil) blocks.push(para(b("Responsabil:"), ` ${x.responsabil}`));
+  if (x.oficiant) blocks.push(para(b("Oficiat de:"), ` ${x.oficiant}`));
   if (x.descriere) blocks.push(pre(x.descriere));
   if (x.agapaActiva) {
     blocks.push(
