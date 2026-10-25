@@ -4,6 +4,7 @@ import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
 import { searchTerms, compareRo } from "@/lib/text";
 import type { PersonStatusKey } from "@/lib/labels";
+import { kinshipRank } from "@/lib/kinship";
 import { parseCategorySelection, type CategorySelection } from "@/lib/category-params";
 import { ActionError, type Ctx } from "../session";
 import { selectionIds } from "./categories";
@@ -153,11 +154,6 @@ async function orderedFamilies(ctx: Ctx, where: Prisma.PersonWhereInput) {
     .map((g) => ({ familyId: g.familyId, label: g.familyId ? (records.get(g.familyId)?.nume ?? NO_FAMILY) : NO_FAMILY, count: g._count._all }))
     .sort((a, b) => key(a.familyId).localeCompare(key(b.familyId)) || compareRo(a.label, b.label));
 }
-
-const kinshipRank = (rudenieOrder: string[]) => (r: string) => {
-  const i = rudenieOrder.indexOf(r);
-  return i < 0 ? 99 : i;
-};
 
 export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "", ids }: ListParams, rudenieOrder: string[]) {
   const where = listWhere({ filter, q, functie, ids });

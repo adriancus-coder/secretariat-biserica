@@ -204,3 +204,16 @@ describe("rich text in the PDF", () => {
     expect(lines).toContain("[centru] Centrat");
   });
 });
+
+describe("tables in the PDF", () => {
+  it("a wide table goes landscape and repeats its header on every page", async () => {
+    const rows = Array.from({ length: 120 }, (_, i) => [`Nume ${i}`, "Prenume", "01.01.1990", "36", "Membru", "Fam. X", "+47 900 00 000"]);
+    const spec = { title: "Listă", church, landscape: true, blocks: [{ type: "table" as const, columns: ["Nume", "Prenume", "Data nașterii", "Vârsta", "Statut", "Familie", "Telefon"], rows }] };
+    expect(printToText(spec).split("\n")[1]).toBe("Nume | Prenume | Data nașterii | Vârsta | Statut | Familie | Telefon");
+    const pdf = await renderPdf(spec);
+    const s = pdf.toString("latin1");
+    expect(s).toMatch(/MediaBox \[0 0 841\.89 595\.28\]/);
+    expect((s.match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThan(1);
+  });
+});
+

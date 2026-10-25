@@ -64,6 +64,11 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   const data = byFamily
     ? await listFamilies(ctx, { filter, q, page, functie, ids: categoryIds }, church!.nomen.rudenie)
     : await listPersons(ctx, { filter, q, page, functie, ids: categoryIds });
+  const exportQuery = new URLSearchParams();
+  for (const k of selection.keys) exportQuery.append("categorie", k);
+  if (selection.year) exportQuery.set("an", String(selection.year));
+  if (functie && /^[A-Za-z0-9_-]+$/.test(functie)) exportQuery.set("functie", functie);
+  const exportHref = `/persoane/export?${exportQuery}`;
   const categoryOptions = CATEGORIES.map((c) => ({ value: c.key, label: c.label, group: c.group }));
   const roleOptions = [
     { value: COMMITTEE_FILTER, label: "Comitet" },
@@ -97,6 +102,11 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
             {q || functie ? " · filtrată și după căutare sau funcție" : ""} ·{" "}
             <Link href={hrefWith("/persoane", params, { categorie: null, an: null, pagina: null })}>Arată toată lista</Link>
           </p>
+          {permissions.export(ctx.user.role) ? (
+            <Link href={exportHref} className="btn btn-sm mt-2">
+              Exportă lista
+            </Link>
+          ) : null}
         </div>
       ) : (
         <nav className="segs" aria-label="Filtru">

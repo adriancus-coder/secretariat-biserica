@@ -1598,6 +1598,27 @@
     color: var(--ink);
     text-decoration: none;
   }
+  /* Persoane → Exportă: categories and columns as a grid of choices. */
+  .export-form fieldset.card > legend {
+    padding: 0 4px;
+  }
+  .export-group {
+    margin: 8px 0 4px;
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .export-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+    gap: 2px 12px;
+  }
+  .export-count {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    margin: 0 0 12px;
+  }
   /* Header of a Persoane list opened from a statistic: "Aparținători (16)". */
   .category-head {
     margin-bottom: 14px;

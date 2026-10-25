@@ -179,6 +179,20 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
       );
       return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }), new Paragraph({ spacing: { after: 120 }, children: [] })];
     }
+    case "table": {
+      const line = { style: BorderStyle.SINGLE, size: 4, color: "999999" } as const;
+      const borders = { top: line, bottom: line, left: line, right: line };
+      const row = (cells: string[], bold: boolean) =>
+        new TableRow({
+          tableHeader: bold,
+          cantSplit: true,
+          children: block.columns.map((_, i) => new TableCell({ borders, children: [new Paragraph({ children: [t(cells[i] ?? "", { bold, size: 9 })] })] })),
+        });
+      return [
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [row(block.columns, true), ...block.rows.map((r) => row(r, false))] }),
+        new Paragraph({ spacing: { after: 120 }, children: [] }),
+      ];
+    }
     case "centered":
       return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [t(block.text, { bold: block.bold, size: block.size })] })];
     case "image":
@@ -189,7 +203,8 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
 /** The printed document as a .docx file. */
 export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
   const L = spec.layout ?? { ...DEFAULT_LAYOUT, format: spec.size ?? DEFAULT_LAYOUT.format, fontSize: BODY_PT };
-  const page = PAGE_MM[L.format];
+  const base = PAGE_MM[L.format];
+  const page = spec.landscape ? { width: base.height, height: base.width } : base;
   const details = letterheadDetails(spec.church);
   const letterhead = !L.letterhead ? [] : [
     new Paragraph({ children: [text(`Biserica ${spec.church.nume}`.trim(), { bold: true, size: 18 })] }),

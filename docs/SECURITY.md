@@ -37,6 +37,10 @@ Out of scope: a compromised Render account or database host, and a compromised a
 
 Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: users with an authenticator app then sign in with an e-mail code or a recovery code and set the app up again.
 
+## Person-list export
+
+`POST /api/persoane/export` (Administrator and Secretar) asks for the password again, then trusts a signed, httpOnly 10-minute grant cookie for the same user (`src/server/export-grant.ts`). Each export writes a SECURITY audit entry with the categories, the row count and the format — never the names.
+
 ## Upload and input limits
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.

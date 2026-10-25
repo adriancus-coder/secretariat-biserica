@@ -34,6 +34,8 @@ export type Block =
    * it as one numbered point of the minutes. Paragraphs follow each other like lines of a text.
    */
   | { type: "rich"; doc: RichDoc; marker?: string }
+  /** A table with a header row (person lists); repeated header on every page. */
+  | { type: "table"; columns: string[]; rows: string[][] }
   /** A centered PNG (the application QR code), `width` in points; `alt` stands for it in printToText. */
   | { type: "image"; png: Uint8Array; width: number; alt: string };
 
@@ -55,6 +57,8 @@ export interface PrintSpec {
   size?: "A4" | "A5";
   /** Margins, text size, line height, alignment, letterhead (the minutes); defaults otherwise. */
   layout?: PageLayout;
+  /** Landscape page (wide tables). */
+  landscape?: boolean;
 }
 
 export const b = (text: string): Run => ({ text, bold: true });
@@ -288,6 +292,7 @@ export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): strin
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
     else if (blk.type === "rich") lines.push(...richToText(blk.doc, blk.marker, opts.marks ?? false));
+    else if (blk.type === "table") lines.push(blk.columns.join(" | "), ...blk.rows.map((r) => r.join(" | ")));
     else if (blk.type === "centered") lines.push(blk.text);
     else if (blk.type === "image") lines.push(blk.alt);
     else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${(blk.start ?? 1) + i}.` : "•"} ${it}`));

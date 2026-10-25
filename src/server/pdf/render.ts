@@ -54,6 +54,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   const LINE_HEIGHT = layout.lineHeight;
   const doc = new PDFDocument({
     size: layout.format,
+    layout: spec.landscape ? "landscape" : "portrait",
     margins: MARGIN,
     bufferPages: true,
     info: {
@@ -244,6 +245,38 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.moveTo(left, top + rowH).lineTo(left + width, top + rowH).lineWidth(0.3).strokeColor("#999").stroke();
           doc.y = top + rowH + 2;
         }
+        doc.x = left;
+        doc.y += 10;
+        break;
+      }
+      case "table": {
+        // Column widths by content length (header and a sample of rows), 9 pt text, header repeated on new pages.
+        const size = Math.min(BODY_SIZE, 9);
+        const pad = 3;
+        const n = block.columns.length;
+        const sample = block.rows.slice(0, 200);
+        const weight = block.columns.map((c, i) => Math.min(40, Math.max(c.length, 4, ...sample.map((r) => (r[i] ?? "").length))));
+        const sum = weight.reduce((a, b) => a + b, 0) || 1;
+        const widths = weight.map((w) => (w / sum) * width);
+        const xs = widths.map((_, i) => left + widths.slice(0, i).reduce((a, b) => a + b, 0));
+        const rowHeight = (cells: string[], font: string) => {
+          doc.font(font).fontSize(size);
+          return Math.max(...cells.map((t, i) => doc.heightOfString(t || " ", { width: widths[i] - 2 * pad }))) + 2 * pad;
+        };
+        const drawRow = (cells: string[], font: string, line: number) => {
+          const h = rowHeight(cells, font);
+          if (doc.y + h > bottomLimit()) {
+            doc.addPage();
+            if (font !== "Serif-Bold") drawRow(block.columns, "Serif-Bold", 0.8);
+          }
+          const y = doc.y;
+          doc.font(font).fontSize(size).fillColor("#000");
+          for (let i = 0; i < n; i++) doc.text(cells[i] ?? "", xs[i] + pad, y + pad, { width: widths[i] - 2 * pad });
+          doc.moveTo(left, y + h).lineTo(left + width, y + h).lineWidth(line).strokeColor(line > 0.5 ? "#000" : "#999").stroke();
+          doc.y = y + h;
+        };
+        drawRow(block.columns, "Serif-Bold", 0.8);
+        for (const r of block.rows) drawRow(r, "Serif", 0.3);
         doc.x = left;
         doc.y += 10;
         break;
