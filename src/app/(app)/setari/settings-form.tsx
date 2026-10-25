@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
 import { TextAreaField, TextField } from "@/components/ui/fields";
@@ -86,6 +87,9 @@ export function SettingsForm({
         {nom("tipuriEvenimente", "Tipuri de evenimente", nomen.tipuriEvenimente)}
         {nom("tipuriMentiuni", "Tipuri de mențiuni", nomen.tipuriMentiuni)}
         {nom("gradeRudenie", "Grade de rudenie", nomen.rudenie)}
+        <p className="hint mb-2.5">
+          Funcțiile din biserică (pastor, diacon, comitet …) au pagina lor: <Link href="/setari/functii">Funcții în biserică</Link>.
+        </p>
         <div className="hint">
           Statistica folosește tipurile de eveniment „Nuntă” și „Înmormântare”, iar certificatul de binecuvântare
           gradele „Cap de familie”, „Soție” și „Părinte” — păstrați aceste denumiri.

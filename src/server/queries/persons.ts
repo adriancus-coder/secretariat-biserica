@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
-import { fromDbDate } from "@/lib/dates";
+import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
+import { COMMITTEE_FILTER } from "@/lib/roles";
 import { searchTerms, compareRo } from "@/lib/text";
 import type { PersonStatusKey } from "@/lib/labels";
 import { ActionError, type Ctx } from "../session";
@@ -66,14 +67,27 @@ function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>): Pers
   return { ...p, dataNasterii: fromDbDate(p.dataNasterii), dataIesire: fromDbDate(p.dataIesire) };
 }
 
+/**
+ * The "Funcție" filter: "" = any person, COMMITTEE_FILTER = holders of an active committee role,
+ * otherwise a role id. Roles with an end date in the past do not count.
+ */
+export function roleWhere(functie: string): Prisma.PersonWhereInput {
+  if (!functie) return {};
+  const current = { OR: [{ until: null }, { until: { gte: toDbDate(todayIso())! } }] };
+  if (functie === COMMITTEE_FILTER) return { roles: { some: { ...current, role: { inCommittee: true, active: true } } } };
+  return { roles: { some: { ...current, roleId: functie } } };
+}
+
 export interface ListParams {
   filter: PersonFilter;
   q: string;
   page: number;
+  /** See roleWhere. */
+  functie?: string;
 }
 
-export async function listPersons(ctx: Ctx, { filter, q, page }: ListParams) {
-  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q)] };
+export async function listPersons(ctx: Ctx, { filter, q, page, functie = "" }: ListParams) {
+  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
   const [total, inRecord, anyPerson] = await Promise.all([
     ctx.db.person.count({ where }),
     ctx.db.person.count({ where: { dataIesire: null } }),
@@ -99,8 +113,8 @@ export interface FamilyGroup {
 }
 
 /** Vederea pe familii, paginată după familii (ordonate alfabetic), membrii ordonați după gradul de rudenie. */
-export async function listFamilies(ctx: Ctx, { filter, q, page }: ListParams, rudenieOrder: string[]) {
-  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q)] };
+export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: ListParams, rudenieOrder: string[]) {
+  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
   const [groups, inRecord, anyPerson] = await Promise.all([
     ctx.db.person.groupBy({ by: ["familie"], where, _count: { _all: true } }),
     ctx.db.person.count({ where: { dataIesire: null } }),
@@ -145,6 +159,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     include: {
       groups: { include: { group: { select: { id: true, nume: true } } } },
       application: { select: { id: true, createdAt: true } },
+      roles: { include: { role: { select: { nume: true, sortOrder: true, inCommittee: true } } } },
     },
   });
   if (!person) return null;
@@ -168,6 +183,9 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
   return {
     person,
     groups: person.groups.map((g) => g.group).sort((a, b) => compareRo(a.nume, b.nume)),
+    roles: person.roles
+      .map((r) => ({ ...r.role, since: fromDbDate(r.since) }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || compareRo(a.nume, b.nume)),
     family,
     notes,
     notesCount,

@@ -2,7 +2,8 @@ import { toPrototypeJson } from "@/domain/backup";
 import { todayIso } from "@/lib/dates";
 import { permissions } from "@/lib/permissions";
 import { applicationsToJson } from "@/lib/application-backup";
-import { loadApplications, loadBackup } from "@/server/backup";
+import { addMemberRoles, rolesToJson } from "@/lib/roles-backup";
+import { loadApplications, loadBackup, loadRoles } from "@/server/backup";
 import { getCurrentUser } from "@/server/session";
 import { tenantDb } from "@/server/tenant-db";
 
@@ -12,8 +13,10 @@ export async function GET() {
   if (!user) return new Response("Neautentificat.", { status: 401 });
   if (!permissions.export(user.role)) return new Response("Nu aveți drept de export.", { status: 403 });
   const ctx = { user, db: tenantDb(user.churchId) };
-  const [backup, applications] = await Promise.all([loadBackup(ctx), loadApplications(ctx)]);
-  const json = JSON.stringify({ ...toPrototypeJson(backup), applications: applicationsToJson(applications) }, null, 2);
+  const [backup, applications, roles] = await Promise.all([loadBackup(ctx), loadApplications(ctx), loadRoles(ctx)]);
+  const data = toPrototypeJson(backup);
+  addMemberRoles(data.members as Record<string, Record<string, unknown>>, roles.functii);
+  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roles: rolesToJson(roles.roles) }, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (backup.settings?.nume || "biserica")
     .normalize("NFD")

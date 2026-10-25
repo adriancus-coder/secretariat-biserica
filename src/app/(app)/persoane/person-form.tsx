@@ -7,6 +7,7 @@ import { useActionForm } from "@/components/ui/use-action-form";
 import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
+import { RolesPicker, type RoleChoice } from "./roles-picker";
 
 export type PersonFormValues = Record<string, string>;
 
@@ -17,6 +18,7 @@ export function PersonForm({
   initial,
   families,
   rudenie,
+  roles,
   cancelHref,
   applicationId,
 }: {
@@ -24,6 +26,8 @@ export function PersonForm({
   initial: PersonFormValues;
   families: string[];
   rudenie: string[];
+  /** Active roles, plus inactive ones the person already holds. */
+  roles: RoleChoice[];
   cancelHref: string;
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
@@ -111,6 +115,8 @@ export function PersonForm({
           className="mb-0"
         />
       </fieldset>
+
+      <RolesPicker roles={roles} initial={val("functii")} error={e.functii} />
 
       <TextField
         name="slujire"

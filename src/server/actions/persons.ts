@@ -9,11 +9,16 @@ import { memberName } from "@/lib/format";
 import { personDerived } from "@/lib/person-derived";
 import { applyExitRule, PERSON_FIELDS, personSchema, type PersonInput } from "@/lib/schemas/person";
 import { APPLICATION_FIELDS } from "@/lib/schemas/application";
+import { personRolesSchema } from "@/lib/schemas/roles";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
 import { findDuplicatePerson } from "../queries/applications";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction } from "./run";
+
+/** Fields tracked by the audit log: the person's columns plus the roles held (as names). */
+const PERSON_AUDIT_FIELDS = [...PERSON_FIELDS, "functii"] as const;
 
 function toPersonData(input: PersonInput) {
   return {
@@ -43,6 +48,8 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
     if (applicationId) parseOrThrow(idSchema, applicationId);
     const input = applyExitRule(parseOrThrow(personSchema, Object.fromEntries(formData)));
     const data = toPersonData(input);
+    const roles = parseOrThrow(personRolesSchema, formData.get("functii"));
+    await assertPersonRoles(ctx.db, id, roles);
 
     if (applicationId) {
       const app = await ctx.db.application.findUnique({ where: { id: applicationId }, select: { status: true } });
@@ -61,26 +68,29 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
       if (id) {
         const before = await tx.person.findUnique({ where: { id } });
         if (!before) throw new ActionError("Persoana nu mai există în registru.");
+        const rolesBefore = await personRolesAudit(tx, id);
         const after = await tx.person.update({ where: { id }, data });
+        await writePersonRoles(tx, id, roles);
         await writeAudit(tx, ctx.user, {
           entity: "PERSON",
           entityId: id,
           entityLabel: memberName(after),
           action: "UPDATE",
-          fields: PERSON_FIELDS,
-          before,
-          after,
+          fields: PERSON_AUDIT_FIELDS,
+          before: { ...before, functii: rolesBefore },
+          after: { ...after, functii: await personRolesAudit(tx, id) },
         });
         return id;
       }
       const created = await tx.person.create({ data: { ...data, churchId: ctx.user.churchId } });
+      await writePersonRoles(tx, created.id, roles);
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: created.id,
         entityLabel: memberName(created),
         action: "CREATE",
-        fields: PERSON_FIELDS,
-        after: created,
+        fields: PERSON_AUDIT_FIELDS,
+        after: { ...created, functii: await personRolesAudit(tx, created.id) },
         ...(applicationId ? { extra: { sursa: "cerere de membru" } } : {}),
       });
       if (applicationId) {
@@ -115,14 +125,15 @@ export async function deletePersonAction(id: string): Promise<FormState> {
     await ctx.db.$transaction(async (tx) => {
       const before = await tx.person.findUnique({ where: { id } });
       if (!before) throw new ActionError("Persoana nu mai există în registru.");
+      const functii = await personRolesAudit(tx, id);
       await tx.person.delete({ where: { id } });
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: id,
         entityLabel: memberName(before),
         action: "DELETE",
-        fields: PERSON_FIELDS,
-        before,
+        fields: PERSON_AUDIT_FIELDS,
+        before: { ...before, functii },
       });
     });
   });

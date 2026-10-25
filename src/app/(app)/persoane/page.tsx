@@ -3,10 +3,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { hrefWith, pageParam, Pager, stringParam } from "@/components/ui/pager";
+import { ParamSelect } from "@/components/ui/param-select";
 import { SearchBox } from "@/components/ui/search-box";
 import { todayIso } from "@/lib/dates";
 import { initial } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
+import { COMMITTEE_FILTER } from "@/lib/roles";
+import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
 import {
   listFamilies,
@@ -15,6 +18,7 @@ import {
   PERSON_FILTERS,
   type PersonFilter,
 } from "@/server/queries/persons";
+import { listRoles } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { PersonRow } from "./person-row";
 
@@ -31,12 +35,25 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   const page = pageParam(sp.pagina);
   const today = todayIso();
   const canWrite = permissions.write(ctx.user.role);
-  const params = { filtru: filter === "membri" ? undefined : filter, vedere: byFamily ? "familii" : undefined, q: q || undefined };
+  const roles = await listRoles(ctx);
+  const rawRole = stringParam(sp.functie);
+  const functie =
+    rawRole === COMMITTEE_FILTER || (idSchema.safeParse(rawRole).success && roles.some((r) => r.id === rawRole)) ? rawRole : "";
+  const params = {
+    filtru: filter === "membri" ? undefined : filter,
+    vedere: byFamily ? "familii" : undefined,
+    q: q || undefined,
+    functie: functie || undefined,
+  };
 
   const church = byFamily ? await getChurch(ctx) : null;
   const data = byFamily
-    ? await listFamilies(ctx, { filter, q, page }, church!.nomen.rudenie)
-    : await listPersons(ctx, { filter, q, page });
+    ? await listFamilies(ctx, { filter, q, page, functie }, church!.nomen.rudenie)
+    : await listPersons(ctx, { filter, q, page, functie });
+  const roleOptions = [
+    ...(roles.some((r) => r.inCommittee) ? [{ value: COMMITTEE_FILTER, label: "Comitet (orice funcție din comitet)" }] : []),
+    ...roles.filter((r) => r.holders > 0 || r.active).map((r) => ({ value: r.id, label: r.nume })),
+  ];
   const empty = byFamily ? (data as Awaited<ReturnType<typeof listFamilies>>).groups.length === 0 : data.total === 0;
 
   return (
@@ -65,6 +82,11 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
         <Suspense>
           <SearchBox placeholder="Caută nume, familie, telefon" />
         </Suspense>
+        {roleOptions.length ? (
+          <Suspense>
+            <ParamSelect param="functie" label="Funcție" emptyLabel="Toate funcțiile" options={roleOptions} />
+          </Suspense>
+        ) : null}
         <Link
           href={hrefWith("/persoane", params, { vedere: byFamily ? null : "familii", pagina: null })}
           className="btn btn-sm self-center"

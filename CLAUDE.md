@@ -95,7 +95,7 @@ tests/                  unit/, integration/, prototype/ (parity harness), stubs/
   Therefore:
   - verify every referenced id explicitly, for example with `assertPersonsInChurch(ctx.db, ids)`;
   - write the `churchId` condition by hand in raw SQL.
-- The child tables `MeetingAttendee`, `EventContribution` and `GroupMember` have no `churchId`. Reach them only through their parent.
+- The child tables `MeetingAttendee`, `EventContribution`, `GroupMember` and `PersonRole` have no `churchId`. Reach them only through their parent.
 - Use the global `prisma` client (`src/server/db.ts`) only for:
   - authentication, signup, invitations and password reset;
   - the session;
@@ -241,6 +241,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Accepting goes through `savePersonAction` with a hidden `cerere` field. The person and the ACCEPTED application (with `personId`) are written in one transaction.
   - A same-name, same-birth-date person returns `PersonFormState.duplicate`; `fortat=1` saves anyway.
 - Export/import: the `applications` collection lives in `src/lib/application-backup.ts`, outside `src/domain`; files without it import unchanged.
+
+### Church roles (funcții)
+
+- `ChurchRole` is the church's nomenclature (tenant model); `PersonRole` links persons to roles, with optional `since`/`until`.
+- `DEFAULT_CHURCH_ROLES` (`src/lib/roles.ts`) is created at signup and was backfilled by the `church_roles` migration; keep both in sync.
+- Editing the nomenclature (`/setari/functii`) needs `admin`. A role held by anyone cannot be deactivated.
+- The person form sends the roles as JSON in the hidden field `functii` (`personRolesSchema`); `assertPersonRoles` checks the ids belong to the church. The audit log stores them as the text field `functii`.
+- Export/import: `roles` collection and `functii` (by name) on members, in `src/lib/roles-backup.ts`.
 
 ### Database and migrations
 

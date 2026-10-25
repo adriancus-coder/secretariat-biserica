@@ -7,6 +7,7 @@ import { idSchema } from "@/lib/validation";
 import { getApplication } from "@/server/queries/applications";
 import { getChurch } from "@/server/queries/church";
 import { familyNames } from "@/server/queries/persons";
+import { roleChoices } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { PersonForm, type PersonFormValues } from "../person-form";
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Persoană nouă" };
 export default async function NewPersonPage({ searchParams }: PageProps<"/persoane/nou">) {
   const ctx = await requireCtx("write");
   const sp = await searchParams;
-  const [church, families] = await Promise.all([getChurch(ctx), familyNames(ctx)]);
+  const [church, families, roles] = await Promise.all([getChurch(ctx), familyNames(ctx), roleChoices(ctx, null)]);
   const familie = typeof sp.familie === "string" ? sp.familie.slice(0, 100) : "";
 
   // Accepting a membership application: the form starts from the applicant's data.
@@ -64,6 +65,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
         initial={initial}
         families={families}
         rudenie={church.nomen.rudenie}
+        roles={roles}
         cancelHref={app ? `/cereri/${app.id}` : "/persoane"}
         applicationId={app?.id}
       />

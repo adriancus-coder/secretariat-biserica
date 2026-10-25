@@ -21,6 +21,7 @@ import { computeStats } from "../src/domain/stats";
 import type { PersonRecord } from "../src/domain/types";
 import { inYear, todayIso } from "../src/lib/dates";
 import { noteSearchText, personDerived } from "../src/lib/person-derived";
+import { defaultRolesData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
 
@@ -201,6 +202,25 @@ async function main() {
     if (!id) throw new Error(`persoană necunoscută: ${k}`);
     return id;
   };
+
+  // Funcții în biserică: the default list, held by the committee of the demo church.
+  await prisma.churchRole.createMany({ data: defaultRolesData().map((r) => ({ ...r, churchId })) });
+  const roleIds = new Map(
+    (await prisma.churchRole.findMany({ where: { churchId }, select: { id: true, nume: true } })).map((r) => [r.nume, r.id]),
+  );
+  const held: [string, string, string?][] = [
+    ["daniel", "Pastor", d(15, 9, 1)],
+    ["petru", "Prezbiter", d(10, 1, 15)],
+    ["ion", "Diacon", d(8, 3, 1)],
+    ["ioana", "Secretar", d(4, 1, 10)],
+    ["mihai", "Casier", d(5, 1, 10)],
+    ["emanuel", "Membru comitet"],
+    ["emanuel", "Lider tineret", d(3, 9, 1)],
+    ["ruxandra", "Lider cor"],
+  ];
+  await prisma.personRole.createMany({
+    data: held.map(([k, role, since]) => ({ personId: pid(k), roleId: roleIds.get(role)!, since: since ? date(since) : null })),
+  });
 
   // Evenimente (trecute și viitoare)
   type E = Omit<Prisma.EventUncheckedCreateInput, "churchId" | "data"> & { data: string; contributii?: [string, string][] };
@@ -441,6 +461,7 @@ async function main() {
     grupuri: await prisma.group.count({ where: { churchId } }),
     mentiuni: await prisma.note.count({ where: { churchId } }),
     cereri: await prisma.application.count({ where: { churchId } }),
+    functii: await prisma.personRole.count({ where: { person: { churchId } } }),
   };
   console.log("Gata:", counts);
   console.log(`Autentificare: admin@demo.ro / secretar@demo.ro / vizualizare@demo.ro — parola „${PASSWORD}”.`);

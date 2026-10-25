@@ -68,6 +68,27 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await a.application.count()).toBe(1);
   });
 
+  it("funcțiile din biserică sunt izolate pe biserici", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const role = await a.churchRole.create({ data: { nume: "Diacon", inCommittee: true } as never });
+    expect(role.churchId).toBe(churchA);
+    // The same name is allowed in another church.
+    await b.churchRole.create({ data: { nume: "Diacon" } as never });
+    expect(await b.churchRole.findUnique({ where: { id: role.id } })).toBeNull();
+    expect(await b.churchRole.findMany({ where: { inCommittee: true } })).toHaveLength(0);
+    expect(await b.churchRole.count()).toBe(1);
+    expect((await b.churchRole.updateMany({ data: { active: false } })).count).toBe(1);
+    await expect(b.churchRole.update({ where: { id: role.id }, data: { nume: "X" } })).rejects.toMatchObject({ code: "P2025" });
+    await expect(b.churchRole.delete({ where: { id: role.id } })).rejects.toMatchObject({ code: "P2025" });
+    const kept = await prisma.churchRole.findUniqueOrThrow({ where: { id: role.id } });
+    expect([kept.nume, kept.active]).toEqual(["Diacon", true]);
+    // Persons are reached through the scoped role: church B sees no holders of church A's role.
+    await prisma.personRole.create({ data: { personId: personA, roleId: role.id } });
+    expect(await b.person.count({ where: { roles: { some: { roleId: role.id } } } })).toBe(0);
+    expect(await a.person.count({ where: { roles: { some: { roleId: role.id } } } })).toBe(1);
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

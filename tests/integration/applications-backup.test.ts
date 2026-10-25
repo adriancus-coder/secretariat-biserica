@@ -44,7 +44,7 @@ describe.skipIf(!hasTestDb)("applications in the JSON backup", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     const apps = parseApplicationsJson(json, new Set(parsed.backup.members.map((m) => m.id)));
-    const summary = await importBackup(target, parsed.backup, "merge", apps.applications);
+    const summary = await importBackup(target, parsed.backup, "merge", { applications: apps.applications });
     expect(summary.cereri).toBe(2);
 
     const imported = await target.db.application.findMany({ orderBy: { nume: "asc" }, include: { person: true } });

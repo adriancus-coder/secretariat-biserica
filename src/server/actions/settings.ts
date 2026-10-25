@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { parsePrototypeJson } from "@/domain/backup";
 import { parseApplicationsJson } from "@/lib/application-backup";
+import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
 import { churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
 import { writeAudit } from "../audit";
@@ -71,12 +72,17 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       details = apps.errors;
       throw new ActionError(`Importul a fost oprit: ${apps.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, apps.applications);
-    details = [...parsed.warnings, ...apps.warnings, ...summary.avertismente];
+    const roles = parseRolesJson(raw);
+    if (roles.errors.length) {
+      details = roles.errors;
+      throw new ActionError(`Importul a fost oprit: ${roles.errors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
+    }
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles });
+    details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {
       ok: true,
-      message: `Importate: ${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri${summary.setari ? " și setările bisericii" : ""}.`,
+      message: `Importate: ${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.functii} funcții atribuite${summary.setari ? " și setările bisericii" : ""}.`,
     };
   });
   return { ...state, details };

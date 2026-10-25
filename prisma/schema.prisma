@@ -59,6 +59,7 @@ model Church {
   auditLogs      AuditLog[]
   passwordResets PasswordReset[]
   applications   Application[]
+  roles          ChurchRole[]
 
   @@map("churches")
 }
@@ -207,12 +208,49 @@ model Person {
   mentiuni    Note[]
   documents   Document[]
   application Application?
+  roles       PersonRole[]
 
   @@index([churchId, sortKey])
   @@index([churchId, familie])
   @@index([churchId, statut])
   @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("persons")
+}
+
+/// A function held in the church (Pastor, Diacon, Lider tineret …): the church's own nomenclature.
+model ChurchRole {
+  id          String  @id @default(cuid())
+  churchId    String
+  church      Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nume        String
+  sortOrder   Int     @default(0)
+  /// Holders of this role belong to the committee (comitetul bisericii).
+  inCommittee Boolean @default(false)
+  /// Inactive roles stay on the persons that hold them but cannot be newly assigned.
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  holders PersonRole[]
+
+  @@unique([churchId, nume])
+  @@index([churchId, sortOrder])
+  @@map("church_roles")
+}
+
+/// A role held by a person. No churchId: reached only through Person or ChurchRole (like GroupMember).
+model PersonRole {
+  personId String
+  roleId   String
+  person   Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  role     ChurchRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  since    DateTime?  @db.Date
+  until    DateTime?  @db.Date
+
+  @@id([personId, roleId])
+  @@index([roleId])
+  @@map("person_roles")
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +457,7 @@ enum AuditEntity {
   USER
   IMPORT
   APPLICATION
+  CHURCH_ROLE
 }
 
 enum AuditAction {

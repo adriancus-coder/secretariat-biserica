@@ -633,6 +633,58 @@
     outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
+  /* Setări → Funcții: one row per role */
+  .item.role-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 12px;
+  }
+  .role-move {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .role-move .btn {
+    min-width: 40px;
+    font-size: 16px;
+  }
+  .role-edit {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+  .role-error {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  @media (min-width: 820px) {
+    .item.role-item {
+      grid-template-columns: auto minmax(0, 32rem);
+    }
+  }
+  /* Person form: church roles */
+  .roles-grid {
+    display: grid;
+    gap: 8px;
+  }
+  @media (min-width: 640px) {
+    .roles-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .role-since {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 4px 12px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .role-since input {
+    flex: 1;
+    min-height: 40px;
+  }
   /* Honeypot field: hidden from people, visible to naive bots */
   .hp {
     position: absolute;

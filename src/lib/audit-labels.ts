@@ -75,6 +75,10 @@ export const FIELD_LABELS: Record<string, string> = {
   tipCerere: "Tip cerere",
   mesaj: "Mesaj",
   motiv: "Motivul respingerii",
+  functii: "Funcții",
+  comitet: "Face parte din comitet",
+  activ: "Activă",
+  pozitie: "Poziția în listă",
 };
 
 const DATE_FIELDS = new Set(["dataNasterii", "dataMembru", "dataBotez", "dataBinecuvantare", "dataIesire", "data"]);
@@ -108,4 +112,5 @@ export const ENTITY_LABEL = {
   USER: "Utilizator",
   IMPORT: "Import",
   APPLICATION: "Cerere de membru",
+  CHURCH_ROLE: "Funcție în biserică",
 } as const;

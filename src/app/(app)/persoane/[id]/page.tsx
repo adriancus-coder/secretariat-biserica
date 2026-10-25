@@ -25,7 +25,7 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
   const ctx = await requireCtx();
   const detail = await getPersonDetail(ctx, id);
   if (!detail) notFound();
-  const { person: x, family, groups, notes, notesCount, documents, audit } = detail;
+  const { person: x, family, groups, roles, notes, notesCount, documents, audit } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
 
@@ -79,6 +79,17 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
         ) : null}
       </PageHead>
 
+      {roles.length ? (
+        <div className="mb-3" aria-label="Funcții în biserică">
+          {roles.map((r) => (
+            <span key={r.nume} className="pill">
+              {r.nume}
+              {r.inCommittee ? " · comitet" : ""}
+              {r.since ? ` · din ${fmt(r.since)}` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {x.application ? (
         <p className="hint mb-3">
           Creat din <Link href={`/cereri/${x.application.id}`}>cererea din {fmt(x.application.createdAt.toISOString().slice(0, 10))}</Link>

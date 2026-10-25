@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import type { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
+import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
@@ -160,7 +161,33 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
   }));
 }
 
+/** Church roles and the roles held by each person, for the `roles` collection and members' `functii`. */
+export async function loadRoles(ctx: Ctx): Promise<{ roles: BRole[]; functii: Map<string, BPersonRole[]> }> {
+  const rows = await ctx.db.churchRole.findMany({
+    orderBy: [{ sortOrder: "asc" }, { nume: "asc" }],
+    include: { holders: { select: { personId: true, since: true, until: true } } },
+  });
+  const functii = new Map<string, BPersonRole[]>();
+  for (const r of rows) {
+    for (const h of r.holders) {
+      const list = functii.get(h.personId) ?? [];
+      list.push({ nume: r.nume, din: fromDbDate(h.since), pana: fromDbDate(h.until) });
+      functii.set(h.personId, list);
+    }
+  }
+  return {
+    roles: rows.map((r) => ({ id: r.id, nume: r.nume, ordine: r.sortOrder, comitet: r.inCommittee, activ: r.active })),
+    functii,
+  };
+}
+
 export type ImportMode = "merge" | "replace";
+
+/** Collections outside the prototype's format; null/absent = not in the file (existing data is kept). */
+export interface ImportExtras {
+  applications?: BApplication[] | null;
+  roles?: ParsedRoles | null;
+}
 
 export interface ImportSummary {
   persoane: number;
@@ -170,6 +197,8 @@ export interface ImportSummary {
   grupuri: number;
   mentiuni: number;
   cereri: number;
+  /** Roles held by persons, as imported. */
+  functii: number;
   setari: boolean;
   avertismente: string[];
 }
@@ -216,21 +245,19 @@ async function chunked<T>(items: T[], size: number, fn: (chunk: T[]) => Promise<
 
 /**
  * Importă o copie de siguranță validată, într-o singură tranzacție.
- * `applications` is null when the file has no `applications` collection: existing applications
- * are then left as they are, even in replace mode.
+ * An extra collection missing from the file (applications, roles) leaves the existing rows as they
+ * are, even in replace mode.
  */
-export async function importBackup(
-  ctx: Ctx,
-  backup: Backup,
-  mode: ImportMode,
-  applications: BApplication[] | null = null,
-): Promise<ImportSummary> {
+export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, extras: ImportExtras = {}): Promise<ImportSummary> {
   const churchId = ctx.user.churchId;
+  const applications = extras.applications ?? null;
+  const rolesIn = extras.roles ?? null;
   const warnings: string[] = [];
   return ctx.db.$transaction(
     async (tx) => {
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
+        if (rolesIn?.roles) await tx.churchRole.deleteMany({});
         await tx.note.deleteMany({});
         await tx.document.deleteMany({});
         await tx.group.deleteMany({});
@@ -273,6 +300,43 @@ export async function importBackup(
         else newPersons.push({ ...personData(m), id, churchId, createdAt: ts(m.createdAt) });
       }
       await chunked(newPersons, 500, (c) => tx.person.createMany({ data: c }));
+
+      // Funcții: matched by name (unique per church); unknown names in `functii` create the role.
+      let functii = 0;
+      if (rolesIn && (rolesIn.roles || rolesIn.functii.size)) {
+        const known = new Map(
+          (await tx.churchRole.findMany({ select: { id: true, nume: true, sortOrder: true } })).map((r) => [r.nume.toLowerCase(), r]),
+        );
+        let nextOrder = Math.max(-1, ...[...known.values()].map((r) => r.sortOrder)) + 1;
+        const ensureRole = async (nume: string, from?: BRole): Promise<string> => {
+          const found = known.get(nume.toLowerCase());
+          if (found) {
+            if (from) await tx.churchRole.update({ where: { id: found.id }, data: { sortOrder: from.ordine, inCommittee: from.comitet, active: from.activ } });
+            return found.id;
+          }
+          const created = await tx.churchRole.create({
+            data: {
+              churchId,
+              nume,
+              sortOrder: from?.ordine ?? nextOrder++,
+              inCommittee: from?.comitet ?? false,
+              active: from?.activ ?? true,
+            },
+          });
+          known.set(nume.toLowerCase(), { id: created.id, nume, sortOrder: created.sortOrder });
+          return created.id;
+        };
+        for (const r of rolesIn.roles ?? []) await ensureRole(r.nume, r);
+        for (const [memberId, list] of rolesIn.functii) {
+          const personId = people.map.get(memberId);
+          if (!personId) continue;
+          const data = [];
+          for (const f of list) data.push({ personId, roleId: await ensureRole(f.nume), since: toDbDate(f.din), until: toDbDate(f.pana) });
+          await tx.personRole.deleteMany({ where: { personId } });
+          await tx.personRole.createMany({ data });
+          functii += data.length;
+        }
+      }
 
       // Ședințe
       const meet = await planIds(tx, TABLES.meetings, backup.meetings.map((m) => m.id), churchId);
@@ -468,6 +532,7 @@ export async function importBackup(
         grupuri: backup.groups.length,
         mentiuni: backup.notes.length,
         cereri: applications?.length ?? 0,
+        functii,
         setari: Boolean(backup.settings),
         avertismente: warnings,
       };
@@ -479,7 +544,7 @@ export async function importBackup(
         fields: ["mod", "inregistrari"],
         after: {
           mod: mode === "replace" ? "înlocuire" : "îmbinare",
-          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri`,
+          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri, ${summary.functii} funcții atribuite`,
         },
       });
       return summary;
