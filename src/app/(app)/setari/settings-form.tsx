@@ -145,7 +145,7 @@ export function SettingsForm({
         <div className="hint mb-2.5">Câte o valoare pe linie. O listă goală revine la valorile implicite.</div>
         {nom("tipuriSedinte", "Tipuri de ședințe", nomen.tipuriSedinte)}
         <div className="attendance-rules mb-3.5">
-          <div className="text-[13px] font-medium text-ink-2 mb-1">Lista de prezență la ședința nouă</div>
+          <div className="text-[0.8125rem] font-medium text-ink-2 mb-1">Lista de prezență la ședința nouă</div>
           <p className="hint !mt-0 mb-2">
             „Toți membrii” bifează membrii în evidență, „Comitetul” pe cei bifați „Membru în comitet” pe fișa persoanei; cei bifați automat și debifați apar ca
             absenți. Un tip nou primește regula după salvare.

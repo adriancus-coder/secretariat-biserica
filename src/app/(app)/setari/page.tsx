@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { TextSizeControl } from "@/components/text-size-control";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
+import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { getChurch } from "@/server/queries/church";
 import { requestOrigin } from "@/server/request-origin";
@@ -24,7 +26,9 @@ export const metadata: Metadata = { title: "Setări" };
 export default async function SettingsPage() {
   const ctx = await requireCtx();
   const [church, statutes] = await Promise.all([getChurch(ctx), listStatutes(ctx.user.churchId)]);
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   const role = ctx.user.role;
   const formUrl = appUrl(`/cerere/${church.slug}`, await requestOrigin());
   // The QR code and the sending controls are for those who may write; it follows the saved slug.
@@ -72,8 +76,12 @@ export default async function SettingsPage() {
       />
       <div className="card mt-7">
         <h3>Aspect</h3>
-        <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>
+        <p className="hint mb-3">Tema și mărimea textului se păstrează pe acest dispozitiv.</p>
         <ThemeSwitcher current={theme} />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="font-medium">Mărimea textului</span>
+          <TextSizeControl current={textSize} />
+        </div>
       </div>
       <p className="hint mt-5">
         Datele sunt partajate cu toți utilizatorii bisericii dumneavoastră și nu sunt vizibile altor biserici.

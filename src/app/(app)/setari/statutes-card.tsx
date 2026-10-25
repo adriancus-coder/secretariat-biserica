@@ -47,7 +47,7 @@ function StatuteBlock({ kind, slug, row, readOnly }: { kind: StatuteKind; slug: 
       )}
       {readOnly ? null : (
         <div className="actions !pt-0 !mt-0">
-          <form action={action} className="flex flex-wrap items-center gap-2">
+          <form action={action} className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
             <input name="fisier" type="file" accept="application/pdf" required aria-label={`Fișierul PDF: ${s.label}`} className="max-w-full" />
             <button type="submit" className="btn" disabled={pending}>
               {pending ? "Se încarcă…" : row ? "Înlocuiește" : "Încarcă"}

@@ -390,6 +390,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Touch targets are at least 44 px.
 - No technical jargon in the UI: no "token", "API", "server", environment variable names or error codes.
 - Mobile-first: check every change at 390 px width and on desktop, in the light and the dark theme.
+- Text size on screen (A⁻ / A⁺ in "Mai mult", the sidebar footer, Setări → Aspect and Cont → Aspect; `src/components/text-size-control.tsx`): 100 / 115 / 130 %, cookie `text`, `data-text-size` on `<html>` sets the root font size. Font sizes are in rem (never px) so they follow it; at 115 / 130 % lists and buttons wrap instead of truncating and small buttons grow to 44 px. Every screen must fit at 390 px at 130 % (no horizontal scroll).
 
 ### Final report
 

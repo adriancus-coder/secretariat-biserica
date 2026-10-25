@@ -13,7 +13,7 @@ export function ImportForm() {
         <input id="fisier" name="fisier" type="file" accept="application/json,.json" required />
       </div>
       <fieldset className="field">
-        <legend className="text-[13px] text-ink-2 font-medium mb-1">Mod</legend>
+        <legend className="text-[0.8125rem] text-ink-2 font-medium mb-1">Mod</legend>
         <label className="check !border-0 !py-1">
           <input type="radio" name="mod" value="merge" checked={mode === "merge"} onChange={() => setMode("merge")} />
           <span>
@@ -42,7 +42,7 @@ export function ImportForm() {
         <div className={`alert ${state.ok ? "alert-ok" : ""}`} role={state.ok ? "status" : "alert"}>
           {state.message}
           {state.details?.length ? (
-            <ul className="mt-2 list-disc pl-5 text-[13px]">
+            <ul className="mt-2 list-disc pl-5 text-[0.8125rem]">
               {state.details.slice(0, 20).map((d, i) => (
                 <li key={i}>{d}</li>
               ))}

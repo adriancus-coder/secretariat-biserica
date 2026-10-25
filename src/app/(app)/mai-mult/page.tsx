@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Icon } from "@/components/shell/icons";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
+import { TextSizeControl } from "@/components/text-size-control";
 import { PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
+import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { tenantDb } from "@/server/tenant-db";
@@ -15,6 +18,7 @@ export default async function MorePage() {
   const pending = permissions.write(user.role)
     ? await tenantDb(user.churchId).application.count({ where: { status: "PENDING" } })
     : 0;
+  const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <>
       <PageHead title="Mai mult" />
@@ -36,6 +40,10 @@ export default async function MorePage() {
             Ieșire din cont
           </button>
         </form>
+      </div>
+      <div className="card mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="font-medium">Mărimea textului</span>
+        <TextSizeControl current={textSize} />
       </div>
     </>
   );

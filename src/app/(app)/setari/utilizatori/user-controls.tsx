@@ -21,7 +21,7 @@ function CopyLink({ link }: { link: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="flex gap-2 items-center mt-2 flex-wrap">
-      <input readOnly value={link} className="flex-1 min-w-0 font-mono text-[13px]" onFocus={(e) => e.currentTarget.select()} aria-label="Link" />
+      <input readOnly value={link} className="flex-1 min-w-0 font-mono text-[0.8125rem]" onFocus={(e) => e.currentTarget.select()} aria-label="Link" />
       <button
         type="button"
         className="btn btn-sm"
@@ -92,7 +92,7 @@ export function RoleSelect({ userId, role, disabled }: { userId: string; role: R
         defaultValue={role}
         disabled={disabled || pending}
         aria-label="Rol"
-        className="!w-auto min-h-10 !py-1.5 text-[14px]"
+        className="!w-auto min-h-10 !py-1.5 text-[0.875rem]"
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
       >
         {roleOptions.map((o) => (

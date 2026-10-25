@@ -31,7 +31,7 @@ function ChangeList({ action, changes }: { action: AuditAction; changes: unknown
   const entries = Object.entries(changes as Record<string, unknown>).sort(([a], [b]) => rank(a) - rank(b));
   if (!entries.length) return null;
   return (
-    <ul className="mt-1 text-[13px] text-ink-2 space-y-0.5">
+    <ul className="mt-1 text-[0.8125rem] text-ink-2 space-y-0.5">
       {entries.map(([field, value]) => {
         const label = FIELD_LABELS[field] ?? field;
         if (action === "UPDATE" && Array.isArray(value) && value.length === 2) {
@@ -59,13 +59,13 @@ export function AuditTrail({ rows, showLabel = false }: { rows: AuditRow[]; show
     <ol className="space-y-3">
       {rows.map((r) => (
         <li key={r.id} className="border-b border-line pb-2 last:border-0">
-          <div className="text-[13px]">
+          <div className="text-[0.8125rem]">
             <span className="text-ink-3">{formatDateTime(r.createdAt)}</span> ·{" "}
             <b className="font-medium">{r.userName || "—"}</b> {ACTION_LABEL[r.action]}
             {showLabel && r.entityLabel ? <> „{r.entityLabel}”</> : null}
           </div>
           <details className="mt-0.5">
-            <summary className="text-[12.5px] text-ink-3 cursor-pointer select-none">detalii</summary>
+            <summary className="text-[0.7812rem] text-ink-3 cursor-pointer select-none">detalii</summary>
             <ChangeList action={r.action} changes={r.changes} />
           </details>
         </li>

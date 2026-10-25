@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { TextSizeControl } from "@/components/text-size-control";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
 import { ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/labels";
+import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { logoutAction, logoutEverywhereAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
@@ -17,7 +19,9 @@ import { hasLegacyRecoveryCodes } from "@/server/two-factor";
 export default async function AccountPage({ searchParams }: PageProps<"/cont">) {
   const user = await requireUser();
   const sp = await searchParams;
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   const security = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
     select: { totpEnabled: true, emailOtpEnabled: true, recoveryCodes: true, church: { select: { require2fa: true } } },
@@ -60,8 +64,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
       </div>
       <div className="card">
         <h3>Aspect</h3>
-        <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>
+        <p className="hint mb-3">Tema și mărimea textului se păstrează pe acest dispozitiv.</p>
         <ThemeSwitcher current={theme} />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="font-medium">Mărimea textului</span>
+          <TextSizeControl current={textSize} />
+        </div>
       </div>
       <div className="actions mt-4">
         <form action={logoutAction}>

@@ -95,6 +95,8 @@
 @layer base {
   html {
     height: 100%;
+    /* "Mărimea textului" (A⁻ / A⁺): every text size is in rem, so it follows this. */
+    font-size: 100%;
     scroll-padding-top: env(safe-area-inset-top, 0px);
   }
   body {
@@ -102,7 +104,7 @@
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-sans);
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
@@ -152,7 +154,7 @@
   }
   label {
     display: block;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-2);
     margin-bottom: 5px;
     font-weight: 500;
@@ -168,6 +170,15 @@
       transition: none !important;
       animation: none !important;
     }
+  }
+}
+
+@layer base {
+  html[data-text-size="115"] {
+    font-size: 115%;
+  }
+  html[data-text-size="130"] {
+    font-size: 130%;
   }
 }
 
@@ -192,7 +203,7 @@
     gap: 12px;
   }
   .shell-top .church {
-    font-size: 13px;
+    font-size: 0.8125rem;
     letter-spacing: 0.01em;
     opacity: 0.8;
     margin-bottom: 2px;
@@ -200,12 +211,12 @@
   .shell-top .title {
     font-family: var(--font-serif);
     font-weight: 600;
-    font-size: 24px;
+    font-size: 1.5rem;
     line-height: 1.15;
     color: #fff;
   }
   .shell-top .mode {
-    font-size: 12px;
+    font-size: 0.75rem;
     opacity: 0.75;
     white-space: nowrap;
     color: #f4f1e8;
@@ -230,7 +241,7 @@
     flex: 1;
     padding: 6px 2px;
     border-radius: 10px;
-    font-size: 11.5px;
+    font-size: 0.7188rem;
     color: var(--ink-3);
     display: flex;
     flex-direction: column;
@@ -268,7 +279,7 @@
     text-decoration: none;
     padding: 8px 10px;
     border-radius: 10px;
-    font-size: 13.5px;
+    font-size: 0.8438rem;
     width: 100%;
     text-align: left;
     background: none;
@@ -315,7 +326,7 @@
       flex-direction: row;
       justify-content: flex-start;
       gap: 10px;
-      font-size: 14px;
+      font-size: 0.875rem;
       color: #c9cdd9;
       padding: 9px 10px;
     }
@@ -350,11 +361,11 @@
     flex-wrap: wrap;
   }
   .page-head h2 {
-    font-size: 26px;
+    font-size: 1.625rem;
   }
   .page-head .sub {
     color: var(--ink-3);
-    font-size: 13px;
+    font-size: 0.8125rem;
     margin-top: 2px;
   }
   .toolbar {
@@ -422,7 +433,7 @@
     justify-content: space-between;
     gap: 8px;
     margin-top: 14px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-3);
   }
 
@@ -435,7 +446,7 @@
     color: var(--paper);
     padding: 10px 16px;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: 0.875rem;
     z-index: 60;
     box-shadow: var(--shadow);
   }
@@ -489,7 +500,7 @@
   }
   .btn-sm {
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     border-radius: 8px;
     min-height: 40px;
   }
@@ -503,7 +514,7 @@
     margin-bottom: 14px;
   }
   .field-error {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--warn);
     margin-top: 4px;
   }
@@ -524,7 +535,7 @@
     gap: 10px;
     padding: 8px 0;
     border-bottom: 1px solid var(--line);
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--ink);
     margin: 0;
     font-weight: 400;
@@ -536,7 +547,7 @@
     gap: 12px;
     min-height: 44px;
     margin: 0 0 6px;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--ink);
     font-weight: 400;
     cursor: pointer;
@@ -582,7 +593,7 @@
     padding: 0;
   }
   .choices legend {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-2);
     margin-bottom: 5px;
     font-weight: 500;
@@ -597,7 +608,7 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--field);
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--ink);
     font-weight: 400;
     margin: 0;
@@ -648,7 +659,7 @@
   }
   .role-move .btn {
     min-width: 40px;
-    font-size: 16px;
+    font-size: 1rem;
   }
   .role-edit {
     display: grid;
@@ -671,7 +682,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 4px 0;
-    font-size: 15px;
+    font-size: 0.9375rem;
     font-weight: 400;
     color: var(--ink);
   }
@@ -807,7 +818,7 @@
     display: block;
   }
   .totp-secret {
-    font-size: 15px;
+    font-size: 0.9375rem;
     letter-spacing: 0.04em;
     overflow-wrap: anywhere;
     text-align: center;
@@ -816,7 +827,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px 12px;
-    font-size: 16px;
+    font-size: 1rem;
   }
   /* Previous / next person */
   .person-nav {
@@ -835,7 +846,7 @@
   .person-nav-pos {
     flex: 1;
     text-align: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--ink-2);
   }
   /* A labelled group of fields inside a form card (e.g. "Botez în apă") */
@@ -847,7 +858,7 @@
   }
   .subfields legend {
     padding: 0 6px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--ink-2);
   }
@@ -891,7 +902,7 @@
   .send-list li {
     padding: 8px 0;
     border-bottom: 1px solid var(--line);
-    font-size: 14px;
+    font-size: 0.875rem;
     overflow-wrap: anywhere;
   }
   /* Person form: role groups */
@@ -901,7 +912,7 @@
   }
   .role-block h4 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--ink-2);
   }
@@ -931,7 +942,7 @@
     align-items: center;
     gap: 8px;
     margin: 6px 0 4px 12px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-2);
   }
   .role-since input {
@@ -952,7 +963,7 @@
     gap: 10px;
     min-height: 44px;
     padding: 6px 0;
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--ink);
     font-weight: 400;
     cursor: pointer;
@@ -988,7 +999,7 @@
     border-radius: 999px;
     background: var(--gold);
     color: #1e1a0e;
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
     line-height: 1;
   }
@@ -1019,7 +1030,7 @@
     min-height: 44px;
   }
   .hint {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-3);
     margin-top: 4px;
   }
@@ -1032,7 +1043,7 @@
     margin-bottom: 12px;
   }
   .card > h3 {
-    font-size: 17px;
+    font-size: 1.0625rem;
     margin-bottom: 6px;
   }
   .stats {
@@ -1048,13 +1059,13 @@
   }
   .stat b {
     font-family: var(--font-serif);
-    font-size: 24px;
+    font-size: 1.5rem;
     display: block;
     line-height: 1;
     font-weight: 600;
   }
   .stat span {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--ink-3);
   }
 
@@ -1084,7 +1095,7 @@
     color: var(--gold);
     font-family: var(--font-serif);
     font-weight: 600;
-    font-size: 16px;
+    font-size: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1101,11 +1112,11 @@
   }
   .item .date b {
     display: block;
-    font-size: 22px;
+    font-size: 1.375rem;
     font-weight: 600;
   }
   .item .date span {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--ink-3);
     letter-spacing: 0.02em;
   }
@@ -1136,14 +1147,14 @@
     white-space: nowrap;
   }
   .item .m {
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--ink-3);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .tag {
-    font-size: 11.5px;
+    font-size: 0.7188rem;
     padding: 2px 8px;
     border-radius: 99px;
     background: var(--panel);
@@ -1166,7 +1177,7 @@
     display: inline-block;
     padding: 3px 9px;
     border-radius: 99px;
-    font-size: 12px;
+    font-size: 0.75rem;
     background: var(--gold-soft);
     color: var(--gold);
     margin: 2px 4px 2px 0;
@@ -1180,7 +1191,7 @@
   .letter {
     font-family: var(--font-serif);
     color: var(--gold);
-    font-size: 14px;
+    font-size: 0.875rem;
     padding: 14px 4px 4px;
     font-weight: 600;
   }
@@ -1191,7 +1202,7 @@
   }
   .empty h3 {
     color: var(--ink);
-    font-size: 20px;
+    font-size: 1.25rem;
     margin-bottom: 6px;
   }
 
@@ -1206,10 +1217,14 @@
   }
   .segs a {
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
     text-align: center;
     padding: 7px 4px;
     border-radius: 8px;
-    font-size: 13.5px;
+    font-size: 0.8438rem;
     color: var(--ink-2);
     text-decoration: none;
   }
@@ -1232,7 +1247,7 @@
     grid-template-columns: 76px 1fr 34px;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 0.8125rem;
   }
   .bar .track {
     height: 10px;
@@ -1260,7 +1275,7 @@
     margin-bottom: 14px;
   }
   .cal .wd {
-    font-size: 11px;
+    font-size: 0.6875rem;
     color: var(--ink-3);
     text-align: center;
     padding: 4px 0;
@@ -1273,7 +1288,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--ink);
     position: relative;
     text-decoration: none;
@@ -1311,19 +1326,19 @@
 
   /* Fișe de detaliu */
   .detail dt {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--ink-3);
     margin-top: 10px;
   }
   .detail dd {
     margin: 0;
-    font-size: 16px;
+    font-size: 1rem;
   }
 
   .alert {
     border-radius: 10px;
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: 0.875rem;
     margin-bottom: 14px;
     background: var(--warn-soft);
     color: var(--warn);
@@ -1436,7 +1451,7 @@
     border-radius: 8px;
     background: transparent;
     color: var(--ink);
-    font-size: 17px;
+    font-size: 1.0625rem;
   }
   .rt-tool:hover:not(:disabled) {
     border-color: var(--line);
@@ -1455,7 +1470,7 @@
     width: auto;
     min-height: 44px;
     padding: 6px 8px;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .rt-sep {
     flex: 0 0 1px;
@@ -1539,4 +1554,71 @@
       background: #fff;
     }
   }
+
+  /* A⁻ / A⁺ (src/components/text-size-control.tsx). */
+  .text-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .text-size button {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--field);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  .text-size button:disabled {
+    opacity: 0.4;
+  }
+  .text-size-value {
+    min-width: 4em;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+  .text-size-dark button {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #f4f1e8;
+  }
+  .text-size-dark .text-size-value {
+    color: #f4f1e8;
+    opacity: 0.8;
+  }
+}
+
+/*
+ * Bigger text on screen (data-text-size 115 / 130 on <html>): nothing is cut off with an ellipsis
+ * and nothing pushes the page sideways; small buttons grow to 44 px. Outside the layers, so it also
+ * beats Tailwind's `truncate` utility.
+ */
+input,
+select,
+textarea {
+  min-width: 0;
+}
+select {
+  min-height: 44px;
+}
+input[type="file"] {
+  max-width: 100%;
+}
+html[data-text-size] main .truncate,
+html[data-text-size] .item .t,
+html[data-text-size] .item .m {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+html[data-text-size] .btn {
+  white-space: normal;
+  text-align: center;
+}
+html[data-text-size] .btn-sm {
+  min-height: 44px;
 }

@@ -11,6 +11,7 @@ import "@fontsource/source-serif-4/latin-ext-400.css";
 import "@fontsource/source-serif-4/latin-600.css";
 import "@fontsource/source-serif-4/latin-ext-600.css";
 import "./globals.css";
+import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 
 export const metadata: Metadata = {
@@ -27,9 +28,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   return (
-    <html lang="ro" data-theme={theme === "auto" ? undefined : theme}>
+    <html lang="ro" data-theme={theme === "auto" ? undefined : theme} data-text-size={textSize === "100" ? undefined : textSize}>
       <body>{children}</body>
     </html>
   );

@@ -15,7 +15,7 @@ export function PageHead({ title, sub, children }: { title: ReactNode; sub?: Rea
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-1 text-[13px] text-ink-3 no-underline mb-2 hover:text-ink">
+    <Link href={href} className="inline-flex items-center gap-1 text-[0.8125rem] text-ink-3 no-underline mb-2 hover:text-ink">
       <span aria-hidden="true">‹</span> {children}
     </Link>
   );
