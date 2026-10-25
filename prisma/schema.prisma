@@ -65,6 +65,7 @@ model Church {
   passwordResets  PasswordReset[]
   applications    Application[]
   roles           ChurchRole[]
+  roleGroups      RoleGroup[]
   families        Family[]
   churchDocuments ChurchDocument[]
 
@@ -208,8 +209,12 @@ model Person {
   modIesire          ExitMode?
   bisericaDestinatie String    @default("")
 
-  slujire String @default("")
-  note    String @default("")
+  /// Legacy free text "Slujire / responsabilități": moved into the note by the person_form_polish migration;
+  /// no longer edited, kept one release (export writes it, import reads it).
+  slujire   String  @default("")
+  note      String  @default("")
+  /// Member of the church committee (attendance rule "Comitetul", Acasă card, Persoane filter).
+  inComitet Boolean @default(false)
 
   /// Derivat: nume, prenume, familie, telefon, e-mail — litere mici, fără diacritice (căutare).
   searchText String @default("")
@@ -237,15 +242,18 @@ model Person {
 
 /// A family, defined by its head. Members point to it through Person.familyId.
 model Family {
-  id       String  @id @default(cuid())
-  churchId String
-  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  churchId    String
+  church      Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
   /// Display name, by default "Fam. <Prenume Nume of the head>".
-  nume     String
-  headId   String? @unique
-  head     Person? @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
-  adresa   String  @default("")
-  note     String  @default("")
+  nume        String
+  headId      String? @unique
+  head        Person? @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
+  adresa      String  @default("")
+  note        String  @default("")
+  /// Created automatically (migration or import from family text), still with its default name and
+  /// never edited; "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
+  autoCreated Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -258,15 +266,15 @@ model Family {
 
 /// A function held in the church (Pastor, Diacon, Lider tineret …): the church's own nomenclature.
 model ChurchRole {
-  id          String  @id @default(cuid())
-  churchId    String
-  church      Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  nume        String
-  sortOrder   Int     @default(0)
-  /// Holders of this role belong to the committee (comitetul bisericii).
-  inCommittee Boolean @default(false)
+  id        String    @id @default(cuid())
+  churchId  String
+  church    Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nume      String
+  sortOrder Int       @default(0)
+  groupId   String
+  group     RoleGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
   /// Inactive roles stay on the persons that hold them but cannot be newly assigned.
-  active      Boolean @default(true)
+  active    Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,7 +283,28 @@ model ChurchRole {
 
   @@unique([churchId, nume])
   @@index([churchId, sortOrder])
+  @@index([groupId])
   @@map("church_roles")
+}
+
+/// A group of the church's role nomenclature ("Funcții", "Slujiri", …), shown as one block on the person form.
+model RoleGroup {
+  id        String  @id @default(cuid())
+  churchId  String
+  church    Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nume      String
+  sortOrder Int     @default(0)
+  /// An inactive group is hidden from the person form; it cannot be deactivated while it has active entries.
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles ChurchRole[]
+
+  @@unique([churchId, nume])
+  @@index([churchId, sortOrder])
+  @@map("role_groups")
 }
 
 /// A role held by a person. No churchId: reached only through Person or ChurchRole (like GroupMember).

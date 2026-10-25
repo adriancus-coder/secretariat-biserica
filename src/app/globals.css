@@ -634,7 +634,7 @@
     outline-offset: 2px;
   }
   /* Setări → Funcții: one row per role */
-  .item.role-item {
+  .role-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
@@ -782,6 +782,26 @@
   .sign-actions .spacer {
     flex: 1;
   }
+  /* Previous / next person */
+  .person-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+  }
+  .person-nav .btn {
+    flex: 0 0 auto;
+  }
+  .person-nav .btn[aria-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .person-nav-pos {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
   /* A labelled group of fields inside a form card (e.g. "Botez în apă") */
   .subfields {
     margin: 0 0 14px;
@@ -837,6 +857,28 @@
     border-bottom: 1px solid var(--line);
     font-size: 14px;
     overflow-wrap: anywhere;
+  }
+  /* Person form: role groups */
+  .role-block {
+    padding: 10px 0 14px;
+    border-top: 1px solid var(--line);
+  }
+  .role-block h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .role-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .role-add input {
+    flex: 1 1 12rem;
+    min-height: 44px;
   }
   /* Person form: church roles */
   .roles-grid {
@@ -921,6 +963,24 @@
     border-radius: 10px;
     padding: 0 12px;
     background: var(--field);
+  }
+  .add-member-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .add-member-row .choice {
+    flex: 1 1 14rem;
+    border: 0;
+    background: transparent;
+    padding-left: 0;
+  }
+  .add-member-row select {
+    flex: 0 1 11rem;
+    min-height: 44px;
   }
   .hint {
     font-size: 13px;
@@ -1075,6 +1135,11 @@
     color: var(--gold);
     margin: 2px 4px 2px 0;
     text-decoration: none;
+  }
+  .pill-accent {
+    background: var(--accent);
+    color: var(--paper);
+    font-weight: 600;
   }
   .letter {
     font-family: var(--font-serif);

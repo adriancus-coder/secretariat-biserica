@@ -92,6 +92,8 @@ export const FIELD_LABELS: Record<string, string> = {
   nesemnate: "Prezenți fără semnătură",
   marime: "Mărime",
   comitet: "Face parte din comitet",
+  inComitet: "Membru în comitet",
+  grup: "Grup",
   activ: "Activă",
   pozitie: "Poziția în listă",
 };

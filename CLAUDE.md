@@ -95,7 +95,7 @@ tests/                  unit/, integration/, prototype/ (parity harness), stubs/
   Therefore:
   - verify every referenced id explicitly, for example with `assertPersonsInChurch(ctx.db, ids)`;
   - write the `churchId` condition by hand in raw SQL.
-- The child tables `MeetingAttendee`, `EventContribution`, `GroupMember` and `PersonRole` have no `churchId`. Reach them only through their parent.
+- The child tables `MeetingAttendee`, `EventContribution`, `GroupMember`, `PersonRole`, `MeetingSignature` and `MeetingSend` have no `churchId`. Reach them only through their parent.
 - Use the global `prisma` client (`src/server/db.ts`) only for:
   - authentication, signup, invitations and password reset;
   - the session;
@@ -252,17 +252,19 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
   - The public form shows one consent per published statute, enabled after "Deschide statutul" (sessionStorage flag per statute version). `submitApplicationAction` rejects a submission missing a consent for any published statute and stores `consentStatutCult` / `consentStatutIntern` / `consentAt`.
   - Accepting adds "A acceptat … la <data>" to the person's note (`consentNote()`). The PDFs are not exported; the consent flags are.
 
-### Church roles (funcții)
+### Church roles (funcții și slujiri)
 
-- `ChurchRole` is the church's nomenclature (tenant model); `PersonRole` links persons to roles, with optional `since`/`until`.
-- `DEFAULT_CHURCH_ROLES` (`src/lib/roles.ts`) is created at signup and was backfilled by the `church_roles` migration; keep both in sync.
-- Editing the nomenclature (`/setari/functii`) needs `admin`. A role held by anyone cannot be deactivated.
+- `RoleGroup` (tenant model: "Funcții", "Slujiri", …) holds the entries `ChurchRole` (tenant model, `groupId`); `PersonRole` links persons to roles, with optional `since`/`until`. Display order: group `sortOrder`, then role `sortOrder` (`ROLE_ORDER`).
+- `DEFAULT_ROLE_GROUPS` (`src/lib/roles.ts`) is created at signup and by the `person_form_polish` migration for existing churches; keep both in sync. Names are compared with `roleKey()` (case and diacritics ignored).
+- Editing groups and entries (`/setari/functii`, "Funcții și slujiri") needs `admin`. An entry held by anyone cannot be deactivated; a group with active entries cannot be deactivated. The person form's "+ Adaugă" (`addRoleInlineAction`, `write`) creates an entry inline or selects the existing one.
+- The committee is a person flag, `Person.inComitet` ("Membru în comitet" on the form, audited with the person). The Persoane filter "Comitet", the attendance rule `COMITET` and the Acasă card use it.
 - The person form sends the roles as JSON in the hidden field `functii` (`personRolesSchema`); `assertPersonRoles` checks the ids belong to the church. The audit log stores them as the text field `functii`.
-- Export/import: `roles` collection and `functii` (by name) on members, in `src/lib/roles-backup.ts`.
+- Export/import (`src/lib/roles-backup.ts`): `roleGroups`, `roles` (each with `grup`), `functii` (by name) and `inComitet` on members. Older files: roles land in the first group, and `comitet` roles give their current holders the flag.
+- The old free text `Person.slujire` is no longer edited: the migration moved it to the top of the note ("Slujire (vechi): …", `noteWithSlujire()`); the column stays one release (export writes it, import reads it).
 
 ### Meeting attendance
 
-- Each meeting type has a rule (`Church.regulaPrezenta`, `src/lib/attendance.ts`): `TOTI` (members in the record), `COMITET` (holders of an active committee role) or `MANUAL`. Defaults: Adunare generală → TOTI, Comitet and Frați slujitori → COMITET.
+- Each meeting type has a rule (`Church.regulaPrezenta`, `src/lib/attendance.ts`): `TOTI` (members in the record), `COMITET` (persons in the record with `inComitet`) or `MANUAL`. Defaults: Adunare generală → TOTI, Comitet and Frați slujitori → COMITET.
 - `MeetingAttendee.status` is PRESENT or ABSENT. Anything that lists the persons present must filter on `status: "PRESENT"`.
 - On save, `expectedAttendees` (as of the meeting date) minus the persons present become ABSENT rows, and `Meeting.asteptati` stores the expected count. The quorum line uses it, so meetings saved before the rules show no quorum.
 - Export/import: `absenti`, `asteptati`, `nr`, `puncte`, `observatii` and `formulaIncheiere` on each meeting (`src/lib/meeting-backup.ts`).
@@ -292,11 +294,18 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 
 ### Families
 
-- `Family` is a tenant model with a head (`headId`, unique) and members (`Person.familyId`). The old text column is `Person.familieVeche`: kept for one release, then dropped by a later migration. Never write it.
-- `pickHead()` / `defaultFamilyName()` (`src/lib/families.ts`) choose the head ("Cap de familie", else the oldest adult man, else the oldest adult) and the name ("Fam. Prenume Nume"). The `families` migration applies the same rule in SQL; keep them in sync.
-- Membership changes go through `settleFamily()` (`src/server/families.ts`): an empty family is deleted, and a headless one gets a head. The head of a family with other members changes family only after a new head is chosen on `/familii/[id]`.
+- `Family` is a tenant model with a head (`headId`, unique) and members (`Person.familyId`). Families are built from their head in the app ("Fă cap de familie nouă", "Adaugă membri", "Adaugă la familia…"), never from imported text by default.
+- Head rule, everywhere (`pickHead()` / `canBeHead()` in `src/lib/families.ts`): never statut Copil or under 18 (a missing birth date counts as adult); Membru > Aparținător > Prieten, then "Cap de familie", then men, then the oldest known birth date. A family of children only has no head. Setting a minor as head is refused on the server (`assertCanBeHead`).
+- Membership changes go through `settleFamily()` (`src/server/families.ts`): an empty family is deleted, and a headless one gets a head. The head of a family with other members changes family only after a new head is chosen on `/familii/[id]`. "Dizolvă familia" (`dissolveFamily`) leaves the members without a family; audited.
+- `Family.autoCreated`: created by the `families` migration or a text import, default name, never edited. Any edit in the app clears it (`markEdited`). Setări → Date: "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
+- `Person.familieVeche`: the family text of an older file imported with "Nu crea familii din text" (the default); shown on the person page until the person is placed in a family (then cleared).
 - Domain records carry `familyId`. `computeStats` and the blessing certificate use it; the parity tests document both deviations.
-- Export/import: `families` collection and `familyId` on members (`src/lib/families-backup.ts`). Members keep the prototype's `familie` text with the family's name. Older files get one family per text.
+- Export/import: `families` collection (with `automata`) and `familyId` on members (`src/lib/families-backup.ts`). Members keep the prototype's `familie` text with the family's name.
+
+### Previous / next person
+
+- Persoane list links carry the list query in `?din=` (`src/lib/person-nav.ts`); the person page and the edit form rebuild the same order (`personNeighbors`, alphabetical or by family) and show "‹ Anterior" / "N din M" / "Următorul ›" (`components/person-nav.tsx`, Alt+← / Alt+→). Without `din`: all persons, alphabetical.
+- The edit form warns before leaving with unsaved changes (`useUnsavedGuard`: intercepts link clicks, no `beforeunload`); "Salvează și următorul" saves and opens the next person's form.
 
 ### Database and migrations
 

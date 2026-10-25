@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
-import { requirePermission } from "@/server/session";
+import { requireCtx } from "@/server/session";
+import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
 
 export const metadata: Metadata = { title: "Copie de siguranță" };
 
 export default async function DataPage() {
-  const user = await requirePermission("export");
+  const ctx = await requireCtx("export");
+  const user = ctx.user;
+  const autoFamilies = permissions.admin(user.role) ? await ctx.db.family.count({ where: { autoCreated: true } }) : 0;
   return (
     <>
       <BackLink href="/setari">Setări</BackLink>
@@ -34,6 +37,12 @@ export default async function DataPage() {
       ) : (
         <p className="hint">Importul poate fi făcut doar de administrator.</p>
       )}
+      {permissions.admin(user.role) ? (
+        <div className="card">
+          <h3>Familii create automat</h3>
+          <FamilyRepair autoCount={autoFamilies} />
+        </div>
+      ) : null}
     </>
   );
 }

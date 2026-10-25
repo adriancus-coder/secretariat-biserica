@@ -1,6 +1,8 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { ageAt, fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { STATUS_LABEL } from "@/lib/labels";
 import { compareRo, searchTerms } from "@/lib/text";
 import type { Ctx } from "../session";
 
@@ -74,4 +76,24 @@ export interface FamilyOption {
 export async function familyOptions(ctx: Ctx): Promise<FamilyOption[]> {
   const rows = await ctx.db.family.findMany({ select: { id: true, nume: true, _count: { select: { members: true } } } });
   return rows.sort((a, b) => compareRo(a.nume, b.nume)).map((f) => ({ id: f.id, label: `${f.nume} (${f._count.members})` }));
+}
+
+export interface FamilyCandidate {
+  id: string;
+  name: string;
+  /** "34 ani · Membru" */
+  note: string;
+}
+
+/** Persons in the record without a family, for "Adaugă membri" (by name). */
+export async function personsWithoutFamily(ctx: Ctx, today: string): Promise<FamilyCandidate[]> {
+  const rows = await ctx.db.person.findMany({
+    where: { familyId: null, dataIesire: null, statut: { not: "FOST_MEMBRU" } },
+    orderBy: [{ sortKey: "asc" }, { id: "asc" }],
+    select: { id: true, nume: true, prenume: true, statut: true, dataNasterii: true },
+  });
+  return rows.map((p) => {
+    const dn = fromDbDate(p.dataNasterii);
+    return { id: p.id, name: memberName(p), note: [dn ? `${ageAt(dn, today)} ani` : "", STATUS_LABEL[p.statut]].filter(Boolean).join(" · ") };
+  });
 }

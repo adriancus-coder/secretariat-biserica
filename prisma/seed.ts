@@ -12,6 +12,7 @@
  * recreează doar biserica demo (id „demo”); celelalte biserici nu sunt atinse.
  * Datele sunt relative la anul curent, ca statistica și darea de seamă să aibă conținut.
  */
+import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Prisma } from "../src/generated/prisma/client";
@@ -23,7 +24,7 @@ import { inYear, todayIso } from "../src/lib/dates";
 import { noteSearchText, personDerived } from "../src/lib/person-derived";
 import { defaultFamilyName, pickHead } from "../src/lib/families";
 import { splitDecisions } from "../src/lib/minutes";
-import { defaultRolesData } from "../src/lib/roles";
+import { defaultRoleGroupsData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
 
@@ -202,7 +203,6 @@ async function main() {
       dataIesire: p.dataIesire ? date(p.dataIesire) : null,
       modIesire: p.modIesire ?? null,
       bisericaDestinatie: p.bisericaDestinatie ?? "",
-      slujire: p.slujire ?? "",
       note: p.note ?? "",
       ...personDerived({ nume: p.nume, prenume: p.prenume, telefon: p.telefon ?? "", email: p.email ?? "", botezBiserica: p.botezBiserica ?? "", botezOficiant: p.botezOficiant ?? "" }),
       ...(p.inregistrat ? { createdAt: date(p.inregistrat) } : {}),
@@ -216,12 +216,12 @@ async function main() {
     return id;
   };
 
-  // Familii: one per family name of the list above, head chosen like the `families` migration.
+  // Familii: one per family name of the list above, head chosen by pickHead.
   const byFamily = new Map<string, P[]>();
   for (const p of PERSONS) if (p.familie) byFamily.set(p.familie, [...(byFamily.get(p.familie) ?? []), p]);
   for (const members of byFamily.values()) {
     const head = pickHead(
-      members.map((p) => ({ id: p.key, rudenie: p.rudenie ?? "", gen: p.gen ?? null, dataNasterii: p.dataNasterii ?? null, createdAt: p.inregistrat ?? null })),
+      members.map((p) => ({ id: p.key, statut: p.statut ?? "MEMBRU", rudenie: p.rudenie ?? "", gen: p.gen ?? null, dataNasterii: p.dataNasterii ?? null, createdAt: p.inregistrat ?? null })),
       TODAY,
     )!;
     const h = members.find((p) => p.key === head.id)!;
@@ -231,8 +231,10 @@ async function main() {
     await prisma.person.updateMany({ where: { id: { in: members.map((p) => pid(p.key)) } }, data: { familyId: family.id } });
   }
 
-  // Funcții în biserică: the default list, held by the committee of the demo church.
-  await prisma.churchRole.createMany({ data: defaultRolesData().map((r) => ({ ...r, churchId })) });
+  // Funcții și slujiri: the default groups; the committee is a flag on the person.
+  const defaults = defaultRoleGroupsData(churchId, () => randomUUID());
+  await prisma.roleGroup.createMany({ data: defaults.groups });
+  await prisma.churchRole.createMany({ data: defaults.roles });
   const roleIds = new Map(
     (await prisma.churchRole.findMany({ where: { churchId }, select: { id: true, nume: true } })).map((r) => [r.nume, r.id]),
   );
@@ -242,12 +244,17 @@ async function main() {
     ["ion", "Diacon", d(8, 3, 1)],
     ["ioana", "Secretar", d(4, 1, 10)],
     ["mihai", "Casier", d(5, 1, 10)],
-    ["emanuel", "Membru comitet"],
-    ["emanuel", "Lider tineret", d(3, 9, 1)],
-    ["ruxandra", "Lider cor"],
+    ["emanuel", "Tineret", d(3, 9, 1)],
+    ["ruxandra", "Cor"],
+    ["rodica", "Cor"],
+    ["lidia", "Tineret"],
   ];
   await prisma.personRole.createMany({
     data: held.map(([k, role, since]) => ({ personId: pid(k), roleId: roleIds.get(role)!, since: since ? date(since) : null })),
+  });
+  await prisma.person.updateMany({
+    where: { id: { in: ["daniel", "petru", "ion", "ioana", "mihai", "emanuel"].map(pid) } },
+    data: { inComitet: true },
   });
 
   // Evenimente (trecute și viitoare)

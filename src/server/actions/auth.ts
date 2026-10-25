@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -14,7 +15,7 @@ import {
   signupSchema,
 } from "@/lib/schemas/auth";
 import { formValues } from "@/lib/validation";
-import { defaultRolesData } from "@/lib/roles";
+import { defaultRoleGroupsData } from "@/lib/roles";
 import { uniqueChurchSlug } from "../church-slug";
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "../password";
@@ -69,7 +70,10 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
     const passwordHash = await hashPassword(data.password);
     await prisma.$transaction(async (tx) => {
       const slug = await uniqueChurchSlug(tx, data.churchName);
-      const church = await tx.church.create({ data: { nume: data.churchName, slug, roles: { create: defaultRolesData() } } });
+      const church = await tx.church.create({ data: { nume: data.churchName, slug } });
+      const defaults = defaultRoleGroupsData(church.id, () => randomUUID());
+      await tx.roleGroup.createMany({ data: defaults.groups });
+      await tx.churchRole.createMany({ data: defaults.roles });
       await tx.user.create({
         data: { churchId: church.id, email: data.email, name: data.name, passwordHash, role: "ADMIN" },
       });

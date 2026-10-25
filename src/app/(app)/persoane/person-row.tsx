@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ageAt } from "@/lib/dates";
 import { initial, memberName } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/labels";
+import { withDin } from "@/lib/person-nav";
 import type { PersonListItem } from "@/server/queries/persons";
 
 export function statusTagClass(statut: string): string {
@@ -9,7 +10,7 @@ export function statusTagClass(statut: string): string {
 }
 
 /** Rândul din listă, ca în prototip: inițială, nume, (familie / rudenie) · telefon · vârstă, statut. */
-export function PersonRow({ p, byFamily, today }: { p: PersonListItem; byFamily: boolean; today: string }) {
+export function PersonRow({ p, byFamily, today, din }: { p: PersonListItem; byFamily: boolean; today: string; din?: string }) {
   const meta = [
     byFamily ? p.rudenie : p.familie,
     p.telefon,
@@ -18,7 +19,7 @@ export function PersonRow({ p, byFamily, today }: { p: PersonListItem; byFamily:
     .filter(Boolean)
     .join(" · ");
   return (
-    <Link href={`/persoane/${p.id}`} className="item">
+    <Link href={withDin(`/persoane/${p.id}`, din)} className="item">
       <div className="av" aria-hidden="true">
         {initial(p.nume)}
       </div>

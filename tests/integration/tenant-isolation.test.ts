@@ -71,12 +71,17 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
   it("funcțiile din biserică sunt izolate pe biserici", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);
-    const role = await a.churchRole.create({ data: { nume: "Diacon", inCommittee: true } as never });
+    const groupA = await a.roleGroup.create({ data: { nume: "Funcții" } as never });
+    const groupB = await b.roleGroup.create({ data: { nume: "Funcții" } as never });
+    expect(groupA.churchId).toBe(churchA);
+    expect(await b.roleGroup.findUnique({ where: { id: groupA.id } })).toBeNull();
+    expect(await b.roleGroup.count()).toBe(1);
+    const role = await a.churchRole.create({ data: { nume: "Diacon", groupId: groupA.id } as never });
     expect(role.churchId).toBe(churchA);
     // The same name is allowed in another church.
-    await b.churchRole.create({ data: { nume: "Diacon" } as never });
+    await b.churchRole.create({ data: { nume: "Diacon", groupId: groupB.id } as never });
     expect(await b.churchRole.findUnique({ where: { id: role.id } })).toBeNull();
-    expect(await b.churchRole.findMany({ where: { inCommittee: true } })).toHaveLength(0);
+    expect(await b.churchRole.findMany({ where: { groupId: groupA.id } })).toHaveLength(0);
     expect(await b.churchRole.count()).toBe(1);
     expect((await b.churchRole.updateMany({ data: { active: false } })).count).toBe(1);
     await expect(b.churchRole.update({ where: { id: role.id }, data: { nume: "X" } })).rejects.toMatchObject({ code: "P2025" });

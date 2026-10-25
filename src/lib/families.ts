@@ -1,9 +1,14 @@
-/** Families as records: choosing the head and the default name. Pure. */
+/**
+ * Families as records: choosing the head and the default name. Pure. The rule applies everywhere
+ * (import, repair, settling a family); the earlier `families` migration used a simpler one, which
+ * "Recalculează capii de familie" repairs for families created automatically.
+ */
 import { ageAt } from "./dates";
-import { HEAD_OF_FAMILY } from "./labels";
+import { HEAD_OF_FAMILY, type PersonStatusKey } from "./labels";
 
 export interface HeadCandidate {
   id: string;
+  statut: PersonStatusKey;
   rudenie: string;
   gen: "M" | "F" | null;
   dataNasterii: string | null;
@@ -11,16 +16,24 @@ export interface HeadCandidate {
   createdAt: string | null;
 }
 
+/** A head is never a child: statut "Copil" or under 18. A missing birth date counts as adult (unless Copil). */
+export function canBeHead(p: { statut: PersonStatusKey; dataNasterii: string | null }, today: string): boolean {
+  if (p.statut === "COPIL") return false;
+  return p.dataNasterii === null || ageAt(p.dataNasterii, today) >= 18;
+}
+
+const STATUS_RANK: Partial<Record<PersonStatusKey, number>> = { MEMBRU: 0, APARTINATOR: 1, PRIETEN: 2 };
+
 /**
- * The head of a family: the person with rudenie "Cap de familie" (the oldest if several), else the
- * oldest adult man, else the oldest adult, else the oldest person (then the first registered).
- * The `families` migration applies the same rule in SQL.
+ * The head of a family, among the persons who can be heads (canBeHead): Membru before Aparținător
+ * before Prieten (then others), then rudenie "Cap de familie", then men, then the oldest known birth
+ * date, then the first registered. null when nobody can be head (only children).
  */
 export function pickHead<T extends HeadCandidate>(members: readonly T[], today: string): T | null {
-  if (!members.length) return null;
-  const adult = (m: T) => m.dataNasterii !== null && ageAt(m.dataNasterii, today) >= 18;
-  const rank = (m: T) => [m.rudenie === HEAD_OF_FAMILY ? 0 : 1, adult(m) && m.gen === "M" ? 0 : 1, adult(m) ? 0 : 1];
-  return [...members].sort((a, b) => {
+  const eligible = members.filter((m) => canBeHead(m, today));
+  if (!eligible.length) return null;
+  const rank = (m: T) => [STATUS_RANK[m.statut] ?? 3, m.rudenie === HEAD_OF_FAMILY ? 0 : 1, m.gen === "M" ? 0 : 1];
+  return [...eligible].sort((a, b) => {
     const ra = rank(a);
     const rb = rank(b);
     for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i];

@@ -9,10 +9,13 @@ import { STATUS_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
-import { familyOptions, getFamily } from "@/server/queries/families";
+import { familyOptions, getFamily, personsWithoutFamily } from "@/server/queries/families";
+import { canBeHead } from "@/lib/families";
+import { DeleteButton } from "@/components/ui/delete-button";
+import { dissolveFamilyAction } from "@/server/actions/families";
 import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../../persoane/person-row";
-import { FamilyForm, MoveMemberForm } from "./family-controls";
+import { AddMembersForm, FamilyForm, MoveMemberForm } from "./family-controls";
 
 export const metadata: Metadata = { title: "Familie" };
 
@@ -20,13 +23,14 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
   const { id } = await params;
   if (!idSchema.safeParse(id).success) notFound();
   const ctx = await requireCtx();
+  const today = todayIso();
   const church = await getChurch(ctx);
   const f = await getFamily(ctx, id, church.nomen.rudenie);
   if (!f) notFound();
   const canWrite = permissions.write(ctx.user.role);
-  const today = todayIso();
-  const [others, audit] = await Promise.all([
+  const [others, candidates, audit] = await Promise.all([
     canWrite ? familyOptions(ctx).then((list) => list.filter((o) => o.id !== id)) : Promise.resolve([]),
+    canWrite ? personsWithoutFamily(ctx, today) : Promise.resolve([]),
     permissions.audit(ctx.user.role)
       ? ctx.db.auditLog.findMany({ where: { entity: "FAMILY", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
       : Promise.resolve([]),
@@ -95,7 +99,26 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
           <FamilyForm
             id={f.id}
             initial={{ nume: f.nume, adresa: f.adresa, note: f.note, headId: f.headId ?? "" }}
-            members={f.members.map((m) => ({ id: m.id, name: memberName(m) }))}
+            members={f.members
+              .filter((m) => m.id === f.headId || canBeHead({ statut: m.statut, dataNasterii: fromDbDate(m.dataNasterii) }, today))
+              .map((m) => ({ id: m.id, name: memberName(m) }))}
+          />
+        </div>
+      ) : null}
+
+      {canWrite ? (
+        <div className="card">
+          <h3>Adaugă membri</h3>
+          <AddMembersForm familyId={f.id} candidates={candidates} rudenie={church.nomen.rudenie} />
+        </div>
+      ) : null}
+
+      {canWrite ? (
+        <div className="actions">
+          <DeleteButton
+            action={dissolveFamilyAction.bind(null, f.id)}
+            label="Dizolvă familia"
+            confirmMessage={`Dizolvați „${f.nume}”? Cei ${f.members.length} membri rămân în registru, fără familie.`}
           />
         </div>
       ) : null}

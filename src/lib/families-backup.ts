@@ -12,6 +12,8 @@ export interface BFamily {
   capId: string | null;
   adresa: string;
   note: string;
+  /** Created automatically and never edited (see Family.autoCreated); false in older files. */
+  automata: boolean;
 }
 
 export function familiesToJson(list: BFamily[]): Record<string, BFamily> {
@@ -60,7 +62,7 @@ export function parseFamiliesJson(root: unknown): ParsedFamilies {
     }
     const capId = typeof f.capId === "string" && ID_RE.test(f.capId) ? f.capId : null;
     ids.add(id);
-    out.families.push({ id, nume, capId, adresa: str(f.adresa, 200), note: str(f.note, 2000) });
+    out.families.push({ id, nume, capId, adresa: str(f.adresa, 200), note: str(f.note, 2000), automata: f.automata === true });
   }
   for (const [key, m] of entries(r.members)) {
     const familyId = typeof m.familyId === "string" ? m.familyId : null;

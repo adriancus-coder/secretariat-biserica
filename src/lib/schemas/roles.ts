@@ -3,12 +3,17 @@ import { idSchema, optionalDate, requiredText } from "../validation";
 
 export const ROLE_NAME_MAX = 60;
 
-/** Fields of a church role tracked by the audit log. */
-export const ROLE_FIELDS = ["nume", "comitet", "activ", "pozitie"] as const;
+/** Fields of a church role (an entry of a group) tracked by the audit log. */
+export const ROLE_FIELDS = ["nume", "grup", "activ", "pozitie"] as const;
+/** Fields of a role group tracked by the audit log. */
+export const GROUP_FIELDS = ["grup", "activ", "pozitie"] as const;
 
 export const roleSchema = z.object({
   nume: requiredText(ROLE_NAME_MAX, "Denumirea este obligatorie.", "Denumirea"),
-  inCommittee: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
+});
+
+export const roleGroupSchema = z.object({
+  nume: requiredText(ROLE_NAME_MAX, "Denumirea grupului este obligatorie.", "Denumirea"),
 });
 
 export type RoleInput = z.output<typeof roleSchema>;

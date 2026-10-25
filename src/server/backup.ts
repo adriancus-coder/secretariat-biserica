@@ -8,7 +8,9 @@ import type { MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
-import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
+import type { BPersonRole, BRole, BRoleGroup, ParsedRoles } from "@/lib/roles-backup";
+import { roleKey } from "@/lib/roles";
+import { noteWithSlujire } from "@/lib/slujire";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
@@ -181,11 +183,20 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
 }
 
 /** Church roles and the roles held by each person, for the `roles` collection and members' `functii`. */
-export async function loadRoles(ctx: Ctx): Promise<{ roles: BRole[]; functii: Map<string, BPersonRole[]> }> {
-  const rows = await ctx.db.churchRole.findMany({
-    orderBy: [{ sortOrder: "asc" }, { nume: "asc" }],
-    include: { holders: { select: { personId: true, since: true, until: true } } },
-  });
+export async function loadRoles(ctx: Ctx): Promise<{
+  groups: BRoleGroup[];
+  roles: Omit<BRole, "comitet">[];
+  functii: Map<string, BPersonRole[]>;
+  committee: Set<string>;
+}> {
+  const [groups, rows, committee] = await Promise.all([
+    ctx.db.roleGroup.findMany({ orderBy: [{ sortOrder: "asc" }, { nume: "asc" }] }),
+    ctx.db.churchRole.findMany({
+      orderBy: [{ group: { sortOrder: "asc" } }, { sortOrder: "asc" }, { nume: "asc" }],
+      include: { group: { select: { nume: true } }, holders: { select: { personId: true, since: true, until: true } } },
+    }),
+    ctx.db.person.findMany({ where: { inComitet: true }, select: { id: true } }),
+  ]);
   const functii = new Map<string, BPersonRole[]>();
   for (const r of rows) {
     for (const h of r.holders) {
@@ -195,8 +206,10 @@ export async function loadRoles(ctx: Ctx): Promise<{ roles: BRole[]; functii: Ma
     }
   }
   return {
-    roles: rows.map((r) => ({ id: r.id, nume: r.nume, ordine: r.sortOrder, comitet: r.inCommittee, activ: r.active })),
+    groups: groups.map((g) => ({ id: g.id, nume: g.nume, ordine: g.sortOrder, activ: g.active })),
+    roles: rows.map((r) => ({ id: r.id, nume: r.nume, ordine: r.sortOrder, grup: r.group.nume, activ: r.active })),
     functii,
+    committee: new Set(committee.map((p) => p.id)),
   };
 }
 
@@ -242,7 +255,7 @@ export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; fam
   const rows = await ctx.db.family.findMany({ orderBy: [{ nume: "asc" }, { id: "asc" }], include: { members: { select: { id: true } } } });
   const familyOf = new Map<string, string>();
   for (const f of rows) for (const m of f.members) familyOf.set(m.id, f.id);
-  return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, note: f.note })), familyOf };
+  return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, note: f.note, automata: f.autoCreated })), familyOf };
 }
 
 export type ImportMode = "merge" | "replace";
@@ -254,6 +267,11 @@ export interface ImportExtras {
   families?: ParsedFamilies | null;
   /** Meeting id → the fields beyond the prototype's format, as in the file (see parseMeetingExtras). */
   meetings?: ReadonlyMap<string, MeetingExtra>;
+  /**
+   * Older files (no `families` collection): create one family per family text (true), or keep the
+   * text on the person only (false, the default: "Nu crea familii din text").
+   */
+  textFamilies?: boolean;
   /** Member id → baptism church / locality / officiant, as in the file (see parseMemberBaptism). */
   baptism?: ReadonlyMap<string, BaptismFields>;
 }
@@ -331,6 +349,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
+        if (rolesIn?.groups) await tx.roleGroup.deleteMany({ where: { roles: { none: {} } } });
         await tx.family.deleteMany({});
         await tx.note.deleteMany({});
         await tx.document.deleteMany({});
@@ -363,7 +382,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         modIesire: m.modIesire,
         bisericaDestinatie: m.bisericaDestinatie,
         slujire: m.slujire,
-        note: m.note,
+        note: noteWithSlujire(m.note, m.slujire),
         ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez) }),
       });
       const newPersons: Prisma.PersonCreateManyInput[] = [];
@@ -383,7 +402,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         fams = await planIds(tx, TABLES.families, famIn.families.map((f) => f.id), churchId);
         for (const f of famIn.families) {
           const id = fams.map.get(f.id)!;
-          const data = { nume: f.nume, adresa: f.adresa, note: f.note };
+          const data = { nume: f.nume, adresa: f.adresa, note: f.note, autoCreated: f.automata };
           if (fams.existing.has(f.id)) await tx.family.update({ where: { id }, data });
           else await tx.family.create({ data: { ...data, id, churchId } });
           touchedFamilies.add(id);
@@ -405,8 +424,18 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           await tx.family.update({ where: { id }, data: { headId: head } });
         }
         familii = famIn.families.length;
+      } else if (!extras.textFamilies) {
+        // Older file, default: families are built from their heads in the app, never from text.
+        // The text stays on the person (familieVeche) until the person is placed in a family.
+        for (const m of backup.members) {
+          const text = m.familie.trim();
+          if (text) await tx.person.update({ where: { id: people.map.get(m.id)! }, data: { familieVeche: text.slice(0, 120) } });
+        }
+        if (backup.members.some((m) => m.familie.trim())) {
+          warnings.push("Familiile din fișier nu au fost create (opțiunea „Nu crea familii din text”); textul apare pe fișa fiecărei persoane.");
+        }
       } else {
-        // Older file: one family per family text, as in the `families` migration.
+        // Older file, on request: one family per family text, marked as created automatically.
         const groups = new Map<string, Backup["members"]>();
         for (const m of backup.members) {
           const key = m.familie.trim();
@@ -420,8 +449,18 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             const head = pickHead(
               list.map((m) => ({ ...m, id: people.map.get(m.id)! })),
               today,
-            )!;
-            familyId = (await tx.family.create({ data: { churchId, nume: defaultFamilyName(head), headId: head.id, adresa: head.adresa } })).id;
+            );
+            familyId = (
+              await tx.family.create({
+                data: {
+                  churchId,
+                  nume: head ? defaultFamilyName(head) : `Fam. ${list[0].familie.trim()}`.slice(0, 120),
+                  headId: head?.id ?? null,
+                  adresa: head?.adresa ?? "",
+                  autoCreated: true,
+                },
+              })
+            ).id;
             familii++;
           }
           await tx.person.updateMany({ where: { id: { in: ids }, familyId: null }, data: { familyId } });
@@ -433,7 +472,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         const f = await tx.family.findUnique({ where: { id: familyId }, select: { headId: true } });
         const members = await tx.person.findMany({
           where: { familyId },
-          select: { id: true, rudenie: true, gen: true, dataNasterii: true, createdAt: true },
+          select: { id: true, statut: true, rudenie: true, gen: true, dataNasterii: true, createdAt: true },
         });
         if (!members.length) {
           await tx.family.delete({ where: { id: familyId } });
@@ -443,37 +482,61 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         const head = pickHead(
           members.map((m) => ({ ...m, dataNasterii: fromDbDate(m.dataNasterii), createdAt: m.createdAt.toISOString() })),
           today,
-        )!;
+        );
+        if (!head) continue;
         await tx.family.updateMany({ where: { headId: head.id }, data: { headId: null } });
         await tx.family.update({ where: { id: familyId }, data: { headId: head.id } });
       }
 
-      // Funcții: matched by name (unique per church); unknown names in `functii` create the role.
+      // Funcții și slujiri: groups and roles matched by name (case and diacritics ignored); unknown
+      // names create them. Roles without a group (older files) land in the first group.
       let functii = 0;
-      if (rolesIn && (rolesIn.roles || rolesIn.functii.size)) {
+      if (rolesIn && (rolesIn.groups || rolesIn.roles || rolesIn.functii.size)) {
+        const groups = new Map(
+          (await tx.roleGroup.findMany({ orderBy: [{ sortOrder: "asc" }, { nume: "asc" }], select: { id: true, nume: true, sortOrder: true } })).map(
+            (g) => [roleKey(g.nume), g],
+          ),
+        );
+        let nextGroupOrder = Math.max(-1, ...[...groups.values()].map((g) => g.sortOrder)) + 1;
+        const ensureGroup = async (nume: string, from?: BRoleGroup): Promise<string> => {
+          const found = groups.get(roleKey(nume));
+          if (found) {
+            if (from) await tx.roleGroup.update({ where: { id: found.id }, data: { sortOrder: from.ordine, active: from.activ } });
+            return found.id;
+          }
+          const created = await tx.roleGroup.create({ data: { churchId, nume, sortOrder: from?.ordine ?? nextGroupOrder++, active: from?.activ ?? true } });
+          groups.set(roleKey(nume), { id: created.id, nume, sortOrder: created.sortOrder });
+          return created.id;
+        };
+        for (const g of rolesIn.groups ?? []) await ensureGroup(g.nume, g);
+        const defaultGroup = async () => [...groups.values()].sort((x, y) => x.sortOrder - y.sortOrder)[0]?.id ?? (await ensureGroup("Funcții"));
+
         const known = new Map(
-          (await tx.churchRole.findMany({ select: { id: true, nume: true, sortOrder: true } })).map((r) => [r.nume.toLowerCase(), r]),
+          (await tx.churchRole.findMany({ select: { id: true, nume: true, sortOrder: true } })).map((r) => [roleKey(r.nume), r]),
         );
         let nextOrder = Math.max(-1, ...[...known.values()].map((r) => r.sortOrder)) + 1;
         const ensureRole = async (nume: string, from?: BRole): Promise<string> => {
-          const found = known.get(nume.toLowerCase());
+          const found = known.get(roleKey(nume));
+          const groupId = from?.grup ? await ensureGroup(from.grup) : null;
           if (found) {
-            if (from) await tx.churchRole.update({ where: { id: found.id }, data: { sortOrder: from.ordine, inCommittee: from.comitet, active: from.activ } });
+            if (from) await tx.churchRole.update({ where: { id: found.id }, data: { sortOrder: from.ordine, active: from.activ, ...(groupId ? { groupId } : {}) } });
             return found.id;
           }
           const created = await tx.churchRole.create({
             data: {
               churchId,
               nume,
+              groupId: groupId ?? (await defaultGroup()),
               sortOrder: from?.ordine ?? nextOrder++,
-              inCommittee: from?.comitet ?? false,
               active: from?.activ ?? true,
             },
           });
-          known.set(nume.toLowerCase(), { id: created.id, nume, sortOrder: created.sortOrder });
+          known.set(roleKey(nume), { id: created.id, nume, sortOrder: created.sortOrder });
           return created.id;
         };
         for (const r of rolesIn.roles ?? []) await ensureRole(r.nume, r);
+        const committeeRoles = new Set((rolesIn.roles ?? []).filter((r) => r.comitet).map((r) => roleKey(r.nume)));
+        const todayDb = toDbDate(today)!;
         for (const [memberId, list] of rolesIn.functii) {
           const personId = people.map.get(memberId);
           if (!personId) continue;
@@ -482,6 +545,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           await tx.personRole.deleteMany({ where: { personId } });
           await tx.personRole.createMany({ data });
           functii += data.length;
+          // Older files: holding a committee role (today) means being on the committee.
+          if (!rolesIn.committee.size && list.some((f) => committeeRoles.has(roleKey(f.nume)) && (!f.pana || toDbDate(f.pana)! >= todayDb))) {
+            await tx.person.updateMany({ where: { id: personId, dataIesire: null }, data: { inComitet: true } });
+          }
+        }
+        for (const [memberId, flag] of rolesIn.committee) {
+          const personId = people.map.get(memberId);
+          if (personId) await tx.person.update({ where: { id: personId }, data: { inComitet: flag } });
         }
       }
 

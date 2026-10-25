@@ -61,7 +61,7 @@ describe.skipIf(!hasTestDb)("families in the JSON backup", () => {
     expect(imported.every((f) => f.churchId === target.user.churchId && f.members.every((m) => m.churchId === target.user.churchId))).toBe(true);
   });
 
-  it("an older file (family text only) creates one family per text, head by the migration rule", async () => {
+  it("an older file (family text only), on request, creates one family per text, marked as automatic", async () => {
     const json = {
       members: {
         a: { id: "a", nume: "Rusu", prenume: "Debora", gen: "F", familie: "Rusu", dataNasterii: "1997-05-05" },
@@ -73,13 +73,35 @@ describe.skipIf(!hasTestDb)("families in the JSON backup", () => {
     };
     const parsed = parsePrototypeJson(json);
     if (!parsed.ok) throw new Error(parsed.errors.join("; "));
-    const summary = await importBackup(empty, parsed.backup, "replace", { families: parseFamiliesJson(json) });
+    const summary = await importBackup(empty, parsed.backup, "replace", { families: parseFamiliesJson(json), textFamilies: true });
     expect(summary.familii).toBe(2);
     const fams = await empty.db.family.findMany({ orderBy: { nume: "asc" }, include: { head: true, members: true } });
-    expect(fams.map((f) => [f.nume, f.members.length])).toEqual([
-      ["Fam. Gheorghe Lungu", 2],
-      ["Fam. Timotei Rusu", 2],
+    expect(fams.map((f) => [f.nume, f.members.length, f.autoCreated])).toEqual([
+      ["Fam. Gheorghe Lungu", 2, true],
+      ["Fam. Timotei Rusu", 2, true],
     ]);
     expect(await empty.db.person.count({ where: { familyId: null } })).toBe(1);
+  });
+
+  it("by default an older file creates no family; the text stays on the person; heads are never minors", async () => {
+    const json = {
+      members: {
+        a: { id: "a", nume: "Rusu", prenume: "Debora", familie: "Rusu" },
+        b: { id: "b", nume: "Rusu", prenume: "Timotei", familie: "Rusu" },
+        k: { id: "k", nume: "Rusu", prenume: "Ana", statut: "copil", familie: "Rusu", rudenie: "Cap de familie" },
+      },
+    };
+    const parsed = parsePrototypeJson(json);
+    if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+    const summary = await importBackup(empty, parsed.backup, "replace", { families: parseFamiliesJson(json) });
+    expect(summary.familii).toBe(0);
+    expect(await empty.db.family.count()).toBe(0);
+    const persons = await empty.db.person.findMany({ select: { familyId: true, familieVeche: true } });
+    expect(persons.every((p) => p.familyId === null && p.familieVeche === "Rusu")).toBe(true);
+
+    // On request: a family from the text, whose head is never the child marked "Cap de familie".
+    await importBackup(empty, parsed.backup, "replace", { families: parseFamiliesJson(json), textFamilies: true });
+    const fam = await empty.db.family.findFirstOrThrow({ include: { head: true } });
+    expect(fam.head?.prenume).not.toBe("Ana");
   });
 });

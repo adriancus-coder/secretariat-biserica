@@ -12,7 +12,8 @@ export function ParamSelect({
 }: {
   param: string;
   label: string;
-  options: { value: string; label: string }[];
+  /** Options with a `group` are shown under that heading (optgroup), in order of appearance. */
+  options: { value: string; label: string; group?: string }[];
   emptyLabel: string;
 }) {
   const router = useRouter();
@@ -34,11 +35,34 @@ export function ParamSelect({
       }}
     >
       <option value="">{emptyLabel}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
+      {groupOptions(options).map(([group, list]) =>
+        group ? (
+          <optgroup key={group} label={group}>
+            {list.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </optgroup>
+        ) : (
+          list.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))
+        ),
+      )}
     </select>
   );
+}
+
+function groupOptions<O extends { group?: string }>(options: O[]): [string, O[]][] {
+  const out: [string, O[]][] = [];
+  for (const o of options) {
+    const g = o.group ?? "";
+    const last = out[out.length - 1];
+    if (last && last[0] === g) last[1].push(o);
+    else out.push([g, [o]]);
+  }
+  return out;
 }

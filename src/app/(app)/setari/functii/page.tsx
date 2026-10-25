@@ -1,37 +1,35 @@
 import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
-import { listRoles } from "@/server/queries/roles";
+import { listRoleGroups } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
-import { NewRoleForm, RoleRowControls } from "./role-controls";
+import { NewGroupForm, RoleGroupCard } from "./role-controls";
 
-export const metadata: Metadata = { title: "Funcții în biserică" };
+export const metadata: Metadata = { title: "Funcții și slujiri" };
 
 export default async function ChurchRolesPage() {
   const ctx = await requireCtx();
-  const roles = await listRoles(ctx);
+  const groups = await listRoleGroups(ctx);
   const canEdit = permissions.admin(ctx.user.role);
-  const active = roles.filter((r) => r.active);
+  const active = groups.flatMap((g) => g.roles).filter((r) => r.active).length;
   return (
     <>
       <BackLink href="/setari">Setări</BackLink>
-      <PageHead title="Funcții în biserică" sub={`${active.length} active · ${active.filter((r) => r.inCommittee).length} în comitet`} />
+      <PageHead title="Funcții și slujiri" sub={`${groups.length} grupuri · ${active} intrări active`} />
       <p className="hint mb-4">
-        Funcțiile se atribuie din fișa persoanei. Cele marcate „comitet” alcătuiesc comitetul bisericii (lista de prezență la ședințele de
-        comitet). O funcție atribuită cuiva nu poate fi dezactivată.
+        Fiecare grup apare ca un bloc pe fișa persoanei. O intrare atribuită cuiva nu poate fi dezactivată, iar un grup cu intrări active
+        nu poate fi dezactivat. Comitetul se bifează direct pe fișa persoanei („Membru în comitet”).
       </p>
-      <div className="list">
-        {roles.map((r, i) => (
-          <RoleRowControls key={r.id} role={r} first={i === 0} last={i === roles.length - 1} canEdit={canEdit} />
-        ))}
-      </div>
+      {groups.map((g, i) => (
+        <RoleGroupCard key={g.id} group={g} first={i === 0} last={i === groups.length - 1} canEdit={canEdit} />
+      ))}
       {canEdit ? (
         <div className="card mt-5">
-          <h3>Adaugă o funcție</h3>
-          <NewRoleForm />
+          <h3>Adaugă un grup</h3>
+          <NewGroupForm />
         </div>
       ) : (
-        <p className="hint mt-4">Doar administratorul poate modifica funcțiile.</p>
+        <p className="hint mt-4">Doar administratorul poate modifica funcțiile și slujirile.</p>
       )}
     </>
   );

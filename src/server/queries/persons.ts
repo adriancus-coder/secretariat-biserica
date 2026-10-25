@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
-import { COMMITTEE_FILTER } from "@/lib/roles";
+import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
 import { searchTerms, compareRo } from "@/lib/text";
 import type { PersonStatusKey } from "@/lib/labels";
 import { ActionError, type Ctx } from "../session";
@@ -80,13 +80,14 @@ function toItem(p: Prisma.PersonGetPayload<{ select: typeof listSelect }>): Pers
 }
 
 /**
- * The "Funcție" filter: "" = any person, COMMITTEE_FILTER = holders of an active committee role,
+ * The "Funcție" filter: "" = any person, COMMITTEE_FILTER = persons with the committee flag,
  * otherwise a role id. Roles with an end date in the past do not count.
  */
 export function roleWhere(functie: string): Prisma.PersonWhereInput {
   if (!functie) return {};
+  if (functie === NO_FAMILY_FILTER) return { familyId: null };
   const current = { OR: [{ until: null }, { until: { gte: toDbDate(todayIso())! } }] };
-  if (functie === COMMITTEE_FILTER) return { roles: { some: { ...current, role: { inCommittee: true, active: true } } } };
+  if (functie === COMMITTEE_FILTER) return { inComitet: true };
   return { roles: { some: { ...current, roleId: functie } } };
 }
 
@@ -129,13 +130,9 @@ export interface FamilyGroup {
  * surname stay separate), sorted by the head's name; persons without a family come last.
  * Members are ordered by kinship.
  */
-export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: ListParams, rudenieOrder: string[]) {
-  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
-  const [groups, inRecord, anyPerson] = await Promise.all([
-    ctx.db.person.groupBy({ by: ["familyId"], where, _count: { _all: true } }),
-    ctx.db.person.count({ where: { dataIesire: null } }),
-    ctx.db.person.count(),
-  ]);
+/** The families of the persons matching `where`, in the order of the family view (by the head's name; no family last). */
+async function orderedFamilies(ctx: Ctx, where: Prisma.PersonWhereInput) {
+  const groups = await ctx.db.person.groupBy({ by: ["familyId"], where, _count: { _all: true } });
   const ids = groups.map((g) => g.familyId).filter((x): x is string => x !== null);
   const records = new Map(
     (
@@ -143,9 +140,23 @@ export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: 
     ).map((f) => [f.id, f]),
   );
   const key = (id: string | null) => (id ? (records.get(id)?.head?.sortKey ?? "~") : "~~~");
-  const families = groups
+  return groups
     .map((g) => ({ familyId: g.familyId, label: g.familyId ? (records.get(g.familyId)?.nume ?? NO_FAMILY) : NO_FAMILY, count: g._count._all }))
     .sort((a, b) => key(a.familyId).localeCompare(key(b.familyId)) || compareRo(a.label, b.label));
+}
+
+const kinshipRank = (rudenieOrder: string[]) => (r: string) => {
+  const i = rudenieOrder.indexOf(r);
+  return i < 0 ? 99 : i;
+};
+
+export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: ListParams, rudenieOrder: string[]) {
+  const where: Prisma.PersonWhereInput = { AND: [filterWhere(filter), searchWhere(q), roleWhere(functie)] };
+  const [families, inRecord, anyPerson] = await Promise.all([
+    orderedFamilies(ctx, where),
+    ctx.db.person.count({ where: { dataIesire: null } }),
+    ctx.db.person.count(),
+  ]);
   const total = families.reduce((s, f) => s + f.count, 0);
   const pages = Math.max(1, Math.ceil(families.length / FAMILY_PAGE_SIZE));
   const current = Math.min(Math.max(1, page), pages);
@@ -167,10 +178,7 @@ export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: 
         select: listSelect,
       })
     : [];
-  const rank = (r: string) => {
-    const i = rudenieOrder.indexOf(r);
-    return i < 0 ? 99 : i;
-  };
+  const rank = kinshipRank(rudenieOrder);
   const result: FamilyGroup[] = pageFamilies.map((f) => ({
     ...f,
     members: rows
@@ -179,6 +187,65 @@ export async function listFamilies(ctx: Ctx, { filter, q, page, functie = "" }: 
       .sort((a, b) => rank(a.rudenie) - rank(b.rudenie)),
   }));
   return { groups: result, total, families: families.length, page: current, pages, inRecord, anyPerson };
+}
+
+// ---------- Previous / next person, following the list the user came from ----------
+
+/** The Persoane list a person page was opened from (its URL query, carried in `?din=`). */
+export interface PersonListSpec {
+  /** null: all persons (fallback when the page was not opened from the list). */
+  filter: PersonFilter | null;
+  byFamily: boolean;
+  q: string;
+  functie: string;
+}
+
+const ALL_PERSONS: PersonListSpec = { filter: null, byFamily: false, q: "", functie: "" };
+
+/** Reads the list query ("filtru=toate&q=pop…"); anything unknown falls back to the defaults. */
+export function parseListSpec(din: string | undefined): PersonListSpec {
+  if (din === undefined) return ALL_PERSONS;
+  const sp = new URLSearchParams(din);
+  const filtru = sp.get("filtru") ?? "";
+  const functie = sp.get("functie") ?? "";
+  return {
+    filter: (PERSON_FILTERS as readonly string[]).includes(filtru) ? (filtru as PersonFilter) : "membri",
+    byFamily: sp.get("vedere") === "familii",
+    q: (sp.get("q") ?? "").slice(0, 100),
+    functie: functie === COMMITTEE_FILTER || functie === NO_FAMILY_FILTER || /^[A-Za-z0-9_-]{1,64}$/.test(functie) ? functie : "",
+  };
+}
+
+/** The ids of the list, in the order it shows them (alphabetical, or by family then kinship). */
+export async function personOrder(ctx: Ctx, spec: PersonListSpec, rudenieOrder: string[]): Promise<string[]> {
+  const where: Prisma.PersonWhereInput = spec.filter
+    ? { AND: [filterWhere(spec.filter), searchWhere(spec.q), roleWhere(spec.functie)] }
+    : {};
+  const rows = await ctx.db.person.findMany({ where, orderBy: ORDER, select: { id: true, familyId: true, rudenie: true } });
+  if (!spec.byFamily) return rows.map((r) => r.id);
+  const rank = kinshipRank(rudenieOrder);
+  const families = await orderedFamilies(ctx, where);
+  return families.flatMap((f) =>
+    rows
+      .filter((r) => r.familyId === f.familyId)
+      .sort((a, b) => rank(a.rudenie) - rank(b.rudenie))
+      .map((r) => r.id),
+  );
+}
+
+export interface PersonNeighbors {
+  prev: string | null;
+  next: string | null;
+  /** 1-based position in the list; 0 when the person is not in it. */
+  position: number;
+  total: number;
+}
+
+export async function personNeighbors(ctx: Ctx, id: string, spec: PersonListSpec, rudenieOrder: string[]): Promise<PersonNeighbors> {
+  const ids = await personOrder(ctx, spec, rudenieOrder);
+  const i = ids.indexOf(id);
+  if (i < 0) return { prev: null, next: null, position: 0, total: ids.length };
+  return { prev: ids[i - 1] ?? null, next: ids[i + 1] ?? null, position: i + 1, total: ids.length };
 }
 
 export async function getPerson(ctx: Ctx, id: string) {
@@ -192,7 +259,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     include: {
       groups: { include: { group: { select: { id: true, nume: true } } } },
       application: { select: { id: true, createdAt: true } },
-      roles: { include: { role: { select: { nume: true, sortOrder: true, inCommittee: true } } } },
+      roles: { include: { role: { select: { nume: true, sortOrder: true, group: { select: { id: true, nume: true, sortOrder: true } } } } } },
       family: { select: { id: true, nume: true, headId: true } },
     },
   });
@@ -219,7 +286,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     groups: person.groups.map((g) => g.group).sort((a, b) => compareRo(a.nume, b.nume)),
     roles: person.roles
       .map((r) => ({ ...r.role, since: fromDbDate(r.since) }))
-      .sort((a, b) => a.sortOrder - b.sortOrder || compareRo(a.nume, b.nume)),
+      .sort((a, b) => a.group.sortOrder - b.group.sortOrder || a.sortOrder - b.sortOrder || compareRo(a.nume, b.nume)),
     family,
     notes,
     notesCount,

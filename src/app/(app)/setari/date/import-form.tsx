@@ -31,6 +31,13 @@ export function ImportForm() {
           <span>Confirm ștergerea tuturor datelor actuale (persoane, ședințe, evenimente, documente, grupuri, mențiuni).</span>
         </label>
       ) : null}
+      <label className="check">
+        <input type="checkbox" name="faraFamiliiText" defaultChecked />
+        <span>
+          Nu crea familii din text (fișiere vechi): persoanele intră fără familie, iar numele familiei din fișier apare pe fișa fiecăreia până
+          o adăugați într-o familie.
+        </span>
+      </label>
       {state.message ? (
         <div className={`alert ${state.ok ? "alert-ok" : ""}`} role={state.ok ? "status" : "alert"}>
           {state.message}

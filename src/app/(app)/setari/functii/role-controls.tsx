@@ -6,15 +6,97 @@ import { TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
 import { ROLE_NAME_MAX } from "@/lib/schemas/roles";
-import { moveRoleAction, saveRoleAction, setRoleActiveAction } from "@/server/actions/roles";
-import type { RoleRow } from "@/server/queries/roles";
+import {
+  moveRoleAction,
+  moveRoleGroupAction,
+  saveRoleAction,
+  saveRoleGroupAction,
+  setRoleActiveAction,
+  setRoleGroupActiveAction,
+} from "@/server/actions/roles";
+import type { RoleGroupRow, RoleRow } from "@/server/queries/roles";
 
 const holdersText = (n: number) => (n === 0 ? "neatribuită" : n === 1 ? "1 persoană" : `${n} persoane`);
 
-/** One role: rename, committee switch, move up/down, deactivate/reactivate. Read-only for non-admins. */
-export function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first: boolean; last: boolean; canEdit: boolean }) {
-  const [saveState, save, saving] = useActionState(saveRoleAction.bind(null, role.id), initialFormState);
-  const [moveState, move, moving] = useActionState(async (_: unknown, fd: FormData) => moveRoleAction(role.id, fd.get("dir") === "up" ? "up" : "down"), initialFormState);
+/** The ↑ ↓ buttons of a list row. */
+function MoveButtons({ label, first, last, onMove }: { label: string; first: boolean; last: boolean; onMove: (fd: FormData) => void }) {
+  return (
+    <form action={onMove} className="role-move">
+      <button type="submit" name="dir" value="up" className="btn btn-sm btn-ghost" disabled={first} aria-label={`Mută „${label}” mai sus`}>
+        ↑
+      </button>
+      <button type="submit" name="dir" value="down" className="btn btn-sm btn-ghost" disabled={last} aria-label={`Mută „${label}” mai jos`}>
+        ↓
+      </button>
+    </form>
+  );
+}
+
+/** One group: its header (rename, move, deactivate), its entries and "Adaugă în …". */
+export function RoleGroupCard({ group, first, last, canEdit }: { group: RoleGroupRow; first: boolean; last: boolean; canEdit: boolean }) {
+  const [saveState, save, saving] = useActionState(saveRoleGroupAction.bind(null, group.id), initialFormState);
+  const [moveState, move] = useActionState(async (_: unknown, fd: FormData) => moveRoleGroupAction(group.id, fd.get("dir") === "up" ? "up" : "down"), initialFormState);
+  const [activeState, toggle, toggling] = useActionState(async () => setRoleGroupActiveAction(group.id, !group.active), initialFormState);
+  const error = [moveState, activeState].find((s) => s.message && !s.ok);
+  const activeRoles = group.roles.filter((r) => r.active).length;
+
+  return (
+    <section className="card" style={{ opacity: group.active ? 1 : 0.75 }} aria-label={group.nume}>
+      {canEdit ? (
+        <div className="role-item">
+          <MoveButtons label={group.nume} first={first} last={last} onMove={move} />
+          <div className="role-edit">
+            <form action={save} id={`grup-form-${group.id}`} noValidate>
+              <TextField
+                name="nume"
+                label="Grup"
+                id={`grup-${group.id}`}
+                defaultValue={saveState.values?.nume ?? group.nume}
+                error={saveState.errors?.nume}
+                maxLength={ROLE_NAME_MAX}
+                className="!mb-0"
+                hint={`${activeRoles} active${group.active ? "" : " · grup dezactivat"}`}
+              />
+            </form>
+            <div className="flex gap-2 flex-wrap">
+              <button type="submit" form={`grup-form-${group.id}`} className="btn btn-sm" disabled={saving}>
+                {saving ? "Se salvează…" : "Redenumește"}
+              </button>
+              <form action={toggle}>
+                <button type="submit" className={`btn btn-sm ${group.active ? "btn-danger" : ""}`} disabled={toggling}>
+                  {group.active ? "Dezactivează grupul" : "Reactivează grupul"}
+                </button>
+              </form>
+            </div>
+            {saveState.message ? <FormMessage state={saveState} /> : null}
+          </div>
+          {error ? (
+            <p className="field-error role-error" role="alert">
+              {error.message}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <h3>
+          {group.nume} {!group.active ? <span className="tag tag-warn">dezactivat</span> : null}
+        </h3>
+      )}
+
+      <div className="list mt-3">
+        {group.roles.map((r, i) => (
+          <RoleRowControls key={r.id} role={r} first={i === 0} last={i === group.roles.length - 1} canEdit={canEdit} />
+        ))}
+        {!group.roles.length ? <p className="hint">Nicio intrare.</p> : null}
+      </div>
+      {canEdit && group.active ? <NewRoleForm groupId={group.id} groupName={group.nume} /> : null}
+    </section>
+  );
+}
+
+/** One entry: rename, move up/down, deactivate/reactivate. Read-only for non-admins. */
+function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow; first: boolean; last: boolean; canEdit: boolean }) {
+  const [saveState, save, saving] = useActionState(saveRoleAction.bind(null, role.id, null), initialFormState);
+  const [moveState, move] = useActionState(async (_: unknown, fd: FormData) => moveRoleAction(role.id, fd.get("dir") === "up" ? "up" : "down"), initialFormState);
   const [activeState, toggle, toggling] = useActionState(async () => setRoleActiveAction(role.id, !role.active), initialFormState);
   const error = [moveState, activeState].find((s) => s.message && !s.ok);
 
@@ -23,8 +105,7 @@ export function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow;
       <div className="item !cursor-default" style={{ opacity: role.active ? 1 : 0.6 }}>
         <div className="body">
           <div className="t">
-            {role.nume} {role.inCommittee ? <span className="tag">comitet</span> : null}{" "}
-            {!role.active ? <span className="tag tag-warn">dezactivată</span> : null}
+            {role.nume} {!role.active ? <span className="tag tag-warn">dezactivată</span> : null}
           </div>
           <div className="m">{holdersText(role.holders)}</div>
         </div>
@@ -34,16 +115,9 @@ export function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow;
 
   return (
     <div className="item role-item !cursor-default" style={{ opacity: role.active ? 1 : 0.7 }}>
-      <form action={move} className="role-move">
-        <button type="submit" name="dir" value="up" className="btn btn-sm btn-ghost" disabled={first || moving} aria-label={`Mută „${role.nume}” mai sus`}>
-          ↑
-        </button>
-        <button type="submit" name="dir" value="down" className="btn btn-sm btn-ghost" disabled={last || moving} aria-label={`Mută „${role.nume}” mai jos`}>
-          ↓
-        </button>
-      </form>
+      <MoveButtons label={role.nume} first={first} last={last} onMove={move} />
       <div className="role-edit">
-        <form action={save} id={`rol-form-${role.id}`} className="role-edit" noValidate>
+        <form action={save} id={`rol-form-${role.id}`} noValidate>
           <TextField
             name="nume"
             label="Denumire"
@@ -59,10 +133,6 @@ export function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow;
               </>
             }
           />
-          <label className="switch-row !mb-0">
-            <input type="checkbox" role="switch" name="inCommittee" defaultChecked={role.inCommittee} />
-            <span>Face parte din comitet</span>
-          </label>
         </form>
         <div className="flex gap-2 flex-wrap">
           <button type="submit" form={`rol-form-${role.id}`} className="btn btn-sm" disabled={saving}>
@@ -85,19 +155,44 @@ export function RoleRowControls({ role, first, last, canEdit }: { role: RoleRow;
   );
 }
 
-export function NewRoleForm() {
-  const [state, action, pending] = useActionState(saveRoleAction.bind(null, null), initialFormState);
+function NewRoleForm({ groupId, groupName }: { groupId: string; groupName: string }) {
+  const [state, action, pending] = useActionState(saveRoleAction.bind(null, null, groupId), initialFormState);
+  return (
+    <form action={action} noValidate key={state.ok ? state.message : "form"} className="mt-3 flex flex-wrap items-end gap-2">
+      <TextField
+        name="nume"
+        label={`Adaugă în „${groupName}”`}
+        id={`nou-${groupId}`}
+        placeholder="ex. Lider grup de rugăciune"
+        defaultValue={state.ok ? "" : (state.values?.nume ?? "")}
+        error={state.errors?.nume}
+        maxLength={ROLE_NAME_MAX}
+        className="!mb-0 flex-1 min-w-[12rem]"
+      />
+      <button type="submit" className="btn" disabled={pending}>
+        {pending ? "Se adaugă…" : "+ Adaugă"}
+      </button>
+      {state.message && !state.errors ? <FormMessage state={state} /> : null}
+    </form>
+  );
+}
+
+export function NewGroupForm() {
+  const [state, action, pending] = useActionState(saveRoleGroupAction.bind(null, null), initialFormState);
   return (
     <form action={action} noValidate key={state.ok ? state.message : "form"}>
-      <TextField name="nume" label="Denumire" placeholder="ex. Lider grup de rugăciune" defaultValue={state.ok ? "" : (state.values?.nume ?? "")} error={state.errors?.nume} maxLength={ROLE_NAME_MAX} />
-      <label className="switch-row">
-        <input type="checkbox" role="switch" name="inCommittee" defaultChecked={!state.ok && state.values?.inCommittee === "on"} />
-        <span>Face parte din comitet</span>
-      </label>
+      <TextField
+        name="nume"
+        label="Denumirea grupului"
+        placeholder="ex. Echipa media"
+        defaultValue={state.ok ? "" : (state.values?.nume ?? "")}
+        error={state.errors?.nume}
+        maxLength={ROLE_NAME_MAX}
+      />
       <FormMessage state={state} />
       <button type="submit" className="btn btn-primary" disabled={pending}>
         <Icon name="bifa" className="size-[18px]" />
-        {pending ? "Se adaugă…" : "Adaugă funcția"}
+        {pending ? "Se adaugă…" : "Adaugă grupul"}
       </button>
     </form>
   );

@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { PersonNav } from "@/components/person-nav";
+import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
@@ -8,7 +11,7 @@ import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
 import { FamilyField, type FamilyChoice } from "./family-field";
-import { RolesPicker, type RoleChoice } from "./roles-picker";
+import { RolesPicker, type RoleChoiceGroup } from "./roles-picker";
 
 export type PersonFormValues = Record<string, string>;
 
@@ -23,6 +26,8 @@ export function PersonForm({
   roles,
   cancelHref,
   applicationId,
+  din,
+  nav,
 }: {
   id: string | null;
   initial: PersonFormValues;
@@ -30,12 +35,18 @@ export function PersonForm({
   /** The person heads a family with other members: the family cannot be changed here. */
   lockedFamily?: { id: string; nume: string };
   rudenie: string[];
-  /** Active roles, plus inactive ones the person already holds. */
-  roles: RoleChoice[];
+  /** Role groups with their active roles, plus inactive ones the person already holds. */
+  roles: RoleChoiceGroup[];
   cancelHref: string;
   /** Accepting this membership application: saving also marks it accepted. */
   applicationId?: string;
+  /** The Persoane list the person was opened from (see src/lib/person-nav.ts). */
+  din?: string;
+  /** Previous / next person of that list (edit form only). */
+  nav?: { prevHref: string | null; nextHref: string | null; position: number; total: number };
 }) {
+  const [dirty, setDirty] = useState(false);
+  useUnsavedGuard(dirty);
   const { state: rawState, pending, onSubmit } = useActionForm(savePersonAction.bind(null, id));
   const state = rawState as PersonFormState;
   const v = state.values ?? initial;
@@ -43,7 +54,9 @@ export function PersonForm({
   const val = (k: string) => v[k] ?? "";
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} onInput={() => setDirty(true)} onChange={() => setDirty(true)} noValidate>
+      {nav ? <PersonNav {...nav} /> : null}
+      {din !== undefined ? <input type="hidden" name="din" value={din} /> : null}
       {applicationId ? <input type="hidden" name="cerere" value={applicationId} /> : null}
       <div className="row2">
         <TextField name="nume" label="Nume" defaultValue={val("nume")} error={e.nume} required autoComplete="off" />
@@ -120,15 +133,8 @@ export function PersonForm({
         />
       </fieldset>
 
-      <RolesPicker roles={roles} initial={val("functii")} error={e.functii} />
+      <RolesPicker groups={roles} initial={val("functii")} inComitet={val("inComitet") === "on"} error={e.functii} />
 
-      <TextField
-        name="slujire"
-        label="Slujire / responsabilități"
-        placeholder="ex. cor, tineret, diacon"
-        defaultValue={val("slujire")}
-        error={e.slujire}
-      />
       <TextAreaField name="note" label="Note" defaultValue={val("note")} error={e.note} />
 
       {state.duplicate ? (
@@ -151,6 +157,11 @@ export function PersonForm({
           Renunță
         </Link>
         <div className="spacer" />
+        {nav?.nextHref ? (
+          <button type="submit" name="dupa" value="urmatorul" className="btn" disabled={pending}>
+            Salvează și următorul
+          </button>
+        ) : null}
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Se salvează…" : "Salvează"}
         </button>

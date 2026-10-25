@@ -2,7 +2,7 @@ import { toPrototypeJson } from "@/domain/backup";
 import { todayIso } from "@/lib/dates";
 import { permissions } from "@/lib/permissions";
 import { applicationsToJson } from "@/lib/application-backup";
-import { addMemberRoles, rolesToJson } from "@/lib/roles-backup";
+import { addMemberCommittee, addMemberRoles, roleGroupsToJson, rolesToJson } from "@/lib/roles-backup";
 import { addMeetingExtras } from "@/lib/meeting-backup";
 import { addMemberFamilies, familiesToJson } from "@/lib/families-backup";
 import { addMemberBaptism } from "@/lib/baptism-backup";
@@ -29,7 +29,8 @@ export async function GET() {
   addMeetingExtras(data.meetings as Record<string, Record<string, unknown>>, attendance);
   addMemberBaptism(data.members as Record<string, Record<string, unknown>>, baptism);
   addMemberRoles(data.members as Record<string, Record<string, unknown>>, roles.functii);
-  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roles: rolesToJson(roles.roles), families: familiesToJson(families.families) }, null, 2);
+  addMemberCommittee(data.members as Record<string, Record<string, unknown>>, roles.committee);
+  const json = JSON.stringify({ ...data, applications: applicationsToJson(applications), roleGroups: roleGroupsToJson(roles.groups), roles: rolesToJson(roles.roles), families: familiesToJson(families.families) }, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (backup.settings?.nume || "biserica")
     .normalize("NFD")

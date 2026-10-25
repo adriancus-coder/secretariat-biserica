@@ -18,15 +18,8 @@ export function expectedWhere(rule: AttendanceRule, date: string): Prisma.Person
     case "TOTI":
       return { statut: "MEMBRU", dataIesire: null, OR: [{ dataMembru: null }, { dataMembru: { lte: day } }] };
     case "COMITET":
-      return {
-        dataIesire: null,
-        roles: {
-          some: {
-            role: { inCommittee: true, active: true },
-            AND: [{ OR: [{ since: null }, { since: { lte: day } }] }, { OR: [{ until: null }, { until: { gte: day } }] }],
-          },
-        },
-      };
+      // The committee is a flag on the person (not tied to a date).
+      return { dataIesire: null, statut: { not: "FOST_MEMBRU" }, inComitet: true };
     default:
       return null;
   }

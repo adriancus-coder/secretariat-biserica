@@ -10,9 +10,15 @@ import { fmt, memberName } from "@/lib/format";
 import { DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { deletePersonAction } from "@/server/actions/persons";
-import { getPersonDetail } from "@/server/queries/persons";
+import { getPersonDetail, parseListSpec, personNeighbors } from "@/server/queries/persons";
+import { PersonNav } from "@/components/person-nav";
+import { listHref, withDin } from "@/lib/person-nav";
 import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../person-row";
+import { NoFamilyActions } from "./family-actions";
+import { canBeHead } from "@/lib/families";
+import { familyOptions } from "@/server/queries/families";
+import { getChurch } from "@/server/queries/church";
 
 export async function generateMetadata({ params }: PageProps<"/persoane/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -21,11 +27,14 @@ export async function generateMetadata({ params }: PageProps<"/persoane/[id]">):
   return { title: d ? memberName(d.person) : "Persoană" };
 }
 
-export default async function PersonPage({ params }: PageProps<"/persoane/[id]">) {
+export default async function PersonPage({ params, searchParams }: PageProps<"/persoane/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  const din = typeof sp.din === "string" ? sp.din : undefined;
   const ctx = await requireCtx();
   const detail = await getPersonDetail(ctx, id);
   if (!detail) notFound();
+  const nav = await personNeighbors(ctx, id, parseListSpec(din), (await getChurch(ctx)).nomen.rudenie);
   const { person: x, family, groups, roles, notes, notesCount, documents, audit } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
@@ -59,35 +68,49 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
         "Ieșire",
         di ? fmt(di) + (x.modIesire ? ` — ${EXIT_LABEL[x.modIesire]}` : "") + (x.bisericaDestinatie ? ` la ${x.bisericaDestinatie}` : "") : "",
       ],
-      ["Slujire", x.slujire],
       ["Note", x.note],
     ] as [string, string][]
   ).filter(([, v]) => v);
 
   return (
     <>
-      <BackLink href="/persoane">Persoane</BackLink>
+      <BackLink href={listHref(din)}>Persoane</BackLink>
+      <PersonNav
+        prevHref={nav.prev ? withDin(`/persoane/${nav.prev}`, din) : null}
+        nextHref={nav.next ? withDin(`/persoane/${nav.next}`, din) : null}
+        position={nav.position}
+        total={nav.total}
+      />
       <PageHead title={memberName(x)} sub={<span className={statusTagClass(x.statut)}>{STATUS_LABEL[x.statut]}</span>}>
         {canWrite ? (
           <>
             <Link href={`/documente/nou?persoana=${x.id}`} className="btn">
               Document
             </Link>
-            <Link href={`/persoane/${x.id}/editare`} className="btn btn-primary">
+            <Link href={withDin(`/persoane/${x.id}/editare`, din)} className="btn btn-primary">
               Editează
             </Link>
           </>
         ) : null}
       </PageHead>
 
-      {roles.length ? (
-        <div className="mb-3" aria-label="Funcții în biserică">
-          {roles.map((r) => (
-            <span key={r.nume} className="pill">
-              {r.nume}
-              {r.inCommittee ? " · comitet" : ""}
-              {r.since ? ` · din ${fmt(r.since)}` : ""}
-            </span>
+      {x.inComitet || roles.length ? (
+        <div className="mb-3 grid gap-1.5">
+          {x.inComitet ? (
+            <div>
+              <span className="pill pill-accent">Comitet</span>
+            </div>
+          ) : null}
+          {groupRoles(roles).map((g) => (
+            <div key={g.id} aria-label={g.nume}>
+              <span className="hint inline mr-1">{g.nume}:</span>
+              {g.roles.map((r) => (
+                <span key={r.nume} className="pill">
+                  {r.nume}
+                  {r.since ? ` · din ${fmt(r.since)}` : ""}
+                </span>
+              ))}
+            </div>
           ))}
         </div>
       ) : null}
@@ -106,6 +129,26 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
       </dl>
 
       <div className="two">
+        {!x.family ? (
+          <div className="card">
+            <h3>Familie</h3>
+            {x.familieVeche ? (
+              <p className="mb-3">
+                Familie în evidența veche: <b>{x.familieVeche}</b>
+              </p>
+            ) : (
+              <p className="hint mb-3">Nu face parte dintr-o familie.</p>
+            )}
+            {canWrite ? (
+              <NoFamilyActions
+                personId={x.id}
+                canHead={canBeHead({ statut: x.statut, dataNasterii: dn }, today)}
+                families={await familyOptions(ctx)}
+                rudenie={(await getChurch(ctx)).nomen.rudenie}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {x.family ? (
           <div className="card">
             <h3>
@@ -211,4 +254,15 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
       ) : null}
     </>
   );
+}
+
+/** The person's roles, one entry per group, in display order. */
+function groupRoles<R extends { group: { id: string; nume: string } }>(roles: R[]) {
+  const out: { id: string; nume: string; roles: R[] }[] = [];
+  for (const r of roles) {
+    const g = out.find((x) => x.id === r.group.id);
+    if (g) g.roles.push(r);
+    else out.push({ id: r.group.id, nume: r.group.nume, roles: [r] });
+  }
+  return out;
 }

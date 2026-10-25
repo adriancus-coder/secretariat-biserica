@@ -25,8 +25,8 @@ export const PERSON_FIELDS = [
   "dataIesire",
   "modIesire",
   "bisericaDestinatie",
-  "slujire",
   "note",
+  "inComitet",
 ] as const;
 
 const personFields = z.object({
@@ -51,8 +51,8 @@ const personFields = z.object({
   dataIesire: optionalDate,
   modIesire: optionalEnum(EXIT_MODES),
   bisericaDestinatie: text(160, "Biserica de destinație"),
-  slujire: text(300, "Slujirea"),
   note: longText(5000, "Notele"),
+  inComitet: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
 });
 
 /** Validarea completă, inclusiv verificările de consistență a datelor (raportate împreună cu celelalte erori). */

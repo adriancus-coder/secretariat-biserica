@@ -34,10 +34,11 @@ describe.skipIf(!hasTestDb)("meeting attendance rules", () => {
     await person("nou", { statut: "MEMBRU", dataMembru: day("2026-06-01") });
     await person("prieten", { statut: "PRIETEN" });
     await person("plecat", { statut: "FOST_MEMBRU", dataIesire: day("2025-01-01") });
-    await person("diacon", { statut: "MEMBRU" });
+    await person("diacon", { statut: "MEMBRU", inComitet: true });
     await person("dinAltaBiserica", { statut: "MEMBRU" }, cb.id);
-    const diacon = await prisma.churchRole.create({ data: { churchId: ca.id, nume: "Diacon", inCommittee: true } });
-    const cor = await prisma.churchRole.create({ data: { churchId: ca.id, nume: "Lider cor" } });
+    const group = await prisma.roleGroup.create({ data: { churchId: ca.id, nume: "Funcții" } });
+    const diacon = await prisma.churchRole.create({ data: { churchId: ca.id, groupId: group.id, nume: "Diacon" } });
+    const cor = await prisma.churchRole.create({ data: { churchId: ca.id, groupId: group.id, nume: "Lider cor" } });
     await prisma.personRole.createMany({
       data: [
         { personId: ids.diacon, roleId: diacon.id, since: day("2024-01-01") },
@@ -57,9 +58,8 @@ describe.skipIf(!hasTestDb)("meeting attendance rules", () => {
     expect(await expectedAttendees(b.db, "TOTI", "2026-09-01")).toEqual([ids.dinAltaBiserica]);
   });
 
-  it("Comitetul: holders of a committee role on the meeting date; Manual: nobody", async () => {
+  it("Comitetul: persons in the record with the committee flag; Manual: nobody", async () => {
     expect(await expectedAttendees(a.db, "COMITET", "2026-09-01")).toEqual([ids.diacon]);
-    expect(await expectedAttendees(a.db, "COMITET", "2023-06-01")).toEqual([]);
     expect(await expectedAttendees(b.db, "COMITET", "2026-09-01")).toEqual([]);
     expect(await expectedAttendees(a.db, "MANUAL", "2026-09-01")).toEqual([]);
   });

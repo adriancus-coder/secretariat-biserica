@@ -11,11 +11,15 @@ import { applyExitRule, PERSON_FIELDS, personSchema, type PersonInput } from "@/
 import { APPLICATION_FIELDS } from "@/lib/schemas/application";
 import { personRolesSchema } from "@/lib/schemas/roles";
 import { idSchema } from "@/lib/validation";
-import { NEW_FAMILY, defaultFamilyName } from "@/lib/families";
+import { canBeHead, NEW_FAMILY, defaultFamilyName } from "@/lib/families";
+import { todayIso } from "@/lib/dates";
 import { writeAudit } from "../audit";
-import { createFamilyFor, settleFamily } from "../families";
+import { createFamilyFor, markEdited, settleFamily } from "../families";
 import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
 import { findDuplicatePerson } from "../queries/applications";
+import { getChurch } from "../queries/church";
+import { parseListSpec, personNeighbors } from "../queries/persons";
+import { withDin } from "@/lib/person-nav";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
@@ -67,6 +71,9 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
     if (familyChoice && familyChoice !== NEW_FAMILY && !(await ctx.db.family.findUnique({ where: { id: familyChoice }, select: { id: true } }))) {
       throw new ValidationError({ familyId: "Familia aleasă nu mai există." });
     }
+    if (familyChoice === NEW_FAMILY && !canBeHead(input, todayIso())) {
+      throw new ValidationError({ familyId: "Un copil sau o persoană sub 18 ani nu poate fi cap de familie. Alegeți familia părinților." });
+    }
 
     if (applicationId) {
       const app = await ctx.db.application.findUnique({ where: { id: applicationId }, select: { status: true } });
@@ -100,7 +107,12 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         // The old family first: a lone head leaves it (and it is deleted) before heading a new one.
         if (before.familyId && before.familyId !== target) await settleFamily(tx, ctx.user, before.familyId);
         if (target === NEW_FAMILY) await createFamilyFor(tx, ctx.user, after);
-        if (target && target !== NEW_FAMILY && target !== before.familyId) await settleFamily(tx, ctx.user, target);
+        if (target && target !== NEW_FAMILY && target !== before.familyId) {
+          await markEdited(tx, target);
+          await settleFamily(tx, ctx.user, target);
+        }
+        // Placed in a family: the old family text is no longer shown.
+        if (target && before.familieVeche) await tx.person.update({ where: { id }, data: { familieVeche: "" } });
         // A family still named after its head follows a rename of the head.
         if (before.headOf && target === before.headOf.id && before.headOf.nume === defaultFamilyName(before)) {
           await tx.family.update({ where: { id: target }, data: { nume: defaultFamilyName(after) } });
@@ -120,7 +132,10 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
       const joining = familyChoice && familyChoice !== NEW_FAMILY ? familyChoice : null;
       const created = await tx.person.create({ data: { ...data, familyId: joining, churchId: ctx.user.churchId } });
       if (familyChoice === NEW_FAMILY) await createFamilyFor(tx, ctx.user, created);
-      if (joining) await settleFamily(tx, ctx.user, joining);
+      if (joining) {
+        await markEdited(tx, joining);
+        await settleFamily(tx, ctx.user, joining);
+      }
       await writePersonRoles(tx, created.id, roles);
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
@@ -153,7 +168,15 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
   });
   if (!savedId) return duplicate ? { ...state, ok: false, duplicate } : state;
   revalidatePath("/", "layout");
-  redirect(`/persoane/${savedId}?salvat=1`);
+  const din = typeof formData.get("din") === "string" ? String(formData.get("din")) : undefined;
+  // "Salvează și următorul": the next person of the list the form was opened from, in edit mode.
+  if (id && formData.get("dupa") === "urmatorul") {
+    const ctx = await actionCtx("write");
+    const church = await getChurch(ctx);
+    const { next } = await personNeighbors(ctx, id, parseListSpec(din), church.nomen.rudenie);
+    if (next) redirect(withDin(`/persoane/${next}/editare`, din, { salvat: "1" }));
+  }
+  redirect(withDin(`/persoane/${savedId}`, din, { salvat: "1" }));
 }
 
 export async function deletePersonAction(id: string): Promise<FormState> {

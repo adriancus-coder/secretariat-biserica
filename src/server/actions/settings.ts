@@ -89,7 +89,7 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       details = extraErrors;
       throw new ActionError(`Importul a fost oprit: ${extraErrors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw), baptism: parseMemberBaptism(raw) });
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw), baptism: parseMemberBaptism(raw), textFamilies: formData.get("faraFamiliiText") !== "on" });
     details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {

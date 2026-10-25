@@ -7,10 +7,10 @@ import { todayIso } from "@/lib/dates";
 import { extractPersonAction, type ExtractPersonState } from "@/server/actions/extract";
 import type { FamilyChoice } from "../family-field";
 import { PersonForm } from "../person-form";
-import type { RoleChoice } from "../roles-picker";
+import type { RoleChoiceGroup } from "../roles-picker";
 
 /** Upload a transfer certificate or membership application, then review the prefilled person form. */
-export function PersonFromDocument({ families, rudenie, roles }: { families: FamilyChoice[]; rudenie: string[]; roles: RoleChoice[] }) {
+export function PersonFromDocument({ families, rudenie, roles }: { families: FamilyChoice[]; rudenie: string[]; roles: RoleChoiceGroup[] }) {
   const [state, action, pending] = useActionState(extractPersonAction, {} as ExtractPersonState);
   const d = state.draft;
   if (d) {

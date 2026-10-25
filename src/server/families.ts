@@ -1,8 +1,9 @@
 import "server-only";
-import { defaultFamilyName, pickHead } from "@/lib/families";
+import { canBeHead, defaultFamilyName, pickHead } from "@/lib/families";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { compareRo } from "@/lib/text";
+import { ValidationError } from "./actions/run";
 import { writeAudit } from "./audit";
 import type { Ctx, CurrentUser } from "./session";
 
@@ -61,7 +62,7 @@ export async function settleFamily(
   if (!before) return;
   const members = await tx.person.findMany({
     where: { familyId },
-    select: { id: true, nume: true, prenume: true, rudenie: true, gen: true, dataNasterii: true, createdAt: true },
+    select: { id: true, nume: true, prenume: true, statut: true, rudenie: true, gen: true, dataNasterii: true, createdAt: true },
   });
   if (!members.length) {
     await tx.family.delete({ where: { id: familyId } });
@@ -72,7 +73,12 @@ export async function settleFamily(
   const head = pickHead(
     members.map((m) => ({ ...m, dataNasterii: fromDbDate(m.dataNasterii), createdAt: m.createdAt.toISOString() })),
     todayIso(),
-  )!;
+  );
+  // Only children left: the family stays without a head until an adult joins.
+  if (!head) {
+    if (before.headId) await tx.family.update({ where: { id: familyId }, data: { headId: null } });
+    return;
+  }
   const renamed = formerHead && before.nume === defaultFamilyName(formerHead) ? defaultFamilyName(head) : before.nume;
   await tx.family.update({ where: { id: familyId }, data: { headId: head.id, nume: renamed } });
   await writeAudit(tx, user, {
@@ -85,4 +91,49 @@ export async function settleFamily(
     after: await familyView(tx, familyId),
     extra: { observatie: "capul familiei a fost ales automat" },
   });
+}
+
+/** A family edited by hand is no longer "created automatically". */
+export async function markEdited(tx: Tx, familyId: string): Promise<void> {
+  await tx.family.updateMany({ where: { id: familyId, autoCreated: true }, data: { autoCreated: false } });
+}
+
+/** Refuses a person who cannot head a family (statut Copil or under 18). */
+export async function assertCanBeHead(tx: Tx, personId: string, field = "headId"): Promise<void> {
+  const p = await tx.person.findUnique({ where: { id: personId }, select: { statut: true, dataNasterii: true, nume: true, prenume: true } });
+  if (!p) throw new ValidationError({ [field]: "Persoana nu mai există." });
+  if (!canBeHead({ statut: p.statut, dataNasterii: fromDbDate(p.dataNasterii) }, todayIso())) {
+    throw new ValidationError({ [field]: `${memberName(p)} nu poate fi cap de familie: este copil sau nu a împlinit 18 ani.` });
+  }
+}
+
+/** Members leave the family (without family) and the family is deleted; audited. */
+export async function dissolveFamily(tx: Tx, user: CurrentUser, familyId: string, reason?: string): Promise<number> {
+  const before = await familyView(tx, familyId);
+  if (!before) return 0;
+  const members = await tx.person.findMany({ where: { familyId }, select: { id: true, nume: true, prenume: true } });
+  await tx.family.update({ where: { id: familyId }, data: { headId: null } });
+  await tx.person.updateMany({ where: { familyId }, data: { familyId: null } });
+  await tx.family.delete({ where: { id: familyId } });
+  await writeAudit(tx, user, {
+    entity: "FAMILY",
+    entityId: familyId,
+    entityLabel: before.nume,
+    action: "DELETE",
+    fields: FAMILY_FIELDS,
+    before,
+    ...(reason ? { extra: { observatie: reason } } : {}),
+  });
+  for (const m of members) {
+    await writeAudit(tx, user, {
+      entity: "PERSON",
+      entityId: m.id,
+      entityLabel: memberName(m),
+      action: "UPDATE",
+      fields: ["familie"],
+      before: { familie: before.nume },
+      after: { familie: "" },
+    });
+  }
+  return members.length;
 }

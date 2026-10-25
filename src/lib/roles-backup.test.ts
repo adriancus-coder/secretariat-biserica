@@ -12,23 +12,24 @@ describe("parseRolesJson", () => {
   it("reads the nomenclature and the roles held by members", () => {
     const r = parseRolesJson({
       roles: rolesToJson([
-        { id: "r1", nume: "Pastor", ordine: 0, comitet: true, activ: true },
-        { id: "r2", nume: "Lider cor", ordine: 1, comitet: false, activ: false },
+        { id: "r1", nume: "Pastor", ordine: 0, grup: "Funcții", activ: true },
+        { id: "r2", nume: "Lider cor", ordine: 1, grup: "Slujiri", activ: false },
       ]),
       members: {
-        p1: { nume: "Mureșan", functii: [{ nume: "Pastor", din: "2010-09-01", pana: null }, "Lider cor", { nume: "pastor" }] },
+        p1: { nume: "Mureșan", inComitet: true, functii: [{ nume: "Pastor", din: "2010-09-01", pana: null }, "Lider cor", { nume: "pastor" }] },
         p2: { nume: "Pop" },
       },
     });
     expect(r.roles).toEqual([
-      { id: "r1", nume: "Pastor", ordine: 0, comitet: true, activ: true },
-      { id: "r2", nume: "Lider cor", ordine: 1, comitet: false, activ: false },
+      { id: "r1", nume: "Pastor", ordine: 0, grup: "Funcții", comitet: false, activ: true },
+      { id: "r2", nume: "Lider cor", ordine: 1, grup: "Slujiri", comitet: false, activ: false },
     ]);
     expect(r.functii.get("p1")).toEqual([
       { nume: "Pastor", din: "2010-09-01", pana: null },
       { nume: "Lider cor", din: null, pana: null },
     ]);
     expect(r.functii.has("p2")).toBe(false);
+    expect([...r.committee]).toEqual([["p1", true]]);
   });
 
   it("reports roles without a name and drops duplicates", () => {

@@ -25,8 +25,7 @@ describe("personRolesSchema", () => {
 
 describe("roleSchema", () => {
   it("requires a name and reads the committee switch", () => {
-    expect(roleSchema.parse({ nume: " Diacon ", inCommittee: "on" })).toEqual({ nume: "Diacon", inCommittee: true });
-    expect(roleSchema.parse({ nume: "Lider cor", inCommittee: null })).toEqual({ nume: "Lider cor", inCommittee: false });
+    expect(roleSchema.parse({ nume: " Diacon " })).toEqual({ nume: "Diacon" });
     expect(roleSchema.safeParse({ nume: "  " }).success).toBe(false);
   });
 });

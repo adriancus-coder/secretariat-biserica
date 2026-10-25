@@ -94,7 +94,7 @@ export function SettingsForm({
         <div className="attendance-rules mb-3.5">
           <div className="text-[13px] font-medium text-ink-2 mb-1">Lista de prezență la ședința nouă</div>
           <p className="hint !mt-0 mb-2">
-            „Toți membrii” bifează membrii în evidență, „Comitetul” pe cei cu o funcție din comitet; cei bifați automat și debifați apar ca
+            „Toți membrii” bifează membrii în evidență, „Comitetul” pe cei bifați „Membru în comitet” pe fișa persoanei; cei bifați automat și debifați apar ca
             absenți. Un tip nou primește regula după salvare.
           </p>
           {nomen.tipuriSedinte.map((t) => (
@@ -114,7 +114,7 @@ export function SettingsForm({
         {nom("tipuriMentiuni", "Tipuri de mențiuni", nomen.tipuriMentiuni)}
         {nom("gradeRudenie", "Grade de rudenie", nomen.rudenie)}
         <p className="hint mb-2.5">
-          Funcțiile din biserică (pastor, diacon, comitet …) au pagina lor: <Link href="/setari/functii">Funcții în biserică</Link>.
+          Funcțiile și slujirile (pastor, diacon, cor, media …) au pagina lor: <Link href="/setari/functii">Funcții și slujiri</Link>.
         </p>
         <div className="hint">
           Statistica folosește tipurile de eveniment „Nuntă” și „Înmormântare”, iar certificatul de binecuvântare

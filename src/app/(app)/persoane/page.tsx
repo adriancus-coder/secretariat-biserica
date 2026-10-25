@@ -8,7 +8,8 @@ import { SearchBox } from "@/components/ui/search-box";
 import { todayIso } from "@/lib/dates";
 import { initial } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
-import { COMMITTEE_FILTER } from "@/lib/roles";
+import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
+import { listQuery } from "@/lib/person-nav";
 import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
 import {
@@ -18,7 +19,7 @@ import {
   PERSON_FILTERS,
   type PersonFilter,
 } from "@/server/queries/persons";
-import { listRoles } from "@/server/queries/roles";
+import { listRoleGroups } from "@/server/queries/roles";
 import { requireCtx } from "@/server/session";
 import { PersonRow } from "./person-row";
 
@@ -35,10 +36,13 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   const page = pageParam(sp.pagina);
   const today = todayIso();
   const canWrite = permissions.write(ctx.user.role);
-  const roles = await listRoles(ctx);
+  const groups = await listRoleGroups(ctx);
+  const roles = groups.flatMap((g) => g.roles);
   const rawRole = stringParam(sp.functie);
   const functie =
-    rawRole === COMMITTEE_FILTER || (idSchema.safeParse(rawRole).success && roles.some((r) => r.id === rawRole)) ? rawRole : "";
+    rawRole === COMMITTEE_FILTER || rawRole === NO_FAMILY_FILTER || (idSchema.safeParse(rawRole).success && roles.some((r) => r.id === rawRole))
+      ? rawRole
+      : "";
   const params = {
     filtru: filter === "membri" ? undefined : filter,
     vedere: byFamily ? "familii" : undefined,
@@ -46,13 +50,16 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
     functie: functie || undefined,
   };
 
+  // Person pages opened from here follow this list with "‹ Anterior" / "Următorul ›".
+  const din = listQuery(params);
   const church = byFamily ? await getChurch(ctx) : null;
   const data = byFamily
     ? await listFamilies(ctx, { filter, q, page, functie }, church!.nomen.rudenie)
     : await listPersons(ctx, { filter, q, page, functie });
   const roleOptions = [
-    ...(roles.some((r) => r.inCommittee) ? [{ value: COMMITTEE_FILTER, label: "Comitet (orice funcție din comitet)" }] : []),
-    ...roles.filter((r) => r.holders > 0 || r.active).map((r) => ({ value: r.id, label: r.nume })),
+    { value: COMMITTEE_FILTER, label: "Comitet" },
+    { value: NO_FAMILY_FILTER, label: "Fără familie" },
+    ...groups.flatMap((g) => g.roles.filter((r) => r.holders > 0 || r.active).map((r) => ({ value: r.id, label: r.nume, group: g.nume }))),
   ];
   const empty = byFamily ? (data as Awaited<ReturnType<typeof listFamilies>>).groups.length === 0 : data.total === 0;
 
@@ -89,7 +96,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
         </Suspense>
         {roleOptions.length ? (
           <Suspense>
-            <ParamSelect param="functie" label="Funcție" emptyLabel="Toate funcțiile" options={roleOptions} />
+            <ParamSelect param="functie" label="Filtru: comitet, familie, funcție sau slujire" emptyLabel="Toți (fără filtru)" options={roleOptions} />
           </Suspense>
         ) : null}
         <Link
@@ -105,9 +112,9 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
           {data.anyPerson ? "Schimbați căutarea sau filtrul." : "Adăugați prima persoană cu butonul de mai sus."}
         </EmptyState>
       ) : byFamily ? (
-        <FamilyList data={data as Awaited<ReturnType<typeof listFamilies>>} today={today} />
+        <FamilyList data={data as Awaited<ReturnType<typeof listFamilies>>} today={today} din={din} />
       ) : (
-        <AlphaList items={(data as Awaited<ReturnType<typeof listPersons>>).items} today={today} />
+        <AlphaList items={(data as Awaited<ReturnType<typeof listPersons>>).items} today={today} din={din} />
       )}
 
       <Pager
@@ -125,7 +132,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   );
 }
 
-function AlphaList({ items, today }: { items: Awaited<ReturnType<typeof listPersons>>["items"]; today: string }) {
+function AlphaList({ items, today, din }: { items: Awaited<ReturnType<typeof listPersons>>["items"]; today: string; din: string }) {
   const out: React.ReactNode[] = [];
   let last = "";
   for (const p of items) {
@@ -138,12 +145,12 @@ function AlphaList({ items, today }: { items: Awaited<ReturnType<typeof listPers
         </div>,
       );
     }
-    out.push(<PersonRow key={p.id} p={p} byFamily={false} today={today} />);
+    out.push(<PersonRow key={p.id} p={p} byFamily={false} today={today} din={din} />);
   }
   return <div className="list">{out}</div>;
 }
 
-function FamilyList({ data, today }: { data: Awaited<ReturnType<typeof listFamilies>>; today: string }) {
+function FamilyList({ data, today, din }: { data: Awaited<ReturnType<typeof listFamilies>>; today: string; din: string }) {
   return (
     <div className="list">
       {data.groups.map((g) => (
@@ -159,7 +166,7 @@ function FamilyList({ data, today }: { data: Awaited<ReturnType<typeof listFamil
             <span className="hint inline">· {g.count}</span>
           </div>
           {g.members.map((p) => (
-            <PersonRow key={p.id} p={p} byFamily today={today} />
+            <PersonRow key={p.id} p={p} byFamily today={today} din={din} />
           ))}
         </section>
       ))}
