@@ -3,6 +3,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
 import { requireCtx } from "@/server/session";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
+import { memberName } from "@/lib/format";
 import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
 
@@ -12,7 +13,15 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
   const sp = await searchParams;
   const ctx = await requireCtx("export");
   const user = ctx.user;
-  const autoFamilies = permissions.admin(user.role) ? await ctx.db.family.count({ where: { autoCreated: true } }) : 0;
+  const autoFamilies = permissions.admin(user.role)
+    ? (
+        await ctx.db.family.findMany({
+          where: { autoCreated: true },
+          orderBy: { nume: "asc" },
+          select: { id: true, nume: true, head: { select: { nume: true, prenume: true } }, _count: { select: { members: true } } },
+        })
+      ).map((f) => ({ id: f.id, nume: f.nume, head: f.head ? memberName(f.head) : "", members: f._count.members }))
+    : [];
   const exportDays = await daysSinceLastExport(ctx);
   return (
     <>
@@ -59,7 +68,7 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
       {permissions.admin(user.role) ? (
         <div className="card">
           <h3>Familii create automat</h3>
-          <FamilyRepair autoCount={autoFamilies} />
+          <FamilyRepair families={autoFamilies} />
         </div>
       ) : null}
     </>

@@ -44,3 +44,6 @@ export const joinFamilySchema = z.object({
   familyId: z.string().refine((s) => idSchema.safeParse(s).success, "Alegeți familia."),
   rudenie: text(60, "Gradul de rudenie"),
 });
+
+/** Setări → Date, "Dizolvă familii": the checked families (ids). */
+export const selectedFamiliesSchema = z.array(idSchema, { message: "Alegeți familiile." }).min(1, "Alegeți cel puțin o familie.").max(2000);

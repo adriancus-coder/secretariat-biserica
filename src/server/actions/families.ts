@@ -10,7 +10,7 @@ import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { canBeHead, pickHead } from "@/lib/families";
-import { addMembersSchema, joinFamilySchema } from "@/lib/schemas/family";
+import { addMembersSchema, joinFamilySchema, selectedFamiliesSchema } from "@/lib/schemas/family";
 import { assertCanBeHead, createFamilyFor, dissolveFamily, FAMILY_FIELDS, familyView, markEdited, settleFamily } from "../families";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -217,18 +217,24 @@ export async function dissolveFamilyAction(familyId: string): Promise<FormState>
 }
 
 /** Setări → Date, "Dizolvă familiile create automat": only families never edited by hand. Admin only. */
-export async function dissolveAutoFamiliesAction(): Promise<FormState> {
+/**
+ * Setări → Date, "Dizolvă familii": dissolves the checked families among those created automatically
+ * (the others stay); each is audited by dissolveFamily. Admin only.
+ */
+export async function dissolveAutoFamiliesAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
+    const ids = parseOrThrow(selectedFamiliesSchema, formData.getAll("familii"));
     const n = await ctx.db.$transaction(
       async (tx) => {
-        const auto = await tx.family.findMany({ where: { autoCreated: true }, select: { id: true } });
-        for (const f of auto) await dissolveFamily(tx, ctx.user, f.id, "dizolvată ca familie creată automat");
-        return auto.length;
+        // Only families of this church that are still automatic (an edited one is no longer offered).
+        const chosen = await tx.family.findMany({ where: { id: { in: ids }, autoCreated: true }, select: { id: true } });
+        for (const f of chosen) await dissolveFamily(tx, ctx.user, f.id, "dizolvată ca familie creată automat");
+        return chosen.length;
       },
       { timeout: 60_000 },
     );
-    return { ok: true, message: n === 0 ? "Nu există familii create automat." : n === 1 ? "O familie a fost dizolvată." : `${n} familii au fost dizolvate.` };
+    return { ok: true, message: n === 0 ? "Nicio familie nu a fost dizolvată." : n === 1 ? "O familie a fost dizolvată." : `${n} familii au fost dizolvate.` };
   });
   if (state.ok) revalidatePath("/", "layout");
   return state;

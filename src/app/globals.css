@@ -1385,4 +1385,13 @@
       background: #fff;
     }
   }
+
+  /* Setări → Date, "Dizolvă familii": the list scrolls inside its panel. */
+  .family-pick {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px 10px;
+  }
 }

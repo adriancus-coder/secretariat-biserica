@@ -1,13 +1,31 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Icon } from "@/components/shell/icons";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
 import { dissolveAutoFamiliesAction, recalcHeadsAction, type RecalcHeadsState } from "@/server/actions/families";
 
+export interface AutoFamily {
+  id: string;
+  nume: string;
+  head: string;
+  members: number;
+}
+
 /** One-time repairs of the families created automatically (from the old family text). Admin only. */
-export function FamilyRepair({ autoCount }: { autoCount: number }) {
-  const [dissolveState, dissolve, dissolving] = useActionState(async () => dissolveAutoFamiliesAction(), initialFormState);
+export function FamilyRepair({ families }: { families: AutoFamily[] }) {
+  const autoCount = families.length;
+  const [dissolveState, dissolve, dissolving] = useActionState(dissolveAutoFamiliesAction, initialFormState);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const allChecked = autoCount > 0 && checked.size === autoCount;
+  const toggle = (id: string, on: boolean) =>
+    setChecked((s) => {
+      const next = new Set(s);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const [recalcState, recalc, recalculating] = useActionState(async () => recalcHeadsAction(), initialFormState as RecalcHeadsState);
   return (
     <div className="grid gap-4">
@@ -35,13 +53,38 @@ export function FamilyRepair({ autoCount }: { autoCount: number }) {
       <form
         action={dissolve}
         onSubmit={(e) => {
-          if (!window.confirm(`Dizolvați ${autoCount === 1 ? "familia creată automat" : `cele ${autoCount} familii create automat`}? Membrii rămân în registru, fără familie.`)) {
+          const n = checked.size;
+          if (!window.confirm(`Dizolvați ${n === 1 ? "familia selectată" : `cele ${n} familii selectate`}? Membrii rămân în registru, fără familie.`)) {
             e.preventDefault();
           }
         }}
       >
-        <button type="submit" className="btn btn-danger" disabled={dissolving || autoCount === 0}>
-          {dissolving ? "Se dizolvă…" : "Dizolvă familiile create automat"}
+        <h4 className="font-medium mb-1">Dizolvă familii</h4>
+        {autoCount ? (
+          <>
+            <label className="check mb-1">
+              <input type="checkbox" checked={allChecked} onChange={(e) => setChecked(e.target.checked ? new Set(families.map((f) => f.id)) : new Set())} />
+              <span className="font-medium">Selectează tot ({autoCount})</span>
+            </label>
+            <div className="family-pick">
+              {families.map((f) => (
+                <label key={f.id} className="check">
+                  <input type="checkbox" name="familii" value={f.id} checked={checked.has(f.id)} onChange={(e) => toggle(f.id, e.target.checked)} />
+                  <span>
+                    {f.nume}
+                    <span className="hint inline">
+                      {" "}
+                      · {f.head ? `cap: ${f.head}` : "fără cap"} · {f.members === 1 ? "un membru" : `${f.members} membri`}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </>
+        ) : null}
+        <button type="submit" className="btn btn-danger mt-2" disabled={dissolving || checked.size === 0}>
+          <Icon name="familii" className="size-[18px]" />
+          {dissolving ? "Se dizolvă…" : checked.size ? `Dizolvă familiile selectate (${checked.size})` : "Dizolvă familiile selectate"}
         </button>
         <FormMessage state={dissolveState} />
       </form>
