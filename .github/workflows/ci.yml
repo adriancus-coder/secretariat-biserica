@@ -41,6 +41,9 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      # No high or critical npm audit finding, except time-limited entries in audit-allowlist.json.
+      - name: npm audit (high and critical)
+        run: npm run audit:check
       # The same command every commit must pass locally: lint, typecheck, unit + integration tests, build.
       - name: npm run check
         run: npm run check

@@ -13,6 +13,7 @@ Church secretariat web app. It covers the person register, meeting minutes (proc
   - Production: https://secretariat-biserica.onrender.com. The Render service follows `dev`, so every push to `dev` goes live.
   - In production, `APP_URL` and `AUTH_URL` both hold the public address. Behind Render's proxy, Next.js only sees `https://localhost:10000`.
 - `docs/ROADMAP.md`: decisions and priorities.
+- `docs/SECURITY.md`: threat model, what is hashed or encrypted, headers, incident steps, backup policy.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -32,6 +33,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | --- | --- |
 | `npm run dev` | Development server on http://localhost:3000 |
 | `npm run check` | Lint, typecheck, all tests and the production build. **Must pass before every commit.** |
+| `npm run audit:check` | `npm audit` gate used by CI: fails on high/critical findings not in `audit-allowlist.json` (entries expire) |
 | `npm test` | Vitest, unit and integration. Integration tests need `TEST_DATABASE_URL`, and that database is truncated on every run. |
 | `npm run db:deploy` | Apply the existing migrations |
 | `npm run db:migrate -- --name <name>` | Create a migration after a schema change (development only) |
@@ -41,8 +43,8 @@ Never run `prisma migrate reset` / `npm run db:reset` or any other destructive d
 
 ## Stack notes (newer than most training data)
 
-- **Next.js 16.3** (App Router, Turbopack):
-  - `src/proxy.ts` replaces middleware.
+- **Next.js 16.4** (App Router, Turbopack):
+  - `src/proxy.ts` replaces middleware. It also sets the per-request CSP nonce (`src/lib/csp.ts`), so every page renders dynamically; never add inline `<script>` without the `x-nonce` header's nonce.
   - `params` and `searchParams` are Promises.
   - The global types `PageProps<"/route">` and `RouteContext<"/route">` come from `next typegen`, which runs inside `npm run typecheck`.
   - `forbidden()` relies on `experimental.authInterrupts`.

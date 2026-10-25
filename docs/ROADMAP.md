@@ -51,6 +51,7 @@ Also in place:
   - Vizualizare: read and print only.
 - **The prototype is the functional spec.** Deliberate deviations are listed in README, "Diferențe față de prototip".
 - **Hosting and e-mail:** Render (Frankfurt, web service plus managed PostgreSQL) and Resend for e-mail.
+- **Security baseline** (`docs/SECURITY.md`): nonce-based CSP without `'unsafe-inline'` for scripts, HSTS, CI `npm audit` gate with an expiring allow-list (`audit-allowlist.json`) and dependency review on pull requests. Pages denied by role keep the "Acces restricționat" page with HTTP 200 (streamed); route handlers answer 403.
 
 ## Next steps (priority order)
 
@@ -85,4 +86,8 @@ Also in place:
   - Move it to PostgreSQL or Redis before running more than one instance; this belongs with step 4.
 - Older code comments and most of the README are in Romanian.
 - Auth.js v5 is still a beta release.
+- Every page renders dynamically because of the CSP nonce (no static pages or ISR); fine for an app behind a login.
+- The style CSP keeps `'unsafe-inline'` (React `style` attributes).
+- Pages forbidden by role answer HTTP 200 with the "Acces restricționat" page (see `docs/SECURITY.md`).
+- Security tasks for the owner: test a Render database restore twice a year; each church downloads a monthly JSON export.
 - Date fields use the browser's native date picker.

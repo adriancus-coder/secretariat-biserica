@@ -1,0 +1,4 @@
+{
+  "$comment": "Known high/critical npm audit findings accepted for a limited time (dev-only tools, no fix yet). Each entry: package, advisories (URLs; empty = any), reason, expires (YYYY-MM-DD). See docs/SECURITY.md.",
+  "entries": []
+}
