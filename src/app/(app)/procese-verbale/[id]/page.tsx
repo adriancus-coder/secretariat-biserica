@@ -54,6 +54,9 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <a href={`/pdf/proces-verbal/${x.id}`} target="_blank" rel="noopener" className="btn">
           Tipărește (PDF)
         </a>
+        <a href={`/pdf/proces-verbal/${x.id}/word`} className="btn" download>
+          Deschide în Word
+        </a>
         <ShareMinutesButton meetingId={x.id} fileName={meetingPdfFileName(x, church.slug)} title={numberLabel ?? `Proces-verbal ${dataLabel}`} />
         {canWrite ? (
           <SendMinutesButton

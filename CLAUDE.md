@@ -209,6 +209,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
   3. Do this in a route handler under `src/app/pdf/**`, guarded by `requireCtx()`.
 - The letterhead and the signatures (pastor, secretar) come from `getChurch(ctx)`.
 - The fonts are traced into the build only for `/pdf/**` (`outputFileTracingIncludes` in `next.config.ts`).
+- Word: `renderDocx(spec)` (`src/server/docx/render.ts`, `docx` package) renders the same `PrintSpec` as an editable .docx (plain paragraphs and tables, Times New Roman); `docxResponse()` sends it as a download. The minutes use it at `/pdf/proces-verbal/[id]/word` ("Deschide în Word"); `meetingSpec()` (`src/server/pdf/meeting.ts`) is shared by both formats.
 
 ### Document register
 
