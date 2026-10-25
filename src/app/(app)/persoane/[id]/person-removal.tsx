@@ -29,8 +29,8 @@ export function PersonRemoval({ personId, name }: { personId: string; name: stri
         <label className="choice">
           <input type="radio" name="mod" checked={mode === "anonimizare"} onChange={() => setMode("anonimizare")} />
           <span>
-            Anonimizează — numele devine „Persoană ștearsă”, datele de contact, notele, funcțiile și mențiunile se șterg; statistica rămâne
-            neschimbată.
+            Anonimizează — numele devine „Persoană ștearsă”; datele de contact, notele, funcțiile, mențiunile, semnăturile și cererea de
+            membru se șterg, iar numele dispare și din procesele-verbale, evenimente și jurnal. Statistica rămâne neschimbată.
           </span>
         </label>
         <label className="choice">
@@ -38,6 +38,9 @@ export function PersonRemoval({ personId, name }: { personId: string; name: stri
           <span>Șterge definitiv — persoana dispare din registru și din statistică; prezența la ședințe și grupurile se șterg.</span>
         </label>
       </fieldset>
+      <p className="hint mb-2">
+        Documentele din registrul de ieșire (adeverințe, certificate, scrisori) păstrează numele: sunt acte oficiale deja emise.
+      </p>
       <FormMessage state={state} />
       <div className="actions">
         <button type="button" className="btn" onClick={() => setOpen(false)}>

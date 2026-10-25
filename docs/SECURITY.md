@@ -36,6 +36,17 @@ Out of scope: a compromised Render account or database host, and a compromised a
 
 Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: users with an authenticator app then sign in with an e-mail code or a recovery code and set the app up again.
 
+## Removing a person (GDPR erasure)
+
+An administrator chooses between deleting the person for good and anonymising the record. Anonymising keeps what the statistics need (statut, gender, dates, family) and removes everything else:
+
+- the name becomes "Persoană ștearsă"; contact data, notes, roles, groups, remembered name forms, mențiuni and drawn signatures are deleted;
+- the linked membership application is blanked and unlinked;
+- the person's and the application's earlier audit entries keep only when and who;
+- the name (in both word orders), the phone number and the e-mail address are replaced in minutes, e-mail send lists, events, groups, notes, families and all audit entries of the church.
+
+Documents already issued in the outgoing register (certificates, letters) keep the name: they are an official record of what the church issued. The confirmation step says so. `tests/integration/anonymize.test.ts` checks that no other table keeps the name, phone or e-mail.
+
 ## Response headers
 
 - `Content-Security-Policy` is built per request in `src/proxy.ts` (`src/lib/csp.ts`): `script-src 'self' 'nonce-…' 'strict-dynamic'` (plus `'unsafe-eval'` only in development, for React's debugging tools). Next.js reads the nonce from the request header and adds it to its own scripts, so every page is rendered dynamically. Styles keep `'unsafe-inline'` (React `style` attributes); that is accepted, scripts are what matters.
