@@ -22,6 +22,8 @@ import { passwordResetRequests, requestPasswordReset, RESET_REQUEST_WINDOW_MINUT
 import { ActionError, getCurrentUser } from "../session";
 import { hashToken } from "../tokens";
 import { checkPassword } from "../login";
+import { hitIpLimit, IP_LIMIT_MESSAGE } from "../ip-limits";
+import { passwordProblem } from "../password-policy";
 import { hasSecondFactor, setChallengeCookie, startChallenge } from "../two-factor";
 import { finishSignIn } from "../sign-in";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -60,10 +62,23 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!email || !password) {
     return { message: "Introduceți adresa de e-mail și parola.", values: { email } };
   }
+  if (!(await hitIpLimit("login"))) return { message: IP_LIMIT_MESSAGE, values: { email } };
   return (await signInOrMessage(email, password, safeCallbackUrl(formData.get("callbackUrl")))) ?? {};
 }
 
 export async function logoutAction() {
+  await signOut({ redirectTo: "/autentificare" });
+}
+
+/** "Deconectează-te de pe toate dispozitivele": every session of the user ends, this one too. */
+export async function logoutEverywhereAction() {
+  const me = await getCurrentUser();
+  if (me) {
+    await prisma.user.update({ where: { id: me.id }, data: { sessionVersion: { increment: 1 } } });
+    await prisma.auditLog.create({
+      data: { churchId: me.churchId, userId: me.id, userName: me.name, entity: "SECURITY", entityId: me.id, entityLabel: me.name, action: "UPDATE", changes: { sesiuni: "închise pe toate dispozitivele" } },
+    });
+  }
   await signOut({ redirectTo: "/autentificare" });
 }
 
@@ -74,7 +89,10 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
     if (!(await signupAllowed())) {
       return { message: "Înregistrarea de biserici noi este dezactivată pe acest server." };
     }
+    if (!(await hitIpLimit("signup"))) throw new ActionError(IP_LIMIT_MESSAGE);
     const data = parseOrThrow(signupSchema, Object.fromEntries(formData));
+    const weak = passwordProblem(data.password, { email: data.email, name: data.name });
+    if (weak) throw new ValidationError({ password: weak });
     if (await prisma.user.findUnique({ where: { email: data.email } })) {
       throw new ValidationError({ email: "Există deja un cont cu această adresă de e-mail." });
     }
@@ -107,6 +125,8 @@ export async function acceptInvitationAction(token: string, _prev: FormState, fo
     if (await prisma.user.findUnique({ where: { email: invitation.email } })) {
       return { message: "Există deja un cont cu această adresă de e-mail." };
     }
+    const weak = passwordProblem(data.password, { email: invitation.email, name: data.name });
+    if (weak) throw new ValidationError({ password: weak });
     const passwordHash = await hashPassword(data.password);
     await prisma.$transaction(async (tx) => {
       // Marcarea condiționată previne folosirea dublă a aceleiași invitații.
@@ -150,6 +170,7 @@ export async function acceptInvitationAction(token: string, _prev: FormState, fo
 export async function forgotPasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
   return runFormAction(formData, async () => {
     const { email } = parseOrThrow(forgotPasswordSchema, Object.fromEntries(formData));
+    if (!(await hitIpLimit("forgot"))) throw new ActionError(IP_LIMIT_MESSAGE);
     if (!passwordResetRequests.hit(email)) {
       throw new ActionError(
         `Prea multe cereri pentru această adresă. Încercați din nou peste ${RESET_REQUEST_WINDOW_MINUTES} minute.`,
@@ -178,6 +199,8 @@ export async function resetPasswordAction(token: string, _prev: FormState, formD
     if (!reset || reset.usedAt || reset.expiresAt < new Date() || !reset.user.active) {
       return { message: "Linkul de resetare nu mai este valabil. Cereți unul nou din pagina „Am uitat parola”." };
     }
+    const weak = passwordProblem(data.password, reset.user);
+    if (weak) throw new ValidationError({ password: weak });
     const passwordHash = await hashPassword(data.password);
     await prisma.$transaction(async (tx) => {
       const claimed = await tx.passwordReset.updateMany({
@@ -207,6 +230,8 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
     if (!(await verifyPassword(data.current, user.passwordHash))) {
       throw new ValidationError({ current: "Parola actuală nu este corectă." });
     }
+    const weak = passwordProblem(data.password, user);
+    if (weak) throw new ValidationError({ password: weak });
     await prisma.user.update({
       where: { id: me.id },
       data: { passwordHash: await hashPassword(data.password), sessionVersion: { increment: 1 } },

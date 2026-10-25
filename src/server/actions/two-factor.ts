@@ -8,6 +8,7 @@ import { isEmailConfigured, sendLoginCodeEmail } from "../email";
 import { verifyPassword } from "../password";
 import { getCurrentUser } from "../session";
 import { finishSignIn } from "../sign-in";
+import { hitIpLimit, IP_LIMIT_MESSAGE } from "../ip-limits";
 import { otpauthUrl, newTotpSecret, verifyTotp } from "../totp";
 import {
   clearChallengeCookie,
@@ -55,6 +56,7 @@ export async function verifyLoginCodeAction(_prev: FormState, formData: FormData
   const user = challenge.user;
   const code = String(formData.get("cod") ?? "").trim();
   if (!code) return { message: "Introduceți codul." };
+  if (!(await hitIpLimit("code"))) return { message: IP_LIMIT_MESSAGE };
 
   let ok = false;
   let usedRecovery = false;

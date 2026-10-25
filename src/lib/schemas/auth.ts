@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { requiredText } from "../validation";
 
-export const PASSWORD_MIN = 8;
-export const PASSWORD_MAX = 128;
+import { PASSWORD_MAX, PASSWORD_MIN } from "../password-policy";
+
+export { PASSWORD_MAX, PASSWORD_MIN };
 
 const password = z
   .string()

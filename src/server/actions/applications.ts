@@ -3,7 +3,6 @@
 import { STATUTE } from "@/lib/statutes";
 import { listStatutes } from "../statutes";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { toDbDate } from "@/lib/dates";
@@ -17,6 +16,7 @@ import { writeAudit } from "../audit";
 import { prisma } from "../db";
 import { sendNewApplicationEmail } from "../email";
 import { sharedRateLimiter } from "../rate-limit";
+import { clientIp } from "../ip-limits";
 import { actionCtx, ActionError } from "../session";
 import { tenantDb } from "../tenant-db";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -24,11 +24,6 @@ import { parseOrThrow, runFormAction, ValidationError } from "./run";
 /** 5 submissions per hour for the same visitor (IP address) and church. */
 const submissions = sharedRateLimiter("applications", { limit: 5, windowMs: 3_600_000 });
 
-/** The visitor's IP as reported by the platform proxy; the first X-Forwarded-For entry. */
-async function clientIp(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "necunoscut";
-}
 
 /**
  * Public membership application. The church comes only from the slug in the address (looked up

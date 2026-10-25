@@ -4,7 +4,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ROLE_LABEL } from "@/lib/labels";
 import { isEmailConfigured } from "@/server/email";
 import { requireCtx } from "@/server/session";
-import { ActiveToggle, InviteForm, ResetLinkButton, RevokeInvitation, RoleSelect } from "./user-controls";
+import { ActiveToggle, EndSessionsButton, InviteForm, ResetLinkButton, RevokeInvitation, RoleSelect } from "./user-controls";
 
 export const metadata: Metadata = { title: "Utilizatori" };
 
@@ -79,6 +79,7 @@ export default async function UsersPage() {
             <div className="item-actions">
               <RoleSelect userId={u.id} role={u.role} disabled={!u.active} />
               {u.active ? <ResetLinkButton userId={u.id} emailEnabled={emailEnabled} /> : null}
+              {u.active && u.id !== ctx.user.id ? <EndSessionsButton userId={u.id} name={u.name} /> : null}
               {u.id !== ctx.user.id ? <ActiveToggle userId={u.id} active={u.active} /> : null}
             </div>
           </div>

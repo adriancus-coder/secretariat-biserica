@@ -66,7 +66,7 @@ Also in place:
    - convert it to the prototype JSON format;
    - import it through Setări → Copie de siguranță, with a dry run on a copy first.
 3. **Playwright E2E tests for the 3 roles:** the main flows per role, run in CI.
-4. **Rate limiting on `/autentificare` and `/inregistrare`:** per IP. Today there is only a per-account lockout (5 failed logins lock the account for 15 minutes).
+4. **Shared rate limits:** the per-IP limits (login, signup, forgot password, 2FA code) and the per-account lockout live in process memory; scaling to several instances needs a shared store (PostgreSQL or Redis).
 5. **Per-church time zone:** `Church.timeZone` instead of the global `APP_TIME_ZONE`.
 6. **Attachments:** scanned files on documents and meeting minutes. This needs object storage.
 

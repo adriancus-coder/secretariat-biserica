@@ -165,6 +165,30 @@ export async function setUserActiveAction(userId: string, active: boolean): Prom
   return state;
 }
 
+/** "Deconectează de pe toate dispozitivele" for one user (sessionVersion + 1). Admin only. */
+export async function endUserSessionsAction(userId: string): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx("admin");
+    parseOrThrow(idSchema, userId);
+    const user = await ctx.db.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ActionError("Utilizatorul nu există.");
+    await ctx.db.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+      await writeAudit(tx, ctx.user, {
+        entity: "USER",
+        entityId: userId,
+        entityLabel: `${user.name} <${user.email}>`,
+        action: "UPDATE",
+        fields: [],
+        extra: { sesiuni: "închise pe toate dispozitivele" },
+      });
+    });
+    return { ok: true, message: userId === ctx.user.id ? "Sesiunile au fost închise." : `${user.name} a fost deconectat de pe toate dispozitivele.` };
+  });
+  revalidatePath("/setari/utilizatori");
+  return state;
+}
+
 /** Link de resetare a parolei, generat de administrator (valabil 48 de ore) și trimis pe e-mail. */
 export async function passwordResetLinkAction(userId: string): Promise<LinkState> {
   let link: string | undefined;

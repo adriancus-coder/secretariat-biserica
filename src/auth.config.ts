@@ -13,7 +13,8 @@ export function isPublicPath(pathname: string): boolean {
  */
 export const authConfig = {
   pages: { signIn: "/autentificare" },
-  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
+  // 24 hours, sliding: the cookie is renewed (at most once an hour) while the user keeps working.
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60, updateAge: 60 * 60 },
   providers: [],
   callbacks: {
     authorized({ auth, request }) {

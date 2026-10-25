@@ -20,7 +20,7 @@ export function AcceptInvitationForm({ token }: { token: string }) {
           type="password"
           autoComplete="new-password"
           error={e.password}
-          hint={`Minimum ${PASSWORD_MIN} caractere.`}
+          hint={`Cel puțin ${PASSWORD_MIN} caractere; nu o parolă des folosită și nici numele sau adresa de e-mail.`}
           required
         />
         <TextField name="confirm" label="Confirmați parola" type="password" autoComplete="new-password" error={e.confirm} required />

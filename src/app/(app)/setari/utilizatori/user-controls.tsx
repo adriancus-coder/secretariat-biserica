@@ -11,6 +11,7 @@ import {
   passwordResetLinkAction,
   revokeInvitationAction,
   setUserActiveAction,
+  endUserSessionsAction,
   type LinkState,
 } from "@/server/actions/users";
 
@@ -118,6 +119,23 @@ export function ActiveToggle({ userId, active, disabled }: { userId: string; act
         {active ? "Dezactivează" : "Reactivează"}
       </button>
       {state.message && !state.ok ? <span className="field-error block">{state.message}</span> : null}
+    </form>
+  );
+}
+
+export function EndSessionsButton({ userId, name }: { userId: string; name: string }) {
+  const [state, action, pending] = useActionState(async () => endUserSessionsAction(userId), initialFormState);
+  return (
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm(`Deconectați ${name} de pe toate dispozitivele?`)) e.preventDefault();
+      }}
+    >
+      <button type="submit" className="btn btn-sm" disabled={pending}>
+        Deconectează peste tot
+      </button>
+      {state.message ? <span className={`block ${state.ok ? "hint" : "field-error"}`}>{state.message}</span> : null}
     </form>
   );
 }

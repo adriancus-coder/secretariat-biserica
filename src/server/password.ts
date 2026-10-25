@@ -8,7 +8,7 @@ const PARAMS = { N: 2 ** 15, r: 8, p: 3 } as const;
 const KEY_LENGTH = 32;
 const MAX_MEM = 64 * 1024 * 1024;
 
-export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MIN_LENGTH = 10;
 export const PASSWORD_MAX_LENGTH = 128;
 
 function scrypt(password: string, salt: Buffer, keylen: number, options: ScryptOptions): Promise<Buffer> {

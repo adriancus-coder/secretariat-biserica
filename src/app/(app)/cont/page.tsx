@@ -4,7 +4,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
 import { ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/labels";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
-import { logoutAction } from "@/server/actions/auth";
+import { logoutAction, logoutEverywhereAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { ChangePasswordForm } from "./change-password-form";
 import { SecurityCard } from "./security-card";
@@ -61,11 +61,18 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
         <p className="hint mb-3">Tema se păstrează pe acest dispozitiv.</p>
         <ThemeSwitcher current={theme} />
       </div>
-      <form action={logoutAction} className="mt-4">
-        <button type="submit" className="btn btn-danger">
-          Ieșire din cont
-        </button>
-      </form>
+      <div className="actions mt-4">
+        <form action={logoutAction}>
+          <button type="submit" className="btn btn-danger">
+            Ieșire din cont
+          </button>
+        </form>
+        <form action={logoutEverywhereAction}>
+          <button type="submit" className="btn">
+            Deconectează-te de pe toate dispozitivele
+          </button>
+        </form>
+      </div>
     </>
   );
 }

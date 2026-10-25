@@ -82,7 +82,7 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | --- | --- | --- |
 | `DATABASE_URL` | da | Conexiunea PostgreSQL a aplicației și a migrărilor. |
 | `AUTH_SECRET` | da | Cheia de semnare a sesiunilor (min. 32 de caractere aleatoare). |
-| `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. |
+| `AUTH_TRUST_HOST` | în producție | `true` când aplicația rulează în spatele unui reverse proxy sau cu `next start`. Numai atunci limitele pe adresă IP folosesc antetul `X-Forwarded-For`. |
 | `AUTH_URL` | în spatele unui proxy | Adresa publică pentru Auth.js, aceeași valoare ca `APP_URL`. Fără ea, în spatele unui proxy (ex. Render) Auth.js vede adresa internă a serverului (`https://localhost:10000`). |
 | `APP_URL` | recomandat | Adresa publică (ex. `https://secretariat.exemplu.ro`), folosită în linkurile de invitație și resetare a parolei. Necesară pentru trimiterea e-mailurilor. |
 | `ALLOW_SIGNUP` | nu | `true` permite înregistrarea de biserici noi din `/inregistrare`. Implicit doar prima biserică. |
