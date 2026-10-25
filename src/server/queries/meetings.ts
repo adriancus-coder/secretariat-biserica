@@ -46,8 +46,9 @@ export async function getMeeting(ctx: Ctx, id: string) {
   const m = await ctx.db.meeting.findUnique({
     where: { id },
     include: {
-      prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true } } } },
+      prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true, email: true } } } },
       signatures: { select: { personId: true, signedAt: true, imagePng: true } },
+      sends: { orderBy: { sentAt: "desc" }, take: 20, include: { sentBy: { select: { name: true } } } },
     },
   });
   if (!m) return null;
@@ -61,6 +62,7 @@ export async function getMeeting(ctx: Ctx, id: string) {
         name: memberName(p.person),
         nume: p.person.nume,
         prenume: p.person.prenume,
+        email: p.person.email,
         signature: status === "PRESENT" ? (signed.get(p.person.id) ?? null) : null,
       }));
   return { ...m, data: fromDbDate(m.data)!, prezenti: list("PRESENT"), absenti: list("ABSENT") };

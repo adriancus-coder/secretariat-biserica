@@ -10,7 +10,13 @@ import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
 import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
 import { dotDateTime } from "@/lib/dates";
+import { fmtDot } from "@/domain/print";
 import { Signatures } from "./signatures";
+import { SendMinutesButton, ShareMinutesButton, type Recipient } from "./send-minutes";
+import { defaultSendMessage, defaultSendSubject } from "@/lib/schemas/meeting-send";
+import { isEmailConfigured } from "@/server/email";
+import { meetingPdfFileName } from "@/server/pdf/meeting";
+import { getChurch } from "@/server/queries/church";
 import { AssignNumberButton } from "./assign-number";
 import { getMeeting } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
@@ -20,7 +26,7 @@ export const metadata: Metadata = { title: "Proces-verbal" };
 export default async function MeetingPage({ params }: PageProps<"/procese-verbale/[id]">) {
   const { id } = await params;
   const ctx = await requireCtx();
-  const x = await getMeeting(ctx, id);
+  const [x, church] = await Promise.all([getMeeting(ctx, id), getChurch(ctx)]);
   if (!x) notFound();
   const canWrite = permissions.write(ctx.user.role);
   const cvorum = quorumLine(x.asteptati, x.absenti.length);
@@ -30,6 +36,8 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "MEETING", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
+  const dataLabel = fmtDot(x.data);
+  const recipients = canWrite ? sendRecipients(church, x.prezenti) : [];
 
   return (
     <>
@@ -46,6 +54,16 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <a href={`/pdf/proces-verbal/${x.id}`} target="_blank" rel="noopener" className="btn">
           Tipărește (PDF)
         </a>
+        <ShareMinutesButton meetingId={x.id} fileName={meetingPdfFileName(x, church.slug)} title={numberLabel ?? `Proces-verbal ${dataLabel}`} />
+        {canWrite ? (
+          <SendMinutesButton
+            meetingId={x.id}
+            configured={isEmailConfigured()}
+            recipients={recipients}
+            subject={defaultSendSubject({ ...x, dataLabel }, church.nume)}
+            message={defaultSendMessage({ tip: x.tip, dataLabel }, church.nume)}
+          />
+        ) : null}
         {canEdit && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
         {canEdit ? (
           <Link href={`/procese-verbale/${x.id}/editare`} className="btn btn-primary">
@@ -134,6 +152,23 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         }))}
       />
 
+      {x.sends.length ? (
+        <div className="card">
+          <h3>Trimiteri</h3>
+          <ul className="send-list">
+            {x.sends.map((s) => (
+              <li key={s.id}>
+                {s.status === "SENT" ? "Trimis" : <span className="tag tag-warn">Netrimis</span>} la {s.to.join(", ")}
+                <span className="block text-xs text-ink-3">
+                  {dotDateTime(s.sentAt)}
+                  {s.sentBy ? ` · ${s.sentBy.name}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {audit.length ? (
         <div className="card">
           <h3>Istoric modificări</h3>
@@ -148,6 +183,22 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
       ) : null}
     </>
   );
+}
+
+/** Pastor and Secretar (preselected) and the attendees with an e-mail address, without duplicates. */
+function sendRecipients(
+  church: { pastor: string; secretar: string; pastorEmail: string; secretarEmail: string },
+  attendees: { name: string; email: string }[],
+): Recipient[] {
+  const list: Recipient[] = [];
+  const add = (email: string, label: string, preselected: boolean) => {
+    const e = email.trim().toLowerCase();
+    if (e && !list.some((r) => r.email === e)) list.push({ email: e, label, preselected });
+  };
+  add(church.pastorEmail, church.pastor ? `Pastor · ${church.pastor}` : "Pastor", true);
+  add(church.secretarEmail, church.secretar ? `Secretar · ${church.secretar}` : "Secretar", true);
+  for (const p of attendees) add(p.email, p.name, false);
+  return list;
 }
 
 function PersonLinks({ list }: { list: { id: string; name: string }[] }) {

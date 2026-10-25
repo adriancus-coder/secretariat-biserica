@@ -10,7 +10,7 @@ import { ATTENDANCE_RULE_LABEL, ATTENDANCE_RULES, type AttendanceRule } from "@/
 import type { Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 
-type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "slug";
+type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug";
 
 export function SettingsForm({
   church,
@@ -55,6 +55,10 @@ export function SettingsForm({
         <div className="row2 stack-sm">
           <TextField name="pastor" label="Pastor" defaultValue={val("pastor")} error={e.pastor} hint="Semnează documentele." />
           <TextField name="secretar" label="Secretar" defaultValue={val("secretar")} error={e.secretar} hint="Semnează documentele și PV-urile." />
+        </div>
+        <div className="row2 stack-sm">
+          <TextField name="pastorEmail" label="E-mail pastor" type="email" defaultValue={val("pastorEmail")} error={e.pastorEmail} hint="Primește procesele-verbale trimise din aplicație." />
+          <TextField name="secretarEmail" label="E-mail secretar" type="email" defaultValue={val("secretarEmail")} error={e.secretarEmail} hint="Primește procesele-verbale trimise din aplicație." />
         </div>
         <TextField
           name="slug"

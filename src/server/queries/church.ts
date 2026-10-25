@@ -17,6 +17,9 @@ export interface ChurchSettings extends ChurchInfo {
   savedNomen: Nomenclatures;
   /** Attendance rule of every meeting type in `nomen.tipuriSedinte`. */
   attendanceRules: Record<string, AttendanceRule>;
+  /** Preselected recipients when the minutes are e-mailed ("" = none). */
+  pastorEmail: string;
+  secretarEmail: string;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -40,6 +43,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     email: c.email,
     pastor: c.pastor,
     secretar: c.secretar,
+    pastorEmail: c.pastorEmail,
+    secretarEmail: c.secretarEmail,
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),

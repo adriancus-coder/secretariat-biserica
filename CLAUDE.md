@@ -221,8 +221,8 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 
 ### E-mail
 
-- `src/server/email.ts` uses Resend and exports `sendInvitationEmail` and `sendPasswordResetEmail`.
-  - They never throw. They return `"sent"`, `"disabled"` or `"failed"`.
+- `src/server/email.ts` uses Resend and exports `sendInvitationEmail`, `sendPasswordResetEmail`, `sendNewApplicationEmail` and `sendMinutesEmail`.
+  - They never throw. They return `"sent"`, `"disabled"` or `"failed"` (`sendMinutesEmail` also the provider's id or error name).
   - The caller tells the user the outcome and keeps the link visible for manual sending.
 - E-mail stays off unless `RESEND_API_KEY` and a valid `APP_URL` are set. Links are built only from `APP_URL`, never from request headers.
 - Never log tokens, links or recipients.
@@ -264,6 +264,8 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - The PDF follows `docs/samples/proces-verbal-model.md`; `print.test.ts` compares `printToText` with its example line by line. Change both together.
 - Signatures: `MeetingSignature` (no `churchId`, reached through Meeting), one per person present. The pad's PNG is re-encoded by `normalizeSignature()` (sharp, ≤ 600×200 px, ≤ 40 KB), also on import.
 - `Meeting.locked`: a closed meeting is read-only. Every meeting write checks it on the server (`ActionError`); only `admin` can reopen it. Signing, deleting a signature, closing and reopening are audited (names, never the image).
+- Sending: "Trimite" (`write`, `sendMinutesAction` in `src/server/actions/meeting-send.ts`) e-mails one message to the deduplicated recipients (Pastor/Secretar from `Church.pastorEmail`/`secretarEmail` preselected, attendees with an e-mail, free addresses), the PDF attached (≤ 10 MB). Each send is a `MeetingSend` row (no `churchId`, created through the meeting) and an audit entry; `sharedRateLimiter("minutes-send")` allows 20 sends per church per hour. Without e-mail configured the button is disabled.
+- `renderMeetingPdf()` / `meetingPdfFileName()` (`src/server/pdf/meeting.ts`) are shared by the PDF route and the e-mail: `PV-<nr>-<AAAA>-<slug>.pdf`. "Partajează" passes that file to the Web Share API, else downloads it.
 
 ### Reading documents with Claude (extraction)
 

@@ -63,30 +63,61 @@ function resendClient(apiKey: string): Resend {
   return cachedClient.client;
 }
 
-/** Keeps tokens out of the logs, even when an error message echoes the request. */
-function redact(message: string, secret: string): string {
-  return message.split(secret).join("[redacted]").replace(/\s+/g, " ").trim();
+/** Keeps tokens (and recipients) out of the logs, even when an error message echoes the request. */
+function redact(message: string, secrets: string | readonly string[]): string {
+  let out = message;
+  for (const secret of typeof secrets === "string" ? [secrets] : secrets) {
+    if (secret) out = out.split(secret).join("[redacted]");
+  }
+  return out.replace(/\s+/g, " ").trim();
 }
 
-async function deliver(config: EmailConfig, kind: string, to: string, content: EmailContent, secret: string): Promise<EmailResult> {
+interface Attachment {
+  filename: string;
+  content: Buffer;
+}
+
+interface Delivery {
+  result: EmailResult;
+  /** The provider's message id, when sent. */
+  id?: string;
+  /** The provider's error name (e.g. "validation_error"), when it refused the message. */
+  error?: string;
+}
+
+async function send(
+  config: EmailConfig,
+  kind: string,
+  to: string | string[],
+  content: EmailContent,
+  secrets: string | readonly string[],
+  attachments?: Attachment[],
+): Promise<Delivery> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(`no answer within ${SEND_TIMEOUT_MS} ms`)), SEND_TIMEOUT_MS);
   });
   try {
-    const res = await Promise.race([resendClient(config.apiKey).emails.send({ from: config.from, to, ...content }), timeout]);
+    const res = await Promise.race([
+      resendClient(config.apiKey).emails.send({ from: config.from, to, ...content, ...(attachments?.length ? { attachments } : {}) }),
+      timeout,
+    ]);
     if (res.error) {
-      console.error(`[email] ${kind} not sent: ${res.error.name} (${res.error.statusCode ?? "no status"}): ${redact(res.error.message, secret)}`);
-      return "failed";
+      console.error(`[email] ${kind} not sent: ${res.error.name} (${res.error.statusCode ?? "no status"}): ${redact(res.error.message, secrets)}`);
+      return { result: "failed", error: res.error.name };
     }
     console.info(`[email] ${kind} sent (id ${res.data.id})`);
-    return "sent";
+    return { result: "sent", id: res.data.id };
   } catch (error) {
-    console.error(`[email] ${kind} not sent: ${redact(error instanceof Error ? error.message : String(error), secret)}`);
-    return "failed";
+    console.error(`[email] ${kind} not sent: ${redact(error instanceof Error ? error.message : String(error), secrets)}`);
+    return { result: "failed", error: "no_answer" };
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function deliver(config: EmailConfig, kind: string, to: string, content: EmailContent, secret: string): Promise<EmailResult> {
+  return (await send(config, kind, to, content, secret)).result;
 }
 
 // ---------- Content (Romanian, plain text + simple HTML) ----------
@@ -258,4 +289,45 @@ export async function sendNewApplicationEmail(p: {
     if ((await deliver(config, "new application", to, content, p.applicationId)) !== "sent") result = "failed";
   }
   return result;
+}
+
+// ---------- Minutes ----------
+
+/** Resend accepts up to 40 MB per message; minutes PDFs are far smaller, so 10 MB is a safe cap. */
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+/** Resend accepts at most 50 recipients per message. */
+export const MAX_RECIPIENTS = 50;
+
+/** Trimmed, lower-case, without empties or duplicates, in first-seen order. */
+export function dedupeRecipients(list: readonly string[]): string[] {
+  return [...new Set(list.map((a) => a.trim().toLowerCase()).filter(Boolean))];
+}
+
+/** The message typed in the dialog, as plain text and as HTML paragraphs (one per blank-line block). */
+export function minutesEmail(p: { subject: string; message: string }): EmailContent {
+  const paragraphs = p.message.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  return {
+    subject: p.subject,
+    text: p.message,
+    html: htmlLayout(paragraphs.map((b) => htmlParagraph(esc(b).replace(/\n/g, "<br>")))),
+  };
+}
+
+/**
+ * E-mails the minutes to all recipients in one message, with the PDF attached when given.
+ * Never throws; the log line carries only the outcome and the provider's id, never the
+ * recipients or the content.
+ */
+export async function sendMinutesEmail(p: {
+  to: string[];
+  subject: string;
+  message: string;
+  attachment?: Attachment;
+}): Promise<Delivery> {
+  const config = emailConfig();
+  if (!config) return { result: disabled() };
+  const to = dedupeRecipients(p.to);
+  if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
+  if (p.attachment && p.attachment.content.length > MAX_ATTACHMENT_BYTES) return { result: "failed", error: "attachment_too_large" };
+  return send(config, "minutes", to, minutesEmail(p), to, p.attachment ? [p.attachment] : undefined);
 }

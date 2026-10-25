@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import {
   DEFAULT_EMAIL_FROM,
+  dedupeRecipients,
   invitationEmail,
+  MAX_ATTACHMENT_BYTES,
+  minutesEmail,
   isEmailConfigured,
   newApplicationEmail,
   passwordResetEmail,
   sendInvitationEmail,
+  sendMinutesEmail,
   sendNewApplicationEmail,
   sendPasswordResetEmail,
 } from "./email";
@@ -185,5 +189,69 @@ describe("new application notice", () => {
   it("escapes the applicant name in HTML", () => {
     const { html } = newApplicationEmail({ link: "https://x.example/cereri/1", churchName: "B", applicantName: "<b>X</b>", kindLabel: "Altul" });
     expect(html).toContain("&lt;b&gt;X&lt;/b&gt;");
+  });
+});
+
+describe("minutes", () => {
+  const SECRET_TEXT = "Punctul confidențial nr. 7";
+  const minutes = {
+    to: ["Pastor@Example.org", "secretar@example.org", " pastor@example.org ", ""],
+    subject: "Proces-verbal nr. 16/2026 — Maranata Stavanger",
+    message: `Bună ziua,\n\nVă trimit procesul-verbal.\n${SECRET_TEXT}`,
+    attachment: { filename: "PV-16-2026-maranata-stavanger.pdf", content: Buffer.from("%PDF-1.7 fake") },
+  };
+
+  it("sends one message to the deduplicated recipients with the PDF attached", async () => {
+    const r = await sendMinutesEmail(minutes);
+    expect(r).toEqual({ result: "sent", id: "em_123" });
+    expect(send).toHaveBeenCalledTimes(1);
+    const payload = send.mock.calls[0][0];
+    expect(payload.to).toEqual(["pastor@example.org", "secretar@example.org"]);
+    expect(payload.subject).toBe(minutes.subject);
+    expect(payload.attachments).toHaveLength(1);
+    expect(payload.attachments[0].filename).toBe("PV-16-2026-maranata-stavanger.pdf");
+    expect(Buffer.isBuffer(payload.attachments[0].content)).toBe(true);
+  });
+
+  it("sends without attachment when none is given", async () => {
+    await sendMinutesEmail({ ...minutes, attachment: undefined });
+    expect(send.mock.calls[0][0].attachments).toBeUndefined();
+  });
+
+  it("logs neither the recipients, the content nor the key", async () => {
+    await sendMinutesEmail(minutes);
+    send.mockResolvedValue({
+      data: null,
+      error: { name: "validation_error", statusCode: 422, message: "Invalid `to`: secretar@example.org" },
+      headers: null,
+    });
+    await expect(sendMinutesEmail(minutes)).resolves.toEqual({ result: "failed", error: "validation_error" });
+    const logs = loggedText();
+    expect(logs).toContain("minutes sent (id em_123)");
+    expect(logs).toContain("minutes not sent");
+    for (const hidden of ["pastor@example.org", "secretar@example.org", SECRET_TEXT, minutes.subject, FAKE_KEY]) {
+      expect(logs).not.toContain(hidden);
+    }
+  });
+
+  it("refuses an oversized attachment or no recipients without calling the API", async () => {
+    const big = { filename: "x.pdf", content: Buffer.alloc(MAX_ATTACHMENT_BYTES + 1) };
+    await expect(sendMinutesEmail({ ...minutes, attachment: big })).resolves.toMatchObject({ result: "failed" });
+    await expect(sendMinutesEmail({ ...minutes, to: [" "] })).resolves.toMatchObject({ result: "failed" });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("is disabled without the key", async () => {
+    vi.stubEnv("RESEND_API_KEY", undefined);
+    await expect(sendMinutesEmail(minutes)).resolves.toEqual({ result: "disabled" });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("dedupes case-insensitively and escapes the message in HTML", () => {
+    expect(dedupeRecipients(["A@x.ro", "a@X.ro", "b@x.ro"])).toEqual(["a@x.ro", "b@x.ro"]);
+    const { html, text } = minutesEmail({ subject: "S", message: "<b>Salut</b>\nrând 2\n\nParagraf" });
+    expect(text).toBe("<b>Salut</b>\nrând 2\n\nParagraf");
+    expect(html).toContain("&lt;b&gt;Salut&lt;/b&gt;<br>rând 2</p>");
+    expect(html).toContain(">Paragraf</p>");
   });
 });
