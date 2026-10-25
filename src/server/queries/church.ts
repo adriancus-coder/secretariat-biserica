@@ -35,6 +35,9 @@ export interface ChurchSettings extends ChurchInfo {
   require2fa: boolean;
   /** Pastors and administrators sign in with password + passkey (codes only as audited recovery). */
   passkeyPolicy: boolean;
+  /** "Semnătura se desenează de fiecare dată": "" off, "TOATE", "TIPURI" (with the types). */
+  semnaturaUnica: string;
+  semnaturaUnicaTipuri: string[];
   /** Saved privacy notice ("" = template). */
   privacyText: string;
   /** The model notice version adopted ("" = none yet) and when (ISO date). */
@@ -79,6 +82,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     secretarEmail: c.secretarEmail,
     require2fa: c.require2fa,
     passkeyPolicy: c.passkeyPolicy,
+    semnaturaUnica: c.semnaturaUnica,
+    semnaturaUnicaTipuri: c.semnaturaUnicaTipuri,
     privacyText: c.privacyText,
     privacyVersion: c.privacyVersion,
     privacyAdoptedAt: c.privacyAdoptedAt ? c.privacyAdoptedAt.toISOString().slice(0, 10) : null,

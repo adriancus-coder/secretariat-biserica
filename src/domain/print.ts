@@ -15,6 +15,10 @@ export type Run = { text: string; bold?: boolean };
 export interface Signature {
   label: string;
   name: string;
+  /** The drawn signature (PNG) of a signed document; absent = a line to sign on paper. */
+  image?: Uint8Array | null;
+  /** Under the name: "semnat la 25.10.2026 14:03" (+ " · confirmat pe dispozitivul titularului"). */
+  note?: string;
 }
 
 export type Block =
@@ -57,6 +61,8 @@ export interface PrintSpec {
   title: string;
   church: ChurchInfo;
   blocks: Block[];
+  /** A diagonal mark across every page (e.g. "CIORNĂ — neaprobat"). */
+  watermark?: string;
   /** A line at the bottom of every page (e.g. "Proces-verbal închis la …"). */
   footer?: string;
   /** Page size; A4 by default (ignored when `layout` is given). */
@@ -183,6 +189,10 @@ export interface DocumentPrint {
   /** The rich version from the editor, used instead of `text` when present. */
   textRich?: RichDoc | null;
   titlu?: string;
+  /** Signatures given in the app: the signer's name, the drawn image and "semnat la …". */
+  signatures?: Partial<Record<"PASTOR" | "SECRETAR", { name: string; image: Uint8Array; note: string }>>;
+  /** A diagonal "CIORNĂ — neaprobat" mark (draft or awaiting the pastor's approval). */
+  watermark?: string;
 }
 
 /** Documentul din registru (docHtml din prototip). */
@@ -192,12 +202,20 @@ export function documentPrint(x: DocumentPrint, church: ChurchInfo): PrintSpec {
   if (heading) blocks.push({ type: "title", text: heading });
   blocks.push(x.textRich ? { type: "rich", doc: x.textRich } : pre(x.text));
   // The General Assembly's convocation is signed by the pastor (Statut art. 46).
-  blocks.push(
+  const sigBlock: Block =
     x.tip === "convocare"
       ? { type: "signatures", left: { label: "", name: "" }, right: { label: "Pastor", name: church.pastor } }
-      : pastorSecretarySignatures(church, x.tip === "raport"),
-  );
-  return { title: x.titlu || heading || "Document", church, blocks };
+      : pastorSecretarySignatures(church, x.tip === "raport");
+  if (sigBlock.type === "signatures" && x.signatures) {
+    const signed = (s: Signature): Signature => {
+      const given = s.label === "Pastor" ? x.signatures?.PASTOR : s.label === "Secretar" ? x.signatures?.SECRETAR : undefined;
+      return given ? { label: s.label, name: given.name, image: given.image, note: given.note } : s;
+    };
+    sigBlock.left = signed(sigBlock.left);
+    sigBlock.right = signed(sigBlock.right);
+  }
+  blocks.push(sigBlock);
+  return { title: x.titlu || heading || "Document", church, blocks, ...(x.watermark ? { watermark: x.watermark } : {}) };
 }
 
 /** Darea de seamă tipărită direct, fără înregistrare (pentru rolul de vizualizare — ca în prototip). */
@@ -342,7 +360,10 @@ export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): strin
     } else if (blk.type === "signed") {
       lines.push(`${blk.left.label}, ${blk.left.name} | ${blk.right.label}, ${blk.right.name}`);
       lines.push("Semnătura | Semnătura");
-    } else lines.push(`${blk.left.label}: ${blk.left.name} | ${blk.right.label}: ${blk.right.name}`);
+    } else {
+      const cell = (s: Signature) => `${s.label}: ${s.name}${s.image ? ` [semnătură]` : ""}${s.note ? ` (${s.note})` : ""}`;
+      lines.push(`${cell(blk.left)} | ${cell(blk.right)}`);
+    }
   }
   if (spec.footer) lines.push(spec.footer);
   return lines.join("\n");

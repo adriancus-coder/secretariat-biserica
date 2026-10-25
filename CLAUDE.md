@@ -201,6 +201,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - `src/lib/permissions.ts` functions take a `Who` (a bare role, or `{ role, isPastor }`); pass `ctx.user`, not `ctx.user.role`, wherever the pastor flag matters: `pastor` and `pastoral` = isPastor only (not ADMIN), `disciplina` = ADMIN or isPastor. `requireCtx` / `actionCtx` already pass the user.
 - The header shows "Pastor" for pastors; Organizația → Pastor, when empty, defaults to the active pastor users' names (`getChurch`).
 
+### Signatures on documents
+
+- Cont → "Semnătura mea" (`my-signature-card.tsx`): draw on the shared pad (`src/components/signature-pad.tsx`) or upload a PNG; normalised like meeting signatures (`normalizeSignature`), stored as `User.signaturePng`. Saving / replacing needs `verifyUserPresence` (purpose `semnatura-salvata`), or the password for a user without a passkey; audited (SECURITY) without the image.
+- `DocumentSignature` (no churchId; reached through the document found with `ctx.db`): role PASTOR | SECRETAR (one each), userId, name, imagePng, mode SALVATA | UNICA, passkeyCredentialId, signedAt. `src/server/document-signatures.ts`: `signatureImage()` — UNICA = drawn now for this document only; SALVATA = the saved image, ALWAYS after a fresh assertion for purpose `semnatura:<documentId>` (refused otherwise, and refused when `freshSignatureRequired`); `writeDocumentSignature()` audits who, how and when (never the image). Actions in `src/server/actions/document-signatures.ts` (`src/server/actions/signatures.ts` is the minutes' signatures).
+- Setări → "Semnătura se desenează de fiecare dată" (`Church.semnaturaUnica` "" | TOATE | TIPURI + `semnaturaUnicaTipuri`): the saved option is hidden for those types and refused on the server.
+- PDF / Word: the `signatures` block cells take `image` and `note` ("semnat la <data, ora>" + " · confirmat pe dispozitivul titularului" for SALVATA, `signatureNote()` in `src/lib/signatures.ts`); `documentPrint({ signatures })`, loaded by the routes with `printSignatures()`.
+
 ### Discipline (Statut art. 27, 271, 272)
 
 - `DisciplinaryMeasure` (tenant model): forma (art. 27 alin. 3), stare CERCETARE / APLICATA / INCHEIATA, dates, minutes, motiv, forum. Permission `disciplina` = ADMIN or a pastor (`User.isPastor`), on the server for every read and write; other users never see measures, counts, categories, exports, audit entries (entity DISCIPLINE is filtered out of `/setari/jurnal`) or any hint. Never add discipline to a category, list, export or a non-admin page.

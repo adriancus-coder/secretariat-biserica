@@ -67,6 +67,9 @@ model Church {
   /// "Pastorii și administratorii intră cu parolă + Face ID / amprentă": for pastors and administrators the
   /// second factor must be a passkey (codes remain as audited recovery) and passkey-only sign-in is refused.
   passkeyPolicy    Boolean  @default(false)
+  /// "Semnătura se desenează de fiecare dată": "" = off, "TOATE" = every document, "TIPURI" = the types below.
+  semnaturaUnica       String   @default("")
+  semnaturaUnicaTipuri String[] @default([])
   /// Committee mandate (Statut art. 45): elected on, the minutes of the election (a meeting id, checked
   /// against the church on save; no FK), extended once by 5 years.
   comitetAlesLa           DateTime? @db.Date
@@ -120,6 +123,9 @@ model User {
   isPastor       Boolean @default(false)
   /// Optional label: "pastor coordonator", "pastor asistent".
   pastorTitlu    String  @default("")
+  /// "Semnătura mea": the user's saved signature (PNG ≤ 600×200, ≤ 40 KB), used only after a device unlock.
+  signaturePng     Bytes?
+  signatureSavedAt DateTime?
   active         Boolean @default(true)
   /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
   sessionVersion Int     @default(0)
@@ -153,6 +159,7 @@ model User {
   meetingSends        MeetingSend[]
   loginChallenges     LoginChallenge[]
   passkeys            UserPasskey[]
+  documentSignatures  DocumentSignature[]
   webauthnChallenges  WebAuthnChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
@@ -946,6 +953,40 @@ enum GeneralAssemblyKind {
   EXTRAORDINARA
 }
 
+enum SignatureRole {
+  PASTOR
+  SECRETAR
+}
+
+enum SignatureMode {
+  /// The saved signature, used after the holder's device unlock (passkey).
+  SALVATA
+  /// Drawn for this document only.
+  UNICA
+}
+
+/// A signature on a registered document (no churchId: reached through the document). The image is
+/// shown on the PDF / Word with the name and "semnat la …"; the audit log records who, how and when.
+model DocumentSignature {
+  id                  String        @id @default(cuid())
+  documentId          String
+  document            Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  role                SignatureRole
+  userId              String?
+  user                User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// The signer's name at the time of signing.
+  name                String
+  imagePng            Bytes
+  mode                SignatureMode
+  /// The passkey that confirmed a saved signature.
+  passkeyCredentialId String?
+  signedAt            DateTime      @default(now())
+
+  @@unique([documentId, role])
+  @@index([userId])
+  @@map("document_signatures")
+}
+
 model Document {
   id       String @id @default(cuid())
   churchId String
@@ -984,6 +1025,7 @@ model Document {
   @@index([churchId, data])
   @@index([personId])
   @@map("documents")
+  signatures DocumentSignature[]
 }
 
 // ---------------------------------------------------------------------------

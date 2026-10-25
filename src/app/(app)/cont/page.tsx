@@ -11,6 +11,7 @@ import { requireUser } from "@/server/session";
 import { ChangePasswordForm } from "./change-password-form";
 import { SecurityCard } from "./security-card";
 import { PasskeysCard } from "./passkeys-card";
+import { MySignatureCard } from "./my-signature-card";
 import { isPasskeyConfigured, passkeyPolicyApplies } from "@/server/passkeys";
 import { dotDateTime } from "@/lib/dates";
 import { prisma } from "@/server/db";
@@ -33,6 +34,8 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
       recoveryCodes: true,
       church: { select: { require2fa: true, passkeyPolicy: true } },
       passkeys: { orderBy: { createdAt: "asc" }, select: { id: true, deviceName: true, lastUsedAt: true, createdAt: true } },
+      signaturePng: true,
+      signatureSavedAt: true,
     },
   });
   const policy = passkeyPolicyApplies(user, security.church);
@@ -74,6 +77,12 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           created: dotDateTime(p.createdAt),
           lastUsed: p.lastUsedAt ? dotDateTime(p.lastUsedAt) : null,
         }))}
+      />
+      <MySignatureCard
+        name={user.name}
+        current={security.signaturePng ? `data:image/png;base64,${Buffer.from(security.signaturePng).toString("base64")}` : null}
+        savedAt={security.signatureSavedAt ? dotDateTime(security.signatureSavedAt) : null}
+        hasPasskey={security.passkeys.length > 0}
       />
       <SecurityCard
         totpEnabled={security.totpEnabled}

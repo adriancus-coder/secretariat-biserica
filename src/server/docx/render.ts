@@ -142,7 +142,9 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
     case "signatures": {
       const col = (s: Signature) => [
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 480 }, children: [t(s.label)] }),
-        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600 }, border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 4 } }, children: [t(s.name || " ", { size: 11 })] }),
+        ...(s.image ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120 }, children: [image(s.image, 160, 40)] })] : []),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: s.image ? 60 : 600 }, border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 4 } }, children: [t(s.name || " ", { size: 11 })] }),
+        ...(s.note ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [t(s.note, { size: 8, color: "555555" })] })] : []),
       ];
       return [twoColumns(col(block.left), col(block.right))];
     }

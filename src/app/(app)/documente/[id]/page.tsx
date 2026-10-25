@@ -13,6 +13,10 @@ import { permissions } from "@/lib/permissions";
 import { deleteDocumentAction } from "@/server/actions/documents";
 import { getDocument } from "@/server/queries/documents";
 import { requireCtx } from "@/server/session";
+import { prisma } from "@/server/db";
+import { freshSignatureRequired, signatureNote } from "@/lib/signatures";
+import { signDocumentAction } from "@/server/actions/document-signatures";
+import { SignaturesCard } from "./signatures-card";
 
 export const metadata: Metadata = { title: "Document" };
 
@@ -24,6 +28,25 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
   const canWrite = permissions.write(ctx.user.role);
   // A dare de seamă: its year's figures as links to the persons behind them.
   const reportCats = x.tip === "raport" && x.anRaport ? await loadCategories(ctx, x.anRaport) : null;
+  // Signatures (reached through the document found above with the church-scoped client).
+  const [sigRows, me, church, passkeys] = await Promise.all([
+    prisma.documentSignature.findMany({ where: { documentId: x.id } }),
+    prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { signatureSavedAt: true } }),
+    prisma.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { semnaturaUnica: true, semnaturaUnicaTipuri: true } }),
+    prisma.userPasskey.count({ where: { userId: ctx.user.id } }),
+  ]);
+  const signatures = Object.fromEntries(
+    sigRows.map((r) => [r.role, { name: r.name, image: `data:image/png;base64,${Buffer.from(r.imagePng).toString("base64")}`, note: signatureNote(r) }]),
+  );
+  const steps = [
+    ...(permissions.pastor(ctx.user) ? [{ role: "PASTOR" as const, label: "Semnează ca pastor", sign: signDocumentAction.bind(null, x.id, "PASTOR") }] : []),
+    ...(canWrite ? [{ role: "SECRETAR" as const, label: "Semnează ca secretar", sign: signDocumentAction.bind(null, x.id, "SECRETAR") }] : []),
+  ];
+  const savedHint = !passkeys
+    ? "Activați Face ID / amprenta în Cont → Securitate."
+    : !me.signatureSavedAt
+      ? "Salvați întâi o semnătură în Cont → Semnătura mea."
+      : null;
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "DOCUMENT", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -81,6 +104,15 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
         )}
       </dl>
+      <SignaturesCard
+        documentId={x.id}
+        me={ctx.user.name}
+        signatures={signatures}
+        steps={steps}
+        canUseSaved={passkeys > 0 && Boolean(me.signatureSavedAt)}
+        savedHint={savedHint}
+        freshOnly={freshSignatureRequired(church, x.tip)}
+      />
       {reportCats && x.anRaport ? (
         <div className="card">
           <h3>Persoanele din spatele cifrelor ({x.anRaport})</h3>

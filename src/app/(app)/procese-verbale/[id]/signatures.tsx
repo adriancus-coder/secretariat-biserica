@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { deleteSignatureAction, lockMeetingAction, signMeetingAction, unlockMeetingAction } from "@/server/actions/signatures";
-import { SignaturePad } from "./signature-pad";
+import { SignaturePad } from "@/components/signature-pad";
 
 export interface SignatureRow {
   id: string;

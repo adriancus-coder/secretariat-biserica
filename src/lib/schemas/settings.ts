@@ -47,6 +47,8 @@ export const SETTINGS_FIELDS = [
   "applicationsOpen",
   "require2fa",
   "passkeyPolicy",
+  "semnaturaUnica",
+  "semnaturaUnicaTipuri",
   "privacyText",
   "comunitate",
   "extractEnabled",
@@ -74,6 +76,7 @@ export const churchSettingsSchema = z.object({
   applicationsOpen: checkbox,
   require2fa: checkbox,
   passkeyPolicy: checkbox,
+  semnaturaUnica: z.enum(["", "TOATE", "TIPURI"]).catch(""),
   privacyText: longText(20000, "Nota de confidențialitate"),
   extractEnabled: checkbox,
 });
@@ -94,6 +97,11 @@ export function attendanceRulesInput(formData: FormData, tipuri: readonly string
 /** The meeting types ticked in the settings form under `<prefix>:<tip>` ("ag", "cvorum"). */
 export function meetingTypeFlagsInput(formData: FormData, tipuri: readonly string[], prefix: "ag" | "cvorum"): string[] {
   return tipuri.filter((t) => formData.get(`${prefix}:${t}`) === "on");
+}
+
+/** The document types ticked under "Semnătura se desenează de fiecare dată" (`semnatura:<tip>`). */
+export function freshSignatureTypesInput(formData: FormData, types: readonly string[]): string[] {
+  return types.filter((t) => formData.get(`semnatura:${t}`) === "on");
 }
 
 export const inviteSchema = z.object({

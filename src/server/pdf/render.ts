@@ -282,8 +282,11 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000");
           doc.text(sig.label, x, top, { width: colW, align: "center" });
           const ly = top + BODY_SIZE * LINE_HEIGHT + 36;
+          // A signed document: the drawn signature above the line.
+          if (sig.image) doc.image(Buffer.from(sig.image), x + colW * 0.15, ly - 36, { fit: [colW * 0.7, 34], align: "center", valign: "bottom" });
           doc.moveTo(x, ly).lineTo(x + colW, ly).lineWidth(1).strokeColor("#000").stroke();
           doc.fontSize(11).text(sig.name || " ", x, ly + 4, { width: colW, align: "center" });
+          if (sig.note) doc.fontSize(8).fillColor("#555").text(sig.note, x, ly + 4 + 11 * 1.4, { width: colW, align: "center" });
         }
         doc.x = left;
         doc.y = top + blockHeight - 48;

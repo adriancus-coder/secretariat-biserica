@@ -6,6 +6,7 @@ import { pdfFileName } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
 import { getDocument } from "@/server/queries/documents";
 import { requireCtx } from "@/server/session";
+import { printSignatures } from "@/server/document-signatures";
 
 /** The registered document as an editable Word file: letterhead, number, date, body and signatures. */
 export async function GET(req: Request, { params }: RouteContext<"/pdf/document/[id]/word">) {
@@ -15,6 +16,6 @@ export async function GET(req: Request, { params }: RouteContext<"/pdf/document/
   if (!doc) notFound();
   const sp = new URL(req.url).searchParams;
   const preview = sp.get("previzualizare") === "1" ? pageLayoutSchema.safeParse(pageLayoutInput(sp)) : null;
-  const docx = await renderDocx(documentSpec(doc, church, preview?.success ? preview.data : undefined));
+  const docx = await renderDocx(documentSpec({ ...doc, signatures: await printSignatures(doc.id) }, church, preview?.success ? preview.data : undefined));
   return docxResponse(docx, pdfFileName(documentFileBase(doc)).replace(/\.pdf$/, ".docx"));
 }

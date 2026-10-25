@@ -773,6 +773,32 @@
   .points-tools .btn {
     min-width: 40px;
   }
+  /* Signatures: Cont → Semnătura mea and the document page */
+  .signature-preview img,
+  .doc-signature img {
+    display: block;
+    max-width: 240px;
+    width: 100%;
+    height: auto;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px;
+  }
+  .doc-signatures {
+    display: grid;
+    gap: 16px;
+  }
+  @media (min-width: 720px) {
+    .doc-signatures {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .doc-signature {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
   /* "Pastor" next to the user's name (sidebar) */
   .pastor-badge {
     display: inline-block;

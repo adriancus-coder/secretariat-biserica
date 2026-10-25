@@ -2,13 +2,13 @@
 
 import { isGeneralAssembly } from "@/lib/general-assembly";
 import Link from "next/link";
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
 import { TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
 import { ATTENDANCE_RULE_LABEL, ATTENDANCE_RULES, type AttendanceRule } from "@/lib/attendance";
-import type { Nomenclatures } from "@/lib/labels";
+import { DOCUMENT_TYPE_LABEL, DOCUMENT_TYPES, type Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 
 type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
@@ -28,7 +28,14 @@ export function SettingsForm({
 }: {
   /** The QR / share panel of the application link (outside the read-only fieldset). */
   applicationLink?: ReactNode;
-  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean; passkeyPolicy: boolean; extractEnabled: boolean };
+  church: Record<ChurchTextFields, string> & {
+    applicationsOpen: boolean;
+    require2fa: boolean;
+    passkeyPolicy: boolean;
+    extractEnabled: boolean;
+    semnaturaUnica: string;
+    semnaturaUnicaTipuri: string[];
+  };
   /** The notice as published (the saved text, or the template filled with the church's details). */
   privacyText: string;
   privacyUrl: string;
@@ -49,6 +56,7 @@ export function SettingsForm({
   const applicationsOpen = v ? v.applicationsOpen === "on" : church.applicationsOpen;
   const require2fa = v ? v.require2fa === "on" : church.require2fa;
   const passkeyPolicy = v ? v.passkeyPolicy === "on" : church.passkeyPolicy;
+  const [freshMode, setFreshMode] = useState(v?.semnaturaUnica ?? church.semnaturaUnica);
   const extractEnabled = v ? v.extractEnabled === "on" : church.extractEnabled;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
@@ -132,6 +140,24 @@ export function SettingsForm({
             </span>
           </span>
         </label>
+        <div className="field">
+          <label htmlFor="semnaturaUnica">Semnătura se desenează de fiecare dată</label>
+          <select id="semnaturaUnica" name="semnaturaUnica" value={freshMode} onChange={(e) => setFreshMode(e.target.value)}>
+            <option value="">Nu — se poate folosi semnătura salvată (cu deblocarea dispozitivului)</option>
+            <option value="TOATE">Da, pentru toate documentele</option>
+            <option value="TIPURI">Da, pentru tipurile alese</option>
+          </select>
+          {freshMode === "TIPURI" ? (
+            <div className="attendance-flags mt-1">
+              {DOCUMENT_TYPES.map((t) => (
+                <label key={t} className="check">
+                  <input type="checkbox" name={`semnatura:${t}`} defaultChecked={v ? v[`semnatura:${t}`] === "on" : church.semnaturaUnicaTipuri.includes(t)} />
+                  {DOCUMENT_TYPE_LABEL[t]}
+                </label>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </fieldset>
       {applicationLink}
       <fieldset className="card" disabled={readOnly}>
