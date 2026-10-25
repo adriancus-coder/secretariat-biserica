@@ -22,6 +22,8 @@ export const documentSchema = z
     /** The editor's document; when sent, `text` becomes its plain projection. */
     textRich: richField,
     anRaport: optionalInt(1800, 2200),
+    /** Recommendation during an investigation, for a move (Statut art. 27 alin. 6); administrators only. */
+    exceptieDomiciliu: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   })
   .transform((d, ctx) => {
     const text = d.textRich ? richToPlain(d.textRich) : d.text;
@@ -42,6 +44,7 @@ export const draftSchema = z.object({
   data: requiredDate(),
   /** Dare de seamă: append the 5-year evolution table (outside the prototype's text). */
   evolutie: z.boolean().optional(),
+  exceptieDomiciliu: z.boolean().optional(),
 });
 
 export type DraftInput = z.output<typeof draftSchema>;

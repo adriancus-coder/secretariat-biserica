@@ -10,6 +10,8 @@ export const permissions = {
   export: (role: RoleKey) => role === "ADMIN" || role === "SECRETAR",
   /** Jurnalul de modificări. */
   audit: (role: RoleKey) => role === "ADMIN" || role === "SECRETAR",
+  /** Disciplinary measures (Statut art. 27): administrators only, for every read and write. */
+  disciplina: (role: RoleKey) => role === "ADMIN",
 };
 
 export type Permission = keyof typeof permissions;

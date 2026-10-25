@@ -41,6 +41,10 @@ Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: 
 
 `POST /api/persoane/export` (Administrator and Secretar) asks for the password again, then trusts a signed, httpOnly 10-minute grant cookie for the same user (`src/server/export-grant.ts`). Each export writes a SECURITY audit entry with the categories, the row count and the format — never the names.
 
+## Disciplinary measures
+
+Measures (Statut art. 27, 271, 272) are the most sensitive records. They are readable and writable only with the `disciplina` permission (administrators), checked on the server in every page, route handler and action (`requireCtx("disciplina")` / `actionCtx("disciplina")`). Secretaries and viewers never receive them in any page, list, count, category, export, PDF, audit view (entity DISCIPLINE is filtered out of the journal) or error message. Two server-side effects exist without showing anything: a member with an applied suspension is not counted among the expected attendees of a "Toți membrii" meeting, and a recommendation for a person with an open measure can be issued only by an administrator. The measures are in the full JSON backup only when an administrator exports it, and are deleted when the person is anonymised.
+
 ## Upload and input limits
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.

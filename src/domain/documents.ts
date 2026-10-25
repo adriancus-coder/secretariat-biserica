@@ -37,6 +37,13 @@ export interface DocumentTemplateInput {
   scop: string;
   /** Textul dării de seamă (pentru tipul „raport”), calculat separat. */
   reportText?: string;
+  /**
+   * Recommendation (Statut art. 27, not in the prototype): an applied measure is stated (alin. 9);
+   * `exceptieDomiciliu` records a letter issued during an investigation for a move (alin. 6).
+   * Administrators only reach these; without them the letter says "nu are măsuri disciplinare".
+   */
+  discipline?: { forma: string; dataInceput: string } | null;
+  exceptieDomiciliu?: boolean;
 }
 
 const BLANK_NAME = "____________________";
@@ -46,7 +53,18 @@ const BLANK = "____________";
  * Generează textul documentului — portarea șabloanelor din `genDocText` (prototip), cu aceleași
  * formulări și acorduri de gen (născut/născută, membru/membră, fratele/sora, dânsul/dânsa ...).
  */
-export function generateDocumentText({ tip, person: m, family, familyHeadId, church: c, catre, scop, reportText }: DocumentTemplateInput): string {
+export function generateDocumentText({
+  tip,
+  person: m,
+  family,
+  familyHeadId,
+  church: c,
+  catre,
+  scop,
+  reportText,
+  discipline,
+  exceptieDomiciliu,
+}: DocumentTemplateInput): string {
   const f = m?.gen === "F";
   const nume = m ? memberName(m) : BLANK_NAME;
   const nascut = m?.dataNasterii ? `, născut${f ? "ă" : ""} la data de ${fmtL(m.dataNasterii)}` : "";
@@ -85,7 +103,11 @@ export function generateDocumentText({ tip, person: m, family, familyHeadId, chu
     case "binecuvantare":
       return `Se certifică prin prezenta că ${f ? "copila" : "copilul"} ${nume}${nascut}${parinti ? `, din părinții ${parinti}` : ""}, a fost adus${f ? "ă" : ""} înaintea Domnului și binecuvântat${f ? "ă" : ""} în cadrul ${bis}, la data de ${m?.dataBinecuvantare ? fmtL(m.dataBinecuvantare) : BLANK}.\n\n„Lăsați copilașii să vină la Mine și nu-i opriți, căci Împărăția lui Dumnezeu este a celor ca ei.” (Marcu 10:14)`;
     case "recomandare":
-      return `Către ${catre || BLANK_NAME},\n\nHar și pace de la Dumnezeu, Tatăl nostru, și de la Domnul Isus Hristos!\n\n${bis} recomandă cu drag pe ${f ? "sora" : "fratele"} ${nume}${nascut}, membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din ${fmtL(m.dataMembru)}` : ""}${botezatInApa(", ", "la ")}, care ${scop || "se mută în localitatea dumneavoastră"}. ${f ? "Sora" : "Fratele"} a avut o purtare frumoasă și o mărturie bună în mijlocul nostru și nu are datorii sau abateri de disciplină față de biserică.\n\nVă rugăm să ${f ? "o" : "îl"} primiți în părtășia frățească și să-i acordați toată dragostea în Domnul.\n\nCu salutări frățești,`;
+      return `Către ${catre || BLANK_NAME},\n\nHar și pace de la Dumnezeu, Tatăl nostru, și de la Domnul Isus Hristos!\n\n${bis} recomandă cu drag pe ${f ? "sora" : "fratele"} ${nume}${nascut}, membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din ${fmtL(m.dataMembru)}` : ""}${botezatInApa(", ", "la ")}, care ${scop || "se mută în localitatea dumneavoastră"}. ${
+        discipline
+          ? `Conform Statutului Cultului (art. 27 alin. 9), menționăm că ${f ? "sorei" : "fratelui"} i s-a aplicat măsura disciplinară „${discipline.forma}” din ${fmtL(discipline.dataInceput)}.`
+          : `${f ? "Sora" : "Fratele"} a avut o purtare frumoasă și o mărturie bună în mijlocul nostru și nu are măsuri disciplinare.`
+      }${exceptieDomiciliu ? " Recomandarea se eliberează pentru schimbarea domiciliului în altă localitate (excepție, Statut art. 27 alin. 6)." : ""}\n\nVă rugăm să ${f ? "o" : "îl"} primiți în părtășia frățească și să-i acordați toată dragostea în Domnul.\n\nCu salutări frățești,`;
     case "scrisoare":
       return `Către ${catre || BLANK_NAME},\n\n${scop ? `Ref.: ${scop}\n\n` : ""}`;
     case "raport":

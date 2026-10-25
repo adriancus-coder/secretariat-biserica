@@ -147,6 +147,21 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await b.personAlias.count()).toBe(0);
   });
 
+  it("disciplinary measures are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const m = await a.disciplinaryMeasure.create({ data: { personId: personA, forma: "SUSPENDARE", dataInceput: new Date("2026-03-01") } as never });
+    expect(m.churchId).toBe(churchA);
+    expect(await b.disciplinaryMeasure.findUnique({ where: { id: m.id } })).toBeNull();
+    expect(await b.disciplinaryMeasure.findFirst({ where: { personId: personA } })).toBeNull();
+    expect(await b.disciplinaryMeasure.count()).toBe(0);
+    expect((await b.disciplinaryMeasure.updateMany({ data: { motiv: "x" } })).count).toBe(0);
+    expect((await b.disciplinaryMeasure.deleteMany({})).count).toBe(0);
+    await expect(b.disciplinaryMeasure.delete({ where: { id: m.id } })).rejects.toMatchObject({ code: "P2025" });
+    expect((await prisma.disciplinaryMeasure.findUniqueOrThrow({ where: { id: m.id } })).motiv).toBe("");
+    await a.disciplinaryMeasure.delete({ where: { id: m.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

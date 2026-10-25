@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { permissions } from "@/lib/permissions";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { todayIso } from "@/lib/dates";
 import { DOCUMENT_TYPES, type DocumentTypeKey } from "@/lib/labels";
@@ -19,6 +20,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
   const an = Number(sp.an);
   const anRaport = tip === "raport" ? String(Number.isInteger(an) && an > 1800 && an < 2201 ? an : Number(today.slice(0, 4))) : "";
   const [draft, nextNr] = await Promise.all([
+    // A recommendation the user may not issue (Statut art. 27) starts empty; saving explains why.
     buildDocumentDraft(ctx, {
       tip,
       personId: personId || null,
@@ -26,7 +28,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
       scop: "",
       anRaport: anRaport ? Number(anRaport) : null,
       data: today,
-    }),
+    }).catch(() => ({ text: "", titlu: "" })),
     nextDocumentNumber(ctx, Number(today.slice(0, 4))),
   ]);
 
@@ -39,6 +41,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
         initial={{ tip, nr: "", data: today, personId, catre: "", scop: "", titlu: draft.titlu, text: draft.text, anRaport }}
         people={people}
         nextNr={nextNr}
+        canDiscipline={permissions.disciplina(ctx.user.role)}
         cancelHref={personId ? `/persoane/${personId}` : "/documente"}
       />
     </>

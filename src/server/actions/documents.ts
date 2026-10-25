@@ -14,6 +14,8 @@ import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
 import { buildDocumentDraft } from "../queries/documents";
+import { recommendationDiscipline } from "../discipline";
+import { permissions } from "@/lib/permissions";
 import { actionCtx, ActionError } from "../session";
 import { isUniqueViolation, parseOrThrow, runFormAction, ValidationError } from "./run";
 import { logError } from "../log";
@@ -30,6 +32,7 @@ export async function documentDraftAction(input: {
   anRaport: string;
   data: string;
   evolutie?: boolean;
+  exceptieDomiciliu?: boolean;
 }): Promise<{ text: string; titlu: string } | { error: string }> {
   try {
     const ctx = await actionCtx("write");
@@ -59,6 +62,9 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
       ? await ctx.db.person.findUnique({ where: { id: input.personId }, select: { id: true, nume: true, prenume: true } })
       : null;
     if (input.personId && !person) throw new ValidationError({ personId: "Persoana nu mai există în registru." });
+    // Statut art. 27 alin. 6 and 9: a recommendation for a person with an open measure.
+    const exceptieDomiciliu = input.tip === "recomandare" && input.exceptieDomiciliu && permissions.disciplina(ctx.user.role);
+    if (input.tip === "recomandare" && person) await recommendationDiscipline(ctx, person.id, exceptieDomiciliu);
 
     const fields = {
       tip: input.tip,
@@ -71,6 +77,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
       text: input.text,
       textRich: input.textRich ? (input.textRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
       anRaport: input.tip === "raport" ? (input.anRaport ?? anRegistru) : null,
+      exceptieDomiciliu,
     };
 
     try {

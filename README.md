@@ -353,6 +353,11 @@ corecții deliberate:
     „Reabilitare spirituală”; în copia de siguranță rămâne „Reprimire”) și al excluderii, data cererii
     scrise de retragere și plecarea temporară. Certificatul de binecuvântare numește părinții scriși pe
     persoană când familia din registru nu are părinți (prototipul nu avea aceste câmpuri).
+20. **Scrisoarea de recomandare și disciplina (Statut art. 27):** fraza fixă „nu are datorii sau abateri
+    de disciplină față de biserică” devine „nu are măsuri disciplinare” când persoana nu are măsuri;
+    o măsură aplicată este menționată în scrisoare (alin. 9) și scrisoarea poate fi emisă doar de
+    administrator; în timpul cercetării recomandarea se emite doar cu excepția schimbării domiciliului
+    (alin. 6), menționată în text.
 
 ## Limitări și pași următori
 

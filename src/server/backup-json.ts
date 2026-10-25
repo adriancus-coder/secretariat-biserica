@@ -4,6 +4,8 @@ import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
 import { addMemberBaptism, parseMemberBaptism } from "@/lib/baptism-backup";
 import { addMemberRegister, parseMemberRegister } from "@/lib/register-backup";
+import { disciplineToJson, parseDisciplineJson } from "@/lib/discipline-backup";
+import { permissions } from "@/lib/permissions";
 import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMemberFamilies, familiesToJson, parseFamiliesJson } from "@/lib/families-backup";
 import { addGroupExtras, parseGroupExtras } from "@/lib/group-backup";
@@ -15,6 +17,7 @@ import {
   loadBackup,
   loadBaptism,
   loadRegister,
+  loadDiscipline,
   loadDocumentExtras,
   loadFamilies,
   loadGroupExtras,
@@ -59,6 +62,8 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       roles: rolesToJson(roles.roles),
       families: familiesToJson(families.families),
       aliases: aliasesToJson(aliases),
+      // Administrators only (Statut art. 27): a secretary's export carries no trace of discipline.
+      ...(permissions.disciplina(ctx.user.role) ? { discipline: disciplineToJson(await loadDiscipline(ctx)) } : {}),
     },
     churchName: backup.settings?.nume ?? "",
   };
@@ -90,6 +95,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       groups: parseGroupExtras(raw),
       baptism: parseMemberBaptism(raw),
       register: parseMemberRegister(raw),
+      discipline: parseDisciplineJson(raw),
       aliases: parseAliasesJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],

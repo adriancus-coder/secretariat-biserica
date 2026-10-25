@@ -170,3 +170,24 @@ export function keyForLabel<K extends string>(labels: Record<K, string>, value: 
   const byKey = entries.find(([k]) => k.toLowerCase() === v.toLowerCase());
   return byKey?.[0];
 }
+
+/** Statut art. 27 alin. 3: the forms of a disciplinary measure (administrators only). */
+export const DISCIPLINARY_FORMS = ["MUSTRARE_PERSONALA", "MUSTRARE_COMITET", "RETRAGERE_DREPTURI", "SUSPENDARE", "EXCLUDERE"] as const;
+export type DisciplinaryFormKey = (typeof DISCIPLINARY_FORMS)[number];
+export const DISCIPLINARY_FORM_LABEL: Record<DisciplinaryFormKey, string> = {
+  MUSTRARE_PERSONALA: "Mustrare personală",
+  MUSTRARE_COMITET: "Mustrare în fața comitetului",
+  RETRAGERE_DREPTURI: "Retragerea unor drepturi",
+  SUSPENDARE: "Suspendare",
+  EXCLUDERE: "Excludere",
+};
+export const DISCIPLINARY_STATES = ["CERCETARE", "APLICATA", "INCHEIATA"] as const;
+export type DisciplinaryStateKey = (typeof DISCIPLINARY_STATES)[number];
+export const DISCIPLINARY_STATE_LABEL: Record<DisciplinaryStateKey, string> = {
+  CERCETARE: "În cercetare",
+  APLICATA: "Aplicată",
+  INCHEIATA: "Încheiată",
+};
+export const DISCIPLINARY_FORUMS = ["LOCAL", "COMUNITATE"] as const;
+export type DisciplinaryForumKey = (typeof DISCIPLINARY_FORUMS)[number];
+export const DISCIPLINARY_FORUM_LABEL: Record<DisciplinaryForumKey, string> = { LOCAL: "Biserica locală", COMUNITATE: "Comunitatea" };

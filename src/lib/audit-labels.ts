@@ -95,6 +95,12 @@ export const FIELD_LABELS: Record<string, string> = {
   observatii: "Observații",
   formulaIncheiere: "Formula de încheiere",
   formatare: "Formatare",
+  forma: "Forma măsurii",
+  dataInceput: "Data",
+  dataSfarsit: "Data încheierii",
+  procesVerbal: "Procesul-verbal",
+  motivMasura: "Motivul",
+  forul: "Forul care a decis",
   cap: "Capul familiei",
   observatie: "Observație",
   fisier: "Fișier",
@@ -145,4 +151,5 @@ export const ENTITY_LABEL = {
   FAMILY: "Familie",
   EXTRACT: "Citire din document",
   SECURITY: "Securitate cont",
+  DISCIPLINE: "Disciplină",
 } as const;

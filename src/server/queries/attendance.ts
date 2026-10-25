@@ -8,7 +8,8 @@ type Db = Pick<Ctx["db"], "person">;
 
 /**
  * Persons a meeting of the given rule expects, as of the meeting date:
- * - TOTI: members in the record (statut Membru, no exit date) who had joined by that date;
+ * - TOTI: members in the record (statut Membru, no exit date) who had joined by that date, without
+ *   an applied suspension (Statut art. 27: no vote; the list never says why someone is missing);
  * - COMITET: persons in the record holding an active committee role on that date;
  * - MANUAL: nobody.
  */
@@ -16,7 +17,12 @@ export function expectedWhere(rule: AttendanceRule, date: string): Prisma.Person
   const day = toDbDate(date)!;
   switch (rule) {
     case "TOTI":
-      return { statut: "MEMBRU", dataIesire: null, OR: [{ dataMembru: null }, { dataMembru: { lte: day } }] };
+      return {
+        statut: "MEMBRU",
+        dataIesire: null,
+        OR: [{ dataMembru: null }, { dataMembru: { lte: day } }],
+        disciplinaryMeasures: { none: { forma: "SUSPENDARE", stare: "APLICATA" } },
+      };
     case "COMITET":
       // The committee is a flag on the person (not tied to a date).
       return { dataIesire: null, statut: { not: "FOST_MEMBRU" }, inComitet: true };

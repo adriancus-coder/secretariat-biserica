@@ -1,6 +1,7 @@
 import "server-only";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { permissions } from "@/lib/permissions";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import type { ChecklistOption } from "@/components/person-checklist";
 import type { Ctx } from "../session";
@@ -83,6 +84,12 @@ export async function getMeeting(ctx: Ctx, id: string) {
  * piardă, chiar dacă între timp au ieșit).
  */
 export async function attendeeOptions(ctx: Ctx, selected: string[]): Promise<ChecklistOption[]> {
+  // Administrators only (`disciplina`): a suspended member is marked; other roles see nothing.
+  const suspended = permissions.disciplina(ctx.user.role)
+    ? new Set(
+        (await ctx.db.disciplinaryMeasure.findMany({ where: { forma: "SUSPENDARE", stare: "APLICATA" }, select: { personId: true } })).map((m) => m.personId),
+      )
+    : new Set<string>();
   const today = todayIso();
   const adultBorn = toDbDate(`${Number(today.slice(0, 4)) - 18}${today.slice(4)}`)!;
   const rows = await ctx.db.person.findMany({
@@ -93,7 +100,13 @@ export async function attendeeOptions(ctx: Ctx, selected: string[]): Promise<Che
   return rows.map((r) => ({
     id: r.id,
     name: memberName(r),
-    note: r.dataIesire ? "ieșit din evidență" : r.dataNasterii && r.dataNasterii > adultBorn ? "minor" : undefined,
+    note: r.dataIesire
+      ? "ieșit din evidență"
+      : suspended.has(r.id)
+        ? "suspendat — fără drept de vot"
+        : r.dataNasterii && r.dataNasterii > adultBorn
+          ? "minor"
+          : undefined,
   }));
 }
 

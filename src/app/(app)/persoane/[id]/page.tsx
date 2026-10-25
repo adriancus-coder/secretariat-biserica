@@ -6,6 +6,8 @@ import { AuditTrail } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ageAt, fromDbDate, todayIso } from "@/lib/dates";
 import { fmt, memberName } from "@/lib/format";
+import { DISCIPLINARY_FORM_LABEL, DISCIPLINARY_STATE_LABEL } from "@/lib/labels";
+import { openMeasure } from "@/server/discipline";
 import { APARTINATOR_KIND_LABEL, DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
 import { apartinatorKind } from "@/lib/apartinator";
 import { permissions } from "@/lib/permissions";
@@ -40,6 +42,10 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const { person: x, family, groups, responsibleFor, roles, notes, notesCount, documents, audit, aliases } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
+  // Administrators only (`disciplina`): the query never runs for other roles.
+  const discipline = permissions.disciplina(ctx.user.role)
+    ? { open: await openMeasure(ctx.db, id), count: await ctx.db.disciplinaryMeasure.count({ where: { personId: id } }) }
+    : null;
 
   const dn = fromDbDate(x.dataNasterii);
   const dm = fromDbDate(x.dataMembru);
@@ -288,6 +294,23 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
           )}
         </div>
       </div>
+
+      {discipline ? (
+        <div className="card">
+          <h3>Disciplină</h3>
+          <p className="hint mb-2">
+            {discipline.open
+              ? `${DISCIPLINARY_FORM_LABEL[discipline.open.forma]} — ${DISCIPLINARY_STATE_LABEL[discipline.open.stare]}, din ${fmt(discipline.open.dataInceput)}.`
+              : discipline.count
+                ? `${discipline.count} ${discipline.count === 1 ? "măsură încheiată" : "măsuri încheiate"}.`
+                : "Nicio măsură disciplinară."}{" "}
+            Vizibil doar administratorilor.
+          </p>
+          <Link href={`/persoane/${x.id}/disciplina`} className="btn btn-sm">
+            Deschide
+          </Link>
+        </div>
+      ) : null}
 
       {permissions.audit(ctx.user.role) ? (
         <div className="card">

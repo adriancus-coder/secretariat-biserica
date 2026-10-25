@@ -92,6 +92,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     const heldRoles = (await tx.personRole.findMany({ where: { personId: id }, select: { roleId: true } })).map((r) => r.roleId);
     await tx.personRole.deleteMany({ where: { personId: id } });
     await tx.personAlias.deleteMany({ where: { personId: id } });
+    // Disciplinary measures are deleted with the identity (Statut art. 27; administrators only).
+    await tx.disciplinaryMeasure.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
     // No longer anyone's responsible person (the groups' text is scrubbed below).
     await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });

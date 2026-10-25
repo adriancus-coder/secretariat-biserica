@@ -79,6 +79,7 @@ model Church {
   families        Family[]
   churchDocuments ChurchDocument[]
   personAliases   PersonAlias[]
+  disciplinaryMeasures DisciplinaryMeasure[]
 
   @@map("churches")
 }
@@ -126,6 +127,7 @@ model User {
   loginChallenges     LoginChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
+  disciplinaryMeasures DisciplinaryMeasure[]
 
   @@index([churchId])
   @@map("users")
@@ -283,6 +285,8 @@ model Person {
   headOf         Family?            @relation("FamilyHead")
   signatures     MeetingSignature[]
   aliases        PersonAlias[]
+  /// Administrators only (permission `disciplina`).
+  disciplinaryMeasures DisciplinaryMeasure[]
   /// Groups this person is responsible for.
   responsibleFor Group[]            @relation("GroupResponsabil")
 
@@ -297,6 +301,53 @@ model Person {
 
 /// Another written form of a person's name, remembered when a "Nepotrivit" name was matched to the
 /// person by hand (minutes import). `alias` is normalized: no diacritics, lower-case, words sorted.
+/// Statut art. 27 alin. 3: the forms of a disciplinary measure.
+enum DisciplinaryForm {
+  MUSTRARE_PERSONALA
+  MUSTRARE_COMITET
+  RETRAGERE_DREPTURI
+  SUSPENDARE
+  EXCLUDERE
+}
+
+enum DisciplinaryState {
+  CERCETARE
+  APLICATA
+  INCHEIATA
+}
+
+enum DisciplinaryForum {
+  LOCAL
+  COMUNITATE
+}
+
+/// A disciplinary measure (Statut art. 27, 271, 272). Administrators only: never shown, counted,
+/// listed, exported or hinted to other roles (permission `disciplina`).
+model DisciplinaryMeasure {
+  id           String            @id @default(cuid())
+  churchId     String
+  church       Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  personId     String
+  person       Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  forma        DisciplinaryForm
+  stare        DisciplinaryState @default(CERCETARE)
+  dataInceput  DateTime          @db.Date
+  dataSfarsit  DateTime?         @db.Date
+  meetingId    String?
+  meeting      Meeting?          @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  motiv        String            @default("")
+  decisByForum DisciplinaryForum @default(LOCAL)
+  createdById  String?
+  createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([churchId, personId])
+  @@index([personId])
+  @@index([meetingId])
+  @@map("disciplinary_measures")
+}
+
 model PersonAlias {
   id          String   @id @default(cuid())
   churchId    String
@@ -438,6 +489,7 @@ model Meeting {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  disciplinaryMeasures DisciplinaryMeasure[]
   /// Persons whose entry / exclusion these minutes record.
   entries Person[] @relation("PersonEntryMeeting")
   exits   Person[] @relation("PersonExitMeeting")
@@ -624,6 +676,8 @@ model Document {
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
   tip        DocumentType
+  /// A recommendation issued during a disciplinary investigation under the domicile exception (Statut art. 27 alin. 6).
+  exceptieDomiciliu Boolean @default(false)
   /// Numărul de înregistrare; unic pe biserică și an.
   nr         Int
   /// Anul registrului (anul din `data`), folosit pentru numerotarea pe an.
@@ -754,6 +808,8 @@ enum AuditEntity {
   FAMILY
   EXTRACT
   SECURITY
+  /// Visible only with the `disciplina` permission (administrators).
+  DISCIPLINE
 }
 
 enum AuditAction {

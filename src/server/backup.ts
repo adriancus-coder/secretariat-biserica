@@ -1,5 +1,6 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
+import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BAlias } from "@/lib/aliases-backup";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
@@ -29,6 +30,22 @@ import type { Ctx } from "./session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 const byName = { orderBy: { createdAt: "asc" as const } };
+
+/** Disciplinary measures for the export; the caller includes them only for administrators. */
+export async function loadDiscipline(ctx: Ctx): Promise<BDiscipline[]> {
+  const rows = await ctx.db.disciplinaryMeasure.findMany({ orderBy: [{ dataInceput: "asc" }, { createdAt: "asc" }] });
+  return rows.map((m) => ({
+    id: m.id,
+    membru: m.personId,
+    forma: m.forma,
+    stare: m.stare,
+    dataInceput: fromDbDate(m.dataInceput)!,
+    dataSfarsit: fromDbDate(m.dataSfarsit),
+    pv: m.meetingId,
+    motiv: m.motiv,
+    forul: m.decisByForum,
+  }));
+}
 
 /** Member id → register fields of the Statut, for the export (see addMemberRegister). */
 export async function loadRegister(ctx: Ctx): Promise<Map<string, RegisterFields>> {
@@ -376,6 +393,8 @@ export interface ImportExtras {
   register?: ReadonlyMap<string, RegisterFields>;
   /** Other forms of persons' names (see parseAliasesJson); null = not in the file. */
   aliases?: BAlias[] | null;
+  /** Disciplinary measures (administrators' files only, see parseDisciplineJson); null = not in the file. */
+  discipline?: BDiscipline[] | null;
 }
 
 export interface ImportSummary {
@@ -403,6 +422,7 @@ const TABLES = {
   notes: "notes",
   applications: "applications",
   families: "families",
+  discipline: "disciplinary_measures",
 } as const;
 
 /**
@@ -743,6 +763,26 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (!personId || (!r.intrarePv && !r.iesirePv)) continue;
         const meetingOf = (fileId: string | null) => (fileId ? (meet.map.get(fileId) ?? null) : null);
         await tx.person.update({ where: { id: personId }, data: { intrareMeetingId: meetingOf(r.intrarePv), iesireMeetingId: meetingOf(r.iesirePv) } });
+      }
+
+      // Disciplinary measures (only an administrator imports; only an administrator's file carries them).
+      for (const d of extras.discipline ?? []) {
+        const personId = pid(d.membru);
+        if (!personId) continue;
+        const plan = await planIds(tx, TABLES.discipline, [d.id], churchId);
+        const id = plan.map.get(d.id)!;
+        const data = {
+          personId,
+          forma: d.forma,
+          stare: d.stare,
+          dataInceput: toDbDate(d.dataInceput)!,
+          dataSfarsit: toDbDate(d.dataSfarsit),
+          meetingId: d.pv ? (meet.map.get(d.pv) ?? null) : null,
+          motiv: d.motiv,
+          decisByForum: d.forul,
+        };
+        if (plan.existing.has(d.id)) await tx.disciplinaryMeasure.update({ where: { id }, data });
+        else await tx.disciplinaryMeasure.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
       }
 
       // Evenimente

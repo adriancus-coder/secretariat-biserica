@@ -9,6 +9,8 @@ import type { Ctx } from "../session";
 import { getChurch } from "./church";
 import { evolutionText } from "@/lib/statistics-report";
 import { loadStatistics } from "./statistics";
+import { permissions } from "@/lib/permissions";
+import { recommendationDiscipline } from "../discipline";
 import { generateReportText } from "./stats";
 
 export const DOCUMENTS_PAGE_SIZE = 30;
@@ -76,7 +78,9 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const tip = input.tip as DocumentTypeKey;
   const reportYear = input.anRaport ?? Number(input.data.slice(0, 4));
   const reportText = tip === "raport" ? await generateReportText(ctx, reportYear) : undefined;
-  let text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText });
+  const exceptieDomiciliu = tip === "recomandare" && input.exceptieDomiciliu === true && permissions.disciplina(ctx.user.role);
+  const discipline = tip === "recomandare" && person ? await recommendationDiscipline(ctx, person.id, exceptieDomiciliu) : null;
+  let text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText, discipline, exceptieDomiciliu });
   // The 5-year table is appended after the parity-tested text, which stays unchanged.
   if (tip === "raport" && input.evolutie) text = `${text.trimEnd()}\n\n${evolutionText((await loadStatistics(ctx, reportYear)).rows.slice(-5))}`;
   const titlu = tip === "raport" ? `Dare de seamă anuală ${reportYear}` : defaultDocumentTitle(tip, person, input.catre);

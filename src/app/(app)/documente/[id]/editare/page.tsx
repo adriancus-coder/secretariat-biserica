@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { permissions } from "@/lib/permissions";
 import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { getDocument, nextDocumentNumber } from "@/server/queries/documents";
@@ -33,7 +34,9 @@ export default async function EditDocumentPage({ params }: PageProps<"/documente
           text: doc.text,
           textRich: doc.textRich,
           anRaport: doc.anRaport ? String(doc.anRaport) : "",
+          exceptieDomiciliu: doc.exceptieDomiciliu,
         }}
+        canDiscipline={permissions.disciplina(ctx.user.role)}
         people={people}
         nextNr={nextNr}
         cancelHref={`/documente/${id}`}

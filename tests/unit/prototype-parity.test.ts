@@ -155,7 +155,10 @@ describe("paritate cu prototipul: șabloanele de documente", () => {
             proto.elements.titlu.value = "";
             proto.genDocText(true, true);
             const text = generateDocumentText({ tip, person, family: ds.persons, church, catre, scop });
-            expect(text, `seed=${seed} tip=${tip} person=${person?.id}`).toBe(proto.elements.text.value);
+            // Documented deviation (Statut art. 27): the recommendation no longer certifies "nu are datorii
+            // sau abateri de disciplină" from nothing; without a measure it says "nu are măsuri disciplinare".
+            const expected = proto.elements.text.value.replace("nu are datorii sau abateri de disciplină față de biserică", "nu are măsuri disciplinare");
+            expect(text, `seed=${seed} tip=${tip} person=${person?.id}`).toBe(expected);
             expect(defaultDocumentTitle(tip, person, catre)).toBe(proto.elements.titlu.value);
             checked++;
           }
@@ -218,7 +221,8 @@ describe("documented deviations from the prototype (baptism church and officiant
     proto.elements.text.value = "";
     proto.elements.text.dataset = {};
     proto.genDocText(true, true);
-    return proto.elements.text.value;
+    // The recommendation's discipline sentence is a documented deviation (see the test below).
+    return proto.elements.text.value.replace("nu are datorii sau abateri de disciplină față de biserică", "nu are măsuri disciplinare");
   };
 
   it("without church and officiant the certificates match the prototype", () => {
@@ -305,5 +309,23 @@ describe("documented deviations from the prototype (parents' names, Statut art. 
     expect(doc(child)).not.toContain("din părinții");
     expect(doc({ ...child, numeTata: "Ion Pop", numeMama: "Maria Pop" })).toContain(", din părinții Ion Pop și Maria Pop,");
     expect(doc({ ...child, numeMama: "Maria Pop" })).toContain(", din părinții Maria Pop,");
+  });
+});
+
+describe("documented deviations from the prototype (discipline in the recommendation, Statut art. 27)", () => {
+  const church = { nume: "Maranata Stavanger", adresa: "Kongsgårdbakken 1, Stavanger" };
+  const p = makePerson({ id: "r", nume: "Pop", prenume: "Ion", gen: "M", dataMembru: "2010-01-10" });
+  const doc = (extra: Partial<Parameters<typeof generateDocumentText>[0]>) =>
+    generateDocumentText({ tip: "recomandare", person: p, family: [], church, catre: "", scop: "", ...extra });
+
+  it("states an applied measure instead of the good-conduct sentence (alin. 9)", () => {
+    expect(doc({})).toContain("și nu are măsuri disciplinare.");
+    const t = doc({ discipline: { forma: "Suspendare", dataInceput: "2026-03-01" } });
+    expect(t).toContain("menționăm că fratelui i s-a aplicat măsura disciplinară „Suspendare” din 1 martie 2026.");
+    expect(t).not.toContain("purtare frumoasă");
+  });
+
+  it("records the domicile exception (alin. 6)", () => {
+    expect(doc({ exceptieDomiciliu: true })).toContain("pentru schimbarea domiciliului în altă localitate (excepție, Statut art. 27 alin. 6)");
   });
 });

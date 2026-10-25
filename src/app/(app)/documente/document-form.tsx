@@ -23,6 +23,7 @@ export interface DocumentFormInitial {
   /** The saved rich text, when the document has one (else built from `text`). */
   textRich?: RichDoc | null;
   anRaport: string;
+  exceptieDomiciliu?: boolean;
 }
 
 export function DocumentForm({
@@ -31,12 +32,15 @@ export function DocumentForm({
   people,
   nextNr,
   cancelHref,
+  canDiscipline = false,
 }: {
   id: string | null;
   initial: DocumentFormInitial;
   people: { id: string; name: string; exited: boolean }[];
   nextNr: number;
   cancelHref: string;
+  /** Administrators: the domicile exception of a recommendation (Statut art. 27 alin. 6). */
+  canDiscipline?: boolean;
 }) {
   const { state, pending, onSubmit } = useActionForm(saveDocumentAction.bind(null, id));
   const e = state.errors ?? {};
@@ -46,6 +50,7 @@ export function DocumentForm({
   const [scop, setScop] = useState(initial.scop);
   const [anRaport, setAnRaport] = useState(initial.anRaport);
   const [evolutie, setEvolutie] = useState(false);
+  const [exceptie, setExceptie] = useState(Boolean(initial.exceptieDomiciliu));
   const [titlu, setTitlu] = useState(initial.titlu);
   // The plain text of the editor's content (the template check below and the preview use it).
   const [text, setText] = useState(initial.text);
@@ -64,7 +69,7 @@ export function DocumentForm({
   /** Destinatarul și scopul folosite la ultima generare (regenerăm la ieșirea din câmp doar dacă s-au schimbat). */
   const used = useRef({ catre: initial.catre, scop: initial.scop });
 
-  async function regenerate(force: boolean, next: Partial<{ tip: DocumentTypeKey; personId: string; catre: string; scop: string; anRaport: string; evolutie: boolean }> = {}) {
+  async function regenerate(force: boolean, next: Partial<{ tip: DocumentTypeKey; personId: string; catre: string; scop: string; anRaport: string; evolutie: boolean; exceptieDomiciliu: boolean }> = {}) {
     if (!force && text.trim() && textTouched.current) return;
     used.current = { catre: next.catre ?? catre, scop: next.scop ?? scop };
     const current = ++request.current;
@@ -77,6 +82,7 @@ export function DocumentForm({
       scop: next.scop ?? scop,
       anRaport: next.anRaport ?? anRaport,
       evolutie: next.evolutie ?? evolutie,
+      exceptieDomiciliu: next.exceptieDomiciliu ?? exceptie,
       data: dataRef.current?.value ?? initial.data,
     });
     if (current !== request.current) return; // un răspuns mai vechi decât ultima cerere
@@ -156,6 +162,20 @@ export function DocumentForm({
           error={e.anRaport}
           className="max-w-[200px]"
         />
+      ) : null}
+      {tip === "recomandare" && canDiscipline ? (
+        <label className="check mb-3">
+          <input
+            type="checkbox"
+            name="exceptieDomiciliu"
+            checked={exceptie}
+            onChange={(ev) => {
+              setExceptie(ev.target.checked);
+              void regenerate(true, { exceptieDomiciliu: ev.target.checked });
+            }}
+          />
+          Își schimbă domiciliul în altă localitate (excepție art. 27 alin. 6)
+        </label>
       ) : null}
       {tip === "raport" ? (
         <label className="check mb-3">

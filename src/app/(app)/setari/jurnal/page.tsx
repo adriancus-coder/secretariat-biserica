@@ -6,6 +6,7 @@ import { pageParam, Pager, stringParam } from "@/components/ui/pager";
 import { ENTITY_LABEL } from "@/lib/audit-labels";
 import type { AuditEntityKey } from "@/lib/audit-types";
 import { requireCtx } from "@/server/session";
+import { permissions } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Jurnal de modificări" };
 
@@ -14,8 +15,11 @@ const PAGE_SIZE = 50;
 export default async function AuditPage({ searchParams }: PageProps<"/setari/jurnal">) {
   const ctx = await requireCtx("audit");
   const sp = await searchParams;
-  const entity = (Object.keys(ENTITY_LABEL) as AuditEntityKey[]).find((k) => k === stringParam(sp.tip));
-  const where = entity ? { entity } : {};
+  // Disciplinary entries exist only for administrators (permission `disciplina`).
+  const discipline = permissions.disciplina(ctx.user.role);
+  const labels = Object.entries(ENTITY_LABEL).filter(([k]) => discipline || k !== "DISCIPLINE");
+  const entity = (labels.map(([k]) => k) as AuditEntityKey[]).find((k) => k === stringParam(sp.tip));
+  const where = entity ? { entity } : discipline ? {} : { entity: { not: "DISCIPLINE" as const } };
   const total = await ctx.db.auditLog.count({ where });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(pageParam(sp.pagina), pages);
@@ -35,7 +39,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/setari/jur
         </label>
         <AutoSubmitSelect id="tip-jurnal" name="tip" defaultValue={entity ?? ""} className="!w-auto !flex-none">
           <option value="">Toate înregistrările</option>
-          {Object.entries(ENTITY_LABEL).map(([k, l]) => (
+          {labels.map(([k, l]) => (
             <option key={k} value={k}>
               {l}
             </option>
