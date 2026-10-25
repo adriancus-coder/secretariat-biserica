@@ -49,10 +49,10 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
             <dd>{g.functieLider.nume}</dd>
           </>
         ) : null}
-        {g.responsabil ? (
+        {g.responsabilName ? (
           <>
             <dt>Responsabil</dt>
-            <dd>{g.responsabil}</dd>
+            <dd>{g.responsabilP ? <Link href={`/persoane/${g.responsabilP.id}`}>{g.responsabilName}</Link> : g.responsabilName}</dd>
           </>
         ) : null}
         {g.descriere ? (

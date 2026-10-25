@@ -11,10 +11,10 @@ import type { Ctx } from "../session";
 
 export async function listGroups(ctx: Ctx) {
   const rows = await ctx.db.group.findMany({
-    select: { id: true, nume: true, responsabil: true, _count: { select: { membri: true } } },
+    select: { id: true, nume: true, responsabil: true, responsabilP: { select: { nume: true, prenume: true } }, _count: { select: { membri: true } } },
   });
   return rows
-    .map((g) => ({ id: g.id, nume: g.nume, responsabil: g.responsabil, count: g._count.membri }))
+    .map((g) => ({ id: g.id, nume: g.nume, responsabil: g.responsabilP ? memberName(g.responsabilP) : g.responsabil, count: g._count.membri }))
     .sort((a, b) => compareRo(a.nume, b.nume));
 }
 
@@ -25,13 +25,15 @@ export async function getGroup(ctx: Ctx, id: string) {
       membri: { include: { person: { select: { id: true, nume: true, prenume: true, telefon: true, dataIesire: true } } } },
       functie: { select: { id: true, nume: true } },
       functieLider: { select: { id: true, nume: true } },
+      responsabilP: { select: { id: true, nume: true, prenume: true } },
     },
   });
   if (!g) return null;
   const membri = g.membri
     .map((m) => ({ ...m.person, auto: m.sursa === "AUTO" }))
     .sort((a, b) => compareRo(memberName(a), memberName(b)));
-  return { ...g, membri };
+  // The responsible person's name from the register, else the old free text.
+  return { ...g, membri, responsabilName: g.responsabilP ? memberName(g.responsabilP) : g.responsabil };
 }
 
 /** Persoanele care pot fi adăugate într-un grup: cele în evidență + cele deja membre. */

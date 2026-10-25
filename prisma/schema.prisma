@@ -97,15 +97,15 @@ model User {
   sessionVersion Int     @default(0)
 
   // Second factor: TOTP (secret encrypted at rest, see src/server/two-factor.ts) and/or a code by e-mail.
-  totpSecretEnc   String?
+  totpSecretEnc        String?
   /// A new TOTP secret being set up; swapped into totpSecretEnc by the first valid code.
   pendingTotpSecretEnc String?
-  totpEnabled     Boolean  @default(false)
+  totpEnabled          Boolean  @default(false)
   /// Last accepted TOTP time step: a code is accepted once.
-  totpLastStep    Int?
-  emailOtpEnabled Boolean  @default(false)
+  totpLastStep         Int?
+  emailOtpEnabled      Boolean  @default(false)
   /// Single-use recovery codes, hashed (sha256).
-  recoveryCodes   String[] @default([])
+  recoveryCodes        String[] @default([])
 
   failedLoginCount  Int       @default(0)
   lastFailedLoginAt DateTime?
@@ -253,15 +253,17 @@ model Person {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meetings    MeetingAttendee[]
-  groups      GroupMember[]
-  mentiuni    Note[]
-  documents   Document[]
-  application Application?
-  roles       PersonRole[]
-  headOf      Family?            @relation("FamilyHead")
-  signatures  MeetingSignature[]
-  aliases     PersonAlias[]
+  meetings       MeetingAttendee[]
+  groups         GroupMember[]
+  mentiuni       Note[]
+  documents      Document[]
+  application    Application?
+  roles          PersonRole[]
+  headOf         Family?            @relation("FamilyHead")
+  signatures     MeetingSignature[]
+  aliases        PersonAlias[]
+  /// Groups this person is responsible for.
+  responsibleFor Group[]            @relation("GroupResponsabil")
 
   @@index([churchId, sortKey])
   @@index([churchId, familyId])
@@ -328,10 +330,10 @@ model ChurchRole {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  holders PersonRole[]
+  holders   PersonRole[]
   /// Groups of this ministry, and groups led by this role's holders.
-  groups    Group[] @relation("GroupFunctie")
-  ledGroups Group[] @relation("GroupFunctieLider")
+  groups    Group[]      @relation("GroupFunctie")
+  ledGroups Group[]      @relation("GroupFunctieLider")
 
   @@unique([churchId, nume])
   @@index([churchId, sortOrder])
@@ -606,10 +608,10 @@ model Document {
   /// Numele persoanei la momentul emiterii (rămâne și dacă persoana e ștearsă din registru).
   persoana String  @default("")
 
-  catre String @default("")
-  scop  String @default("")
-  titlu String @default("")
-  text  String
+  catre    String @default("")
+  scop     String @default("")
+  titlu    String @default("")
+  text     String
   /// The rich version from the editor (src/lib/rich-text.ts); `text` keeps its plain projection.
   textRich Json?
   /// This document's own page layout; null = the church's default (docLayout).
@@ -636,9 +638,13 @@ model Group {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  nume        String
-  responsabil String @default("")
-  descriere   String @default("")
+  nume          String
+  /// The responsible person's name as text: the fallback for display and older exports (kept equal to the person's name when linked).
+  responsabil   String  @default("")
+  /// The responsible person, from the register.
+  responsabilId String?
+  responsabilP  Person? @relation("GroupResponsabil", fields: [responsabilId], references: [id], onDelete: SetNull)
+  descriere     String  @default("")
 
   /// The ministry the group belongs to (e.g. "Laudă și închinare"): its holders are the group's automatic members.
   functieId      String?
@@ -654,7 +660,7 @@ model Group {
 
   @@index([functieId])
   @@index([functieLiderId])
-
+  @@index([responsabilId])
   @@index([churchId, nume])
   @@map("groups")
 }
@@ -668,8 +674,8 @@ enum GroupMemberSource {
 model GroupMember {
   groupId  String
   personId String
-  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  group    Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  person   Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
   /// AUTO rows are added and removed by syncRoleGroups (src/server/group-sync.ts); MANUAL rows never are.
   sursa    GroupMemberSource @default(MANUAL)
 

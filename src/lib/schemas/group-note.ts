@@ -11,7 +11,11 @@ export const groupSchema = z.object({
   functieId: optionalGroupId,
   /** "Funcția de conducere": the role whose holders lead the group. */
   functieLiderId: optionalGroupId,
+  /** The responsible person from the register ("" = none); `responsabil` keeps an older free text. */
+  responsabilId: optionalGroupId,
   responsabil: text(160, "Responsabilul"),
+  /** "Adaugă-l și în grup": a responsible person who is not a member is added as a manual member. */
+  adaugaResponsabil: z.preprocess((v) => v === "on" || v === "1" || v === true, z.boolean()),
   descriere: longText(5000, "Descrierea"),
   membri: z.array(idSchema).max(5000),
 });

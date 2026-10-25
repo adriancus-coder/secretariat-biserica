@@ -10,6 +10,6 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/grup/[id
   const ctx = await requireCtx();
   const [g, church] = await Promise.all([getGroup(ctx, id), getChurch(ctx)]);
   if (!g) notFound();
-  const pdf = await renderPdf(groupPrint({ nume: g.nume, responsabil: g.responsabil, membri: g.membri }, church));
+  const pdf = await renderPdf(groupPrint({ nume: g.nume, responsabil: g.responsabilName, membri: g.membri }, church));
   return pdfResponse(pdf, pdfFileName(`grup-${g.nume}`));
 }

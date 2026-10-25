@@ -93,6 +93,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.personRole.deleteMany({ where: { personId: id } });
     await tx.personAlias.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
+    // No longer anyone's responsible person (the groups' text is scrubbed below).
+    await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });
     await tx.note.deleteMany({ where: { personId: id } });
     // MeetingSignature has no churchId: the person was just found in this church.
     await tx.meetingSignature.deleteMany({ where: { personId: id } });

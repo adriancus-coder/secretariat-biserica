@@ -21,7 +21,7 @@ export default async function EditGroupPage({ params }: PageProps<"/grupuri/[id]
       <PageHead title="Editează grupul" />
       <GroupForm
         id={id}
-        initial={{ nume: g.nume, functieId: g.functieId ?? "", functieLiderId: g.functieLiderId ?? "", responsabil: g.responsabil, descriere: g.descriere }}
+        initial={{ nume: g.nume, functieId: g.functieId ?? "", functieLiderId: g.functieLiderId ?? "", responsabilId: g.responsabilId ?? "", responsabil: g.responsabil, descriere: g.descriere }}
         roles={roles}
         manual={g.membri.filter((m) => !m.auto).map((m) => m.id)}
         holders={holders}

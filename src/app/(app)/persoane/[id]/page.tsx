@@ -35,7 +35,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const detail = await getPersonDetail(ctx, id);
   if (!detail) notFound();
   const nav = await personNeighbors(ctx, id, parseListSpec(din), (await getChurch(ctx)).nomen.rudenie);
-  const { person: x, family, groups, roles, notes, notesCount, documents, audit, aliases } = detail;
+  const { person: x, family, groups, responsibleFor, roles, notes, notesCount, documents, audit, aliases } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
 
@@ -174,9 +174,20 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
           </div>
         ) : null}
 
-        {groups.length ? (
+        {groups.length || responsibleFor.length ? (
           <div className="card">
             <h3>Grupuri</h3>
+            {responsibleFor.length ? (
+              <p className="mb-2">
+                Responsabil pentru:{" "}
+                {responsibleFor.map((g, i) => (
+                  <span key={g.id}>
+                    {i ? ", " : ""}
+                    <Link href={`/grupuri/${g.id}`}>{g.nume}</Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
             {groups.map((g) => (
               <Link key={g.id} href={`/grupuri/${g.id}`} className="pill">
                 {g.nume}

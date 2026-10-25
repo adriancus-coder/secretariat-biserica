@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PersonChecklist, type ChecklistOption } from "@/components/person-checklist";
+import { PersonPicker } from "@/components/person-picker";
 import { Field, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
@@ -20,7 +21,7 @@ export function GroupForm({
   cancelHref,
 }: {
   id: string | null;
-  initial: { nume: string; functieId: string; functieLiderId: string; responsabil: string; descriere: string };
+  initial: { nume: string; functieId: string; functieLiderId: string; responsabilId: string; responsabil: string; descriere: string };
   /** The members added by hand (MANUAL). */
   manual: string[];
   people: ChecklistOption[];
@@ -35,6 +36,10 @@ export function GroupForm({
   const [functieId, setFunctieId] = useState(initial.functieId);
   const [functieLiderId, setFunctieLiderId] = useState(initial.functieLiderId);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(manual));
+  const [lead, setLead] = useState(initial.responsabilId);
+  // An older free-text responsible (not linked to a person) is kept until a person is chosen or it is cleared.
+  const [legacy, setLegacy] = useState(initial.responsabilId ? "" : initial.responsabil);
+  const [addLead, setAddLead] = useState(true);
 
   const roleName = useMemo(() => new Map(roles.flatMap((g) => g.roles.map((r) => [r.id, r.nume] as const))), [roles]);
   const nameOf = useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
@@ -46,6 +51,17 @@ export function GroupForm({
   const autoSet = useMemo(() => new Set(auto), [auto]);
   const manualOptions = useMemo(() => people.filter((p) => !autoSet.has(p.id)), [people, autoSet]);
   const linked = [functieId, functieLiderId].filter(Boolean).map((r) => roleName.get(r) ?? "").filter(Boolean);
+  const memberIds = useMemo(() => [...auto, ...[...selected].filter((x) => !autoSet.has(x))], [auto, autoSet, selected]);
+  // Suggestions for the responsible person, by the kind of group.
+  const sections = useMemo(
+    () => [
+      ...(functieLiderId ? [{ title: "Au funcția de conducere", ids: holders[functieLiderId] ?? [] }] : []),
+      ...(functieId ? [{ title: "Au slujirea grupului", ids: holders[functieId] ?? [] }] : []),
+      { title: "Membri ai grupului", ids: memberIds },
+    ],
+    [functieId, functieLiderId, holders, memberIds],
+  );
+  const leadOutside = Boolean(lead) && !memberIds.includes(lead);
 
   return (
     <form onSubmit={onSubmit} noValidate>
@@ -54,7 +70,24 @@ export function GroupForm({
         <RoleSelect name="functieId" label="Slujirea grupului" roles={roles} value={functieId} onChange={setFunctieId} error={e.functieId} />
         <RoleSelect name="functieLiderId" label="Funcția de conducere" roles={roles} value={functieLiderId} onChange={setFunctieLiderId} error={e.functieLiderId} />
       </div>
-      <TextField name="responsabil" label="Responsabil" defaultValue={initial.responsabil} error={e.responsabil} />
+      <Field label="Responsabil" error={e.responsabilId ?? e.responsabil}>
+        <input type="hidden" name="responsabil" value={lead ? "" : legacy} />
+        {legacy && !lead ? (
+          <p className="hint !mt-0 mb-2">
+            Acum: „{legacy}” (text, nelegat de registru).{" "}
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setLegacy("")}>
+              Șterge textul
+            </button>
+          </p>
+        ) : null}
+        <PersonPicker name="responsabilId" label="Responsabil" people={people} sections={sections} value={lead} onChange={setLead} />
+        {leadOutside ? (
+          <label className="check mt-2 !border-0 min-h-[44px]">
+            <input type="checkbox" name="adaugaResponsabil" checked={addLead} onChange={(ev) => setAddLead(ev.target.checked)} />
+            Adaugă-l și în grup
+          </label>
+        ) : null}
+      </Field>
       <TextAreaField name="descriere" label="Descriere" defaultValue={initial.descriere} error={e.descriere} className="[&_textarea]:!min-h-[70px]" />
       {linked.length ? (
         <Field label={`Din slujirea „${linked.join("” și „")}” (${auto.length})`}>

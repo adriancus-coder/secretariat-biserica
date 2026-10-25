@@ -144,4 +144,42 @@ describe.skipIf(!hasTestDb)("groups linked to roles", () => {
     const imported = await b.db.group.findFirstOrThrow({ where: { nume: "Grup vechi" }, include: { membri: { include: { person: true } } } });
     expect(imported.membri.map((m) => `${m.person.prenume}:${m.sursa}`).sort()).toEqual(["Deținător:AUTO", "Membru:MANUAL"]);
   });
+
+  describe("responsible person", () => {
+    it("export -> import keeps the responsible person by id", async () => {
+      const lead = await prisma.person.create({ data: { churchId: a.user.churchId, nume: "Lider", prenume: "Ion", sortKey: "lider", searchText: "lider" } });
+      await prisma.group.create({ data: { churchId: a.user.churchId, nume: "Grup cu lider", responsabil: "Ion Lider", responsabilId: lead.id } });
+      const { data } = await buildExportJson(a);
+      const json = JSON.parse(JSON.stringify(data));
+      const parsed = parseImportJson(json);
+      if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+      await importBackup(b, parsed.backup, "merge", parsed.extras);
+      const g = await b.db.group.findFirstOrThrow({ where: { nume: "Grup cu lider" }, include: { responsabilP: true } });
+      expect([g.responsabilP?.prenume, g.responsabilP?.churchId]).toEqual(["Ion", b.user.churchId]);
+    });
+
+    it("an older file with only the text links it when exactly one active person matches, else keeps the text", async () => {
+      const json = {
+        members: {
+          m1: { id: "m1", nume: "Mureșan", prenume: "Daniel", statut: "Membru" },
+          m2: { id: "m2", nume: "Pop", prenume: "Ana", statut: "Membru" },
+          m3: { id: "m3", nume: "Pop", prenume: "Ana", statut: "Membru" },
+        },
+        groups: {
+          v1: { id: "v1", nume: "Vechi unic", responsabil: "DANIEL MURESAN", membri: [] },
+          v2: { id: "v2", nume: "Vechi ambiguu", responsabil: "Ana Pop", membri: [] },
+          v3: { id: "v3", nume: "Vechi necunoscut", responsabil: "Cineva Străin", membri: [] },
+        },
+      };
+      const parsed = parseImportJson(json);
+      if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+      await importBackup(b, parsed.backup, "merge", parsed.extras);
+      const rows = await b.db.group.findMany({ where: { nume: { startsWith: "Vechi " } }, include: { responsabilP: true }, orderBy: { nume: "asc" } });
+      expect(rows.map((g) => [g.nume, g.responsabil, g.responsabilP ? `${g.responsabilP.prenume} ${g.responsabilP.nume}` : null])).toEqual([
+        ["Vechi ambiguu", "Ana Pop", null],
+        ["Vechi necunoscut", "Cineva Străin", null],
+        ["Vechi unic", "DANIEL MURESAN", "Daniel Mureșan"],
+      ]);
+    });
+  });
 });

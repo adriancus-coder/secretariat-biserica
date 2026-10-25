@@ -16,6 +16,7 @@ import { syncRoleGroups } from "./group-sync";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
 import type { BPersonRole, BRole, BRoleGroup, ParsedRoles } from "@/lib/roles-backup";
+import { nameKey } from "@/lib/name-match";
 import { roleKey } from "@/lib/roles";
 import { noteWithSlujire } from "@/lib/slujire";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
@@ -280,12 +281,23 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
 /** Group id → the fields beyond the prototype's format (linked roles by name, AUTO members), for the export. */
 export async function loadGroupExtras(ctx: Ctx): Promise<Map<string, GroupExtra>> {
   const rows = await ctx.db.group.findMany({
-    select: { id: true, functie: { select: { nume: true } }, functieLider: { select: { nume: true } }, membri: { where: { sursa: "AUTO" }, select: { personId: true } } },
+    select: {
+      id: true,
+      responsabilId: true,
+      functie: { select: { nume: true } },
+      functieLider: { select: { nume: true } },
+      membri: { where: { sursa: "AUTO" }, select: { personId: true } },
+    },
   });
   return new Map(
     rows.map((g) => [
       g.id,
-      { functie: g.functie?.nume, functieLider: g.functieLider?.nume, sursa: Object.fromEntries(g.membri.map((m) => [m.personId, "AUTO" as const])) },
+      {
+        functie: g.functie?.nume,
+        functieLider: g.functieLider?.nume,
+        sursa: Object.fromEntries(g.membri.map((m) => [m.personId, "AUTO" as const])),
+        responsabilId: g.responsabilId ?? undefined,
+      },
     ]),
   );
 }
@@ -767,13 +779,32 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       // Linked roles by name (after the roles above were imported); unknown names leave the group unlinked.
       const roleByKey = new Map((await tx.churchRole.findMany({ select: { id: true, nume: true } })).map((r) => [roleKey(r.nume), r.id]));
       const roleOf = (n: string | undefined) => (n ? (roleByKey.get(roleKey(n)) ?? null) : null);
+      // The responsible person: by id from the file, else the text when it names exactly one active person.
+      const activeByKey = new Map<string, string[]>();
+      for (const p of await tx.person.findMany({ where: { statut: { not: "FOST_MEMBRU" }, dataIesire: null }, select: { id: true, nume: true, prenume: true } })) {
+        const k = nameKey(`${p.prenume} ${p.nume}`);
+        activeByKey.set(k, [...(activeByKey.get(k) ?? []), p.id]);
+      }
+      const leadOf = (fileId: string | undefined, text: string) => {
+        const byId = fileId ? pid(fileId) : null;
+        if (byId) return byId;
+        const found = text.trim() ? (activeByKey.get(nameKey(text)) ?? []) : [];
+        return found.length === 1 ? found[0] : null;
+      };
       for (const g of backup.groups) {
         const id = grs.map.get(g.id)!;
         const gx = extras.groups?.get(g.id);
         const membri = [...new Map(g.membri.map((m) => [pid(m), gx?.sursa?.[m] === "AUTO" ? ("AUTO" as const) : ("MANUAL" as const)] as const)).entries()]
           .filter((e): e is [string, "AUTO" | "MANUAL"] => e[0] !== null)
           .map(([personId, sursa]) => ({ personId, sursa }));
-        const data = { nume: g.nume, responsabil: g.responsabil, descriere: g.descriere, functieId: roleOf(gx?.functie), functieLiderId: roleOf(gx?.functieLider) };
+        const data = {
+          nume: g.nume,
+          responsabil: g.responsabil,
+          responsabilId: leadOf(gx?.responsabilId, g.responsabil),
+          descriere: g.descriere,
+          functieId: roleOf(gx?.functie),
+          functieLiderId: roleOf(gx?.functieLider),
+        };
         if (grs.existing.has(g.id)) {
           await tx.group.update({ where: { id }, data: { ...data, membri: { deleteMany: {}, create: membri } } });
         } else {

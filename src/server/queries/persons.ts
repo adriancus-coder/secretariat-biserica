@@ -258,6 +258,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     where: { id },
     include: {
       groups: { include: { group: { select: { id: true, nume: true } } } },
+      responsibleFor: { select: { id: true, nume: true } },
       application: { select: { id: true, createdAt: true } },
       roles: { include: { role: { select: { nume: true, sortOrder: true, group: { select: { id: true, nume: true, sortOrder: true } } } } } },
       family: { select: { id: true, nume: true, headId: true } },
@@ -285,6 +286,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
   return {
     person,
     groups: person.groups.map((g) => ({ ...g.group, auto: g.sursa === "AUTO" })).sort((a, b) => compareRo(a.nume, b.nume)),
+    responsibleFor: [...person.responsibleFor].sort((a, b) => compareRo(a.nume, b.nume)),
     roles: person.roles
       .map((r) => ({ ...r.role, since: fromDbDate(r.since) }))
       .sort((a, b) => a.group.sortOrder - b.group.sortOrder || a.sortOrder - b.sortOrder || compareRo(a.nume, b.nume)),

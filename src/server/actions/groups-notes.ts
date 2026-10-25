@@ -26,10 +26,18 @@ async function groupView(tx: Tx, id: string) {
       membri: { include: { person: { select: { nume: true, prenume: true } } } },
       functie: { select: { nume: true } },
       functieLider: { select: { nume: true } },
+      responsabilP: { select: { nume: true, prenume: true } },
     },
   });
   if (!g) return null;
-  return { ...g, functie: g.functie?.nume ?? "", functieLider: g.functieLider?.nume ?? "", membri: g.membri.map((m) => memberName(m.person)).sort(compareRo) };
+  return {
+    ...g,
+    functie: g.functie?.nume ?? "",
+    functieLider: g.functieLider?.nume ?? "",
+    // The audit log compares names: the linked person's, else the old text.
+    responsabil: g.responsabilP ? memberName(g.responsabilP) : g.responsabil,
+    membri: g.membri.map((m) => memberName(m.person)).sort(compareRo),
+  };
 }
 
 /** The roles linked to a group must belong to the church (checked through the scoped client). */
@@ -45,9 +53,17 @@ export async function saveGroupAction(id: string | null, _prev: FormState, formD
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
-    const { membri: ids, ...fields } = parseOrThrow(groupSchema, groupFormInput(formData));
+    const { membri: ids, adaugaResponsabil, ...input } = parseOrThrow(groupSchema, groupFormInput(formData));
     const membri = await assertPersonsInChurch(ctx.db, ids);
-    await assertGroupRoles(ctx.db, [fields.functieId, fields.functieLiderId]);
+    await assertGroupRoles(ctx.db, [input.functieId, input.functieLiderId]);
+    // The responsible person must be in this church's register; their name is kept as the text too.
+    const [lead] = input.responsabilId ? await assertPersonsInChurch(ctx.db, [input.responsabilId]) : [];
+    const leadPerson = lead ? await ctx.db.person.findUnique({ where: { id: lead }, select: { nume: true, prenume: true } }) : null;
+    const fields = { ...input, responsabilId: lead ?? null, responsabil: leadPerson ? memberName(leadPerson) : input.responsabil };
+    /** "Adaugă-l și în grup": the responsible person joins as a manual member when not already in. */
+    const addLead = async (tx: Tx, groupId: string) => {
+      if (lead && adaugaResponsabil) await tx.groupMember.createMany({ data: [{ groupId, personId: lead, sursa: "MANUAL" }], skipDuplicates: true });
+    };
     savedId = await ctx.db.$transaction(async (tx) => {
       if (id) {
         const before = await groupView(tx, id);
@@ -60,6 +76,7 @@ export async function saveGroupAction(id: string | null, _prev: FormState, formD
         });
         await tx.groupMember.createMany({ data: membri.map((personId) => ({ groupId: id, personId, sursa: "MANUAL" as const })), skipDuplicates: true });
         await syncRoleGroups(tx, ctx.user, { groupIds: [id], quietGroupIds: [id] });
+        await addLead(tx, id);
         const after = await groupView(tx, id);
         await writeAudit(tx, ctx.user, { entity: "GROUP", entityId: id, entityLabel: after!.nume, action: "UPDATE", fields: GROUP_FIELDS, before, after });
         return id;
@@ -68,6 +85,7 @@ export async function saveGroupAction(id: string | null, _prev: FormState, formD
         data: { ...fields, churchId: ctx.user.churchId, membri: { create: membri.map((personId) => ({ personId, sursa: "MANUAL" as const })) } },
       });
       await syncRoleGroups(tx, ctx.user, { groupIds: [created.id], quietGroupIds: [created.id] });
+      await addLead(tx, created.id);
       await writeAudit(tx, ctx.user, {
         entity: "GROUP",
         entityId: created.id,

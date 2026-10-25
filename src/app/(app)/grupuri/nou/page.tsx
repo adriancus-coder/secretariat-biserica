@@ -27,7 +27,7 @@ export default async function NewGroupPage({ searchParams }: PageProps<"/grupuri
       ) : null}
       <GroupForm
         id={null}
-        initial={{ nume: role?.nume ?? "", functieId: role?.id ?? "", functieLiderId: "", responsabil: "", descriere: "" }}
+        initial={{ nume: role?.nume ?? "", functieId: role?.id ?? "", functieLiderId: "", responsabilId: "", responsabil: "", descriere: "" }}
         manual={[]}
         people={people}
         roles={roles}
