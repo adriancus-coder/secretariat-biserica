@@ -142,7 +142,10 @@ export async function getPerson(ctx: Ctx, id: string) {
 export async function getPersonDetail(ctx: Ctx, id: string) {
   const person = await ctx.db.person.findUnique({
     where: { id },
-    include: { groups: { include: { group: { select: { id: true, nume: true } } } } },
+    include: {
+      groups: { include: { group: { select: { id: true, nume: true } } } },
+      application: { select: { id: true, createdAt: true } },
+    },
   });
   if (!person) return null;
   const [family, notes, notesCount, documents, audit] = await Promise.all([

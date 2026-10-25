@@ -22,6 +22,7 @@ calculul statisticilor, șabloanele de documente și darea de seamă. Echivalen�
 | **Dare de seamă** | „Situația membrală la 31.12.AAAA” pentru orice an, calculată retroactiv; se salvează ca document în registru. |
 | **Grupuri** | Nume, responsabil, descriere, persoane; listă tipăribilă (PDF). |
 | **Mențiuni** | Note pe persoană sau familie, vizibile pe fișa persoanei. |
+| **Cereri de membru** | Formular public `/cerere/<adresa-bisericii>` (pornit din Setări), cu acord pentru păstrarea datelor. Cererile apar la „Cereri” (cu numărul celor în așteptare); „Acceptă” deschide fișa persoanei completată din cerere, „Respinge” păstrează motivul. |
 | **Setări** | Datele organizației (antet și semnături), nomenclatoare editabile, utilizatori și roluri (invitații și resetarea parolei, trimise pe e-mail), export/import JSON compatibil cu prototipul, jurnalul de modificări. |
 
 Toate PDF-urile (documente, procese-verbale, liste de grup, fișe de eveniment, dare de seamă) sunt

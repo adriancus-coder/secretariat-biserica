@@ -79,6 +79,11 @@ export default async function PersonPage({ params }: PageProps<"/persoane/[id]">
         ) : null}
       </PageHead>
 
+      {x.application ? (
+        <p className="hint mb-3">
+          Creat din <Link href={`/cereri/${x.application.id}`}>cererea din {fmt(x.application.createdAt.toISOString().slice(0, 10))}</Link>
+        </p>
+      ) : null}
       <dl className="detail mb-4">
         {rows.map(([k, v]) => (
           <div key={k}>

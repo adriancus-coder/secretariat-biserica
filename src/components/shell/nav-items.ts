@@ -16,6 +16,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/documente", label: "Documente", icon: "documente", primary: false },
   { href: "/grupuri", label: "Grupuri", icon: "grupuri", primary: false },
   { href: "/mentiuni", label: "Mențiuni", icon: "mentiuni", primary: false },
+  { href: "/cereri", label: "Cereri", icon: "cereri", primary: false },
   { href: "/setari", label: "Setări", icon: "setari", primary: false },
 ];
 

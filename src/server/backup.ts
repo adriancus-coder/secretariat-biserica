@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import type { Prisma } from "@/generated/prisma/client";
+import type { BApplication } from "@/lib/application-backup";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
@@ -131,6 +132,34 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
   };
 }
 
+/** Membership applications, for the `applications` collection of the export. */
+export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
+  const rows = await ctx.db.application.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+  return rows.map((a) => ({
+    id: a.id,
+    status: a.status,
+    kind: a.kind,
+    nume: a.nume,
+    prenume: a.prenume,
+    gen: a.gen,
+    dataNasterii: fromDbDate(a.dataNasterii),
+    telefon: a.telefon,
+    email: a.email,
+    adresa: a.adresa,
+    familie: a.familie,
+    rudenie: a.rudenie,
+    bisericaProvenienta: a.bisericaProvenienta,
+    dataBotez: fromDbDate(a.dataBotez),
+    locBotez: a.locBotez,
+    mesaj: a.mesaj,
+    consent: a.consent,
+    createdAt: a.createdAt.toISOString(),
+    decidedAt: a.decidedAt?.toISOString() ?? null,
+    membruId: a.personId,
+    motiv: a.rejectReason,
+  }));
+}
+
 export type ImportMode = "merge" | "replace";
 
 export interface ImportSummary {
@@ -140,6 +169,7 @@ export interface ImportSummary {
   documente: number;
   grupuri: number;
   mentiuni: number;
+  cereri: number;
   setari: boolean;
   avertismente: string[];
 }
@@ -151,6 +181,7 @@ const TABLES = {
   documents: "documents",
   groups: "groups",
   notes: "notes",
+  applications: "applications",
 } as const;
 
 /**
@@ -183,13 +214,23 @@ async function chunked<T>(items: T[], size: number, fn: (chunk: T[]) => Promise<
   for (let i = 0; i < items.length; i += size) await fn(items.slice(i, i + size));
 }
 
-/** Importă o copie de siguranță validată, într-o singură tranzacție. */
-export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode): Promise<ImportSummary> {
+/**
+ * Importă o copie de siguranță validată, într-o singură tranzacție.
+ * `applications` is null when the file has no `applications` collection: existing applications
+ * are then left as they are, even in replace mode.
+ */
+export async function importBackup(
+  ctx: Ctx,
+  backup: Backup,
+  mode: ImportMode,
+  applications: BApplication[] | null = null,
+): Promise<ImportSummary> {
   const churchId = ctx.user.churchId;
   const warnings: string[] = [];
   return ctx.db.$transaction(
     async (tx) => {
       if (mode === "replace") {
+        if (applications) await tx.application.deleteMany({});
         await tx.note.deleteMany({});
         await tx.document.deleteMany({});
         await tx.group.deleteMany({});
@@ -346,6 +387,52 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode): 
       }
       await chunked(newNotes, 500, (c) => tx.note.createMany({ data: c }));
 
+      // Cereri de membru
+      const apps = await planIds(tx, TABLES.applications, (applications ?? []).map((a) => a.id), churchId);
+      if (applications?.length) {
+        // A person can be linked to one application only: keep links already used by other rows.
+        const updating = applications.filter((a) => apps.existing.has(a.id)).map((a) => a.id);
+        const usedRows = await tx.application.findMany({
+          where: { personId: { not: null }, id: { notIn: updating } },
+          select: { personId: true },
+        });
+        const used = new Set(usedRows.map((r) => r.personId));
+        let unlinked = 0;
+        for (const a of applications) {
+          const id = apps.map.get(a.id)!;
+          let personId = pid(a.membruId);
+          if (personId && used.has(personId)) {
+            personId = null;
+            unlinked++;
+          }
+          if (personId) used.add(personId);
+          const data = {
+            status: a.status,
+            kind: a.kind,
+            nume: a.nume,
+            prenume: a.prenume,
+            gen: a.gen,
+            dataNasterii: toDbDate(a.dataNasterii),
+            telefon: a.telefon,
+            email: a.email,
+            adresa: a.adresa,
+            familie: a.familie,
+            rudenie: a.rudenie,
+            bisericaProvenienta: a.bisericaProvenienta,
+            dataBotez: toDbDate(a.dataBotez),
+            locBotez: a.locBotez,
+            mesaj: a.mesaj,
+            consent: a.consent,
+            decidedAt: a.decidedAt ? new Date(a.decidedAt) : null,
+            personId,
+            rejectReason: a.motiv,
+          };
+          if (apps.existing.has(a.id)) await tx.application.update({ where: { id }, data });
+          else await tx.application.create({ data: { ...data, id, churchId, createdAt: new Date(a.createdAt) } });
+        }
+        if (unlinked) warnings.push(`${unlinked} cereri au pierdut legătura cu persoana (persoana era deja legată de altă cerere).`);
+      }
+
       // Setări
       if (backup.settings) {
         const s = backup.settings;
@@ -367,7 +454,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode): 
         });
       }
 
-      const remapped = [people, meet, evs, docs, grs, nts].reduce(
+      const remapped = [people, meet, evs, docs, grs, nts, apps].reduce(
         (n, p) => n + [...p.map].filter(([a, b]) => a !== b).length,
         0,
       );
@@ -380,6 +467,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode): 
         documente: backup.documents.length,
         grupuri: backup.groups.length,
         mentiuni: backup.notes.length,
+        cereri: applications?.length ?? 0,
         setari: Boolean(backup.settings),
         avertismente: warnings,
       };
@@ -391,7 +479,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode): 
         fields: ["mod", "inregistrari"],
         after: {
           mod: mode === "replace" ? "înlocuire" : "îmbinare",
-          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni`,
+          inregistrari: `${summary.persoane} persoane, ${summary.sedinte} ședințe, ${summary.evenimente} evenimente, ${summary.documente} documente, ${summary.grupuri} grupuri, ${summary.mentiuni} mențiuni, ${summary.cereri} cereri`,
         },
       });
       return summary;

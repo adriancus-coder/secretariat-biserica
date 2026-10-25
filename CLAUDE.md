@@ -233,6 +233,15 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
   - the lookup, the token and the e-mail run in `after()`;
   - each e-mail address is limited to 3 requests per 15 minutes, in memory (`src/server/rate-limit.ts`).
 
+### Membership applications
+
+- Public form `/cerere/<slug>`, under `(auth)`, listed in `PUBLIC_PATHS`. `Church.slug` is unique; `slugify()`/`slugVariant()` in `src/lib/slug.ts` are mirrored by the backfill in the `applications` migration.
+- The church comes only from the slug, never from a form field. The row is written through `tenantDb(church.id)`, and an audit entry is written with user "Formular online".
+- Anti-abuse: a honeypot field `website`, plus `sharedRateLimiter("applications")` with 5 submissions per hour per IP and church.
+- Accepting goes through `savePersonAction` with a hidden `cerere` field. The person and the ACCEPTED application (with `personId`) are written in one transaction.
+  - A same-name, same-birth-date person returns `PersonFormState.duplicate`; `fortat=1` saves anyway.
+- Export/import: the `applications` collection lives in `src/lib/application-backup.ts`, outside `src/domain`; files without it import unchanged.
+
 ### Database and migrations
 
 - Never edit an applied migration: Prisma checks its checksum. Add a new migration instead. Example: `note_search` has a wrong backfill, which `note_search_fix` corrects.

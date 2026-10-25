@@ -4,6 +4,7 @@ import Link from "next/link";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
+import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
 
@@ -17,20 +18,25 @@ export function PersonForm({
   families,
   rudenie,
   cancelHref,
+  applicationId,
 }: {
   id: string | null;
   initial: PersonFormValues;
   families: string[];
   rudenie: string[];
   cancelHref: string;
+  /** Accepting this membership application: saving also marks it accepted. */
+  applicationId?: string;
 }) {
-  const { state, pending, onSubmit } = useActionForm(savePersonAction.bind(null, id));
+  const { state: rawState, pending, onSubmit } = useActionForm(savePersonAction.bind(null, id));
+  const state = rawState as PersonFormState;
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
 
   return (
     <form onSubmit={onSubmit} noValidate>
+      {applicationId ? <input type="hidden" name="cerere" value={applicationId} /> : null}
       <div className="row2">
         <TextField name="nume" label="Nume" defaultValue={val("nume")} error={e.nume} required autoComplete="off" />
         <TextField name="prenume" label="Prenume" defaultValue={val("prenume")} error={e.prenume} autoComplete="off" />
@@ -115,7 +121,21 @@ export function PersonForm({
       />
       <TextAreaField name="note" label="Note" defaultValue={val("note")} error={e.note} />
 
-      <FormMessage state={state} />
+      {state.duplicate ? (
+        <div className="alert" role="alert">
+          {state.message}{" "}
+          <Link href={`/persoane/${state.duplicate.id}`} target="_blank">
+            {state.duplicate.name}
+          </Link>
+          <div className="mt-2">
+            <button type="submit" name="fortat" value="1" className="btn btn-sm" disabled={pending}>
+              Creează oricum
+            </button>
+          </div>
+        </div>
+      ) : (
+        <FormMessage state={state} />
+      )}
       <div className="actions">
         <Link href={cancelHref} className="btn btn-ghost">
           Renunță

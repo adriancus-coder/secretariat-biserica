@@ -5,8 +5,15 @@ import { usePathname } from "next/navigation";
 import { Icon } from "./icons";
 import { NAV_ITEMS, isActive, isMoreActive } from "./nav-items";
 
-export function AppNav() {
+/** Pending membership applications, shown as a badge (only passed to roles that can act on them). */
+export function AppNav({ pendingApplications = 0 }: { pendingApplications?: number }) {
   const pathname = usePathname();
+  const badge = (n: number) =>
+    n > 0 ? (
+      <span className="badge" aria-label={`${n} în așteptare`}>
+        {n}
+      </span>
+    ) : null;
   return (
     <nav className="shell-nav" aria-label="Navigare principală">
       {NAV_ITEMS.map((item) => {
@@ -20,12 +27,14 @@ export function AppNav() {
           >
             <Icon name={item.icon} />
             {item.label}
+            {item.href === "/cereri" ? badge(pendingApplications) : null}
           </Link>
         );
       })}
       <Link href="/mai-mult" className="mobile-only" aria-current={isMoreActive(pathname) ? "page" : undefined}>
         <Icon name="mai" />
         Mai mult
+        {badge(pendingApplications)}
       </Link>
     </nav>
   );

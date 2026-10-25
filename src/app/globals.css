@@ -654,6 +654,36 @@
     height: 22px;
     margin-top: 1px;
   }
+  /* Bottom bar (phone): badge in the icon's corner; sidebar (desktop): at the end of the row */
+  .shell-nav a {
+    position: relative;
+  }
+  .shell-nav a .badge {
+    position: absolute;
+    top: 0;
+    left: calc(50% + 6px);
+    margin: 0;
+  }
+  @media (min-width: 820px) {
+    .shell-nav a .badge {
+      position: static;
+      margin-left: auto;
+    }
+  }
+  .badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    margin-left: auto;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #1e1a0e;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+  }
   .checklist {
     max-height: 280px;
     overflow: auto;

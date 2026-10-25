@@ -4,11 +4,16 @@ import { AppNav } from "@/components/shell/app-nav";
 import { Icon } from "@/components/shell/icons";
 import { Flash } from "@/components/ui/flash";
 import { ROLE_LABEL } from "@/lib/labels";
+import { permissions } from "@/lib/permissions";
+import { tenantDb } from "@/server/tenant-db";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const pendingApplications = permissions.write(user.role)
+    ? await tenantDb(user.churchId).application.count({ where: { status: "PENDING" } })
+    : 0;
   return (
     <div className="shell">
       <div className="shell-side">
@@ -21,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {ROLE_LABEL[user.role]}
           </Link>
         </header>
-        <AppNav />
+        <AppNav pendingApplications={pendingApplications} />
         <div className="shell-user desk-only">
           <Link href="/cont" className="who">
             <Icon name="cont" className="size-[18px]" />

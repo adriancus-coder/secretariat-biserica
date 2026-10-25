@@ -1,7 +1,8 @@
 import { toPrototypeJson } from "@/domain/backup";
 import { todayIso } from "@/lib/dates";
 import { permissions } from "@/lib/permissions";
-import { loadBackup } from "@/server/backup";
+import { applicationsToJson } from "@/lib/application-backup";
+import { loadApplications, loadBackup } from "@/server/backup";
 import { getCurrentUser } from "@/server/session";
 import { tenantDb } from "@/server/tenant-db";
 
@@ -10,8 +11,9 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return new Response("Neautentificat.", { status: 401 });
   if (!permissions.export(user.role)) return new Response("Nu aveți drept de export.", { status: 403 });
-  const backup = await loadBackup({ user, db: tenantDb(user.churchId) });
-  const json = JSON.stringify(toPrototypeJson(backup), null, 2);
+  const ctx = { user, db: tenantDb(user.churchId) };
+  const [backup, applications] = await Promise.all([loadBackup(ctx), loadApplications(ctx)]);
+  const json = JSON.stringify({ ...toPrototypeJson(backup), applications: applicationsToJson(applications) }, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (backup.settings?.nume || "biserica")
     .normalize("NFD")

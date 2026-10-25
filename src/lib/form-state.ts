@@ -10,3 +10,8 @@ export interface FormState {
 }
 
 export const initialFormState: FormState = {};
+
+/** Person form result: when accepting an application, a possible duplicate already in the register. */
+export interface PersonFormState extends FormState {
+  duplicate?: { id: string; name: string };
+}
