@@ -44,7 +44,7 @@ export const applicationSchema = applicationFields
       ctx.addIssue({ code: "custom", path: ["telefon"], message: "Lăsați un telefon sau un e-mail, ca biserica să vă poată contacta." });
     }
     if (v.dataNasterii && v.dataNasterii > today) ctx.addIssue({ code: "custom", path: ["dataNasterii"], message: "Data nașterii nu poate fi în viitor." });
-    if (v.kind === "TRANSFER" && v.dataBotez) {
+    if (hasBaptismFields(v.kind) && v.dataBotez) {
       if (v.dataBotez > today) ctx.addIssue({ code: "custom", path: ["dataBotez"], message: "Data botezului nu poate fi în viitor." });
       else if (v.dataNasterii && v.dataBotez < v.dataNasterii) {
         ctx.addIssue({ code: "custom", path: ["dataBotez"], message: "Data botezului este înaintea datei nașterii." });
@@ -54,7 +54,14 @@ export const applicationSchema = applicationFields
   .transform((v) =>
     v.kind === "TRANSFER"
       ? v
-      : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
+      : v.kind === "CERERE_MEMBRALITATE"
+        ? { ...v, bisericaProvenienta: "" }
+        : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
   );
+
+/** Kinds whose applicant is already baptised: the form asks for the baptism details. */
+export function hasBaptismFields(kind: string | null | undefined): boolean {
+  return kind === "TRANSFER" || kind === "CERERE_MEMBRALITATE";
+}
 
 export type ApplicationInput = z.output<typeof applicationSchema>;

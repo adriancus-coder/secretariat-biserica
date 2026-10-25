@@ -117,6 +117,15 @@ describe("copia de siguranță (format prototip)", () => {
     expect(r.backup).toEqual(sample);
   });
 
+  it("„Cerere de membralitate” is exported and imported by its label", () => {
+    const m = { ...sample.members[0], modIntrare: "CERERE_MEMBRALITATE" as const };
+    const json = toPrototypeJson({ ...sample, members: [m] });
+    expect((Object.values(json.members as Record<string, { modIntrare: string }>)[0]).modIntrare).toBe("Cerere de membralitate");
+    const r = parsePrototypeJson(JSON.parse(JSON.stringify(json)));
+    expect(r.warnings).toEqual([]);
+    expect(r.backup?.members[0].modIntrare).toBe("CERERE_MEMBRALITATE");
+  });
+
   it("importă date în formatul prototipului (generate aleator)", () => {
     const ds = randomDataset(42, "2026-09-28", 50);
     const raw = {

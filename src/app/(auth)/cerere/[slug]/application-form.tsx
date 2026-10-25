@@ -6,7 +6,7 @@ import { nomenOptions, SelectField, TextAreaField, TextField } from "@/component
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { APPLICATION_KIND_LABEL, APPLICATION_KINDS, GENDER_LABEL, GENDERS, type ApplicationKindKey } from "@/lib/labels";
-import { APPLICATION_MESSAGE_MAX } from "@/lib/schemas/application";
+import { APPLICATION_MESSAGE_MAX, hasBaptismFields } from "@/lib/schemas/application";
 import { STATUTE, type StatuteKind } from "@/lib/statutes";
 import { submitApplicationAction } from "@/server/actions/applications";
 
@@ -124,15 +124,17 @@ export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rud
         />
       </div>
 
-      {kind === "TRANSFER" ? (
+      {hasBaptismFields(kind) ? (
         <fieldset className="card">
-          <h3>Transfer</h3>
-          <TextField
-            name="bisericaProvenienta"
-            label="Biserica de proveniență"
-            defaultValue={v.bisericaProvenienta ?? ""}
-            error={e.bisericaProvenienta}
-          />
+          <h3>{kind === "TRANSFER" ? "Transfer" : "Botez"}</h3>
+          {kind === "TRANSFER" ? (
+            <TextField
+              name="bisericaProvenienta"
+              label="Biserica de proveniență"
+              defaultValue={v.bisericaProvenienta ?? ""}
+              error={e.bisericaProvenienta}
+            />
+          ) : null}
           <fieldset className="subfields">
             <legend>Botez în apă</legend>
             <div className="row2 stack-sm">

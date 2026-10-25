@@ -328,6 +328,9 @@ corecții deliberate:
     fără biserică și oficiant, textul rămâne cel din prototip.
 15. **Darea de seamă:** cei botezați în anul raportat într-o altă biserică au după nume „(biserica,
     oficiantul)”.
+16. **Modul de intrare „Cerere de membralitate”** (și tipul de cerere online cu același nume) se adaugă
+    celor din prototip; în copia de siguranță apare cu această etichetă. Statisticile nu îl numără
+    separat (ca „Altul”); documentele afișează data intrării ca la orice alt mod.
 
 ## Limitări și pași următori
 

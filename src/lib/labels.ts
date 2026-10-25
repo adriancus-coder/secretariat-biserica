@@ -15,13 +15,14 @@ export const STATUS_LABEL: Record<PersonStatusKey, string> = {
   FOST_MEMBRU: "Fost membru",
 };
 
-export const ENTRY_MODES = ["BOTEZ", "TRANSFER", "NASCUT_IN_BISERICA", "REPRIMIRE", "ALTUL"] as const;
+export const ENTRY_MODES = ["BOTEZ", "TRANSFER", "NASCUT_IN_BISERICA", "REPRIMIRE", "CERERE_MEMBRALITATE", "ALTUL"] as const;
 export type EntryModeKey = (typeof ENTRY_MODES)[number];
 export const ENTRY_LABEL: Record<EntryModeKey, string> = {
   BOTEZ: "Botez",
   TRANSFER: "Transfer",
   NASCUT_IN_BISERICA: "Născut în biserică",
   REPRIMIRE: "Reprimire",
+  CERERE_MEMBRALITATE: "Cerere de membralitate",
   ALTUL: "Altul",
 };
 
@@ -35,11 +36,12 @@ export const EXIT_LABEL: Record<ExitModeKey, string> = {
   ALTUL: "Altul",
 };
 
-export const APPLICATION_KINDS = ["TRANSFER", "BOTEZ", "ALTUL"] as const;
+export const APPLICATION_KINDS = ["TRANSFER", "BOTEZ", "CERERE_MEMBRALITATE", "ALTUL"] as const;
 export type ApplicationKindKey = (typeof APPLICATION_KINDS)[number];
 export const APPLICATION_KIND_LABEL: Record<ApplicationKindKey, string> = {
   TRANSFER: "Transfer de la altă biserică",
   BOTEZ: "Botez nou-testamentar",
+  CERERE_MEMBRALITATE: "Cerere de membralitate",
   ALTUL: "Altul",
 };
 

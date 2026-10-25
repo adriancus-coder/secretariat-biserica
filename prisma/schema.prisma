@@ -181,6 +181,7 @@ enum EntryMode {
   TRANSFER
   NASCUT_IN_BISERICA
   REPRIMIRE
+  CERERE_MEMBRALITATE
   ALTUL
 }
 
@@ -700,6 +701,7 @@ enum ApplicationStatus {
 enum ApplicationKind {
   TRANSFER
   BOTEZ
+  CERERE_MEMBRALITATE
   ALTUL
 }
 

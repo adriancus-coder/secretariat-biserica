@@ -14,6 +14,11 @@ describe("applicationSchema", () => {
     expect(r).toMatchObject({ bisericaProvenienta: "", dataBotez: null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" });
   });
 
+  it("a membership request keeps the baptism details but no church of origin", () => {
+    const r = applicationSchema.parse({ ...base, kind: "CERERE_MEMBRALITATE", bisericaProvenienta: "X", dataBotez: "2008-07-20", botezBiserica: "Y" });
+    expect(r).toMatchObject({ kind: "CERERE_MEMBRALITATE", bisericaProvenienta: "", dataBotez: "2008-07-20", botezBiserica: "Y" });
+  });
+
   it("requires consent, a kind and names, reported together", () => {
     const r = applicationSchema.safeParse({ nume: "", prenume: "", telefon: "", email: "" });
     expect(r.success).toBe(false);
