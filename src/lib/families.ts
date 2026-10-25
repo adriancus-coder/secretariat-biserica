@@ -16,9 +16,8 @@ export interface HeadCandidate {
   createdAt: string | null;
 }
 
-/** A head is never a child: statut "Copil" or under 18. A missing birth date counts as adult (unless Copil). */
+/** A head is never a minor (under 18). A missing birth date counts as adult. */
 export function canBeHead(p: { statut: PersonStatusKey; dataNasterii: string | null }, today: string): boolean {
-  if (p.statut === "COPIL") return false;
   return p.dataNasterii === null || ageAt(p.dataNasterii, today) >= 18;
 }
 

@@ -9,13 +9,13 @@ const TODAY = "2026-10-25";
 /** A small church like the demo seed: families of members and aparținători, children, entries and exits over the years. */
 function church(): { input: Omit<CategoryInput, "year">; persons: PersonRecord[] } {
   const persons = [
-    person({ id: "h1", nume: "Mureșan", prenume: "Daniel", gen: "M", familyId: "f1", dataNasterii: "1975-03-01", dataMembru: "2000-01-01", dataBotez: "1995-06-01", modIntrare: "BOTEZ" }),
+    person({ id: "h1", nume: "Mureșan", prenume: "Daniel", gen: "M", familyId: "f1", rudenie: "Cap de familie", dataNasterii: "1975-03-01", dataMembru: "2000-01-01", dataBotez: "1995-06-01", modIntrare: "BOTEZ" }),
     person({ id: "w1", nume: "Mureșan", prenume: "Lidia", gen: "F", familyId: "f1", dataNasterii: "1978-05-01", dataMembru: "2001-01-01", dataBotez: "1998-06-01" }),
-    person({ id: "c1", nume: "Mureșan", prenume: "Sara", gen: "F", familyId: "f1", statut: "COPIL", dataNasterii: "2015-01-01", dataBinecuvantare: "2015-06-01" }),
-    person({ id: "c2", nume: "Mureșan", prenume: "Iosif", gen: "M", familyId: "f1", statut: "COPIL", dataNasterii: "2010-09-09" }),
-    person({ id: "a1", nume: "Pop", prenume: "Vasile", gen: "M", familyId: "f2", statut: "APARTINATOR", dataNasterii: "1980-01-01" }),
-    person({ id: "c3", nume: "Pop", prenume: "Ana", gen: "F", familyId: "f2", statut: "COPIL", dataNasterii: "2018-02-02" }),
-    person({ id: "c4", nume: "Solo", prenume: "Copil", gen: "M", statut: "COPIL", dataNasterii: "2019-02-02" }),
+    person({ id: "c1", nume: "Mureșan", prenume: "Sara", gen: "F", familyId: "f1", statut: "APARTINATOR", dataNasterii: "2015-01-01", dataBinecuvantare: "2015-06-01" }),
+    person({ id: "c2", nume: "Mureșan", prenume: "Iosif", gen: "M", familyId: "f1", statut: "APARTINATOR", dataNasterii: "2010-09-09" }),
+    person({ id: "a1", nume: "Pop", prenume: "Vasile", gen: "M", familyId: "f2", rudenie: "Cap de familie", statut: "APARTINATOR", dataNasterii: "1980-01-01" }),
+    person({ id: "c3", nume: "Pop", prenume: "Ana", gen: "F", familyId: "f2", statut: "APARTINATOR", dataNasterii: "2018-02-02" }),
+    person({ id: "c4", nume: "Solo", prenume: "Copil", gen: "M", statut: "APARTINATOR", dataNasterii: "2019-02-02" }),
     person({ id: "p1", nume: "Prieten", prenume: "Ion", gen: "M", statut: "PRIETEN", dataNasterii: "1990-01-01" }),
     person({ id: "t1", nume: "Transfer", prenume: "Eva", gen: "F", dataNasterii: "1960-01-01", dataMembru: "2026-02-01", modIntrare: "TRANSFER", dataBotez: "1980-01-01" }),
     person({ id: "t2", nume: "Transfer", prenume: "Old", gen: "M", dataNasterii: "1950-01-01", dataMembru: "2025-02-01", modIntrare: "TRANSFER", botezAn: 1970 }),

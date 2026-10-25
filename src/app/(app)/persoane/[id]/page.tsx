@@ -6,7 +6,8 @@ import { AuditTrail } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ageAt, fromDbDate, todayIso } from "@/lib/dates";
 import { fmt, memberName } from "@/lib/format";
-import { DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
+import { APARTINATOR_KIND_LABEL, DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
+import { apartinatorKind } from "@/lib/apartinator";
 import { permissions } from "@/lib/permissions";
 import { getPersonDetail, parseListSpec, personNeighbors } from "@/server/queries/persons";
 import { PersonNav } from "@/components/person-nav";
@@ -44,10 +45,11 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const db = fromDbDate(x.dataBotez);
   const dbin = fromDbDate(x.dataBinecuvantare);
   const di = fromDbDate(x.dataIesire);
+  const kind = apartinatorKind({ statut: x.statut, dataNasterii: dn, baptised: Boolean(db || x.botezAn) }, family, x.family?.headId ?? null, today);
   // Aceleași rânduri ca fișa din prototip (showMember).
   const rows: [string, string][] = (
     [
-      ["Statut", STATUS_LABEL[x.statut]],
+      ["Statut", STATUS_LABEL[x.statut] + (kind ? ` — ${kind}) ${APARTINATOR_KIND_LABEL[kind]} (Statut art. 28)` : "")],
       ["Gen", x.gen ? GENDER_LABEL[x.gen] : ""],
       ["Familie", x.family ? x.family.nume + (x.family.headId === x.id ? " — capul familiei" : x.rudenie ? ` — ${x.rudenie}` : "") : ""],
       ["Data nașterii", dn ? `${fmt(dn)} (${ageAt(dn, today)} ani)` : ""],

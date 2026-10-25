@@ -336,6 +336,18 @@ corecții deliberate:
     Pagina persoanei, certificatele, adeverința și scrisoarea de recomandare scriu atunci „în anul 2010”;
     statisticile și darea de seamă numără botezul după an (prototipul, fără dată, nu îl număra). În
     copia de siguranță apare ca `botezAn`; fișierele mai vechi se importă neschimbat.
+18. **Statutele după Statutul Cultului (Statut art. 28):** nu mai există statutul „Copil” (minorii se
+    stabilesc după data nașterii; fără dată de naștere, persoana nu este numărată ca minor), iar
+    aparținătorii sunt persoane nebotezate: a) minori nebotezați din familii de credincioși, b) persoane
+    nebotezate hotărâte să-L urmeze pe Hristos. Cei botezați fără calitate de membru au statutul
+    „Botezat, fără calitate de membru”. Darea de seamă înlocuiește rândurile „Copii ai membrilor sub 18
+    ani”, „N copii minori”, „N botezați, din care M aparținători” și „N prieteni…” cu: „Aparținători: N
+    (din care a) …; b) …)”, „Botezați fără calitate de membru: N”, „Prieteni ai casei Domnului
+    (nebotezați): N” și „Copii minori: N (din care copii ai membrilor: M)”. Migrarea `statute_statuses`:
+    „Copil” botezat → Membru; nebotezat dintr-o familie cu un membru cap de familie, soț/soție sau
+    părinte → Aparținător; ceilalți → Prieten; „Aparținător” botezat → „Botezat, fără calitate de
+    membru” (cu un rând în nota persoanei și lista „Statute ajustate” din Setări → Date). Fișierele mai
+    vechi se importă după aceleași reguli.
 
 ## Limitări și pași următori
 

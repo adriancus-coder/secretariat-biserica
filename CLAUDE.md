@@ -185,6 +185,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - A new searchable field needs the derivation updated and a backfill migration.
 - Lists are paginated on the server and their filters live in the URL. The helpers `hrefWith`, `pageParam`, `stringParam` and `<Pager>` are in `components/ui/pager.tsx`.
 
+### Statute of the Cultul Creștin Penticostal (statuses)
+
+- References in code and README are written "Statut art. N".
+- `PersonStatus` (Statut art. 28): MEMBRU, APARTINATOR (unbaptised), PRIETEN ("Prieten al casei Domnului"), BOTEZAT_FARA_TRANSFER ("Botezat, fără calitate de membru"), FOST_MEMBRU. There is no "Copil" status: a minor is computed from the birth date (no birth date = not a minor). `STATUS_HINT` (`src/lib/labels.ts`) explains each on the person form; an aparținător with a baptism is refused (`personDateErrors`), a member without one gets a warning.
+- Aparținător kind, derived, never stored: a) minor, unbaptised, in a family whose head or a member with rudenie in `BELIEVER_RELATIONS` (head, spouse, parent) is MEMBRU; b) the others. `computeStats` exposes `apartA` / `apartB` / `botezatiFara`; `apartinatorKind()` (`src/lib/apartinator.ts`) applies the same rule on the person page. The report's persons block follows art. 28 (documented in the parity test, `statuteBlock`, and README).
+- Migration `statute_statuses` mapped Copil and baptised Aparținător (`Person.statutAjustat` + a note line; Setări → Date "Statute ajustate", hidden by an admin with `dismissStatusAdjustmentsAction`). Older backup files go through `legacyStatus()` with the same rules.
+- Applications: Botez → member from the baptism date, Transfer / Cerere → from the approval date, Altul → Prieten (or Aparținător, chosen on the form).
+
 ### Statistics categories
 
 - `src/domain/categories.ts` (pure): every person category (statut, copii, botez și intrare, vârstă, slujire, familie, ieșiri) as ids. The figures shown on Acasă reuse computeStats' own lists, so a list has exactly as many rows as its number (`categories.test.ts`). `categoryContext(input)` computes once; `combineCategories` gives union ("oricare") or intersection ("toate"). Copii ai membrilor / aparținătorilor follow the stats' family rule (a member, resp. an aparținător and no member, in the family).

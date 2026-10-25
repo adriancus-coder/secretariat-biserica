@@ -65,7 +65,9 @@ export function randomPerson(r: Rng, id: string, today: string, families: string
   const createdAt = !dataNasterii && r.chance(0.3) ? null : isoBetween(r, maxIso(dataNasterii, "2010-01-01"), today);
   const dataMembru = hasEntry ? isoBetween(r, maxIso(dataNasterii, createdAt), "2027-06-30") : null;
   const modIntrare = hasEntry && r.chance(0.85) ? r.pick(ENTRY_MODES) : null;
-  const dataBotez = r.chance(0.55) ? isoBetween(r, maxIso(dataNasterii, "1960-01-01"), "2027-06-30") : null;
+  const baptised = r.chance(0.55);
+  // Statut art. 28: an aparținător is unbaptised (the import maps a baptised one to its own status).
+  const dataBotez = baptised && statut !== "APARTINATOR" ? isoBetween(r, maxIso(dataNasterii, "1960-01-01"), "2027-06-30") : null;
   const dataBinecuvantare = r.chance(0.2) ? isoBetween(r, maxIso(dataNasterii, "1990-01-01"), "2027-06-30") : null;
   const exits = r.chance(0.3);
   const dataIesire = exits ? isoBetween(r, maxIso(dataMembru, createdAt, "2012-01-01"), "2027-06-30") : null;

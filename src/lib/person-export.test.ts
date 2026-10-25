@@ -7,7 +7,7 @@ const p = (o: Partial<ExportPerson>): ExportPerson => ({
   prenume: "Ioana",
   gen: "F",
   dataNasterii: "2010-05-02",
-  statut: "COPIL",
+  statut: "APARTINATOR",
   familie: "",
   familyId: null,
   rudenie: "",
@@ -29,7 +29,7 @@ describe("person export", () => {
   it("formats the cells (dates dd.mm.yyyy, age at the reference date, labels)", () => {
     const x = p({ botezAn: 2024, inComitet: true, modIntrare: "CERERE_MEMBRALITATE" });
     expect(exportRows([x], ["nume", "gen", "dataNasterii", "varsta", "statut", "botez", "comitet", "modIntrare"], "2026-10-25")).toEqual([
-      ["Pop", "Feminin", "02.05.2010", "16", "Copil", "2024", "da", "Cerere de membralitate"],
+      ["Pop", "Feminin", "02.05.2010", "16", "Aparținător", "2024", "da", "Cerere de membralitate"],
     ]);
     expect(cell(p({ dataNasterii: null }), "varsta", "2026-10-25")).toBe("");
   });

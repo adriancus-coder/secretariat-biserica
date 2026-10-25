@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { randomDataset, toPrototypeEvent, toPrototypeMember } from "../../tests/prototype/fixtures";
-import { normalizeDocumentNumbers, parsePrototypeJson, toPrototypeJson, type Backup } from "./backup";
+import { legacyStatus, normalizeDocumentNumbers, parsePrototypeJson, toPrototypeJson, type Backup } from "./backup";
 
 const sample: Backup = {
   members: [
@@ -194,5 +194,31 @@ describe("copia de siguranță (format prototip)", () => {
       ["d", 1],
     ]);
     expect(renumbered).toHaveLength(2);
+  });
+});
+
+describe("older files: statuses before Statut art. 28", () => {
+  it("maps „Copil” and a baptised „Aparținător” by the migration's rules", () => {
+    const r = parsePrototypeJson({
+      members: {
+        t: { nume: "Pop", prenume: "Ion", statut: "Membru", familie: "Pop", rudenie: "Cap de familie" },
+        k1: { nume: "Pop", prenume: "Ana", statut: "Copil", familie: "Pop", rudenie: "Fiică" },
+        k2: { nume: "Pop", prenume: "Iosif", statut: "Copil", familie: "Pop", dataBotez: "2025-06-01" },
+        k3: { nume: "Rus", prenume: "Eva", statut: "Copil", familie: "Rus" },
+        a1: { nume: "Ene", prenume: "Dan", statut: "Aparținător", dataBotez: "2010-01-01" },
+        a2: { nume: "Ene", prenume: "Ilie", statut: "Aparținător" },
+      },
+    });
+    expect(r.errors).toEqual([]);
+    const st = Object.fromEntries(r.backup.members.map((m) => [m.id, m.statut]));
+    expect(st).toEqual({ t: "MEMBRU", k1: "APARTINATOR", k2: "MEMBRU", k3: "PRIETEN", a1: "BOTEZAT_FARA_TRANSFER", a2: "APARTINATOR" });
+    expect(r.warnings.some((w) => w.includes("Statutul Cultului (art. 28)"))).toBe(true);
+  });
+
+  it("legacyStatus follows the same rules", () => {
+    expect(legacyStatus("COPIL", true, false)).toBe("MEMBRU");
+    expect(legacyStatus("COPIL", false, true)).toBe("APARTINATOR");
+    expect(legacyStatus("COPIL", false, false)).toBe("PRIETEN");
+    expect(legacyStatus("APARTINATOR", true, false)).toBe("BOTEZAT_FARA_TRANSFER");
   });
 });

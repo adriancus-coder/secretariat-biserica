@@ -101,7 +101,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <div className="stats">
         <Stat value={s.botezati.length} label="botezați" href={cat("botezati")} />
         <Stat value={s.apart.length} label="aparținători" href={cat("apartinatori")} />
-        <Stat value={s.prieteni.length} label="prieteni nebotezați" href={cat("prieteni")} />
+        <Stat value={s.prieteni.length} label="prieteni ai casei Domnului" href={cat("prieteni")} />
+      </div>
+      <div className="stats">
+        <Stat value={s.apartA.length} label="aparținători a) minori din familii de credincioși" href={cat("apartinatori-a")} />
+        <Stat value={s.apartB.length} label="aparținători b) nebotezați hotărâți" href={cat("apartinatori-b")} />
+        <Stat value={s.botezatiFara.length} label="botezați fără calitate de membru" href={cat("botezati-fara-calitate")} />
       </div>
       <div className="stats mb-4">
         <Stat value={s.copii.length} label="copii minori" href={cat("copii-minori")} />

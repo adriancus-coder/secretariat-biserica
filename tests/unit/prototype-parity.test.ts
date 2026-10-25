@@ -65,6 +65,31 @@ describe("paritate cu prototipul: statistici", () => {
   }
 });
 
+/**
+ * Documented deviation (Statut art. 28, README "Diferențe față de prototip"): the persons block of the
+ * report. The prototype's "Copii ai membrilor sub 18 ani", "- N copii minori", "- N botezați, din care
+ * M aparținători" and "- N prieteni …" lines become the aparținători a / b, the baptised non-members,
+ * the prieteni and the minors with the members' children. Everything else must match exactly.
+ */
+function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): string {
+  const lines = protoText.split("\n");
+  const from = lines.findIndex((l) => l.startsWith("Copii ai membrilor sub 18 ani:"));
+  const to = lines.findIndex((l) => / prieteni ai casei Domnului, nebotezați$/.test(l));
+  expect(from).toBeGreaterThan(0);
+  expect(lines.slice(from + 1, from + 3)).toEqual(["", "Situația persoanelor în evidență:"]);
+  lines.splice(
+    from,
+    to - from + 1,
+    "",
+    "Situația persoanelor în evidență:",
+    `- Aparținători: ${s.apart.length} (din care a) minori nebotezați din familii de credincioși: ${s.apartA.length}; b) persoane nebotezate hotărâte: ${s.apartB.length})`,
+    `- Botezați fără calitate de membru: ${s.botezatiFara.length}`,
+    `- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`,
+    `- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`,
+  );
+  return lines.join("\n");
+}
+
 describe("paritate cu prototipul: darea de seamă", () => {
   for (const today of TODAYS) {
     const proto = loadPrototype(today);
@@ -81,7 +106,7 @@ describe("paritate cu prototipul: darea de seamă", () => {
             sedinte: ds.meetings.filter((m) => inYear(m.data, year)).length,
             documente: ds.documents.filter((d) => inYear(d.data, year) && d.tip !== "raport").length,
           };
-          expect(buildReportText(year, stats, activity), `seed=${seed} year=${year}`).toBe(proto.reportText(year));
+          expect(buildReportText(year, stats, activity), `seed=${seed} year=${year}`).toBe(statuteBlock(proto.reportText(year), stats));
         }
       }
     });

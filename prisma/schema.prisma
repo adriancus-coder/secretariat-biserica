@@ -171,11 +171,13 @@ model PasswordReset {
 // Registrul de persoane
 // ---------------------------------------------------------------------------
 
+/// Statut art. 28: membru, aparținător (unbaptised), prieten al casei Domnului, botezat fără calitate
+/// de membru, fost membru. Being a minor is computed from the birth date, not a status.
 enum PersonStatus {
   MEMBRU
   APARTINATOR
   PRIETEN
-  COPIL
+  BOTEZAT_FARA_TRANSFER
   FOST_MEMBRU
 }
 
@@ -209,6 +211,8 @@ model Person {
   nume         String
   prenume      String       @default("")
   statut       PersonStatus @default(MEMBRU)
+  /// "Copil → Membru": set by the statute_statuses migration (Statut art. 28), listed once in Setări → Date.
+  statutAjustat String?
   gen          Gender?
   familyId     String?
   family       Family?      @relation("FamilyMembers", fields: [familyId], references: [id], onDelete: SetNull)

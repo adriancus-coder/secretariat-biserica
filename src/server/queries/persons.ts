@@ -277,7 +277,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
       ? ctx.db.person.findMany({
           where: { familyId: person.familyId, id: { not: id } },
           orderBy: ORDER,
-          select: { id: true, nume: true, prenume: true, rudenie: true, dataIesire: true },
+          select: { id: true, nume: true, prenume: true, rudenie: true, dataIesire: true, statut: true },
         })
       : Promise.resolve([]),
     ctx.db.note.findMany({ where: { personId: id }, orderBy: [{ data: "desc" }, { createdAt: "desc" }], take: 5 }),

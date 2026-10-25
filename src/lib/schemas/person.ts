@@ -87,5 +87,9 @@ export function personDateErrors(input: PersonInput, today: string): Record<stri
   if (input.dataNasterii && input.dataIesire && input.dataIesire < input.dataNasterii) {
     errors.dataIesire = "Data ieșirii este înaintea datei nașterii.";
   }
+  // Statut art. 28: aparținătorii sunt nebotezați.
+  if (input.statut === "APARTINATOR" && (input.dataBotez || input.botezAn)) {
+    errors.statut = "Aparținătorii sunt persoane nebotezate (Statut art. 28). Alegeți „Membru” sau „Botezat, fără calitate de membru”.";
+  }
   return errors;
 }

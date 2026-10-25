@@ -38,7 +38,7 @@ describe("persoane în evidență la o dată", () => {
   });
 
   it("o persoană născută după data situației nu era în evidență", () => {
-    const p = person({ nume: "Nou", statut: "COPIL", dataNasterii: "2025-02-01", createdAt: null });
+    const p = person({ nume: "Nou", statut: "APARTINATOR", dataNasterii: "2025-02-01", createdAt: null });
     expect(isInRecord(p, "2024-12-31", true)).toBe(false);
     expect(isInRecord(p, TODAY, false)).toBe(true);
   });
@@ -48,9 +48,9 @@ describe("computeStats", () => {
   const persons = [
     person({ id: "a", nume: "Popescu", prenume: "Ion", gen: "M", familyId: "Popescu", rudenie: "Cap de familie", dataNasterii: "1975-04-02", dataMembru: "2001-06-10", modIntrare: "BOTEZ", dataBotez: "2001-06-10" }),
     person({ id: "b", nume: "Popescu", prenume: "Maria", gen: "F", familyId: "Popescu", rudenie: "Soție", dataNasterii: "1978-11-20", dataMembru: "2003-05-01", modIntrare: "TRANSFER", dataBotez: "1996-07-07" }),
-    person({ id: "c", nume: "Popescu", prenume: "Andrei", gen: "M", statut: "COPIL", familyId: "Popescu", rudenie: "Fiu", dataNasterii: "2012-03-15", dataBinecuvantare: "2012-09-02" }),
-    person({ id: "d", nume: "Ionescu", prenume: "Elena", gen: "F", statut: "APARTINATOR", familyId: "Ionescu", dataNasterii: "1990-01-01", dataMembru: "2018-01-01", dataBotez: "2010-08-15" }),
-    person({ id: "e", nume: "Ionescu", prenume: "Rut", gen: "F", statut: "COPIL", familyId: "Ionescu", dataNasterii: "2019-10-10" }),
+    person({ id: "c", nume: "Popescu", prenume: "Andrei", gen: "M", statut: "APARTINATOR", familyId: "Popescu", rudenie: "Fiu", dataNasterii: "2012-03-15", dataBinecuvantare: "2012-09-02" }),
+    person({ id: "d", nume: "Ionescu", prenume: "Elena", gen: "F", statut: "BOTEZAT_FARA_TRANSFER", familyId: "Ionescu", dataNasterii: "1990-01-01", dataMembru: "2018-01-01", dataBotez: "2010-08-15" }),
+    person({ id: "e", nume: "Ionescu", prenume: "Rut", gen: "F", statut: "APARTINATOR", familyId: "Ionescu", dataNasterii: "2019-10-10" }),
     person({ id: "f", nume: "Barbu", prenume: "Petru", gen: "M", statut: "PRIETEN", dataNasterii: "1960-02-29", createdAt: "2021-03-01" }),
     person({ id: "g", nume: "Lungu", prenume: "Mihai", gen: "M", statut: "FOST_MEMBRU", familyId: "Lungu", dataNasterii: "1985-05-05", dataMembru: "2010-01-01", dataBotez: "2010-01-01", dataIesire: "2026-02-01", modIesire: "TRANSFER", bisericaDestinatie: "Biserica Betel Oslo" }),
     person({ id: "h", nume: "Avram", prenume: "Ana", gen: "F", statut: "MEMBRU", dataNasterii: "1940-01-01", dataMembru: "1960-01-01", dataBotez: "1960-01-01", dataIesire: "2026-05-05", modIesire: "DECES" }),
@@ -82,7 +82,8 @@ describe("computeStats", () => {
     expect(names(s.copii)).toEqual(["Popescu Andrei", "Ionescu Rut"]);
     // Rut e minoră, dar familia Ionescu nu are membri (Elena e aparținătoare).
     expect(names(s.copiiMembri)).toEqual(["Popescu Andrei"]);
-    expect(names(s.apart)).toEqual(["Ionescu Elena"]);
+    expect(names(s.apart)).toEqual(["Popescu Andrei", "Ionescu Rut"]);
+    expect(names(s.botezatiFara)).toEqual(["Ionescu Elena"]);
     expect(names(s.prieteni)).toEqual(["Barbu Petru"]);
     expect(names(s.botezati)).toEqual(["Popescu Ion", "Popescu Maria", "Ionescu Elena", "Munteanu Daniel"]);
     expect(s.gen).toEqual({ M: 4, F: 4 });
@@ -123,10 +124,29 @@ describe("computeStats", () => {
     expect(computeStats([born2008], [], { today: TODAY }).copii).toHaveLength(0);
   });
 
-  it("fără dată de naștere, statutul „Copil” înseamnă minor", () => {
-    const s = computeStats([person({ nume: "X", statut: "COPIL" })], [], { today: TODAY });
-    expect(s.copii).toHaveLength(1);
+  it("fără dată de naștere nimeni nu este minor (Statut art. 28: nu mai există statutul „Copil”)", () => {
+    const s = computeStats([person({ nume: "X", statut: "APARTINATOR" })], [], { today: TODAY });
+    expect(s.copii).toHaveLength(0);
     expect(s.bands.every(([, n]) => n === 0)).toBe(true);
+  });
+
+  it("împarte aparținătorii în a) minori nebotezați din familii de credincioși și b) ceilalți", () => {
+    const s = computeStats(
+      [
+        person({ id: "t", nume: "Pop", statut: "MEMBRU", familyId: "f", rudenie: "Cap de familie", dataNasterii: "1980-01-01" }),
+        person({ id: "k", nume: "Pop", statut: "APARTINATOR", familyId: "f", rudenie: "Fiu", dataNasterii: "2015-01-01" }),
+        person({ id: "kb", nume: "Pop", statut: "APARTINATOR", familyId: "f", rudenie: "Fiu", dataNasterii: "2014-01-01", dataBotez: "2025-06-01" }),
+        person({ id: "x", nume: "Rus", statut: "APARTINATOR", familyId: "g", rudenie: "Fiu", dataNasterii: "2015-01-01" }),
+        person({ id: "y", nume: "Ene", statut: "APARTINATOR", dataNasterii: "1990-01-01" }),
+        person({ id: "z", nume: "Lup", statut: "BOTEZAT_FARA_TRANSFER", dataNasterii: "1990-01-01", dataBotez: "2010-01-01" }),
+      ],
+      [],
+      { today: TODAY },
+    );
+    expect(s.apartA.map((p) => p.id)).toEqual(["k"]);
+    expect(s.apartB.map((p) => p.id)).toEqual(["kb", "x", "y"]);
+    expect(s.botezatiFara.map((p) => p.id)).toEqual(["z"]);
+    expect(s.membri.map((p) => p.id)).toEqual(["t"]);
   });
 });
 

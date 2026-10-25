@@ -1,4 +1,5 @@
 import { ageAt, inYear } from "@/lib/dates";
+import { PARENT_RELATIONS } from "@/lib/labels";
 import { computeStats, type Stats } from "./stats";
 import type { EventRecord, PersonRecord } from "./types";
 
@@ -36,7 +37,10 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "toti", label: "Toți cei în evidență", group: "Statut" },
   { key: "membri", label: "Membri", group: "Statut" },
   { key: "apartinatori", label: "Aparținători", group: "Statut" },
-  { key: "prieteni", label: "Prieteni (nebotezați)", group: "Statut" },
+  { key: "apartinatori-a", label: "Aparținători a) minori nebotezați din familii de credincioși", group: "Statut" },
+  { key: "apartinatori-b", label: "Aparținători b) nebotezați hotărâți", group: "Statut" },
+  { key: "botezati-fara-calitate", label: "Botezați fără calitate de membru", group: "Statut" },
+  { key: "prieteni", label: "Prieteni ai casei Domnului (nebotezați)", group: "Statut" },
   { key: "barbati", label: "Bărbați", group: "Statut" },
   { key: "femei", label: "Femei", group: "Statut" },
   { key: "copii-minori", label: "Copii minori", group: "Copii" },
@@ -105,7 +109,8 @@ export function categoryContext(input: CategoryInput): CategoryContext {
   const age = (p: PersonRecord) => (p.dataNasterii ? ageAt(p.dataNasterii, s.endDate) : null);
   // Same family rule as computeStats: a family counts as a member family when any member of it is a member.
   const memberFams = new Set(s.membri.map((p) => p.familyId).filter(Boolean));
-  const apartFams = new Set(s.apart.map((p) => p.familyId).filter((f) => f && !memberFams.has(f)));
+  // An aparținător family: its head or the spouse is an aparținător, and nobody in it is a member.
+  const apartFams = new Set(s.apart.filter((p) => PARENT_RELATIONS.includes(p.rudenie)).map((p) => p.familyId).filter((f) => f && !memberFams.has(f)));
   const baptised = new Set(ids(s.botezati));
   const anyHolder = new Set([...input.holders.values()].flatMap((set) => [...set]));
   // Members of each family among the persons in the record.
@@ -122,6 +127,12 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return ids(s.membri);
         case "apartinatori":
           return ids(s.apart);
+        case "apartinatori-a":
+          return ids(s.apartA);
+        case "apartinatori-b":
+          return ids(s.apartB);
+        case "botezati-fara-calitate":
+          return ids(s.botezatiFara);
         case "prieteni":
           return ids(s.prieteni);
         case "barbati":

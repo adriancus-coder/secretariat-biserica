@@ -5,15 +5,32 @@
  * Fișierul nu depinde de clientul Prisma, ca să poată fi folosit și în componentele de client.
  */
 
-export const PERSON_STATUSES = ["MEMBRU", "APARTINATOR", "PRIETEN", "COPIL", "FOST_MEMBRU"] as const;
+/** Statut art. 28. Being a minor is computed from the birth date (there is no "Copil" status). */
+export const PERSON_STATUSES = ["MEMBRU", "APARTINATOR", "PRIETEN", "BOTEZAT_FARA_TRANSFER", "FOST_MEMBRU"] as const;
 export type PersonStatusKey = (typeof PERSON_STATUSES)[number];
 export const STATUS_LABEL: Record<PersonStatusKey, string> = {
   MEMBRU: "Membru",
   APARTINATOR: "Aparținător",
   PRIETEN: "Prieten",
-  COPIL: "Copil",
+  BOTEZAT_FARA_TRANSFER: "Botezat, fără calitate de membru",
   FOST_MEMBRU: "Fost membru",
 };
+/** One line per status on the person form (Statut art. 20, 22, 24, 28). */
+export const STATUS_HINT: Record<PersonStatusKey, string> = {
+  MEMBRU: "Botezat în apă și primit în biserică (prin botez, transfer sau reabilitare spirituală).",
+  APARTINATOR:
+    "Nebotezat: minor dintr-o familie de credincioși sau persoană care frecventează și s-a hotărât să-L urmeze pe Hristos (art. 28).",
+  PRIETEN: "Prieten al casei Domnului: nebotezat, frecventează biserica, încă nu este aparținător.",
+  BOTEZAT_FARA_TRANSFER: "Botezat (de exemplu în altă biserică), dar fără calitate de membru aici: nu a cerut transferul.",
+  FOST_MEMBRU: "A ieșit din evidența membrilor (retragere, transfer, excludere).",
+};
+/** The aparținător kind (Statut art. 28 alin. 1), derived, never stored. */
+export const APARTINATOR_KIND_LABEL = {
+  a: "minor nebotezat din familie de credincioși",
+  b: "nebotezat hotărât să-L urmeze pe Hristos",
+} as const;
+/** Relations that make a member the child's parent in a believers' family (head, spouse, parent). */
+export const BELIEVER_RELATIONS = ["Cap de familie", "Soție", "Soț", "Părinte"];
 
 export const ENTRY_MODES = ["BOTEZ", "TRANSFER", "NASCUT_IN_BISERICA", "REPRIMIRE", "CERERE_MEMBRALITATE", "ALTUL"] as const;
 export type EntryModeKey = (typeof ENTRY_MODES)[number];

@@ -4,6 +4,8 @@ import { permissions } from "@/lib/permissions";
 import { requireCtx } from "@/server/session";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { memberName } from "@/lib/format";
+import Link from "next/link";
+import { dismissStatusAdjustmentsAction } from "@/server/actions/statute";
 import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
 
@@ -23,6 +25,13 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
       ).map((f) => ({ id: f.id, nume: f.nume, head: f.head ? memberName(f.head) : "", members: f._count.members }))
     : [];
   const exportDays = await daysSinceLastExport(ctx);
+  const adjusted = permissions.admin(user.role)
+    ? await ctx.db.person.findMany({
+        where: { statutAjustat: { not: null } },
+        orderBy: [{ sortKey: "asc" }, { id: "asc" }],
+        select: { id: true, nume: true, prenume: true, statutAjustat: true },
+      })
+    : [];
   return (
     <>
       <BackLink href="/setari">Setări</BackLink>
@@ -65,6 +74,30 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
       ) : (
         <p className="hint">Importul poate fi făcut doar de administrator.</p>
       )}
+      {adjusted.length ? (
+        <div className="card">
+          <h3>Statute ajustate ({adjusted.length})</h3>
+          <p className="hint mb-3">
+            Statutul Cultului (art. 28) nu mai are categoria „Copil”, iar aparținătorii sunt persoane nebotezate. Aceste
+            persoane au primit automat statutul nou; verificați-le și corectați unde este cazul.
+          </p>
+          <ul className="list scroll-panel mb-3">
+            {adjusted.map((p) => (
+              <li key={p.id}>
+                <Link href={`/persoane/${p.id}`} className="item">
+                  <span className="grow">{memberName(p)}</span>
+                  <span className="hint">{p.statutAjustat}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <form action={dismissStatusAdjustmentsAction}>
+            <button type="submit" className="btn">
+              Am verificat — ascunde lista
+            </button>
+          </form>
+        </div>
+      ) : null}
       {permissions.admin(user.role) ? (
         <div className="card">
           <h3>Familii create automat</h3>

@@ -14,9 +14,9 @@ const p = (id: string, x: Partial<HeadCandidate> = {}): HeadCandidate => ({
 
 describe("pickHead", () => {
   it("never picks a child or a minor; only children → no head", () => {
-    expect(pickHead([p("k", { statut: "COPIL", rudenie: "Cap de familie" }), p("w", { gen: "F", statut: "PRIETEN" })], today)?.id).toBe("w");
+    expect(pickHead([p("k", { statut: "APARTINATOR", rudenie: "Cap de familie", dataNasterii: "2014-01-01" }), p("w", { gen: "F", statut: "PRIETEN" })], today)?.id).toBe("w");
     expect(pickHead([p("y", { gen: "M", dataNasterii: "2012-01-01" }), p("w", { gen: "F" })], today)?.id).toBe("w");
-    expect(pickHead([p("k1", { statut: "COPIL" }), p("k2", { dataNasterii: "2015-01-01" })], today)).toBeNull();
+    expect(pickHead([p("k1", { statut: "APARTINATOR", dataNasterii: "2016-01-01" }), p("k2", { dataNasterii: "2015-01-01" })], today)).toBeNull();
     expect(pickHead([], today)).toBeNull();
   });
 
@@ -41,7 +41,6 @@ describe("pickHead", () => {
     expect(canBeHead({ statut: "MEMBRU", dataNasterii: "2008-10-25" }, today)).toBe(true);
     expect(canBeHead({ statut: "MEMBRU", dataNasterii: "2008-10-26" }, today)).toBe(false);
     expect(canBeHead({ statut: "PRIETEN", dataNasterii: null }, today)).toBe(true);
-    expect(canBeHead({ statut: "COPIL", dataNasterii: null }, today)).toBe(false);
   });
 });
 

@@ -9,7 +9,7 @@ import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { todayIso } from "@/lib/dates";
 import type { PersonFormState } from "@/lib/form-state";
-import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
+import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_HINT, STATUS_LABEL, type PersonStatusKey } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
 import { FamilyField, type FamilyChoice } from "./family-field";
 import { RolesPicker, type RoleChoiceGroup } from "./roles-picker";
@@ -53,9 +53,18 @@ export function PersonForm({
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
+  const [statut, setStatut] = useState<PersonStatusKey>((val("statut") || "MEMBRU") as PersonStatusKey);
+  const [baptised, setBaptised] = useState(Boolean(val("dataBotez") || val("botezAn")));
+  const statusHint =
+    STATUS_HINT[statut] + (statut === "MEMBRU" && !baptised ? " Atenție: botezul nu este completat (Statut art. 20)." : "");
 
   return (
-    <form onSubmit={onSubmit} onInput={() => setDirty(true)} onChange={() => setDirty(true)} noValidate>
+    <form onSubmit={onSubmit} onInput={() => setDirty(true)} onChange={(ev) => {
+        setDirty(true);
+        const f = ev.currentTarget.elements;
+        const value = (n: string) => (f.namedItem(n) as HTMLInputElement | null)?.value ?? "";
+        setBaptised(Boolean(value("dataBotez") || value("botezAn")));
+      }} noValidate>
       {nav ? <PersonNav {...nav} /> : null}
       {din !== undefined ? <input type="hidden" name="din" value={din} /> : null}
       {applicationId ? <input type="hidden" name="cerere" value={applicationId} /> : null}
@@ -64,7 +73,15 @@ export function PersonForm({
         <TextField name="prenume" label="Prenume" defaultValue={val("prenume")} error={e.prenume} autoComplete="off" />
       </div>
       <div className="row2">
-        <SelectField name="statut" label="Statut" defaultValue={val("statut") || "MEMBRU"} error={e.statut} options={opts(PERSON_STATUSES, STATUS_LABEL)} />
+        <SelectField
+          name="statut"
+          label="Statut"
+          defaultValue={val("statut") || "MEMBRU"}
+          error={e.statut}
+          hint={statusHint}
+          onChange={(ev) => setStatut(ev.target.value as PersonStatusKey)}
+          options={opts(PERSON_STATUSES, STATUS_LABEL)}
+        />
         <SelectField name="gen" label="Gen" defaultValue={val("gen")} error={e.gen} emptyLabel="—" options={opts(GENDERS, GENDER_LABEL)} />
       </div>
       <FamilyField families={families} defaultValue={val("familyId")} error={e.familyId} locked={lockedFamily} />

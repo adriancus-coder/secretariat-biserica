@@ -134,7 +134,15 @@ export function structure(input: CategoryInput): Structure {
     ageAvg: memberAges.length ? Math.round((memberAges.reduce((a, b) => a + b, 0) / memberAges.length) * 10) / 10 : null,
     ageMedian: median,
     bands: CATEGORY_AGE_BANDS.map(([min, max]) => ({ min, max, n: dated.filter((p) => inBand(p, min, max)).length })),
-    byStatus: [byGender("membri", "Membri"), byGender("apartinatori", "Aparținători"), byGender("prieteni", "Prieteni"), byGender("copii-minori", "Copii minori")],
+    byStatus: [
+      byGender("membri", "Membri"),
+      byGender("apartinatori", "Aparținători"),
+      byGender("apartinatori-a", "– a) minori din familii de credincioși"),
+      byGender("apartinatori-b", "– b) nebotezați hotărâți"),
+      byGender("botezati-fara-calitate", "Botezați fără calitate de membru"),
+      byGender("prieteni", "Prieteni ai casei Domnului"),
+      byGender("copii-minori", "Copii minori"),
+    ],
     families: {
       count: famMembers.size,
       avgSize: famMembers.size ? Math.round(([...famMembers.values()].reduce((a, l) => a + l.length, 0) / famMembers.size) * 10) / 10 : null,

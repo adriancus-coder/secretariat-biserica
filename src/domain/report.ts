@@ -34,12 +34,15 @@ export function buildReportText(year: number, s: Stats, activity: YearActivity, 
   if (s.intrBotez.length) L.push(`  ✓ ${s.intrBotez.length} botezați în ${year} (${baptised(s.intrBotez)})`);
   if (s.intrTransfer.length) L.push(`  ✓ ${s.intrTransfer.length} veniți cu transfer (${names(s.intrTransfer)})`);
   if (s.reprimiri.length) L.push(`  ✓ ${s.reprimiri.length} reprimiți (${names(s.reprimiri)})`);
-  L.push(`Copii ai membrilor sub 18 ani: ${s.copiiMembri.length}`);
   L.push("");
+  // Statut art. 28 (documented deviation from the prototype's lines, see statuteBlock in the parity test).
   L.push("Situația persoanelor în evidență:");
-  L.push(`- ${s.copii.length} copii minori`);
-  L.push(`- ${s.botezati.length} botezați, din care ${s.apart.length} aparținători`);
-  L.push(`- ${s.prieteni.length} prieteni ai casei Domnului, nebotezați`);
+  L.push(
+    `- Aparținători: ${s.apart.length} (din care a) minori nebotezați din familii de credincioși: ${s.apartA.length}; b) persoane nebotezate hotărâte: ${s.apartB.length})`,
+  );
+  L.push(`- Botezați fără calitate de membru: ${s.botezatiFara.length}`);
+  L.push(`- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`);
+  L.push(`- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`);
   L.push(`- ${s.fams} familii`);
   L.push(`Total persoane în evidență: ${s.ev.length}`);
   L.push("");

@@ -1016,6 +1016,11 @@
     font-weight: 700;
     line-height: 1;
   }
+  /* A long list that scrolls inside its card. */
+  .scroll-panel {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
   .checklist {
     max-height: 280px;
     overflow: auto;

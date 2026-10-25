@@ -1,5 +1,5 @@
 import { ageAt, inYear } from "@/lib/dates";
-import { EVENT_TYPE_FUNERAL, EVENT_TYPE_WEDDING } from "@/lib/labels";
+import { BELIEVER_RELATIONS, EVENT_TYPE_FUNERAL, EVENT_TYPE_WEDDING } from "@/lib/labels";
 import type { EventRecord, PersonRecord } from "./types";
 
 /**
@@ -13,6 +13,10 @@ import type { EventRecord, PersonRecord } from "./types";
  * prototipul excludea din anii trecuți orice persoană adăugată în aplicație după acel an
  * (`createdAt`), chiar dacă avea o dată de intrare anterioară. Aici data de intrare are
  * prioritate; data înregistrării se folosește doar pentru persoanele fără dată de intrare.
+ *
+ * Statut art. 28 (documented deviation): there is no "Copil" status, so a person without a birth
+ * date is never a minor (the prototype used the status); baptised non-members have their own status
+ * (`botezatiFara`) and the aparținători are split into kind a / b. The parity lists are unchanged.
  */
 
 export const AGE_BANDS: readonly [label: string, min: number, max: number][] = [
@@ -41,6 +45,12 @@ export interface Stats {
   copii: PersonRecord[];
   copiiMembri: PersonRecord[];
   apart: PersonRecord[];
+  /** Aparținători kind a (Statut art. 28 alin. 1 lit. a): minors, unbaptised, in a believers' family. */
+  apartA: PersonRecord[];
+  /** Aparținători kind b (art. 28 alin. 1 lit. b): every other aparținător. */
+  apartB: PersonRecord[];
+  /** "Botezat, fără calitate de membru". */
+  botezatiFara: PersonRecord[];
   prieteni: PersonRecord[];
   botezati: PersonRecord[];
   intrTransfer: PersonRecord[];
@@ -83,7 +93,7 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   const age = (p: PersonRecord) => (p.dataNasterii ? ageAt(p.dataNasterii, endDate) : null);
   const minor = (p: PersonRecord) => {
     const a = age(p);
-    return a !== null ? a < 18 : p.statut === "COPIL";
+    return a !== null && a < 18;
   };
 
   const ev = persons.filter((p) => isInRecord(p, endDate, historical));
@@ -98,6 +108,12 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   const prieteni = ev.filter((p) => p.statut === "PRIETEN");
   // A baptism known only by its year counts by that year (not in the prototype).
   const botezati = ev.filter((p) => (p.dataBotez ? p.dataBotez <= endDate : p.botezAn !== null && p.botezAn <= y));
+  const baptised = new Set(botezati.map((p) => p.id));
+  const believerFams = new Set(membri.filter((p) => p.familyId && BELIEVER_RELATIONS.includes(p.rudenie)).map((p) => p.familyId));
+  const apartA = apart.filter((p) => minor(p) && !baptised.has(p.id) && p.familyId !== null && believerFams.has(p.familyId));
+  const kindA = new Set(apartA.map((p) => p.id));
+  const apartB = apart.filter((p) => !kindA.has(p.id));
+  const botezatiFara = ev.filter((p) => p.statut === "BOTEZAT_FARA_TRANSFER");
 
   const intrTransfer = persons.filter((p) => p.modIntrare === "TRANSFER" && inYear(p.dataMembru, y));
   const intrBotez = persons.filter((p) => (p.dataBotez ? inYear(p.dataBotez, y) : p.botezAn === y));
@@ -125,6 +141,9 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
     copii,
     copiiMembri,
     apart,
+    apartA,
+    apartB,
+    botezatiFara,
     prieteni,
     botezati,
     intrTransfer,

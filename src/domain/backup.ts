@@ -18,6 +18,7 @@ import {
   EXIT_LABEL,
   keyForLabel,
   STATUS_LABEL,
+  BELIEVER_RELATIONS,
   type DocumentTypeKey,
   type EntryModeKey,
   type ExitModeKey,
@@ -308,6 +309,8 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
 
   // Persoane
   const seen = new Set<string>();
+  // Older files (before Statut art. 28): "Copil" and baptised "Aparținător", mapped after all members are read.
+  const legacy = new Map<string, { old: "COPIL" | "APARTINATOR"; baptised: boolean }>();
   for (const [key, m] of collection(root, "members")) {
     const id = ident(key, m, "Persoană");
     if (!id) continue;
@@ -315,8 +318,12 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
     const who = `Persoana ${nume || id}`;
     if (!nume) err(`${who}: numele lipsește.`);
     const statutRaw = str.parse(m.statut);
-    const statut = statutRaw ? keyForLabel(STATUS_LABEL, statutRaw) : "MEMBRU";
+    const isLegacyChild = statutRaw.toLowerCase() === "copil";
+    const statut = isLegacyChild ? "PRIETEN" : statutRaw ? keyForLabel(STATUS_LABEL, statutRaw) : "MEMBRU";
     if (!statut) err(`${who}: statut necunoscut „${statutRaw}”.`);
+    const baptisedRaw = Boolean(str.parse(m.dataBotez) || str.parse(m.botezAn));
+    if (isLegacyChild) legacy.set(id, { old: "COPIL", baptised: baptisedRaw });
+    else if (statut === "APARTINATOR" && baptisedRaw) legacy.set(id, { old: "APARTINATOR", baptised: true });
     const gRaw = str.parse(m.gen).toUpperCase();
     const gen = gRaw === "M" || gRaw === "F" ? gRaw : null;
     if (gRaw && !gen) warnings.push(`${who}: genul „${gRaw}” a fost ignorat.`);
@@ -358,6 +365,19 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
       note: longStr.parse(m.note).trim(),
       createdAt: date(m.createdAt, who, "data înregistrării"),
     });
+  }
+  if (legacy.size) {
+    const memberParentFams = new Set(
+      backup.members.filter((p) => p.statut === "MEMBRU" && p.familie && BELIEVER_RELATIONS.includes(p.rudenie)).map((p) => p.familie),
+    );
+    let n = 0;
+    for (const p of backup.members) {
+      const l = legacy.get(p.id);
+      if (!l) continue;
+      p.statut = legacyStatus(l.old, l.baptised, Boolean(p.familie && memberParentFams.has(p.familie)));
+      n++;
+    }
+    warnings.push(`${n} persoane cu statut vechi („Copil” sau „Aparținător” botezat) au primit statutul după Statutul Cultului (art. 28).`);
   }
   const personRef = (v: unknown, what: string): string | null => {
     const id = str.parse(v);
@@ -551,4 +571,15 @@ export function normalizeDocumentNumbers(
     set.add(nr);
   }
   return { docs: out, renumbered };
+}
+
+/**
+ * Statut art. 28, for files written before it (same rules as the statute_statuses migration): a
+ * baptised "Copil" is a member; an unbaptised one is an aparținător in a believers' family, else a
+ * prieten; a baptised "Aparținător" is "Botezat, fără calitate de membru".
+ */
+export function legacyStatus(old: "COPIL" | "APARTINATOR", baptised: boolean, believerFamily: boolean): PersonStatusKey {
+  if (old === "APARTINATOR") return baptised ? "BOTEZAT_FARA_TRANSFER" : "APARTINATOR";
+  if (baptised) return "MEMBRU";
+  return believerFamily ? "APARTINATOR" : "PRIETEN";
 }

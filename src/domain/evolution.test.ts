@@ -7,7 +7,7 @@ const TODAY = "2026-10-25";
 const persons = [
   person({ id: "a", nume: "A", gen: "M", dataNasterii: "1980-01-01", dataMembru: "2015-03-01", modIntrare: "BOTEZ", dataBotez: "2015-03-01", familyId: "f1" }),
   person({ id: "b", nume: "B", gen: "F", dataNasterii: "1982-01-01", dataMembru: "2024-05-01", modIntrare: "TRANSFER", familyId: "f1" }),
-  person({ id: "c", nume: "C", gen: "F", statut: "COPIL", dataNasterii: "2016-01-01", familyId: "f1", dataBinecuvantare: "2016-06-01" }),
+  person({ id: "c", nume: "C", gen: "F", statut: "APARTINATOR", dataNasterii: "2016-01-01", familyId: "f1", dataBinecuvantare: "2016-06-01" }),
   person({ id: "d", nume: "D", gen: "M", dataNasterii: "1950-01-01", dataMembru: "1990-01-01", statut: "FOST_MEMBRU", dataIesire: "2025-02-02", modIesire: "DECES" }),
   person({ id: "e", nume: "E", gen: "M", dataNasterii: "2000-01-01", dataMembru: "2026-04-10", modIntrare: "CERERE_MEMBRALITATE", familyId: "f2" }),
   person({ id: "g", nume: "G", gen: "F" }),

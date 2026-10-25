@@ -1,5 +1,5 @@
 import "server-only";
-import { fromDbDate } from "@/lib/dates";
+import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import type { ChecklistOption } from "@/components/person-checklist";
@@ -78,18 +78,21 @@ export async function getMeeting(ctx: Ctx, id: string) {
 }
 
 /**
- * Persoanele care pot fi bifate ca prezente: ca în prototip, cei în evidență care nu sunt copii;
- * în plus, persoanele deja bifate (ca editarea să nu le piardă, chiar dacă între timp au ieșit).
+ * Persoanele care pot fi bifate ca prezente: cei în evidență care nu sunt minori (Statut art. 28: the
+ * age decides, there is no "Copil" status); în plus, persoanele deja bifate (ca editarea să nu le
+ * piardă, chiar dacă între timp au ieșit).
  */
 export async function attendeeOptions(ctx: Ctx, selected: string[]): Promise<ChecklistOption[]> {
+  const today = todayIso();
+  const adultBorn = toDbDate(`${Number(today.slice(0, 4)) - 18}${today.slice(4)}`)!;
   const rows = await ctx.db.person.findMany({
-    where: { OR: [{ statut: { not: "COPIL" }, dataIesire: null }, { id: { in: selected } }] },
+    where: { OR: [{ dataIesire: null, OR: [{ dataNasterii: null }, { dataNasterii: { lte: adultBorn } }] }, { id: { in: selected } }] },
     orderBy: [{ sortKey: "asc" }, { id: "asc" }],
-    select: { id: true, nume: true, prenume: true, dataIesire: true, statut: true },
+    select: { id: true, nume: true, prenume: true, dataIesire: true, dataNasterii: true },
   });
   return rows.map((r) => ({
     id: r.id,
     name: memberName(r),
-    note: r.dataIesire ? "ieșit din evidență" : r.statut === "COPIL" ? "copil" : undefined,
+    note: r.dataIesire ? "ieșit din evidență" : r.dataNasterii && r.dataNasterii > adultBorn ? "minor" : undefined,
   }));
 }
