@@ -6,6 +6,7 @@
 import { fmtL, memberName } from "@/lib/format";
 import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
 import type { PageLayout } from "@/lib/page-layout";
+import { ALIGN_LABEL, richLines, type RichDoc, type RichLine } from "@/lib/rich-text";
 import type { ChurchInfo } from "./types";
 
 export type Run = { text: string; bold?: boolean };
@@ -20,7 +21,7 @@ export type Block =
   /** Centered heading, in capitals unless `asWritten` (the minutes keep "Proces verbal nr. 16"). */
   | { type: "title"; text: string; asWritten?: boolean }
   | { type: "para"; runs: Run[]; pre?: boolean }
-  | { type: "list"; items: string[]; ordered?: boolean }
+  | { type: "list"; items: string[]; ordered?: boolean; start?: number }
   | { type: "signatures"; left: Signature; right: Signature }
   /** "Secretar, Ioana Pop" with "Semnătura" and a line under it, in two columns (the minutes). */
   | { type: "signed"; left: Signature; right: Signature }
@@ -28,6 +29,11 @@ export type Block =
   | { type: "signatureTable"; rows: SignatureCell[] }
   /** A centered line (the application poster), `size` in points. */
   | { type: "centered"; text: string; size?: number; bold?: boolean }
+  /**
+   * Rich text from the editor (bold, italic, underline, sizes, alignment, lists); `marker` ("1.") hangs
+   * it as one numbered point of the minutes. Paragraphs follow each other like lines of a text.
+   */
+  | { type: "rich"; doc: RichDoc; marker?: string }
   /** A centered PNG (the application QR code), `width` in points; `alt` stands for it in printToText. */
   | { type: "image"; png: Uint8Array; width: number; alt: string };
 
@@ -82,6 +88,10 @@ export interface MeetingPrint {
   puncte: string[];
   observatii: string;
   formulaIncheiere: string;
+  /** The rich versions from the editor, used instead of the plain text when present. */
+  puncteRich?: (RichDoc | null)[] | null;
+  observatiiRich?: RichDoc | null;
+  formulaRich?: RichDoc | null;
   /** "Prezenți n din m (p %)" for meeting types with an attendance rule; omitted otherwise. */
   cvorum?: string | null;
   /** The signature table, one row per person present (in the order of `prezenti`). */
@@ -117,9 +127,15 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   if (x.invitati) blocks.push(para(`Invitați: ${x.invitati}`));
   if (x.ordine) blocks.push(para("Ordinea de zi:"), pre(x.ordine));
   blocks.push(para("În cadrul ședinței s-au discutat și aprobat următoarele:"));
-  if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
-  if (x.observatii) blocks.push(para("Observații:"), pre(x.observatii));
-  blocks.push(para(x.formulaIncheiere));
+  const richPoints = x.puncteRich?.length === x.puncte.length && x.puncteRich.some(Boolean) ? x.puncteRich : null;
+  if (richPoints) {
+    x.puncte.forEach((p, i) => {
+      const doc = richPoints[i];
+      blocks.push(doc ? { type: "rich", doc, marker: `${i + 1}.` } : { type: "list", items: [p], ordered: true, start: i + 1 });
+    });
+  } else if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
+  if (x.observatii || x.observatiiRich) blocks.push(para("Observații:"), x.observatiiRich ? { type: "rich", doc: x.observatiiRich } : pre(x.observatii));
+  blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
   blocks.push(para("Întocmit,"));
   blocks.push({
     type: "signed",
@@ -139,6 +155,8 @@ export interface DocumentPrint {
   nr: number | string;
   data: string;
   text: string;
+  /** The rich version from the editor, used instead of `text` when present. */
+  textRich?: RichDoc | null;
   titlu?: string;
 }
 
@@ -147,7 +165,7 @@ export function documentPrint(x: DocumentPrint, church: ChurchInfo): PrintSpec {
   const heading = DOCUMENT_HEADING[x.tip];
   const blocks: Block[] = [{ type: "nr", text: `Nr. ${x.nr} din ${fmtL(x.data)}` }];
   if (heading) blocks.push({ type: "title", text: heading });
-  blocks.push(pre(x.text));
+  blocks.push(x.textRich ? { type: "rich", doc: x.textRich } : pre(x.text));
   blocks.push(pastorSecretarySignatures(church, x.tip === "raport"));
   return { title: x.titlu || heading || "Document", church, blocks };
 }
@@ -215,7 +233,6 @@ export function eventPrint(x: EventPrint, church: ChurchInfo): PrintSpec {
   return { title: x.titlu, church, blocks };
 }
 
-/** Textul simplu al unui document tipărit (pentru teste și previzualizare). */
 /** The A5 poster for the public membership application: the church, the QR code and the link as text. */
 export function printApplicationPoster(church: ChurchInfo, url: string, qrPng: Uint8Array): PrintSpec {
   return {
@@ -231,14 +248,49 @@ export function printApplicationPoster(church: ChurchInfo, url: string, qrPng: U
   };
 }
 
-export function printToText(spec: PrintSpec): string {
+/** printToText options: `marks` writes the formatting too (for the renderer tests). */
+export interface PrintTextOptions {
+  marks?: boolean;
+}
+
+/**
+ * One rich line as text: list markers and indentation like richToPlain; with `marks`, runs as
+ * **bold**, _italic_, __underline__, {mare:…}, and the alignment as "[centru] ".
+ */
+export function richLineText(line: RichLine, marks = false): string {
+  const body = line.runs
+    .map((r) => {
+      if (!marks) return r.text;
+      let t = r.text;
+      if (r.size) t = `{${r.size}:${t}}`;
+      if (r.underline) t = `__${t}__`;
+      if (r.italic) t = `_${t}_`;
+      if (r.bold) t = `**${t}**`;
+      return t;
+    })
+    .join("");
+  const pad = line.level > 1 ? "   ".repeat(line.level - 1) : "";
+  const prefix = line.level ? (line.marker ? `${pad}${line.marker} ` : `${pad}   `) : "";
+  const align = marks && line.align ? `[${ALIGN_LABEL[line.align]}] ` : "";
+  return `${prefix}${align}${body}`;
+}
+
+function richToText(doc: RichDoc, marker: string | undefined, marks: boolean): string[] {
+  const lines = richLines(doc).map((l) => richLineText(l, marks));
+  if (!marker) return lines;
+  return lines.map((l, i) => (i ? `${" ".repeat(marker.length + 1)}${l}` : `${marker} ${l}`));
+}
+
+/** Textul simplu al unui document tipărit (pentru teste și previzualizare). */
+export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): string {
   const lines: string[] = [`Biserica ${spec.church.nume}`.trim()];
   for (const blk of spec.blocks) {
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
+    else if (blk.type === "rich") lines.push(...richToText(blk.doc, blk.marker, opts.marks ?? false));
     else if (blk.type === "centered") lines.push(blk.text);
     else if (blk.type === "image") lines.push(blk.alt);
-    else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${i + 1}.` : "•"} ${it}`));
+    else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${(blk.start ?? 1) + i}.` : "•"} ${it}`));
     else if (blk.type === "signatureTable") {
       lines.push("Nume | Semnătura");
       for (const r of blk.rows) lines.push(`${r.name} | ${r.image ? `semnat ${r.signedAt ?? ""}`.trim() : "________________"}`);

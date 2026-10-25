@@ -212,6 +212,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - The fonts are traced into the build only for `/pdf/**` (`outputFileTracingIncludes` in `next.config.ts`).
 - Word: `renderDocx(spec)` (`src/server/docx/render.ts`, `docx` package) renders the same `PrintSpec` as an editable .docx (plain paragraphs and tables, Times New Roman); `docxResponse()` sends it as a download. The minutes use it at `/pdf/proces-verbal/[id]/word` ("Deschide în Word"); `meetingSpec()` (`src/server/pdf/meeting.ts`) is shared by both formats.
 
+### Rich text (editor, storage, rendering)
+
+- One editor for minutes and documents: `src/components/rich-editor/` (Tiptap 3, MIT). Toolbar: Îngroșat, Înclinat, Subliniat, Mărime (mic / normal / mare / foarte mare), Aliniere (stânga / centru / dreapta / stânga-dreapta), numbered and bulleted lists, Anulează / Refă, Șterge formatarea. No colours, fonts, images, links or HTML. The JSON travels in a hidden input; `RichView` shows it read-only with React elements (never `dangerouslySetInnerHTML`).
+- Stored as the editor's JSON, validated by `src/lib/schemas/rich-text.ts` (`checkRich`, `parseRichJson`, `richField`): only doc, paragraph (`attrs.align`), text, hardBreak, orderedList, bulletList, listItem and the marks bold, italic, underline, textSize; strict objects, ≤ 200 KB, lists nested ≤ 6 deep. Anything else is refused.
+- The plain projection `richToPlain()` (`src/lib/rich-text.ts`) is always stored next to it (search, exports, parity-tested functions); `plainToRich()` turns plain text into paragraphs, "1. " and "- " lines into lists (exact round trip).
+- Printing: the `rich` block of `PrintSpec` (optional `marker` for a minutes point). `richLines()` flattens it for both renderers: pdfkit uses Source Serif 4 Regular / Bold / Italic / BoldItalic, sizes relative to the layout's base (mic −2, mare +3, foarte mare +6 pt); Word gets the same runs. `printToText(spec, { marks: true })` shows marks and alignment for tests.
+
 ### Document register
 
 - Allocate numbers in an interactive transaction: first `lockDocumentRegister(tx, churchId, year)` (advisory lock), then `nextFreeNumber`.

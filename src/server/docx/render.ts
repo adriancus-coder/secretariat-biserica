@@ -18,6 +18,7 @@ import {
 } from "docx";
 import type { Block, PrintSpec, Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT, type PageLayout } from "@/lib/page-layout";
+import { richLines, TEXT_SIZE_DELTA, type Align, type RichRun } from "@/lib/rich-text";
 import { letterheadDetails } from "../pdf/render";
 
 /**
@@ -62,6 +63,22 @@ function twoColumns(left: Paragraph[], right: Paragraph[]): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: NO_BORDERS, rows: [new TableRow({ children: [cell(left), gap, cell(right)] })] });
 }
 
+const ALIGNMENT: Record<Align, (typeof AlignmentType)[keyof typeof AlignmentType]> = {
+  left: AlignmentType.LEFT,
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+};
+
+/** A rich-text run in Word: bold, italic, underline, size relative to the layout's; line breaks kept. */
+function richRuns(r: RichRun, base: number): TextRun[] {
+  const size = hp(base + TEXT_SIZE_DELTA[r.size ?? "normal"]);
+  return r.text.split("\n").map(
+    (part, i) =>
+      new TextRun({ text: part, font: FONT, size, bold: r.bold, italics: r.italic, underline: r.underline ? {} : undefined, break: i ? 1 : 0 }),
+  );
+}
+
 function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
   // Body text in the layout's size; line spacing in 240ths of a line.
   const t = (s: string, o: Parameters<typeof text>[1] = {}) => text(s, { ...o, size: o.size ?? L.fontSize });
@@ -95,6 +112,22 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
           children: block.runs.map((r) => t(r.text, { bold: r.bold })),
         }),
       ];
+    case "rich": {
+      // Same hanging indent as the lists: 8 mm per level, the marker before a tab.
+      const lines = richLines(block.doc);
+      const step = convertMillimetersToTwip(8);
+      return lines.map((line, i) => {
+        const level = line.level + (block.marker ? 1 : 0);
+        const marker = block.marker && i === 0 ? block.marker : line.marker;
+        return new Paragraph({
+          alignment: line.align ? ALIGNMENT[line.align] : body,
+          spacing: { ...lineSpacing, after: i === lines.length - 1 ? 120 : 0 },
+          indent: level ? { left: step * level, ...(marker ? { hanging: convertMillimetersToTwip(6) } : {}) } : undefined,
+          tabStops: level ? [{ type: "left", position: step * level }] : undefined,
+          children: [...(marker ? [t(`${marker}\t`)] : []), ...line.runs.flatMap((r) => richRuns(r, L.fontSize))],
+        });
+      });
+    }
     case "list":
       return block.items.map(
         (item, i) =>
@@ -102,7 +135,7 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
             alignment: body,
             spacing: { ...lineSpacing, after: 60 },
             indent: { left: convertMillimetersToTwip(8), hanging: convertMillimetersToTwip(6) },
-            children: [t(`${block.ordered ? `${i + 1}.` : "•"}\t`), ...ln(item)],
+            children: [t(`${block.ordered ? `${(block.start ?? 1) + i}.` : "•"}\t`), ...ln(item)],
             tabStops: [{ type: "left", position: convertMillimetersToTwip(8) }],
           }),
       );

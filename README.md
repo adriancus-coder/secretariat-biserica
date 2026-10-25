@@ -183,8 +183,8 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
 ```
 
 - Setați `AUTH_SECRET`, `AUTH_TRUST_HOST=true`, `APP_URL` și `DATABASE_URL`.
-- Fonturile folosite în PDF-uri sunt în `assets/fonts/` (Source Serif 4, licență OFL) și sunt incluse
-  automat în build; directorul de lucru al procesului trebuie să fie rădăcina proiectului.
+- Fonturile folosite în PDF-uri sunt în `assets/fonts/` (Source Serif 4: Regular, SemiBold, Bold, Italic,
+  BoldItalic; licență OFL, `OFL.txt`) și sunt incluse automat în build; directorul de lucru al procesului trebuie să fie rădăcina proiectului.
 - Copii de siguranță: `pg_dump` pentru întreaga bază, iar pentru o singură biserică exportul JSON din
   **Setări → Copie de siguranță**.
 - Autentificarea blochează temporar (15 minute) un cont după 5 parole greșite consecutive.

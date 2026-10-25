@@ -2,9 +2,10 @@ import mammoth from "mammoth";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { parseMinutesText } from "@/domain/minutes-parse";
-import { meetingPrint, printApplicationPoster } from "@/domain/print";
+import { documentPrint, meetingPrint, printApplicationPoster } from "@/domain/print";
 import JSZip from "jszip";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
+import type { RichDoc } from "@/lib/rich-text";
 import { renderDocx } from "./render";
 
 const church = {
@@ -16,6 +17,40 @@ const church = {
   pastor: "Daniel Mureșan",
   secretar: "Ioana Pop",
 };
+
+/** Bold + "foarte mare" title (centred), italic, underline, bold italic, and a numbered list with a nested bulleted one. */
+const formatted = {
+  type: "doc",
+  content: [
+    { type: "paragraph", attrs: { align: "center" }, content: [{ type: "text", text: "Adeverință", marks: [{ type: "bold" }, { type: "textSize", attrs: { size: "foarteMare" } }] }] },
+    {
+      type: "paragraph",
+      attrs: { align: "right" },
+      content: [
+        { type: "text", text: "Ioana Pop", marks: [{ type: "bold" }] },
+        { type: "text", text: " este ", marks: [{ type: "textSize", attrs: { size: "mic" } }] },
+        { type: "text", text: "membră", marks: [{ type: "italic" }] },
+        { type: "text", text: " din 2010", marks: [{ type: "underline" }, { type: "textSize", attrs: { size: "mare" } }] },
+        { type: "hardBreak" },
+        { type: "text", text: "și slujește.", marks: [{ type: "bold" }, { type: "italic" }] },
+      ],
+    },
+    {
+      type: "orderedList",
+      attrs: { start: 1 },
+      content: [
+        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Unu" }] }] },
+        {
+          type: "listItem",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Doi" }] },
+            { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "doi-a" }] }] }] },
+          ],
+        },
+      ],
+    },
+  ],
+} as unknown as RichDoc;
 
 /** The paragraphs of a .docx as plain text (mammoth reads it the way the Word import does). */
 async function docxLines(docx: Buffer): Promise<string[]> {
@@ -105,5 +140,59 @@ describe("Word (.docx) generation", () => {
     expect(doc).toContain('w:top="1984"'); // 35 mm
     expect(doc).toContain('<w:sz w:val="22"/>'); // 11 pt
     expect(doc).not.toContain('w:jc w:val="both"');
+  });
+});
+
+describe("rich text in Word", () => {
+  it("renders the same runs, sizes, alignment and lists; mammoth reads the text back", async () => {
+    const spec = documentPrint({ tip: "adeverinta", nr: 3, data: "2026-02-01", text: "", textRich: formatted }, church);
+    const docx = await renderDocx(spec);
+    const lines = await docxLines(docx);
+    // mammoth ignores <w:br/>, so the two lines of the second paragraph read as one (checked in the XML below).
+    expect(lines).toEqual(expect.arrayContaining(["Adeverință", "Ioana Pop este membră din 2010și slujește.", "1.\tUnu", "2.\tDoi", "•\tdoi-a"]));
+    const xml = await (await JSZip.loadAsync(docx)).file("word/document.xml")!.async("string");
+    // The rich text starts at its own "Adeverință" (the heading above it says the same; signatures repeat names).
+    const body = xml.slice(xml.lastIndexOf("<w:p>", xml.lastIndexOf(">Adeverință</w:t>")));
+    const run = (t: string) => {
+      const i = body.indexOf(`>${t}</w:t>`);
+      return body.slice(body.lastIndexOf("<w:r>", i), i);
+    };
+    // Base 12 pt (24 half-points): foarte mare 18 pt, mic 10 pt, mare 15 pt.
+    expect(run("Adeverință")).toMatch(/<w:b\/>[\s\S]*<w:sz w:val="36"\/>/);
+    expect(run("Ioana Pop")).toContain("<w:b/>");
+    expect(run(" este ")).toContain('<w:sz w:val="20"/>');
+    expect(run("membră")).toContain("<w:i/>");
+    expect(run(" din 2010")).toMatch(/<w:sz w:val="30"\/>[\s\S]*<w:u w:val="single"\/>|<w:u w:val="single"\/>[\s\S]*<w:sz w:val="30"\/>/);
+    expect(run("și slujește.")).toMatch(/<w:b\/>[\s\S]*<w:i\/>/);
+    expect(xml).toContain('<w:jc w:val="center"/>');
+    expect(xml).toContain('<w:jc w:val="right"/>');
+    // The line break inside the paragraph is a Word line break.
+    expect(xml).toContain("<w:br/>");
+    // The nested bullet is indented one more level (16 mm) than the numbered items (8 mm).
+    expect(xml).toContain('w:left="453"');
+    expect(xml).toContain('w:left="906"');
+  });
+
+  it("the Word import recovers the minutes' rich points", async () => {
+    const point = (t: string, bold = false) =>
+      ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: t, ...(bold ? { marks: [{ type: "bold" }] } : {}) }] }] }) as RichDoc;
+    const spec = meetingPrint(
+      {
+        nr: 7,
+        tip: "Comitet",
+        data: "2026-09-11",
+        prezenti: [],
+        absenti: [],
+        invitati: "",
+        ordine: "",
+        puncte: ["Ziua Recoltei pe 4 octombrie.", "Conferința se amână."],
+        puncteRich: [point("Ziua Recoltei pe 4 octombrie.", true), point("Conferința se amână.")],
+        observatii: "",
+        formulaIncheiere: "Toate punctele au fost votate în unanimitate de membrii prezenți.",
+      },
+      church,
+    );
+    const { value } = await mammoth.extractRawText({ buffer: await renderDocx(spec) });
+    expect(parseMinutesText(value).draft.puncte).toEqual(["Ziua Recoltei pe 4 octombrie.", "Conferința se amână."]);
   });
 });

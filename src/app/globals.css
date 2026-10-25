@@ -1394,4 +1394,117 @@
     border-radius: 12px;
     padding: 4px 10px;
   }
+
+  /* Rich-text editor (src/components/rich-editor): sticky one-row toolbar over the editable area. */
+  .rt {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--field);
+  }
+  .rt-invalid {
+    border-color: var(--warn);
+  }
+  .rt-toolbar {
+    position: sticky;
+    top: var(--rt-top, 0px);
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    border-radius: 10px 10px 0 0;
+  }
+  .rt-tool {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 17px;
+  }
+  .rt-tool:hover:not(:disabled) {
+    border-color: var(--line);
+  }
+  .rt-tool[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--paper);
+    font-weight: 700;
+  }
+  .rt-tool:disabled {
+    opacity: 0.4;
+  }
+  .rt-size {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+  .rt-sep {
+    flex: 0 0 1px;
+    align-self: stretch;
+    margin: 6px 3px;
+    background: var(--line);
+  }
+  .rt-content {
+    padding: 10px 12px;
+    line-height: 1.55;
+    color: var(--ink);
+    outline: none;
+    overflow-wrap: anywhere;
+  }
+  .rt-content:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    border-radius: 0 0 10px 10px;
+  }
+  :is(.rt-content, .rt-view) p {
+    margin: 0;
+    min-height: 1.55em;
+  }
+  :is(.rt-content, .rt-view) ol,
+  :is(.rt-content, .rt-view) ul {
+    margin: 0;
+    padding-left: 1.6em;
+  }
+  :is(.rt-content, .rt-view) ol {
+    list-style: decimal;
+  }
+  :is(.rt-content, .rt-view) ul {
+    list-style: disc;
+  }
+  :is(.rt-content, .rt-view) [data-align="center"] {
+    text-align: center;
+  }
+  :is(.rt-content, .rt-view) [data-align="right"] {
+    text-align: right;
+  }
+  :is(.rt-content, .rt-view) [data-align="justify"] {
+    text-align: justify;
+  }
+  :is(.rt-content, .rt-view) [data-size="mic"] {
+    font-size: 0.85em;
+  }
+  :is(.rt-content, .rt-view) [data-size="mare"] {
+    font-size: 1.25em;
+  }
+  :is(.rt-content, .rt-view) [data-size="foarteMare"] {
+    font-size: 1.5em;
+  }
+  .rt-loading {
+    opacity: 0.5;
+  }
+  /* Read-only rich text on the detail pages (same rendering as the editor). */
+  .rt-view {
+    line-height: 1.55;
+  }
 }

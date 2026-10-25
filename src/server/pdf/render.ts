@@ -3,6 +3,7 @@ import path from "node:path";
 import PDFDocument from "pdfkit";
 import type { PrintSpec, Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
+import { richLines, TEXT_SIZE_DELTA, type RichRun } from "@/lib/rich-text";
 import type { ChurchInfo } from "@/domain/types";
 
 /**
@@ -19,7 +20,26 @@ const FONTS = {
   semibold: path.join(FONT_DIR, "SourceSerif4-SemiBold.ttf"),
   bold: path.join(FONT_DIR, "SourceSerif4-Bold.ttf"),
   italic: path.join(FONT_DIR, "SourceSerif4-Italic.ttf"),
+  boldItalic: path.join(FONT_DIR, "SourceSerif4-BoldItalic.ttf"),
 };
+
+/** The font of a rich-text run. */
+const runFont = (r: { bold?: boolean; italic?: boolean }) => (r.bold ? (r.italic ? "Serif-BoldItalic" : "Serif-Bold") : r.italic ? "Serif-Italic" : "Serif");
+
+/** pdfkit drops the space at the start of a continued fragment: move it to the end of the previous one. */
+function joinableRuns<R extends { text: string }>(runs: readonly R[]): R[] {
+  return runs
+    .filter((r) => r.text !== "")
+    .map((r) => ({ ...r }))
+    .map((r, i, all) => {
+      if (i > 0 && /^\s/.test(r.text) && !/^\n/.test(r.text)) {
+        all[i - 1].text += " ";
+        r.text = r.text.replace(/^\s+/, "");
+      }
+      return r;
+    })
+    .filter((r) => r.text !== "");
+}
 
 /** Linia de detalii din antet: adresă · Org.nr. · telefon · e-mail. */
 export function letterheadDetails(c: ChurchInfo): string {
@@ -48,6 +68,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   doc.registerFont("Serif-SemiBold", FONTS.semibold);
   doc.registerFont("Serif-Bold", FONTS.bold);
   doc.registerFont("Serif-Italic", FONTS.italic);
+  doc.registerFont("Serif-BoldItalic", FONTS.boldItalic);
 
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -103,18 +124,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
       }
       case "para": {
         const gap = lineGap(BODY_SIZE);
-        // pdfkit pierde spațiul de la începutul unui fragment continuat: îl mutăm la finalul celui anterior.
-        const runs = block.runs
-          .filter((r) => r.text !== "")
-          .map((r) => ({ ...r }))
-          .map((r, i, all) => {
-            if (i > 0 && /^\s/.test(r.text)) {
-              all[i - 1].text += " ";
-              r.text = r.text.replace(/^\s+/, "");
-            }
-            return r;
-          })
-          .filter((r) => r.text !== "");
+        const runs = joinableRuns(block.runs);
         if (!runs.length) break;
         doc.x = left;
         runs.forEach((r, i) => {
@@ -129,12 +139,47 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         doc.y += 10;
         break;
       }
+      case "rich": {
+        // Hanging indent: the point's marker ("1.") and list markers in an 18 pt column, text 4 pt after it.
+        const indent = 22;
+        const base = left + (block.marker ? indent : 0);
+        richLines(block.doc).forEach((line, li) => {
+          const sizes = line.runs.map((r) => BODY_SIZE + TEXT_SIZE_DELTA[r.size ?? "normal"]);
+          const top = Math.max(BODY_SIZE, ...sizes);
+          const gap = lineGap(top);
+          if (doc.y + top * 2 > bottomLimit()) doc.addPage();
+          const lineLeft = base + indent * Math.max(0, line.level - 1);
+          const textLeft = lineLeft + (line.level ? indent : 0);
+          const textWidth = left + width - textLeft;
+          const y = doc.y;
+          doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000");
+          if (block.marker && li === 0) doc.text(block.marker, left, y, { width: indent - 4, align: "right", lineBreak: false });
+          if (line.marker) doc.text(line.marker, lineLeft, y, { width: indent - 4, align: "right", lineBreak: false });
+          const runs = joinableRuns<RichRun>(line.runs);
+          if (!runs.length) {
+            doc.x = left;
+            doc.y = y + top * LINE_HEIGHT;
+            return;
+          }
+          const align = line.align ?? layout.align;
+          runs.forEach((r, i) => {
+            doc.font(runFont(r)).fontSize(BODY_SIZE + TEXT_SIZE_DELTA[r.size ?? "normal"]);
+            const opts = { width: textWidth, align, lineGap: gap, underline: Boolean(r.underline), continued: i < runs.length - 1 };
+            if (i === 0) doc.text(r.text, textLeft, y, opts);
+            else doc.text(r.text, opts);
+          });
+          doc.x = left;
+        });
+        doc.x = left;
+        doc.y += 10;
+        break;
+      }
       case "list": {
         const gap = lineGap(BODY_SIZE);
         const indent = 18;
         block.items.forEach((item, i) => {
           doc.font("Serif").fontSize(BODY_SIZE);
-          const marker = block.ordered ? `${i + 1}.` : "•";
+          const marker = block.ordered ? `${(block.start ?? 1) + i}.` : "•";
           const h = doc.heightOfString(item, { width: width - indent, lineGap: gap });
           if (doc.y + Math.min(h, BODY_SIZE * 2) > bottomLimit()) doc.addPage();
           const y = doc.y;
