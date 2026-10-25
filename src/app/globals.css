@@ -533,8 +533,14 @@
   }
   .row2 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 12px;
+  }
+  /* Date and time inputs have an intrinsic width (mobile Safari / Chrome): let them shrink to the column. */
+  .row2 input[type="date"],
+  .row2 input[type="time"] {
+    min-width: 0;
+    width: 100%;
   }
   @media (max-width: 480px) {
     .row2.stack-sm {
