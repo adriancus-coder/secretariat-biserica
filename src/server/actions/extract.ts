@@ -16,6 +16,9 @@ const KIND_LABEL: Record<ExtractKind, string> = { "proces-verbal": "proces-verba
 
 /** The uploaded file, checked, counted against the church's daily limit and written to the audit log. */
 async function readUpload(ctx: Ctx, kind: ExtractKind, formData: FormData) {
+  // Off until an administrator accepted the processing by Anthropic (Setări → Confidențialitate).
+  const church = await ctx.db.church.findUnique({ where: { id: ctx.user.churchId }, select: { extractEnabled: true } });
+  if (!church?.extractEnabled) throw new ActionError("Citirea automată a documentelor nu este pornită. Administratorul o poate porni din Setări.");
   const file = formData.get("fisier");
   if (!(file instanceof File)) throw new ActionError("Alegeți un fișier.");
   try {

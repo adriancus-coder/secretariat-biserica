@@ -66,7 +66,7 @@ export function MinutesImport({ aiConfigured, ...form }: FormProps & { aiConfigu
             <FormMessage state={ai} />
           </>
         ) : (
-          <p className="hint">Extragerea din imagini nu este configurată.</p>
+          <p className="hint">Citirea automată a documentelor scanate nu este pornită (Setări → Confidențialitate).</p>
         )}
       </form>
     </>

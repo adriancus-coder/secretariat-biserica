@@ -18,8 +18,16 @@ export function SettingsForm({
   attendanceRules,
   formUrl,
   readOnly,
+  privacyText,
+  privacyUrl,
+  extractAvailable,
 }: {
-  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean };
+  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean; extractEnabled: boolean };
+  /** The notice as published (the saved text, or the template filled with the church's details). */
+  privacyText: string;
+  privacyUrl: string;
+  /** Reading scans with Claude is possible on this installation. */
+  extractAvailable: boolean;
   nomen: Nomenclatures;
   attendanceRules: Record<string, AttendanceRule>;
   /** Full address of the public application form, for the copy button. */
@@ -32,6 +40,7 @@ export function SettingsForm({
   const val = (k: ChurchTextFields) => v?.[k] ?? church[k];
   const applicationsOpen = v ? v.applicationsOpen === "on" : church.applicationsOpen;
   const require2fa = v ? v.require2fa === "on" : church.require2fa;
+  const extractEnabled = v ? v.extractEnabled === "on" : church.extractEnabled;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
       name={name}
@@ -93,6 +102,36 @@ export function SettingsForm({
             <span className="block font-medium">Autentificare în doi pași obligatorie</span>
             <span className="hint block !mt-0">
               La următoarea autentificare, utilizatorii fără cod (aplicație sau e-mail) sunt îndrumați să-l configureze.
+            </span>
+          </span>
+        </label>
+      </fieldset>
+      <fieldset className="card" disabled={readOnly}>
+        <h3>Confidențialitate</h3>
+        <p className="hint mb-2">
+          Textul public despre datele personale:{" "}
+          <a href={privacyUrl} target="_blank" rel="noopener noreferrer" className="break-all">
+            {privacyUrl}
+          </a>
+          . Rândurile care încep cu „## ” sunt titluri. Șters complet, textul revine la model.
+        </p>
+        <TextAreaField
+          name="privacyText"
+          label="Nota de confidențialitate"
+          defaultValue={v?.privacyText ?? privacyText}
+          error={e.privacyText}
+          className="[&_textarea]:!min-h-[220px]"
+        />
+        <label className="switch-row">
+          <input type="checkbox" role="switch" name="extractEnabled" defaultChecked={extractEnabled} disabled={!extractAvailable && !extractEnabled} />
+          <span>
+            <span className="block font-medium">Citirea automată a documentelor scanate (Claude, Anthropic)</span>
+            <span className="hint block !mt-0">
+              Pornind-o, sunteți de acord ca fotografiile și documentele încărcate la „Adaugă din document” și „Importă” să fie trimise
+              către Anthropic, PBC (Statele Unite ale Americii), care le citește în numele bisericii. Datele trimise prin serviciul pentru
+              organizații nu sunt folosite la antrenarea modelelor; prelucrarea are loc în afara Spațiului Economic European, în baza
+              clauzelor contractuale standard din acordul de prelucrare a datelor al Anthropic. Aplicația nu păstrează fișierele.
+              {!extractAvailable ? " Citirea nu este configurată pentru această aplicație." : ""}
             </span>
           </span>
         </label>

@@ -7,7 +7,8 @@ import { ImportForm } from "./import-form";
 
 export const metadata: Metadata = { title: "Copie de siguranță" };
 
-export default async function DataPage() {
+export default async function DataPage({ searchParams }: PageProps<"/setari/date">) {
+  const sp = await searchParams;
   const ctx = await requireCtx("export");
   const user = ctx.user;
   const autoFamilies = permissions.admin(user.role) ? await ctx.db.family.count({ where: { autoCreated: true } }) : 0;
@@ -21,9 +22,22 @@ export default async function DataPage() {
           Toate datele bisericii (persoane, ședințe, evenimente, documente, grupuri, mențiuni și setări) într-un fișier
           JSON. Fișierul conține date personale — păstrați-l în siguranță.
         </p>
-        <a href="/api/export" className="btn" download>
-          Exportă datele (JSON)
-        </a>
+        <form method="post" action="/api/export" className="grid gap-2 max-w-sm">
+          {sp.export === "parola" ? (
+            <div className="alert" role="alert">
+              Parola nu este corectă.
+            </div>
+          ) : null}
+          <label htmlFor="export-parola" className="text-sm font-medium text-ink-2">
+            Parola dumneavoastră (pentru confirmare)
+          </label>
+          <input id="export-parola" name="parola" type="password" autoComplete="current-password" required />
+          <div>
+            <button type="submit" className="btn">
+              Exportă datele (JSON)
+            </button>
+          </div>
+        </form>
       </div>
       {permissions.admin(user.role) ? (
         <div className="card">

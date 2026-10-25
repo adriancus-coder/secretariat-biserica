@@ -12,6 +12,8 @@ import { appUrl } from "@/server/tokens";
 import { dotDateTime } from "@/lib/dates";
 import { listStatutes } from "@/server/statutes";
 import { SettingsForm } from "./settings-form";
+import { privacyTemplate } from "@/lib/privacy";
+import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
 
 export const metadata: Metadata = { title: "Setări" };
@@ -32,7 +34,16 @@ export default async function SettingsPage() {
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
         <Link href="/cont">Contul meu</Link>
       </nav>
-      <SettingsForm church={church} nomen={church.nomen} attendanceRules={church.attendanceRules} formUrl={formUrl} readOnly={!permissions.admin(role)} />
+      <SettingsForm
+        church={church}
+        nomen={church.nomen}
+        attendanceRules={church.attendanceRules}
+        formUrl={formUrl}
+        privacyText={church.privacyText.trim() || privacyTemplate(church)}
+        privacyUrl={appUrl(`/confidentialitate/${church.slug}`, await requestOrigin())}
+        extractAvailable={isExtractConfigured()}
+        readOnly={!permissions.admin(role)}
+      />
       <StatutesCard
         slug={church.slug}
         readOnly={!permissions.admin(role)}

@@ -179,9 +179,10 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
   redirect(withDin(`/persoane/${savedId}`, din, { salvat: "1" }));
 }
 
+/** Permanent deletion (Administrator only; the page asks twice). */
 export async function deletePersonAction(id: string): Promise<FormState> {
   const state = await runFormAction(null, async () => {
-    const ctx = await actionCtx("write");
+    const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, id);
     await ctx.db.$transaction(async (tx) => {
       const before = await tx.person.findUnique({ where: { id } });
@@ -203,4 +204,55 @@ export async function deletePersonAction(id: string): Promise<FormState> {
   if (!state.ok) return state;
   revalidatePath("/", "layout");
   redirect("/persoane?sters=1");
+}
+
+const ANONYMOUS_NAME = "Persoană ștearsă";
+
+/**
+ * Anonymisation (Administrator only): the personal data go, the record stays for the statistics
+ * (statut, gender, dates of birth, entry, baptism and exit, family). Notes about the person, roles and
+ * group memberships are deleted; earlier audit entries of the person lose their details.
+ */
+export async function anonymizePersonAction(id: string): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx("admin");
+    parseOrThrow(idSchema, id);
+    await ctx.db.$transaction(async (tx) => {
+      const before = await tx.person.findUnique({ where: { id }, include: { family: { select: { id: true, nume: true } } } });
+      if (!before) throw new ActionError("Persoana nu mai există în registru.");
+      const blank = { nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", note: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "" };
+      await tx.person.update({
+        where: { id },
+        data: {
+          ...blank,
+          bisericaProvenienta: "",
+          bisericaDestinatie: "",
+          slujire: "",
+          familieVeche: "",
+          inComitet: false,
+          ...personDerived(blank),
+        },
+      });
+      await tx.personRole.deleteMany({ where: { personId: id } });
+      await tx.groupMember.deleteMany({ where: { personId: id } });
+      await tx.note.deleteMany({ where: { personId: id } });
+      // A family named after the person loses that name.
+      if (before.family && before.family.nume === defaultFamilyName(before)) {
+        await tx.family.update({ where: { id: before.family.id }, data: { nume: "Familie (nume șters)" } });
+      }
+      // Earlier audit entries keep when and who, not the person's data.
+      await tx.auditLog.updateMany({ where: { entity: "PERSON", entityId: id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
+      await writeAudit(tx, ctx.user, {
+        entity: "PERSON",
+        entityId: id,
+        entityLabel: ANONYMOUS_NAME,
+        action: "UPDATE",
+        fields: [],
+        extra: { anonimizare: "datele personale au fost șterse; statistica rămâne" },
+      });
+    });
+  });
+  if (!state.ok) return state;
+  revalidatePath("/", "layout");
+  redirect(`/persoane/${id}?salvat=1&mesaj=${encodeURIComponent("Persoana a fost anonimizată.")}`);
 }

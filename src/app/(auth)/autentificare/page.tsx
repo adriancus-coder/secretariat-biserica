@@ -41,6 +41,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/autentific
       ) : (
         <p className="hint mt-4">Conturile noi se creează prin invitație de la administratorul bisericii.</p>
       )}
+      <p className="hint mt-2">
+        <Link href="/confidentialitate">Confidențialitatea datelor</Link>
+      </p>
     </>
   );
 }

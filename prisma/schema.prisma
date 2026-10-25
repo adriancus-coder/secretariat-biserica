@@ -34,6 +34,10 @@ model Church {
   applicationsOpen Boolean @default(false)
   /// Every user must use a second factor (users without one are sent to its setup at login).
   require2fa       Boolean @default(false)
+  /// The public privacy notice (/confidentialitate/<slug>); "" = the built-in template.
+  privacyText      String  @default("")
+  /// Reading scans with Claude (Anthropic) is off until an administrator accepts the processing terms.
+  extractEnabled   Boolean @default(false)
   adresa           String  @default("")
   orgNr            String  @default("")
   telefon          String  @default("")
@@ -99,6 +103,8 @@ model User {
   failedLoginCount  Int       @default(0)
   lastFailedLoginAt DateTime?
   lastLoginAt       DateTime?
+  /// The network part of the last login IP ("203.0.113.x"); the full address is never stored.
+  lastLoginIp       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

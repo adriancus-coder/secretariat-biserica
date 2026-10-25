@@ -203,7 +203,13 @@ export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rud
           onChange={(ev) => setGdpr(ev.target.checked)}
           aria-invalid={e.consent ? true : undefined}
         />
-        <span>Sunt de acord ca datele mele să fie păstrate de biserică în scopul evidenței membrilor.</span>
+        <span>
+          Sunt de acord ca datele mele să fie păstrate de biserică în scopul evidenței membrilor (
+          <a href={`/confidentialitate/${slug}`} target="_blank" rel="noopener">
+            nota de confidențialitate
+          </a>
+          ).
+        </span>
       </label>
       {e.consent ? (
         <div className="field-error mb-3" role="alert">

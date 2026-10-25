@@ -22,6 +22,10 @@ export interface ChurchSettings extends ChurchInfo {
   secretarEmail: string;
   /** Every user must use a second factor at login. */
   require2fa: boolean;
+  /** Saved privacy notice ("" = template). */
+  privacyText: string;
+  /** Reading scans with Claude accepted by an administrator. */
+  extractEnabled: boolean;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -48,6 +52,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     pastorEmail: c.pastorEmail,
     secretarEmail: c.secretarEmail,
     require2fa: c.require2fa,
+    privacyText: c.privacyText,
+    extractEnabled: c.extractEnabled,
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),

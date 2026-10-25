@@ -18,7 +18,7 @@ export default async function MinutesImportPage() {
       <BackLink href="/procese-verbale">Procese-verbale</BackLink>
       <PageHead title="Importă proces-verbal" />
       <MinutesImport
-        aiConfigured={isExtractConfigured()}
+        aiConfigured={isExtractConfigured() && church.extractEnabled}
         people={people}
         tipuri={church.nomen.tipuriSedinte}
         rules={church.attendanceRules}

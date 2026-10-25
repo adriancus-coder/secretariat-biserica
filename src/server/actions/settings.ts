@@ -11,6 +11,7 @@ import type { FormState } from "@/lib/form-state";
 import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
 import { attendanceRulesText, resolveAttendanceRules } from "@/lib/attendance";
 import { NOMEN_DEFAULTS } from "@/lib/labels";
+import { privacyTemplate } from "@/lib/privacy";
 import { writeAudit } from "../audit";
 import { importBackup, type ImportMode } from "../backup";
 import { prisma } from "../db";
@@ -30,7 +31,10 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
       const clash = await tx.church.findFirst({ where: { slug: input.slug, id: { not: ctx.user.churchId } }, select: { id: true } });
       if (clash) throw new ValidationError({ slug: "Această adresă este deja folosită de altă biserică. Alegeți alta." });
       const before = await tx.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } });
-      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, regulaPrezenta } });
+      // The template itself is not stored: the notice then follows changes of the church's details.
+      const template = privacyTemplate({ nume: input.nume, email: input.email, adresa: input.adresa }).trim();
+      const privacyText = input.privacyText.trim() === template ? "" : input.privacyText;
+      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, privacyText, regulaPrezenta } });
       const rulesView = (c: typeof before) =>
         attendanceRulesText(resolveAttendanceRules(c.tipuriSedinte.length ? c.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte, c.regulaPrezenta));
       await writeAudit(tx, ctx.user, {

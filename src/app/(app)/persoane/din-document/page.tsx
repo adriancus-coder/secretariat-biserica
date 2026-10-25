@@ -16,10 +16,15 @@ export default async function PersonFromDocumentPage() {
     <>
       <BackLink href="/persoane">Persoane</BackLink>
       <PageHead title="Adaugă din document" />
-      {isExtractConfigured() ? (
-        <PersonFromDocument families={families} rudenie={church.nomen.rudenie} roles={roles} />
-      ) : (
+      {!isExtractConfigured() ? (
         <div className="alert">Extragerea din imagini nu este configurată. Adăugați persoana cu formularul obișnuit.</div>
+      ) : !church.extractEnabled ? (
+        <div className="alert">
+          Citirea automată a documentelor nu este pornită. Administratorul o poate porni din Setări (Confidențialitate), după ce citește
+          condițiile.
+        </div>
+      ) : (
+        <PersonFromDocument families={families} rudenie={church.nomen.rudenie} roles={roles} />
       )}
     </>
   );

@@ -14,7 +14,7 @@ export default async function UsersPage() {
   const [users, invitations] = await Promise.all([
     ctx.db.user.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, email: true, role: true, active: true, lastLoginAt: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, active: true, lastLoginAt: true, lastLoginIp: true, createdAt: true },
     }),
     ctx.db.invitation.findMany({
       where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -71,9 +71,11 @@ export default async function UsersPage() {
               <div className="t">
                 {u.name} {u.id === ctx.user.id ? <span className="tag tag-gold">dvs.</span> : null}{" "}
                 {!u.active ? <span className="tag tag-warn">dezactivat</span> : null}
+                {u.active && unusedFor90Days(u) ? <span className="tag tag-warn">Acces nefolosit de 90 de zile</span> : null}
               </div>
               <div className="m">
                 {u.email} · {u.lastLoginAt ? `ultima autentificare ${formatDateTime(u.lastLoginAt)}` : "nu s-a autentificat încă"}
+                {u.lastLoginIp ? ` · de la ${u.lastLoginIp}` : ""}
               </div>
             </div>
             <div className="item-actions">
@@ -87,4 +89,10 @@ export default async function UsersPage() {
       </div>
     </>
   );
+}
+
+/** Never signed in (account older than 90 days) or last sign-in more than 90 days ago. */
+function unusedFor90Days(u: { lastLoginAt: Date | null; createdAt: Date }): boolean {
+  const limit = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  return (u.lastLoginAt ?? u.createdAt).getTime() < limit;
 }

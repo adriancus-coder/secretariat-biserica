@@ -250,6 +250,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Cont → Securitate: enable/disable each method and regenerate recovery codes, each with the password; the last method cannot be disabled while the church requires 2FA. Audit entity `SECURITY` (enable/disable, wrong codes, recovery code used); codes are never logged or stored in clear.
 - `src/server/sign-in.ts` (`finishSignIn`) is deliberately not a server action.
 
+### Privacy and access
+
+- Public privacy notice `/confidentialitate/<slug>` (and the general template at `/confidentialitate`): `Church.privacyText`, edited in Setări; empty = `privacyTemplate()` (`src/lib/privacy.ts`, filled with the church's name, e-mail and address). Linked from the application form and the login page.
+- Setări → Utilizatori shows the last login and its truncated IP (`User.lastLoginIp`, only the network part is stored, `truncateIp`), and "Acces nefolosit de 90 de zile".
+- Removing a person is `admin` only, in two steps: anonymise (`anonymizePersonAction`: "Persoană ștearsă", contact data, notes, roles, groups and mențiuni removed, earlier audit details blanked; statistics unchanged) or delete for good.
+- Export (`POST /api/export`) asks for the password again and writes a `SECURITY` audit entry with the file size; `GET` redirects to Setări → Date.
+- Reading scans with Claude is off by default (`Church.extractEnabled`): an administrator turns it on in Setări after reading the processing terms (Anthropic, outside the EEA); audited with the settings.
+
 ### Membership applications
 
 - Public form `/cerere/<slug>`, under `(auth)`, listed in `PUBLIC_PATHS`. `Church.slug` is unique; `slugify()`/`slugVariant()` in `src/lib/slug.ts` are mirrored by the backfill in the `applications` migration.

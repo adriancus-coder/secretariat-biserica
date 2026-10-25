@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { prisma } from "./server/db";
 import { consumeChallenge } from "./server/two-factor";
+import { ipFromHeaders, truncateIp } from "./lib/client-ip";
 
 /** Cod de eroare generic: nu dezvăluim dacă e-mailul există sau parola e greșită. */
 class InvalidCredentials extends CredentialsSignin {
@@ -22,14 +23,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { challenge: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) throw new InvalidCredentials();
         const userId = await consumeChallenge(parsed.data.challenge);
         if (!userId) throw new InvalidCredentials();
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user || !user.active) throw new InvalidCredentials();
-        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+        // Only the network part of the IP is kept (shown to administrators in Setări → Utilizatori).
+        const ip = ipFromHeaders((n) => request.headers.get(n), process.env.AUTH_TRUST_HOST === "true");
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: truncateIp(ip === "necunoscut" ? null : ip) || null } });
         return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
       },
     }),

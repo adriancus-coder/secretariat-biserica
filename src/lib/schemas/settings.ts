@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ATTENDANCE_RULES, type AttendanceRule } from "../attendance";
 import { ROLES } from "../labels";
 import { isValidSlug, SLUG_MAX, SLUG_MIN } from "../slug";
-import { optionalEmail, requiredEnum, requiredText, text } from "../validation";
+import { longText, optionalEmail, requiredEnum, requiredText, text } from "../validation";
 import { emailField } from "./auth";
 
 export const NOMEN_MAX_ITEMS = 60;
@@ -46,6 +46,8 @@ export const SETTINGS_FIELDS = [
   "slug",
   "applicationsOpen",
   "require2fa",
+  "privacyText",
+  "extractEnabled",
   "regulaPrezenta",
 ] as const;
 
@@ -66,6 +68,8 @@ export const churchSettingsSchema = z.object({
   slug: slugField,
   applicationsOpen: checkbox,
   require2fa: checkbox,
+  privacyText: longText(20000, "Nota de confidențialitate"),
+  extractEnabled: checkbox,
 });
 
 /**

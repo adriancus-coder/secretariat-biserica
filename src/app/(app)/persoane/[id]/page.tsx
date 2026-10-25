@@ -3,19 +3,18 @@ import { baptismSentence } from "@/lib/baptism";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
-import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ageAt, fromDbDate, todayIso } from "@/lib/dates";
 import { fmt, memberName } from "@/lib/format";
 import { DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
-import { deletePersonAction } from "@/server/actions/persons";
 import { getPersonDetail, parseListSpec, personNeighbors } from "@/server/queries/persons";
 import { PersonNav } from "@/components/person-nav";
 import { listHref, withDin } from "@/lib/person-nav";
 import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
+import { PersonRemoval } from "./person-removal";
 import { canBeHead } from "@/lib/families";
 import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
@@ -244,12 +243,9 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         </div>
       ) : null}
 
-      {canWrite ? (
+      {permissions.admin(ctx.user.role) && x.nume !== "Persoană ștearsă" ? (
         <div className="actions">
-          <DeleteButton
-            action={deletePersonAction.bind(null, x.id)}
-            confirmMessage="Ștergeți persoana din registru? Prezența la ședințe și apartenența la grupuri se vor șterge; mențiunile și documentele rămân."
-          />
+          <PersonRemoval personId={x.id} name={memberName(x)} />
         </div>
       ) : null}
     </>
