@@ -240,3 +240,35 @@ export async function passwordResetLinkAction(userId: string): Promise<LinkState
       }
     : { ok: true, message: `Link de resetare valabil ${RESET_HOURS} de ore:`, warning: emailWarning(emailed), link };
 }
+
+const PASTOR_TITLES = ["", "pastor coordonator", "pastor asistent"] as const;
+
+/** "Pastor al bisericii" (Statut art. 38–39): the flag and its optional label. Administrators only, audited. */
+export async function setPastorAction(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx("admin");
+    parseOrThrow(idSchema, userId);
+    const isPastor = formData.get("isPastor") === "on";
+    const titlu = String(formData.get("pastorTitlu") ?? "");
+    if (!(PASTOR_TITLES as readonly string[]).includes(titlu)) throw new ActionError("Titlu invalid.");
+    const pastorTitlu = isPastor ? titlu : "";
+    const user = await ctx.db.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ActionError("Utilizatorul nu există.");
+    if (user.isPastor === isPastor && user.pastorTitlu === pastorTitlu) return { ok: true };
+    await ctx.db.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { isPastor, pastorTitlu } });
+      await writeAudit(tx, ctx.user, {
+        entity: "USER",
+        entityId: userId,
+        entityLabel: `${user.name} <${user.email}>`,
+        action: "UPDATE",
+        fields: ["pastor", "pastorTitlu"],
+        before: { pastor: user.isPastor ? "da" : "nu", pastorTitlu: user.pastorTitlu },
+        after: { pastor: isPastor ? "da" : "nu", pastorTitlu },
+      });
+    });
+    return { ok: true, message: isPastor ? "Marcat ca pastor al bisericii." : "Nu mai este marcat ca pastor." };
+  });
+  revalidatePath("/", "layout");
+  return state;
+}

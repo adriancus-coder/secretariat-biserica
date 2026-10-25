@@ -12,6 +12,9 @@ export interface CurrentUser {
   name: string;
   email: string;
   role: RoleKey;
+  /** Pastor of the church (Statut art. 38–39), independent of the role; `pastorTitlu` e.g. "pastor coordonator". */
+  isPastor: boolean;
+  pastorTitlu: string;
   churchId: string;
   churchName: string;
 }
@@ -31,6 +34,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       name: true,
       email: true,
       role: true,
+      isPastor: true,
+      pastorTitlu: true,
       churchId: true,
       active: true,
       sessionVersion: true,
@@ -43,6 +48,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     name: user.name,
     email: user.email,
     role: user.role,
+    isPastor: user.isPastor,
+    pastorTitlu: user.pastorTitlu,
     churchId: user.churchId,
     churchName: user.church.nume,
   };
@@ -58,7 +65,7 @@ export async function requireUser(): Promise<CurrentUser> {
 /** Pentru pagini: afișează pagina 403 dacă utilizatorul nu are permisiunea. */
 export async function requirePermission(permission: Permission): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!permissions[permission](user.role)) forbidden();
+  if (!permissions[permission](user)) forbidden();
   return user;
 }
 
@@ -82,7 +89,7 @@ export class ActionError extends Error {}
 export async function actionCtx(permission?: Permission): Promise<Ctx> {
   const user = await getCurrentUser();
   if (!user) throw new ActionError("Sesiunea a expirat. Autentificați-vă din nou.");
-  if (permission && !permissions[permission](user.role)) {
+  if (permission && !permissions[permission](user)) {
     throw new ActionError("Nu aveți drepturi pentru această operațiune.");
   }
   return { user, db: tenantDb(user.churchId) };

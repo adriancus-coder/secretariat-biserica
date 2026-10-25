@@ -112,7 +112,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const mandate = canWrite ? mandateNotice(today, church.comitetAlesLa, church.comitetPrelungit) : null;
   const absences = permissions.admin(ctx.user.role) ? await committeeAbsences(ctx, church) : [];
   // Administrators only (`disciplina`): open appeal windows (Statut art. 27 alin. 11) and pending appeals.
-  const appeals = permissions.disciplina(ctx.user.role)
+  const appeals = permissions.disciplina(ctx.user)
     ? (
         await ctx.db.disciplinaryMeasure.findMany({
           where: {

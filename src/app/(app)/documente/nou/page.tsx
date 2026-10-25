@@ -44,7 +44,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
         initial={{ tip, nr: "", data: today, personId, catre: "", scop: "", titlu: draft.titlu, text: draft.text, anRaport, sedintaId: sedintaId ?? "" }}
         people={people}
         nextNr={nextNr}
-        canDiscipline={permissions.disciplina(ctx.user.role)}
+        canDiscipline={permissions.disciplina(ctx.user)}
         cancelHref={personId ? `/persoane/${personId}` : "/documente"}
       />
     </>

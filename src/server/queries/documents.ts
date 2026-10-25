@@ -78,7 +78,7 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const tip = input.tip as DocumentTypeKey;
   const reportYear = input.anRaport ?? Number(input.data.slice(0, 4));
   const reportText = tip === "raport" ? await generateReportText(ctx, reportYear) : undefined;
-  const exceptieDomiciliu = tip === "recomandare" && input.exceptieDomiciliu === true && permissions.disciplina(ctx.user.role);
+  const exceptieDomiciliu = tip === "recomandare" && input.exceptieDomiciliu === true && permissions.disciplina(ctx.user);
   const discipline = tip === "recomandare" && person ? await recommendationDiscipline(ctx, person.id, exceptieDomiciliu) : null;
   const meeting = tip === "convocare" && input.sedintaId ? await ctx.db.meeting.findUnique({ where: { id: input.sedintaId } }) : null;
   const convocare = meeting

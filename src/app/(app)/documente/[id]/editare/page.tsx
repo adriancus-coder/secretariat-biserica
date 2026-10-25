@@ -36,7 +36,7 @@ export default async function EditDocumentPage({ params }: PageProps<"/documente
           anRaport: doc.anRaport ? String(doc.anRaport) : "",
           exceptieDomiciliu: doc.exceptieDomiciliu,
         }}
-        canDiscipline={permissions.disciplina(ctx.user.role)}
+        canDiscipline={permissions.disciplina(ctx.user)}
         people={people}
         nextNr={nextNr}
         cancelHref={`/documente/${id}`}

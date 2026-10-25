@@ -113,6 +113,10 @@ model User {
   name           String
   passwordHash   String
   role           Role    @default(VIZUALIZARE)
+  /// Pastor of the church (Statut art. 38–39), independent of the role; set only by an administrator.
+  isPastor       Boolean @default(false)
+  /// Optional label: "pastor coordonator", "pastor asistent".
+  pastorTitlu    String  @default("")
   active         Boolean @default(true)
   /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
   sessionVersion Int     @default(0)

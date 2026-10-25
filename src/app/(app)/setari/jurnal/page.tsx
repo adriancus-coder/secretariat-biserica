@@ -16,7 +16,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/setari/jur
   const ctx = await requireCtx("audit");
   const sp = await searchParams;
   // Disciplinary entries exist only for administrators (permission `disciplina`).
-  const discipline = permissions.disciplina(ctx.user.role);
+  const discipline = permissions.disciplina(ctx.user);
   const labels = Object.entries(ENTITY_LABEL).filter(([k]) => discipline || k !== "DISCIPLINE");
   const entity = (labels.map(([k]) => k) as AuditEntityKey[]).find((k) => k === stringParam(sp.tip));
   const where = entity ? { entity } : discipline ? {} : { entity: { not: "DISCIPLINE" as const } };

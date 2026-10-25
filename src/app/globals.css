@@ -773,6 +773,17 @@
   .points-tools .btn {
     min-width: 40px;
   }
+  /* "Pastor" next to the user's name (sidebar) */
+  .pastor-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: #1b2843;
+    font-weight: 600;
+    opacity: 1;
+  }
   /* Statute excerpts (application form, data-update page) */
   .excerpts details {
     border-top: 1px solid var(--line);

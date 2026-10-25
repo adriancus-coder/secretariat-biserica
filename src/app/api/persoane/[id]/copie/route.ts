@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: RouteContext<"/api/persoane/
   if (!idSchema.safeParse(id).success) notFound();
   const sp = new URL(req.url).searchParams;
   const format = sp.get("format") === "json" ? "json" : "pdf";
-  const withDiscipline = sp.get("disciplina") === "1" && permissions.disciplina(ctx.user.role);
+  const withDiscipline = sp.get("disciplina") === "1" && permissions.disciplina(ctx.user);
   const copy = await loadDataCopy(ctx, id, withDiscipline);
   if (!copy) notFound();
   await ctx.db.$transaction((tx) =>

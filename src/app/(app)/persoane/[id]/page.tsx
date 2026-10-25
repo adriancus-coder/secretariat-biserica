@@ -46,7 +46,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const canWrite = permissions.write(ctx.user.role);
   const today = todayIso();
   // Administrators only (`disciplina`): the query never runs for other roles.
-  const discipline = permissions.disciplina(ctx.user.role)
+  const discipline = permissions.disciplina(ctx.user)
     ? { open: await openMeasure(ctx.db, id), count: await ctx.db.disciplinaryMeasure.count({ where: { personId: id } }) }
     : null;
 
@@ -340,7 +340,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
               : discipline.count
                 ? `${discipline.count} ${discipline.count === 1 ? "măsură încheiată" : "măsuri încheiate"}.`
                 : "Nicio măsură disciplinară."}{" "}
-            Vizibil doar administratorilor.
+            Vizibil doar pastorilor și administratorilor.
           </p>
           <Link href={`/persoane/${x.id}/disciplina`} className="btn btn-sm">
             Deschide

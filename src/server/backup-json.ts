@@ -83,7 +83,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       consents: campaignData.consents,
       ...(comitet ? { comitet } : {}),
       // Administrators only (Statut art. 27): a secretary's export carries no trace of discipline.
-      ...(permissions.disciplina(ctx.user.role) ? { discipline: disciplineToJson(await loadDiscipline(ctx)) } : {}),
+      ...(permissions.disciplina(ctx.user) ? { discipline: disciplineToJson(await loadDiscipline(ctx)) } : {}),
     },
     churchName: backup.settings?.nume ?? "",
   };

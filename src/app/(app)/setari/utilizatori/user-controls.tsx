@@ -12,6 +12,7 @@ import {
   revokeInvitationAction,
   setUserActiveAction,
   endUserSessionsAction,
+  setPastorAction,
   type LinkState,
 } from "@/server/actions/users";
 
@@ -160,6 +161,48 @@ export function RevokeInvitation({ id }: { id: string }) {
         Anulează
       </button>
       {state.message && !state.ok ? <span className="field-error block">{state.message}</span> : null}
+    </form>
+  );
+}
+
+/** "Pastor al bisericii" with its optional label; saved on change (administrators). */
+export function PastorControl({ userId, isPastor, titlu, disabled }: { userId: string; isPastor: boolean; titlu: string; disabled?: boolean }) {
+  const [state, action, pending] = useActionState(setPastorAction.bind(null, userId), initialFormState);
+  const [on, setOn] = useState(isPastor);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      {/* From state: the form's automatic reset after each submit must not change what is sent. */}
+      <input type="hidden" name="isPastor" value={on ? "on" : ""} />
+      <label className="check !border-0 !py-0 min-h-11">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={disabled || pending}
+          onChange={(e) => {
+            setOn(e.target.checked);
+            const form = e.currentTarget.form;
+            queueMicrotask(() => form?.requestSubmit());
+          }}
+        />
+        Pastor al bisericii
+      </label>
+      {on ? (
+        <select
+          name="pastorTitlu"
+          defaultValue={titlu}
+          disabled={disabled || pending}
+          aria-label="Titlul pastorului"
+          className="!w-auto min-h-10 !py-1.5 text-[0.875rem]"
+          onChange={(e) => e.currentTarget.form?.requestSubmit()}
+        >
+          <option value="">— fără titlu —</option>
+          <option value="pastor coordonator">pastor coordonator</option>
+          <option value="pastor asistent">pastor asistent</option>
+        </select>
+      ) : (
+        <input type="hidden" name="pastorTitlu" value="" />
+      )}
+      {state.message && !state.ok ? <span className="field-error">{state.message}</span> : null}
     </form>
   );
 }

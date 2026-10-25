@@ -64,7 +64,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
       : null;
     if (input.personId && !person) throw new ValidationError({ personId: "Persoana nu mai există în registru." });
     // Statut art. 27 alin. 6 and 9: a recommendation for a person with an open measure.
-    const exceptieDomiciliu = input.tip === "recomandare" && input.exceptieDomiciliu && permissions.disciplina(ctx.user.role);
+    const exceptieDomiciliu = input.tip === "recomandare" && input.exceptieDomiciliu && permissions.disciplina(ctx.user);
     if (input.tip === "recomandare" && person) await recommendationDiscipline(ctx, person.id, exceptieDomiciliu);
 
     const fields = {

@@ -4,7 +4,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ROLE_LABEL } from "@/lib/labels";
 import { isEmailConfigured } from "@/server/email";
 import { requireCtx } from "@/server/session";
-import { ActiveToggle, EndSessionsButton, InviteForm, ResetLinkButton, RevokeInvitation, RoleSelect } from "./user-controls";
+import { ActiveToggle, EndSessionsButton, InviteForm, ResetLinkButton, RevokeInvitation, RoleSelect, PastorControl } from "./user-controls";
 
 export const metadata: Metadata = { title: "Utilizatori" };
 
@@ -14,7 +14,7 @@ export default async function UsersPage() {
   const [users, invitations] = await Promise.all([
     ctx.db.user.findMany({
       orderBy: [{ active: "desc" }, { name: "asc" }],
-      select: { id: true, name: true, email: true, role: true, active: true, lastLoginAt: true, lastLoginIp: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, isPastor: true, pastorTitlu: true, active: true, lastLoginAt: true, lastLoginIp: true, createdAt: true },
     }),
     ctx.db.invitation.findMany({
       where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -69,7 +69,8 @@ export default async function UsersPage() {
             </div>
             <div className="body">
               <div className="t">
-                {u.name} {u.id === ctx.user.id ? <span className="tag tag-gold">dvs.</span> : null}{" "}
+                {u.name} {u.isPastor ? <span className="tag tag-gold">Pastor{u.pastorTitlu ? ` · ${u.pastorTitlu}` : ""}</span> : null}{" "}
+                {u.id === ctx.user.id ? <span className="tag">dvs.</span> : null}{" "}
                 {!u.active ? <span className="tag tag-warn">dezactivat</span> : null}
                 {u.active && unusedFor90Days(u) ? <span className="tag tag-warn">Acces nefolosit de 90 de zile</span> : null}
               </div>
@@ -80,6 +81,7 @@ export default async function UsersPage() {
             </div>
             <div className="item-actions">
               <RoleSelect userId={u.id} role={u.role} disabled={!u.active} />
+              <PastorControl userId={u.id} isPastor={u.isPastor} titlu={u.pastorTitlu} disabled={!u.active} />
               {u.active ? <ResetLinkButton userId={u.id} emailEnabled={emailEnabled} /> : null}
               {u.active && u.id !== ctx.user.id ? <EndSessionsButton userId={u.id} name={u.name} /> : null}
               {u.id !== ctx.user.id ? <ActiveToggle userId={u.id} active={u.active} /> : null}

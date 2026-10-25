@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="title">Secretariat</div>
           </div>
           <Link href="/cont" className="mode mobile-only" title="Contul meu">
-            {ROLE_LABEL[user.role]}
+            {user.isPastor ? "Pastor" : ROLE_LABEL[user.role]}
           </Link>
         </header>
         <AppNav badges={badges} canWrite={canWrite} />
@@ -36,7 +36,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Icon name="cont" className="size-[18px]" />
             <span className="min-w-0">
               <span className="block truncate">{user.name}</span>
-              <span className="block text-[0.7188rem] opacity-70">{ROLE_LABEL[user.role]}</span>
+              <span className="block text-[0.7188rem] opacity-70">
+                {ROLE_LABEL[user.role]}
+                {user.isPastor ? <span className="pastor-badge">Pastor</span> : null}
+              </span>
             </span>
           </Link>
           <form action={logoutAction}>

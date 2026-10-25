@@ -58,6 +58,10 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     rudenie: c.gradeRudenie,
   };
   const nomen = resolveNomen(saved);
+  // Organizația → Pastor empty: the names of the church's pastor users (Statut art. 38).
+  const pastorUsers = c.pastor.trim()
+    ? []
+    : await prisma.user.findMany({ where: { churchId, isPastor: true, active: true }, orderBy: { name: "asc" }, select: { name: true } });
   return {
     id: c.id,
     slug: c.slug,
@@ -67,7 +71,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     orgNr: c.orgNr,
     telefon: c.telefon,
     email: c.email,
-    pastor: c.pastor,
+    pastor: c.pastor.trim() || pastorUsers.map((u) => u.name).join(", "),
     secretar: c.secretar,
     pastorEmail: c.pastorEmail,
     secretarEmail: c.secretarEmail,

@@ -14,7 +14,7 @@ import type { ChurchSettings } from "./church";
  * same reminder, whatever the person's record, so it never reveals anything.
  */
 export async function committeeEligibility(ctx: Ctx, personId: string | null): Promise<string[]> {
-  const admin = permissions.disciplina(ctx.user.role);
+  const admin = permissions.disciplina(ctx.user);
   const p = personId
     ? await ctx.db.person.findUnique({ where: { id: personId }, select: { dataMembru: true, dataBotez: true, botezAn: true } })
     : null;

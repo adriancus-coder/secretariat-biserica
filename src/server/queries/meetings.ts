@@ -92,7 +92,7 @@ export async function getMeeting(ctx: Ctx, id: string) {
  */
 export async function attendeeOptions(ctx: Ctx, selected: string[]): Promise<ChecklistOption[]> {
   // Administrators only (`disciplina`): a suspended member is marked; other roles see nothing.
-  const suspended = permissions.disciplina(ctx.user.role)
+  const suspended = permissions.disciplina(ctx.user)
     ? new Set(
         (await ctx.db.disciplinaryMeasure.findMany({ where: { forma: "SUSPENDARE", stare: "APLICATA" }, select: { personId: true } })).map((m) => m.personId),
       )
