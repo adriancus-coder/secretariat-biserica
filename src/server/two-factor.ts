@@ -2,13 +2,15 @@ import "server-only";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
+import { hashSecret, verifyPassword } from "./password";
 import { hashToken, newToken } from "./tokens";
 
 /**
  * Second factor at login: a TOTP code (authenticator app), a 6-digit code by e-mail, or a single-use
  * recovery code. What is stored: the TOTP secret encrypted (AES-256-GCM, key derived from
- * AUTH_SECRET), recovery and e-mail codes as sha256 hashes, the login challenge as the hash of a
- * random token kept in an httpOnly cookie. Codes are never logged.
+ * AUTH_SECRET; a new one waits in pendingTotpSecretEnc until confirmed), recovery codes as scrypt
+ * hashes (older ones as sha256, still accepted until regenerated), e-mail codes as sha256 hashes, the
+ * login challenge as the hash of a random token kept in an httpOnly cookie. Codes are never logged.
  */
 
 export const CHALLENGE_COOKIE = "secretariat_2fa";
@@ -47,24 +49,36 @@ const RECOVERY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 
 const normalizeRecovery = (code: string) => code.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-/** Eight codes "abcd-efgh" to show once, and their hashes to store. */
-export function newRecoveryCodes(): { codes: string[]; hashes: string[] } {
+export const RECOVERY_CODE_LENGTH = 12;
+
+/** Eight codes "abcd-efgh-jkmn" (12 characters, ~59 bits each) to show once, and their scrypt hashes. */
+export async function newRecoveryCodes(): Promise<{ codes: string[]; hashes: string[] }> {
   const codes = Array.from({ length: RECOVERY_CODE_COUNT }, () => {
-    const s = Array.from({ length: 8 }, () => RECOVERY_ALPHABET[randomInt(RECOVERY_ALPHABET.length)]).join("");
-    return `${s.slice(0, 4)}-${s.slice(4)}`;
+    const s = Array.from({ length: RECOVERY_CODE_LENGTH }, () => RECOVERY_ALPHABET[randomInt(RECOVERY_ALPHABET.length)]).join("");
+    return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8)}`;
   });
-  return { codes, hashes: codes.map((c) => hashToken(normalizeRecovery(c))) };
+  return { codes, hashes: await Promise.all(codes.map((c) => hashSecret(normalizeRecovery(c)))) };
 }
 
-/** The stored hashes without the one matching `code`, or null when it matches none. */
-export function spendRecoveryCode(hashes: readonly string[], code: string): string[] | null {
-  const h = hashToken(normalizeRecovery(code));
-  const i = hashes.findIndex((x) => safeEqual(x, h));
-  return i < 0 ? null : hashes.filter((_, j) => j !== i);
+/** Hashes in the older format (sha256 of an 8-character code): accepted until the codes are regenerated. */
+export function hasLegacyRecoveryCodes(hashes: readonly string[]): boolean {
+  return hashes.some((h) => !h.startsWith("scrypt$"));
+}
+
+/** The stored hashes without the one matching `code`, or null when it matches none (both formats). */
+export async function spendRecoveryCode(hashes: readonly string[], code: string): Promise<string[] | null> {
+  const n = normalizeRecovery(code);
+  for (let i = 0; i < hashes.length; i++) {
+    const h = hashes[i];
+    const match = h.startsWith("scrypt$") ? await verifyPassword(n, h) : safeEqual(h, hashToken(n));
+    if (match) return hashes.filter((_, j) => j !== i);
+  }
+  return null;
 }
 
 export function looksLikeRecoveryCode(code: string): boolean {
-  return normalizeRecovery(code).length === 8 && !/^\d+$/.test(code.trim());
+  const n = normalizeRecovery(code);
+  return (n.length === 8 || n.length === RECOVERY_CODE_LENGTH) && !/^\d+$/.test(code.trim());
 }
 
 export function newEmailCode(): { code: string; hash: string } {

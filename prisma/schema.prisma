@@ -96,6 +96,8 @@ model User {
 
   // Second factor: TOTP (secret encrypted at rest, see src/server/two-factor.ts) and/or a code by e-mail.
   totpSecretEnc   String?
+  /// A new TOTP secret being set up; swapped into totpSecretEnc by the first valid code.
+  pendingTotpSecretEnc String?
   totpEnabled     Boolean  @default(false)
   /// Last accepted TOTP time step: a code is accepted once.
   totpLastStep    Int?

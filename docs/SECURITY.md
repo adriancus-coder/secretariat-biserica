@@ -27,8 +27,9 @@ Out of scope: a compromised Render account or database host, and a compromised a
 | --- | --- |
 | Passwords | scrypt (N=2^15, r=8, p=3), per-user random salt (`src/server/password.ts`) |
 | Invitation and password-reset links, login challenges | sha256 of a random 32-byte token; the token itself only reaches the user |
-| E-mail codes and 2FA recovery codes | sha256, single use, compared in constant time |
-| Authenticator (TOTP) secrets | AES-256-GCM, key derived from `AUTH_SECRET` with HKDF (`src/server/two-factor.ts`) |
+| 2FA recovery codes | 12 random characters (~59 bits), scrypt (N=2^14, r=8, p=1), single use; older 8-character codes (sha256) stay valid until the user regenerates them |
+| E-mail codes | sha256, single use, 10 minutes, compared in constant time |
+| Authenticator (TOTP) secrets | AES-256-GCM, key derived from `AUTH_SECRET` with HKDF (`src/server/two-factor.ts`); a new secret waits in `pendingTotpSecretEnc` until its first code confirms it, so an abandoned setup never replaces the working one |
 | Sessions | JWT signed and encrypted by Auth.js with `AUTH_SECRET` |
 | Signatures, statutes, all register data | PostgreSQL only (Render encrypts the disk at rest); nothing is written to the file system |
 | Uploaded files for extraction or .docx import | Read in memory, never stored |

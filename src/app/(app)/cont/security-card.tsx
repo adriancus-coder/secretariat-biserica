@@ -25,12 +25,15 @@ export function SecurityCard({
   totpEnabled,
   emailOtpEnabled,
   recoveryLeft,
+  recoveryLegacy,
   emailConfigured,
   required,
 }: {
   totpEnabled: boolean;
   emailOtpEnabled: boolean;
   recoveryLeft: number;
+  /** Some codes are in the older, shorter format: suggest regenerating them. */
+  recoveryLegacy: boolean;
   emailConfigured: boolean;
   required: boolean;
 }) {
@@ -53,17 +56,10 @@ export function SecurityCard({
 
       <fieldset className="subfields pb-3">
         <legend>Aplicație de autentificare {totpEnabled ? "· activă" : ""}</legend>
-        {totpEnabled ? (
-          <form action={disableAction} noValidate>
-            <Password id="parola-totp-off" />
-            <FormMessage state={disable} />
-            <button type="submit" className="btn btn-danger" disabled={disabling}>
-              Dezactivează aplicația
-            </button>
-          </form>
-        ) : enrolling ? (
+        {enrolling ? (
           <form action={confirmAction} noValidate>
             <TotpQr svg={start.qrSvg!} secret={start.secret!} />
+            {totpEnabled ? <p className="hint mb-2">Codurile din aplicația de acum rămân valabile până confirmați aplicația nouă.</p> : null}
             <TextField name="cod" id="cod-totp" label="Codul de 6 cifre din aplicație" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required />
             <FormMessage state={confirm} />
             <button type="submit" className="btn btn-primary" disabled={confirming}>
@@ -72,6 +68,23 @@ export function SecurityCard({
           </form>
         ) : confirm.ok ? (
           <FormMessage state={confirm} />
+        ) : totpEnabled ? (
+          <>
+            <form action={startAction} noValidate className="mb-3">
+              <Password id="parola-totp-move" />
+              <FormMessage state={start} />
+              <button type="submit" className="btn" disabled={starting}>
+                Configurează pe alt telefon
+              </button>
+            </form>
+            <form action={disableAction} noValidate>
+              <Password id="parola-totp-off" />
+              <FormMessage state={disable} />
+              <button type="submit" className="btn btn-danger" disabled={disabling}>
+                Dezactivează aplicația
+              </button>
+            </form>
+          </>
         ) : (
           <form action={startAction} noValidate>
             <Password id="parola-totp-on" />
@@ -101,6 +114,12 @@ export function SecurityCard({
       {totpEnabled || emailOtpEnabled ? (
         <fieldset className="subfields pb-3">
           <legend>Coduri de recuperare · {recoveryLeft} rămase</legend>
+          {recoveryLegacy && !regen.recoveryCodes ? (
+            <p className="alert mb-2" role="status">
+              Codurile dumneavoastră de recuperare sunt în formatul vechi, mai scurt. Regenerați codurile: cele noi sunt mai sigure, iar cele vechi
+              nu mai sunt valabile după regenerare.
+            </p>
+          ) : null}
           <form action={regenAction} noValidate>
             <Password id="parola-regen" />
             <FormMessage state={regen} />

@@ -72,7 +72,7 @@ export async function verifyLoginCodeAction(_prev: FormState, formData: FormData
     if (safeEqual(challenge.emailCodeHash, hashToken(code.replace(/\s/g, "")))) ok = true;
   }
   if (!ok && looksLikeRecoveryCode(code)) {
-    const left = spendRecoveryCode(user.recoveryCodes, code);
+    const left = await spendRecoveryCode(user.recoveryCodes, code);
     if (left) {
       ok = true;
       usedRecovery = true;
@@ -127,7 +127,8 @@ export async function startSetupTotpAction(): Promise<TwoFactorState> {
   const challenge = await currentChallenge();
   if (!challenge?.setupRequired) redirect("/autentificare?expirat=1");
   const secret = newTotpSecret();
-  await prisma.user.update({ where: { id: challenge.user.id }, data: { totpSecretEnc: encryptSecret(secret), totpEnabled: false } });
+  // A pending secret: nothing changes until the first code confirms it.
+  await prisma.user.update({ where: { id: challenge.user.id }, data: { pendingTotpSecretEnc: encryptSecret(secret) } });
   return { ok: true, secret, qrSvg: await qrFor(secret, challenge.user.email, challenge.user.church.nume) };
 }
 
@@ -140,10 +141,10 @@ export async function confirmSetupAction(_prev: TwoFactorState, formData: FormDa
   const read = readCode(formData);
   if (read.error !== undefined) return { message: read.error };
   const code = read.code.replace(/\s/g, "");
-  let data: { totpEnabled?: boolean; totpLastStep?: number; emailOtpEnabled?: boolean } | null = null;
-  if (method === "totp" && user.totpSecretEnc) {
-    const step = verifyTotp(decryptSecret(user.totpSecretEnc), code);
-    if (step !== null) data = { totpEnabled: true, totpLastStep: step };
+  let data: { totpEnabled?: boolean; totpLastStep?: number; totpSecretEnc?: string; pendingTotpSecretEnc?: null; emailOtpEnabled?: boolean } | null = null;
+  if (method === "totp" && user.pendingTotpSecretEnc) {
+    const step = verifyTotp(decryptSecret(user.pendingTotpSecretEnc), code);
+    if (step !== null) data = { totpEnabled: true, totpLastStep: step, totpSecretEnc: user.pendingTotpSecretEnc, pendingTotpSecretEnc: null };
   } else if (method === "email" && challenge.emailCodeHash && challenge.emailCodeExpiresAt && challenge.emailCodeExpiresAt > new Date()) {
     if (safeEqual(challenge.emailCodeHash, hashToken(code))) data = { emailOtpEnabled: true };
   }
@@ -151,7 +152,7 @@ export async function confirmSetupAction(_prev: TwoFactorState, formData: FormDa
     await securityAudit(user, user.name, { codGresit: "la configurare" });
     return { message: "Codul nu este corect. Încercați din nou.", qrSvg: _prev.qrSvg, secret: _prev.secret };
   }
-  const recovery = newRecoveryCodes();
+  const recovery = await newRecoveryCodes();
   await prisma.user.update({ where: { id: user.id }, data: { ...data, recoveryCodes: recovery.hashes } });
   await prisma.loginChallenge.update({ where: { id: challenge.id }, data: { verifiedAt: new Date(), setupRequired: false, emailCodeHash: null } });
   await securityAudit(user, user.name, { doiFactori: method === "totp" ? "aplicație activată" : "cod pe e-mail activat", coduriRecuperare: "generate" });
@@ -182,7 +183,9 @@ export async function startTotpAction(_prev: TwoFactorState, formData: FormData)
   const { user, error } = await accountUser(formData);
   if (error) return { message: error };
   const secret = newTotpSecret();
-  await prisma.user.update({ where: { id: user.id }, data: { totpSecretEnc: encryptSecret(secret), totpEnabled: false } });
+  // The new secret waits in pendingTotpSecretEnc: the active one (if any) keeps working until the
+  // first code from the app confirms the new one; an abandoned setup changes nothing.
+  await prisma.user.update({ where: { id: user.id }, data: { pendingTotpSecretEnc: encryptSecret(secret) } });
   return { ok: true, secret, qrSvg: await qrFor(secret, user.email, user.church.nume) };
 }
 
@@ -192,10 +195,13 @@ export async function confirmTotpAction(prev: TwoFactorState, formData: FormData
   if (!current) redirect("/autentificare");
   const user = await prisma.user.findUniqueOrThrow({ where: { id: current.id } });
   const read = readCode(formData);
-  const step = user.totpSecretEnc && read.code !== undefined ? verifyTotp(decryptSecret(user.totpSecretEnc), read.code) : null;
+  const step = user.pendingTotpSecretEnc && read.code !== undefined ? verifyTotp(decryptSecret(user.pendingTotpSecretEnc), read.code) : null;
   if (step === null) return { ...prev, ok: false, message: "Codul nu este corect. Verificați ora telefonului și încercați din nou." };
-  const recovery = user.recoveryCodes.length ? null : newRecoveryCodes();
-  await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: true, totpLastStep: step, ...(recovery ? { recoveryCodes: recovery.hashes } : {}) } });
+  const recovery = user.recoveryCodes.length ? null : await newRecoveryCodes();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { totpEnabled: true, totpLastStep: step, totpSecretEnc: user.pendingTotpSecretEnc, pendingTotpSecretEnc: null, ...(recovery ? { recoveryCodes: recovery.hashes } : {}) },
+  });
   await securityAudit(user, user.name, { doiFactori: "aplicație activată", ...(recovery ? { coduriRecuperare: "generate" } : {}) });
   return { ok: true, message: "Aplicația de autentificare este activă.", recoveryCodes: recovery?.codes };
 }
@@ -223,7 +229,7 @@ export async function setEmailOtpAction(enable: boolean, _prev: TwoFactorState, 
     const refused = await refuseIfLast(user, "email");
     if (refused) return { message: refused };
   }
-  const recovery = enable && !user.recoveryCodes.length ? newRecoveryCodes() : null;
+  const recovery = enable && !user.recoveryCodes.length ? await newRecoveryCodes() : null;
   await prisma.user.update({ where: { id: user.id }, data: { emailOtpEnabled: enable, ...(recovery ? { recoveryCodes: recovery.hashes } : {}) } });
   await securityAudit(user, user.name, { doiFactori: enable ? "cod pe e-mail activat" : "cod pe e-mail dezactivat" });
   return { ok: true, message: enable ? "Codul pe e-mail este activ." : "Codul pe e-mail a fost dezactivat.", recoveryCodes: recovery?.codes };
@@ -233,7 +239,7 @@ export async function regenerateRecoveryCodesAction(_prev: TwoFactorState, formD
   const { user, error } = await accountUser(formData);
   if (error) return { message: error };
   if (!hasSecondFactor(user)) return { message: "Activați întâi o metodă de autentificare în doi pași." };
-  const recovery = newRecoveryCodes();
+  const recovery = await newRecoveryCodes();
   await prisma.user.update({ where: { id: user.id }, data: { recoveryCodes: recovery.hashes } });
   await securityAudit(user, user.name, { coduriRecuperare: "regenerate" });
   return { ok: true, message: "Codurile vechi nu mai sunt valabile.", recoveryCodes: recovery.codes };

@@ -12,6 +12,7 @@ import { prisma } from "@/server/db";
 import { isEmailConfigured } from "@/server/email";
 
 export const metadata: Metadata = { title: "Contul meu" };
+import { hasLegacyRecoveryCodes } from "@/server/two-factor";
 
 export default async function AccountPage({ searchParams }: PageProps<"/cont">) {
   const user = await requireUser();
@@ -49,6 +50,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
         totpEnabled={security.totpEnabled}
         emailOtpEnabled={security.emailOtpEnabled}
         recoveryLeft={security.recoveryCodes.length}
+        recoveryLegacy={hasLegacyRecoveryCodes(security.recoveryCodes)}
         emailConfigured={isEmailConfigured()}
         required={security.church.require2fa}
       />

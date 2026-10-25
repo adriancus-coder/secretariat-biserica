@@ -21,10 +21,23 @@ function normalize(password: string) {
   return password.normalize("NFKC");
 }
 
-export async function hashPassword(password: string): Promise<string> {
+async function hashWith(secret: string, params: { N: number; r: number; p: number }): Promise<string> {
   const salt = randomBytes(16);
-  const key = await scrypt(normalize(password), salt, KEY_LENGTH, { ...PARAMS, maxmem: MAX_MEM });
-  return ["scrypt", PARAMS.N, PARAMS.r, PARAMS.p, salt.toString("base64"), key.toString("base64")].join("$");
+  const key = await scrypt(normalize(secret), salt, KEY_LENGTH, { ...params, maxmem: MAX_MEM });
+  return ["scrypt", params.N, params.r, params.p, salt.toString("base64"), key.toString("base64")].join("$");
+}
+
+export function hashPassword(password: string): Promise<string> {
+  return hashWith(password, PARAMS);
+}
+
+/**
+ * Lighter scrypt (N=2^14, r=8, p=1 ≈ 16 MiB) for random, high-entropy secrets checked several at a
+ * time (2FA recovery codes). Same stored format; verified with verifyPassword.
+ */
+const SECRET_PARAMS = { N: 2 ** 14, r: 8, p: 1 } as const;
+export function hashSecret(secret: string): Promise<string> {
+  return hashWith(secret, SECRET_PARAMS);
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {

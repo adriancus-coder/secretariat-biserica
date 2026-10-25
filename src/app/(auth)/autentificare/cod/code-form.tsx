@@ -19,8 +19,8 @@ export function CodeForm({ canEmail }: { canEmail: boolean }) {
           autoComplete="one-time-code"
           autoFocus
           required
-          maxLength={12}
-          hint="Puteți folosi și un cod de recuperare (de forma abcd-efgh)."
+          maxLength={20}
+          hint="Puteți folosi și un cod de recuperare (de forma abcd-efgh-jkmn)."
         />
         <FormMessage state={state} />
         <button type="submit" className="btn btn-primary w-full" disabled={pending}>
