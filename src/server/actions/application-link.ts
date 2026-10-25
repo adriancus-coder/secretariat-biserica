@@ -22,7 +22,7 @@ export async function sendApplicationLinkAction(_prev: FormState, formData: Form
     if (!sendLimiter().hit(ctx.user.churchId)) {
       throw new ActionError("Au fost trimise prea multe e-mailuri în ultima oră. Încercați din nou mai târziu.");
     }
-    const delivery = await sendApplicationLinkEmail({ to: input.to, subject: input.subiect, message: input.mesaj, slug: church.slug });
+    const delivery = await sendApplicationLinkEmail({ to: input.to, churchName: church.nume, note: input.nota, slug: church.slug });
     const sent = delivery.result === "sent";
     const n = input.to.length;
     const count = n === 1 ? "o adresă" : `${n} adrese`;

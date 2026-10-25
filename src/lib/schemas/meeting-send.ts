@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { longText, requiredText } from "../validation";
+import { longText } from "../validation";
+
+/** The editable note of a message sent from the app (see framedEmail). */
+export const NOTE_MAX = 1000;
 
 export const SEND_MAX_RECIPIENTS = 50;
 
@@ -12,15 +15,14 @@ const isEmail = (a: string) => z.email().safeParse(a).success;
 
 /**
  * The "Trimite" dialog: the ticked recipients (`catre`, one value per chip), the free
- * `alte` addresses, the subject, the message and the PDF checkbox. Recipients come out
- * lower-case and deduplicated.
+ * `alte` addresses, the optional note (the subject and the rest of the message are fixed) and the
+ * PDF checkbox. Recipients come out lower-case and deduplicated.
  */
 export const meetingSendSchema = z
   .object({
     catre: z.array(z.string()),
     alte: z.string(),
-    subiect: requiredText(200, "Subiectul este obligatoriu.", "Subiectul"),
-    mesaj: longText(5000, "Mesajul"),
+    nota: longText(NOTE_MAX, "Mesajul"),
     pdf: z.boolean(),
   })
   .transform((v, ctx) => {
@@ -38,15 +40,14 @@ export const meetingSendSchema = z
       ctx.addIssue({ code: "custom", path: ["alte"], message: `Cel mult ${SEND_MAX_RECIPIENTS} de destinatari într-un mesaj.` });
       return z.NEVER;
     }
-    return { to, subiect: v.subiect, mesaj: v.mesaj, pdf: v.pdf };
+    return { to, nota: v.nota, pdf: v.pdf };
   });
 
 export function meetingSendInput(formData: FormData) {
   return {
     catre: formData.getAll("catre").filter((x): x is string => typeof x === "string"),
     alte: String(formData.get("alte") ?? ""),
-    subiect: formData.get("subiect"),
-    mesaj: formData.get("mesaj"),
+    nota: formData.get("nota"),
     pdf: formData.get("pdf") === "on",
   };
 }
@@ -55,15 +56,4 @@ export function meetingSendInput(formData: FormData) {
 export function defaultSendSubject(m: { nr: number | null; anRegistru: number | null; dataLabel: string }, churchName: string): string {
   const what = m.nr !== null ? `Proces-verbal nr. ${m.nr}/${m.anRegistru}` : `Proces-verbal din ${m.dataLabel}`;
   return churchName ? `${what} — ${churchName}` : what;
-}
-
-export function defaultSendMessage(m: { tip: string; dataLabel: string }, churchName: string): string {
-  return [
-    "Bună ziua,",
-    "",
-    `Vă transmitem atașat procesul-verbal al ședinței (${m.tip}) din ${m.dataLabel}.`,
-    "",
-    "Cu stimă,",
-    churchName ? `Secretariatul bisericii ${churchName}` : "Secretariatul bisericii",
-  ].join("\n");
 }

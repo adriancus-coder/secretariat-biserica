@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultSendSubject, meetingSendSchema, splitAddresses } from "./meeting-send";
 
-const base = { catre: [], alte: "", subiect: "S", mesaj: "M", pdf: true };
+const base = { catre: [], alte: "", nota: "M", pdf: true };
 
 describe("meeting send form", () => {
   it("merges chips and free addresses, lower-case and deduplicated", () => {
@@ -16,8 +16,9 @@ describe("meeting send form", () => {
     expect(meetingSendSchema.safeParse(base).error?.issues[0].message).toBe("Alegeți cel puțin un destinatar.");
   });
 
-  it("requires a subject", () => {
-    expect(meetingSendSchema.safeParse({ ...base, catre: ["a@x.ro"], subiect: " " }).success).toBe(false);
+  it("keeps only a note of at most 1000 characters (the subject is fixed)", () => {
+    expect(meetingSendSchema.safeParse({ ...base, catre: ["a@x.ro"], nota: "" }).success).toBe(true);
+    expect(meetingSendSchema.safeParse({ ...base, catre: ["a@x.ro"], nota: "x".repeat(1001) }).success).toBe(false);
   });
 
   it("splits on commas, semicolons, spaces and new lines", () => {

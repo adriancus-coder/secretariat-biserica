@@ -13,8 +13,8 @@ import { dotDateTime } from "@/lib/dates";
 import { fmtDot } from "@/domain/print";
 import { Signatures } from "./signatures";
 import { SendMinutesButton, ShareMinutesButton, type Recipient } from "./send-minutes";
-import { defaultSendMessage, defaultSendSubject } from "@/lib/schemas/meeting-send";
-import { isEmailConfigured } from "@/server/email";
+import { defaultSendSubject } from "@/lib/schemas/meeting-send";
+import { minutesLines, isEmailConfigured } from "@/server/email";
 import { meetingPdfFileName } from "@/server/pdf/meeting";
 import { getChurch } from "@/server/queries/church";
 import { AssignNumberButton } from "./assign-number";
@@ -69,7 +69,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             configured={isEmailConfigured()}
             recipients={recipients}
             subject={defaultSendSubject({ ...x, dataLabel }, church.nume)}
-            message={defaultSendMessage({ tip: x.tip, dataLabel }, church.nume)}
+            frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true }).join(" ")}`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
           />
         ) : null}
         {canEdit && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
@@ -166,7 +166,9 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
           <ul className="send-list">
             {x.sends.map((s) => (
               <li key={s.id}>
-                {s.status === "SENT" ? "Trimis" : <span className="tag tag-warn">Netrimis</span>} la {s.to.join(", ")}
+                {s.status === "SENT" ? "Trimis" : <span className="tag tag-warn">Netrimis</span>} la{" "}
+                {/* The addresses only for those who may send; viewers see how many. */}
+                {canWrite ? s.to.join(", ") : s.to.length === 1 ? "o adresă" : `${s.to.length} adrese`}
                 <span className="block text-xs text-ink-3">
                   {dotDateTime(s.sentAt)}
                   {s.sentBy ? ` · ${s.sentBy.name}` : ""}

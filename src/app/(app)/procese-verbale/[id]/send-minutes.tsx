@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/shell/icons";
-import { TextAreaField, TextField } from "@/components/ui/fields";
+import { TextAreaField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { sendMinutesAction } from "@/server/actions/meeting-send";
@@ -20,14 +20,16 @@ export function SendMinutesButton({
   configured,
   recipients,
   subject,
-  message,
+  frame,
 }: {
   meetingId: string;
   /** False when e-mail is not set up: the button is disabled with a note. */
   configured: boolean;
   recipients: Recipient[];
+  /** The fixed subject. */
   subject: string;
-  message: string;
+  /** The fixed start and end of the message, shown around the editable note. */
+  frame: { start: string; end: string };
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   // A new key remounts the form, so every opening starts from the defaults.
@@ -63,7 +65,7 @@ export function SendMinutesButton({
           meetingId={meetingId}
           recipients={recipients}
           subject={subject}
-          message={message}
+          frame={frame}
           onClose={() => dialog.current?.close()}
         />
       </dialog>
@@ -75,13 +77,13 @@ function SendForm({
   meetingId,
   recipients,
   subject,
-  message,
+  frame,
   onClose,
 }: {
   meetingId: string;
   recipients: Recipient[];
   subject: string;
-  message: string;
+  frame: { start: string; end: string };
   onClose: () => void;
 }) {
   const { state, pending, onSubmit } = useActionForm(sendMinutesAction.bind(null, meetingId));
@@ -125,8 +127,18 @@ function SendForm({
         autoComplete="off"
         spellCheck={false}
       />
-      <TextField name="subiect" label="Subiect" defaultValue={subject} error={e.subiect} required maxLength={200} />
-      <TextAreaField name="mesaj" label="Mesaj" defaultValue={message} error={e.mesaj} rows={6} maxLength={5000} />
+      <p className="hint mb-2">
+        Subiect: <b>{subject}</b>
+      </p>
+      <TextAreaField
+        name="nota"
+        label="Mesaj (opțional)"
+        defaultValue={state.values?.nota ?? ""}
+        error={e.nota}
+        rows={4}
+        maxLength={1000}
+        hint={`E-mailul începe cu „${frame.start}” și se încheie cu „${frame.end}”. Aici puteți adăuga câteva rânduri (cel mult 1000 de caractere).`}
+      />
       <label className="choice">
         <input type="checkbox" name="pdf" defaultChecked />
         <span className="tick" aria-hidden="true">

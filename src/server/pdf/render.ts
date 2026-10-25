@@ -268,13 +268,14 @@ export function pdfFileName(base: string): string {
 }
 
 /** Răspunsul HTTP cu PDF-ul (afișat în browser, cu opțiunea de descărcare). */
-export function pdfResponse(pdf: Buffer, fileName: string, download = false): Response {
+export function pdfResponse(pdf: Buffer, fileName: string, download = false, extraHeaders: Record<string, string> = {}): Response {
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
+      ...extraHeaders,
     },
   });
 }

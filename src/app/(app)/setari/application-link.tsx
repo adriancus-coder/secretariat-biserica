@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/shell/icons";
 import { CopyButton } from "@/components/ui/copy-button";
-import { TextAreaField, TextField } from "@/components/ui/fields";
+import { TextAreaField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { sendApplicationLinkAction } from "@/server/actions/application-link";
@@ -18,12 +18,13 @@ export interface ApplicationLinkProps {
   qrPng: string;
   open: boolean;
   emailConfigured: boolean;
+  /** The fixed subject and the fixed start and end of the message. */
   subject: string;
-  message: string;
+  frame: { start: string; end: string };
 }
 
 /** QR code of the public application link, with download, copy, share, poster and e-mail. */
-export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured, subject, message }: ApplicationLinkProps) {
+export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured, subject, frame }: ApplicationLinkProps) {
   return (
     <div className="card application-link">
       <h3>Linkul cererii de membru</h3>
@@ -52,7 +53,7 @@ export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured
             <a className="btn" href="/pdf/afis-cerere" target="_blank" rel="noopener">
               Afiș PDF
             </a>
-            <SendLinkButton configured={emailConfigured} subject={subject} message={message} />
+            <SendLinkButton configured={emailConfigured} subject={subject} frame={frame} />
           </div>
         </div>
       </div>
@@ -97,7 +98,7 @@ function ShareButton({ url }: { url: string }) {
   );
 }
 
-function SendLinkButton({ configured, subject, message }: { configured: boolean; subject: string; message: string }) {
+function SendLinkButton({ configured, subject, frame }: { configured: boolean; subject: string; frame: { start: string; end: string } }) {
   const dialog = useRef<HTMLDialogElement>(null);
   // A new key remounts the form, so every opening starts from the defaults.
   const [formKey, setFormKey] = useState(0);
@@ -132,7 +133,7 @@ function SendLinkButton({ configured, subject, message }: { configured: boolean;
       {mounted
         ? createPortal(
             <dialog ref={dialog} className="dialog" aria-labelledby="link-send-title">
-              <SendLinkForm key={formKey} subject={subject} message={message} onClose={() => dialog.current?.close()} />
+              <SendLinkForm key={formKey} subject={subject} frame={frame} onClose={() => dialog.current?.close()} />
             </dialog>,
             document.body,
           )
@@ -141,7 +142,7 @@ function SendLinkButton({ configured, subject, message }: { configured: boolean;
   );
 }
 
-function SendLinkForm({ subject, message, onClose }: { subject: string; message: string; onClose: () => void }) {
+function SendLinkForm({ subject, frame, onClose }: { subject: string; frame: { start: string; end: string }; onClose: () => void }) {
   const { state, pending, onSubmit } = useActionForm(sendApplicationLinkAction);
   const e = state.errors ?? {};
   useEffect(() => {
@@ -165,15 +166,17 @@ function SendLinkForm({ subject, message, onClose }: { subject: string; message:
         autoComplete="off"
         spellCheck={false}
       />
-      <TextField name="subiect" label="Subiect" defaultValue={state.values?.subiect ?? subject} error={e.subiect} required maxLength={200} />
+      <p className="hint mb-2">
+        Subiect: <b>{subject}</b>
+      </p>
       <TextAreaField
-        name="mesaj"
-        label="Mesaj"
-        defaultValue={state.values?.mesaj ?? message}
-        error={e.mesaj}
-        rows={7}
-        maxLength={3000}
-        hint="„[link]” se înlocuiește cu adresa cererii."
+        name="nota"
+        label="Mesaj (opțional)"
+        defaultValue={state.values?.nota ?? ""}
+        error={e.nota}
+        rows={4}
+        maxLength={1000}
+        hint={`E-mailul începe cu „${frame.start}”, conține linkul și se încheie cu „${frame.end}”. Aici puteți adăuga câteva rânduri (cel mult 1000 de caractere).`}
       />
       <div className="actions">
         <button type="submit" className="btn btn-primary" disabled={pending || state.ok}>

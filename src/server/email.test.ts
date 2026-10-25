@@ -4,7 +4,8 @@ import {
   dedupeRecipients,
   invitationEmail,
   MAX_ATTACHMENT_BYTES,
-  minutesEmail,
+  EMAIL_NOTE_MAX,
+  framedEmail,
   isEmailConfigured,
   newApplicationEmail,
   passwordResetEmail,
@@ -199,7 +200,10 @@ describe("minutes", () => {
   const minutes = {
     to: ["Pastor@Example.org", "secretar@example.org", " pastor@example.org ", ""],
     subject: "Proces-verbal nr. 16/2026 — Maranata Stavanger",
-    message: `Bună ziua,\n\nVă trimit procesul-verbal.\n${SECRET_TEXT}`,
+    churchName: "Maranata Stavanger",
+    tip: "Comitet",
+    dataLabel: "11.09.2026",
+    note: `Vă rog să citiți punctul 3.\n${SECRET_TEXT}`,
     attachment: { filename: "PV-16-2026-maranata-stavanger.pdf", content: Buffer.from("%PDF-1.7 fake") },
   };
 
@@ -213,6 +217,22 @@ describe("minutes", () => {
     expect(payload.attachments).toHaveLength(1);
     expect(payload.attachments[0].filename).toBe("PV-16-2026-maranata-stavanger.pdf");
     expect(Buffer.isBuffer(payload.attachments[0].content)).toBe(true);
+    // Fixed frame around the note: greeting, the fixed line, the note, the signature, the app footer.
+    expect(payload.text).toBe(
+      [
+        "Bună ziua,",
+        "",
+        "Vă transmitem procesul-verbal al ședinței (Comitet) din 11.09.2026.",
+        "Îl găsiți atașat, în format PDF.",
+        "",
+        minutes.note,
+        "",
+        "Cu stimă,",
+        "Secretariatul bisericii Maranata Stavanger",
+        "",
+        "— trimis din Secretariat Biserică",
+      ].join("\n"),
+    );
   });
 
   it("sends without attachment when none is given", async () => {
@@ -249,12 +269,16 @@ describe("minutes", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("dedupes case-insensitively and escapes the message in HTML", () => {
+  it("dedupes case-insensitively, escapes the note in HTML and caps it at 1000 characters", () => {
     expect(dedupeRecipients(["A@x.ro", "a@X.ro", "b@x.ro"])).toEqual(["a@x.ro", "b@x.ro"]);
-    const { html, text } = minutesEmail({ subject: "S", message: "<b>Salut</b>\nrând 2\n\nParagraf" });
-    expect(text).toBe("<b>Salut</b>\nrând 2\n\nParagraf");
+    const { html, text } = framedEmail({ subject: "S", churchName: "M", lines: ["Linie fixă."], note: "<b>Salut</b>\nrând 2\n\nParagraf" });
+    expect(text).toContain("<b>Salut</b>\nrând 2\n\nParagraf");
     expect(html).toContain("&lt;b&gt;Salut&lt;/b&gt;<br>rând 2</p>");
     expect(html).toContain(">Paragraf</p>");
+    expect(html).not.toContain("<b>Salut</b>");
+    const long = framedEmail({ subject: "S", churchName: "M", lines: [], note: "x".repeat(EMAIL_NOTE_MAX + 50) }).text;
+    expect(long).toContain("x".repeat(EMAIL_NOTE_MAX));
+    expect(long).not.toContain("x".repeat(EMAIL_NOTE_MAX + 1));
   });
 });
 
@@ -272,21 +296,35 @@ describe("login code", () => {
 });
 
 describe("application link", () => {
-  const link = { to: ["Ana@Example.org", "ion@example.no"], subject: "Cerere de membru — Biserica Maranata", message: "Bună ziua,\n\nCererea: [link]\n\nCu stimă", slug: "maranata-stavanger" };
+  const link = { to: ["Ana@Example.org", "ion@example.no"], churchName: "Maranata", note: "Vă așteptăm duminică.", slug: "maranata-stavanger" };
 
-  it("sends one message to both recipients with the link built from APP_URL", async () => {
+  it("sends one message to both recipients: fixed subject, the link from APP_URL, the note in the middle", async () => {
     await expect(sendApplicationLinkEmail(link)).resolves.toEqual({ result: "sent", id: "em_123" });
     expect(send).toHaveBeenCalledTimes(1);
     const payload = send.mock.calls[0][0];
     expect(payload.to).toEqual(["ana@example.org", "ion@example.no"]);
-    expect(payload.text).toContain(`Cererea: ${APP_URL}/cerere/maranata-stavanger`);
-    expect(payload.text).not.toContain("[link]");
+    expect(payload.subject).toBe("Cerere de membru — Biserica Maranata");
+    expect(payload.text).toBe(
+      [
+        "Bună ziua,",
+        "",
+        "Puteți completa cererea de membru a bisericii Maranata online, la adresa:",
+        `${APP_URL}/cerere/maranata-stavanger`,
+        "",
+        "Vă așteptăm duminică.",
+        "",
+        "Cu stimă,",
+        "Secretariatul bisericii Maranata",
+        "",
+        "— trimis din Secretariat Biserică",
+      ].join("\n"),
+    );
     expect(loggedText()).not.toMatch(/ana@example|ion@example/i);
   });
 
-  it("appends the link when the message lost it, and is disabled without a key", async () => {
-    await sendApplicationLinkEmail({ ...link, message: "Bună ziua" });
-    expect(send.mock.calls[0][0].text).toBe(`Bună ziua\n\n${APP_URL}/cerere/maranata-stavanger`);
+  it("works without a note, and is disabled without a key", async () => {
+    await sendApplicationLinkEmail({ ...link, note: "" });
+    expect(send.mock.calls[0][0].text).not.toContain("duminică");
     vi.stubEnv("RESEND_API_KEY", "");
     send.mockClear();
     await expect(sendApplicationLinkEmail(link)).resolves.toEqual({ result: "disabled" });

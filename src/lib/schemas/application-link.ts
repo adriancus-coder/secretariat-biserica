@@ -1,17 +1,16 @@
 import { z } from "zod";
-import { longText, requiredText } from "../validation";
-import { splitAddresses } from "./meeting-send";
+import { longText } from "../validation";
+import { NOTE_MAX, splitAddresses } from "./meeting-send";
 
 export const LINK_SEND_MAX_RECIPIENTS = 20;
 
 const isEmail = (a: string) => z.email().safeParse(a).success;
 
-/** "Trimite linkul pe e-mail": one or more addresses, the subject and the editable message. */
+/** "Trimite linkul pe e-mail": one or more addresses and the optional note (subject and frame are fixed). */
 export const applicationLinkSendSchema = z
   .object({
     adrese: z.string(),
-    subiect: requiredText(200, "Subiectul este obligatoriu.", "Subiectul"),
-    mesaj: longText(3000, "Mesajul"),
+    nota: longText(NOTE_MAX, "Mesajul"),
   })
   .transform((v, ctx) => {
     const list = splitAddresses(v.adrese);
@@ -29,26 +28,9 @@ export const applicationLinkSendSchema = z
       ctx.addIssue({ code: "custom", path: ["adrese"], message: `Cel mult ${LINK_SEND_MAX_RECIPIENTS} de adrese într-un mesaj.` });
       return z.NEVER;
     }
-    return { to, subiect: v.subiect, mesaj: v.mesaj };
+    return { to, nota: v.nota };
   });
 
 export function applicationLinkSendInput(formData: FormData) {
-  return { adrese: String(formData.get("adrese") ?? ""), subiect: formData.get("subiect"), mesaj: formData.get("mesaj") };
-}
-
-export function defaultLinkSubject(churchName: string): string {
-  return churchName ? `Cerere de membru — Biserica ${churchName}` : "Cerere de membru";
-}
-
-/** The default message; `[link]` is replaced by the application link when sending. */
-export function defaultLinkMessage(churchName: string): string {
-  return [
-    "Bună ziua,",
-    "",
-    `Puteți completa cererea de membru a bisericii${churchName ? ` ${churchName}` : ""} online, la adresa:`,
-    "[link]",
-    "",
-    "Cu stimă,",
-    churchName ? `Secretariatul bisericii ${churchName}` : "Secretariatul bisericii",
-  ].join("\n");
+  return { adrese: String(formData.get("adrese") ?? ""), nota: formData.get("nota") };
 }

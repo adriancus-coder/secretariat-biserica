@@ -17,8 +17,7 @@ import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
 import { ApplicationLink } from "./application-link";
 import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
-import { isEmailConfigured } from "@/server/email";
-import { defaultLinkMessage, defaultLinkSubject } from "@/lib/schemas/application-link";
+import { applicationLinkSubject, isEmailConfigured } from "@/server/email";
 
 export const metadata: Metadata = { title: "Setări" };
 
@@ -37,8 +36,8 @@ export default async function SettingsPage() {
       qrPng={`data:image/png;base64,${(await applicationQrPng(formUrl)).toString("base64")}`}
       open={church.applicationsOpen}
       emailConfigured={isEmailConfigured()}
-      subject={defaultLinkSubject(church.nume)}
-      message={defaultLinkMessage(church.nume)}
+      subject={applicationLinkSubject(church.nume)}
+      frame={{ start: `Bună ziua, Puteți completa cererea de membru a bisericii ${church.nume} online, la adresa:`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
     />
   ) : null;
   return (

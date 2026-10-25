@@ -303,25 +303,50 @@ export function dedupeRecipients(list: readonly string[]): string[] {
   return [...new Set(list.map((a) => a.trim().toLowerCase()).filter(Boolean))];
 }
 
-/** The message typed in the dialog, as plain text and as HTML paragraphs (one per blank-line block). */
-export function minutesEmail(p: { subject: string; message: string }): EmailContent {
-  const paragraphs = p.message.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+/** The editable part of a message sent from the app (plain text; escaped in the HTML). */
+export const EMAIL_NOTE_MAX = 1000;
+
+/**
+ * A message sent from the app to free addresses (minutes, application link): only the middle note is
+ * written by the user; the greeting, the fixed lines (with the link) and the signature with the church
+ * name and "trimis din Secretariat Biserică" are always the same, so the app cannot be used to send
+ * arbitrary mail in the church's name.
+ */
+export function framedEmail(p: { subject: string; churchName: string; lines: string[]; note: string }): EmailContent {
+  const note = p.note.replace(/\r\n/g, "\n").trim().slice(0, EMAIL_NOTE_MAX);
+  const signature = p.churchName ? `Secretariatul bisericii ${p.churchName}` : "Secretariatul bisericii";
+  const footer = "— trimis din Secretariat Biserică";
+  const noteParagraphs = note ? note.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean) : [];
   return {
     subject: p.subject,
-    text: p.message,
-    html: htmlLayout(paragraphs.map((b) => htmlParagraph(esc(b).replace(/\n/g, "<br>")))),
+    text: ["Bună ziua,", "", ...p.lines, ...(note ? ["", note] : []), "", "Cu stimă,", signature, "", footer].join("\n"),
+    html: htmlLayout([
+      htmlParagraph("Bună ziua,"),
+      ...p.lines.map((l) => htmlParagraph(/^https?:\/\//.test(l) ? `<a href="${esc(l)}">${esc(l)}</a>` : esc(l))),
+      ...noteParagraphs.map((b) => htmlParagraph(esc(b).replace(/\n/g, "<br>"))),
+      htmlParagraph(`Cu stimă,<br>${esc(signature)}`),
+      htmlParagraph(esc(footer), MUTED),
+    ]),
   };
 }
 
+/** The fixed lines of the minutes e-mail. */
+export function minutesLines(p: { tip: string; dataLabel: string; withPdf: boolean }): string[] {
+  return [`Vă transmitem procesul-verbal al ședinței (${p.tip}) din ${p.dataLabel}.`, ...(p.withPdf ? ["Îl găsiți atașat, în format PDF."] : [])];
+}
+
 /**
- * E-mails the minutes to all recipients in one message, with the PDF attached when given.
- * Never throws; the log line carries only the outcome and the provider's id, never the
- * recipients or the content.
+ * E-mails the minutes to all recipients in one message, with the PDF attached when given. Fixed
+ * subject and frame; only `note` is the user's. Never throws; the log line carries only the outcome
+ * and the provider's id, never the recipients or the content.
  */
 export async function sendMinutesEmail(p: {
   to: string[];
   subject: string;
-  message: string;
+  churchName: string;
+  tip: string;
+  dataLabel: string;
+  note: string;
   attachment?: Attachment;
 }): Promise<Delivery> {
   const config = emailConfig();
@@ -329,29 +354,29 @@ export async function sendMinutesEmail(p: {
   const to = dedupeRecipients(p.to);
   if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
   if (p.attachment && p.attachment.content.length > MAX_ATTACHMENT_BYTES) return { result: "failed", error: "attachment_too_large" };
-  return send(config, "minutes", to, minutesEmail(p), to, p.attachment ? [p.attachment] : undefined);
+  const content = framedEmail({ subject: p.subject, churchName: p.churchName, lines: minutesLines({ tip: p.tip, dataLabel: p.dataLabel, withPdf: Boolean(p.attachment) }), note: p.note });
+  return send(config, "minutes", to, content, to, p.attachment ? [p.attachment] : undefined);
 }
 
 // ---------- Public application link ----------
 
-/** Placeholder for the link in the editable message; replaced by the link built from APP_URL. */
-export const APPLICATION_LINK_PLACEHOLDER = "[link]";
+export function applicationLinkSubject(churchName: string): string {
+  return churchName ? `Cerere de membru — Biserica ${churchName}` : "Cerere de membru";
+}
 
 /**
- * E-mails the link of the public membership application to all recipients in one message.
- * The link is built only from APP_URL; `[link]` in the message is replaced by it, and it is
- * appended when the message does not contain it. Never throws; recipients are never logged.
+ * E-mails the link of the public membership application to all recipients in one message. Fixed
+ * subject and frame; the link is built only from APP_URL; only `note` is the user's. Never throws;
+ * recipients are never logged.
  */
-export async function sendApplicationLinkEmail(p: { to: string[]; subject: string; message: string; slug: string }): Promise<Delivery> {
+export async function sendApplicationLinkEmail(p: { to: string[]; churchName: string; note: string; slug: string }): Promise<Delivery> {
   const config = emailConfig();
   if (!config) return { result: disabled() };
   const to = dedupeRecipients(p.to);
   if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
   const link = new URL(`/cerere/${p.slug}`, config.appUrl).toString();
-  const message = p.message.includes(APPLICATION_LINK_PLACEHOLDER)
-    ? p.message.split(APPLICATION_LINK_PLACEHOLDER).join(link)
-    : `${p.message.trim()}\n\n${link}`;
-  return send(config, "application-link", to, minutesEmail({ subject: p.subject, message }), to);
+  const lines = [`Puteți completa cererea de membru a bisericii${p.churchName ? ` ${p.churchName}` : ""} online, la adresa:`, link];
+  return send(config, "application-link", to, framedEmail({ subject: applicationLinkSubject(p.churchName), churchName: p.churchName, lines, note: p.note }), to);
 }
 
 // ---------- Signup with an address that already has an account ----------

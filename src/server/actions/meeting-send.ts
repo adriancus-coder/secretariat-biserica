@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
-import { meetingSendInput, meetingSendSchema } from "@/lib/schemas/meeting-send";
+import { defaultSendSubject, meetingSendInput, meetingSendSchema } from "@/lib/schemas/meeting-send";
+import { fmtDot } from "@/domain/print";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { isEmailConfigured, MAX_ATTACHMENT_BYTES, sendMinutesEmail } from "../email";
@@ -38,7 +39,16 @@ export async function sendMinutesAction(meetingId: string, _prev: FormState, for
       throw new ActionError("Au fost trimise prea multe e-mailuri în ultima oră. Încercați din nou mai târziu.");
     }
 
-    const delivery = await sendMinutesEmail({ to: input.to, subject: input.subiect, message: input.mesaj, attachment });
+    const dataLabel = fmtDot(m.data);
+    const delivery = await sendMinutesEmail({
+      to: input.to,
+      subject: defaultSendSubject({ nr: m.nr, anRegistru: m.anRegistru, dataLabel }, church.nume),
+      churchName: church.nume,
+      tip: m.tip,
+      dataLabel,
+      note: input.nota,
+      attachment,
+    });
     const sent = delivery.result === "sent";
     const label = `${m.nr != null ? `PV nr. ${m.nr}/${m.anRegistru} — ` : ""}${m.titlu || m.tip} (${m.data})`;
     await ctx.db.$transaction(async (tx) => {
@@ -63,8 +73,9 @@ export async function sendMinutesAction(meetingId: string, _prev: FormState, for
         entityLabel: label,
         action: "UPDATE",
         fields: [],
+        // The number of recipients only: the addresses stay on the send row (shown to write roles).
         extra: {
-          trimis: input.to.join(", "),
+          trimis: input.to.length === 1 ? "o adresă" : `${input.to.length} adrese`,
           rezultat: sent ? (attachment ? "trimis cu PDF" : "trimis fără PDF") : "netrimis",
         },
       });
