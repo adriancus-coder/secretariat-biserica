@@ -191,3 +191,32 @@ export const DISCIPLINARY_STATE_LABEL: Record<DisciplinaryStateKey, string> = {
 export const DISCIPLINARY_FORUMS = ["LOCAL", "COMUNITATE"] as const;
 export type DisciplinaryForumKey = (typeof DISCIPLINARY_FORUMS)[number];
 export const DISCIPLINARY_FORUM_LABEL: Record<DisciplinaryForumKey, string> = { LOCAL: "Biserica locală", COMUNITATE: "Comunitatea" };
+
+/** The privacy notice and the four optional consents (privacy notice 1.1, point 3 d). */
+export const CONSENT_KINDS = ["INFO_NOTE", "PHOTOS", "BIRTHDAY", "CONTACT", "DIRECTORY"] as const;
+export type ConsentKindKey = (typeof CONSENT_KINDS)[number];
+export const OPTIONAL_CONSENTS = ["PHOTOS", "BIRTHDAY", "CONTACT", "DIRECTORY"] as const satisfies readonly ConsentKindKey[];
+export type OptionalConsentKey = (typeof OPTIONAL_CONSENTS)[number];
+/** Short names (person page, exports, totals). */
+export const CONSENT_LABEL: Record<ConsentKindKey, string> = {
+  INFO_NOTE: "Nota de informare",
+  PHOTOS: "Fotografii și filmări",
+  BIRTHDAY: "Ziua de naștere anunțată",
+  CONTACT: "Anunțuri prin WhatsApp, SMS sau e-mail",
+  DIRECTORY: "În lista de contacte a bisericii",
+};
+/** The questions of the form, as the person reads them. */
+export const CONSENT_QUESTION: Record<OptionalConsentKey, string> = {
+  PHOTOS: "Fotografii și filmări în care apar în mod individualizat (de exemplu în prim-plan, la botez, în postări pe site sau rețele sociale) pot fi publicate",
+  BIRTHDAY: "Ziua mea de naștere poate fi anunțată în biserică",
+  CONTACT: "Pot fi contactat(ă) pentru anunțuri prin WhatsApp, SMS sau e-mail",
+  DIRECTORY: "Telefonul și adresa mea pot apărea în lista de contacte a bisericii, vizibilă membrilor",
+};
+/** The same questions about a minor child, answered by the parent. */
+export const CONSENT_QUESTION_CHILD: Record<OptionalConsentKey, string> = {
+  PHOTOS: "Fotografii și filmări în care apare copilul în mod individualizat pot fi publicate",
+  BIRTHDAY: "Ziua de naștere a copilului poate fi anunțată în biserică",
+  CONTACT: "Copilul poate fi contactat pentru anunțuri prin WhatsApp, SMS sau e-mail",
+  DIRECTORY: "Datele de contact ale copilului pot apărea în lista de contacte a bisericii",
+};
+export const CONSENT_SOURCE_LABEL = { ONLINE: "online", PAPER: "pe hârtie", STAFF: "consemnat de secretariat" } as const;

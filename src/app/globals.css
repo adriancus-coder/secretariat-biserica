@@ -1379,6 +1379,59 @@
     color: var(--ok);
   }
 
+  /* Data-update form: changed fields, children, Da / Nu answers (44 px targets). */
+  .field-changed input,
+  .field-changed select {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .field-changed label::after {
+    content: " · modificat";
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .child-block {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    margin-bottom: 14px;
+  }
+  .child-block h4 {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .yes-no {
+    border: 0;
+    padding: 0;
+    margin: 0 0 12px;
+  }
+  .yes-no legend {
+    font-size: 0.9375rem;
+    margin-bottom: 4px;
+  }
+  .yes-no-options {
+    display: flex;
+    gap: 8px;
+  }
+  .yes-no-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    min-width: 88px;
+    padding: 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-weight: 400;
+    margin: 0;
+  }
+  .yes-no-option:has(input:checked) {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .yes-no-option:has(input:checked)::after {
+    content: "✓";
+  }
   /* Data-update campaign: one adult per row, the link actions wrap under the name on phones. */
   .campaign-row {
     flex-wrap: wrap;

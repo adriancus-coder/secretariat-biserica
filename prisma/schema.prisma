@@ -87,6 +87,8 @@ model Church {
   disciplinaryMeasures DisciplinaryMeasure[]
   dataCampaigns   DataCampaign[]
   dataUpdateLinks DataUpdateLink[]
+  dataUpdateSubmissions DataUpdateSubmission[]
+  consents        Consent[]
 
   @@map("churches")
 }
@@ -136,6 +138,8 @@ model User {
   personAliases       PersonAlias[]
   disciplinaryMeasures DisciplinaryMeasure[]
   dataCampaigns       DataCampaign[]
+  submissionsDecided  DataUpdateSubmission[] @relation("SubmissionDecidedBy")
+  consentsRecorded    Consent[]              @relation("ConsentRecordedBy")
 
   @@index([churchId])
   @@map("users")
@@ -296,6 +300,9 @@ model Person {
   /// Administrators only (permission `disciplina`).
   disciplinaryMeasures DisciplinaryMeasure[]
   dataUpdateLinks      DataUpdateLink[]
+  dataUpdateSubmissions DataUpdateSubmission[]
+  consents             Consent[]              @relation("ConsentOf")
+  consentsGivenFor     Consent[]              @relation("ConsentGivenBy")
   /// Groups this person is responsible for.
   responsibleFor Group[]            @relation("GroupResponsabil")
 
@@ -383,7 +390,8 @@ model DataCampaign {
   createdBy          User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
   closedAt           DateTime?
 
-  links DataUpdateLink[]
+  links       DataUpdateLink[]
+  submissions DataUpdateSubmission[]
 
   @@index([churchId, createdAt])
   @@map("data_campaigns")
@@ -412,10 +420,100 @@ model DataUpdateLink {
   revokedAt    DateTime?
   createdAt    DateTime     @default(now())
 
+  submissions DataUpdateSubmission[]
+
   @@unique([campaignId, personId])
   @@index([churchId])
   @@index([personId])
   @@map("data_update_links")
+}
+
+enum SubmissionVia {
+  PERSONAL
+  GENERAL
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  PARTIAL
+  REJECTED
+}
+
+/// What an adult sent through a campaign link: their own data and their minor children's (only the
+/// campaign's fields), the answers to the consents for the general link. Reaches the register only
+/// when the secretary approves it.
+model DataUpdateSubmission {
+  id          String           @id @default(cuid())
+  churchId    String
+  church      Church           @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  campaignId  String
+  campaign    DataCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  linkId      String?
+  link        DataUpdateLink?  @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  /// The adult (personal link) or the person the general link matched; null = not matched.
+  personId    String?
+  person      Person?          @relation(fields: [personId], references: [id], onDelete: SetNull)
+  via         SubmissionVia
+  /// src/lib/schemas/data-update.ts (DataUpdateProposal)
+  proposed    Json
+  status      SubmissionStatus @default(PENDING)
+  decidedAt   DateTime?
+  decidedById String?
+  decidedBy   User?            @relation("SubmissionDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  note        String           @default("")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  consents Consent[]
+
+  @@index([churchId, status])
+  @@index([campaignId])
+  @@index([personId])
+  @@map("data_update_submissions")
+}
+
+enum ConsentKind {
+  INFO_NOTE
+  PHOTOS
+  BIRTHDAY
+  CONTACT
+  DIRECTORY
+}
+
+enum ConsentSource {
+  ONLINE
+  PAPER
+  STAFF
+}
+
+/// One answer to the privacy notice or an optional consent; the current one is the latest per kind.
+model Consent {
+  id              String                @id @default(cuid())
+  churchId        String
+  church          Church                @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  personId        String
+  person          Person                @relation("ConsentOf", fields: [personId], references: [id], onDelete: Cascade)
+  kind            ConsentKind
+  granted         Boolean
+  /// The notice version the answer refers to (the campaign's privacyTextVersion, or the paper form's).
+  textVersion     String                @default("")
+  givenAt         DateTime
+  source          ConsentSource
+  /// The parent who answered for a minor.
+  givenByPersonId String?
+  givenBy         Person?               @relation("ConsentGivenBy", fields: [givenByPersonId], references: [id], onDelete: SetNull)
+  submissionId    String?
+  submission      DataUpdateSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  withdrawnAt     DateTime?
+  createdById     String?
+  createdBy       User?                 @relation("ConsentRecordedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime              @default(now())
+
+  @@index([churchId, kind])
+  @@index([personId, kind])
+  @@index([submissionId])
+  @@map("consents")
 }
 
 model PersonAlias {

@@ -21,6 +21,8 @@ export const TENANT_MODELS = new Set([
   "DisciplinaryMeasure",
   "DataCampaign",
   "DataUpdateLink",
+  "DataUpdateSubmission",
+  "Consent",
 ]);
 
 const WHERE_OPERATIONS = new Set([

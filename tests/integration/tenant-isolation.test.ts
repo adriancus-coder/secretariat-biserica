@@ -181,6 +181,24 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await prisma.dataUpdateLink.findUnique({ where: { id: l.id } })).toBeNull();
   });
 
+  it("campaign submissions and consents are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const c = await a.dataCampaign.create({ data: { nume: "Actualizare", deadline: new Date("2026-12-01"), privacyTextVersion: "v" } as never });
+    const s = await a.dataUpdateSubmission.create({ data: { campaignId: c.id, personId: personA, via: "PERSONAL", proposed: { self: { nume: "Popescu" } } } as never });
+    const k = await a.consent.create({ data: { personId: personA, kind: "PHOTOS", granted: true, givenAt: new Date(), source: "ONLINE", submissionId: s.id } as never });
+    expect([s.churchId, k.churchId]).toEqual([churchA, churchA]);
+    expect(await b.dataUpdateSubmission.findUnique({ where: { id: s.id } })).toBeNull();
+    expect(await b.consent.findFirst({ where: { personId: personA } })).toBeNull();
+    expect([await b.dataUpdateSubmission.count(), await b.consent.count()]).toEqual([0, 0]);
+    expect((await b.dataUpdateSubmission.updateMany({ data: { status: "REJECTED" } })).count).toBe(0);
+    expect((await b.consent.deleteMany({})).count).toBe(0);
+    expect((await prisma.dataUpdateSubmission.findUniqueOrThrow({ where: { id: s.id } })).status).toBe("PENDING");
+    await a.dataCampaign.delete({ where: { id: c.id } });
+    expect((await prisma.consent.findUniqueOrThrow({ where: { id: k.id } })).submissionId).toBeNull();
+    await a.consent.delete({ where: { id: k.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

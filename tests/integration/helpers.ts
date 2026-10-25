@@ -16,7 +16,7 @@ export function testPrisma(): PrismaClient {
 /** Golește toate tabelele (în afara migrațiilor). */
 export async function resetDatabase(prisma: PrismaClient) {
   await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE "data_update_links","data_campaigns","disciplinary_measures","person_aliases","church_documents","meeting_sends","meeting_signatures","person_roles","church_roles","families","applications","audit_logs","notes","group_members","groups","documents","event_contributions","events",
+    `TRUNCATE TABLE "consents","data_update_submissions","data_update_links","data_campaigns","disciplinary_measures","person_aliases","church_documents","meeting_sends","meeting_signatures","person_roles","church_roles","families","applications","audit_logs","notes","group_members","groups","documents","event_contributions","events",
      "meeting_attendees","meetings","persons","password_resets","invitations","users","churches" CASCADE`,
   );
 }

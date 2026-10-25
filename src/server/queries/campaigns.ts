@@ -33,7 +33,9 @@ export async function getCampaign(ctx: Ctx, id: string) {
   });
   if (!c) return null;
   const origin = await requestOrigin();
-  const approved = new Set<string>();
+  const approved = new Set(
+    (await ctx.db.dataUpdateSubmission.findMany({ where: { campaignId: id, status: { in: ["ACCEPTED", "PARTIAL"] }, personId: { not: null } }, select: { personId: true } })).map((s) => s.personId!),
+  );
   const links: CampaignLinkRow[] = c.links
     .sort((a, b) => a.person.sortKey.localeCompare(b.person.sortKey))
     .map((l) => ({
