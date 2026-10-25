@@ -1,3 +1,4 @@
+import { storedVotes } from "@/lib/general-assembly";
 import "server-only";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
@@ -75,6 +76,8 @@ export async function getMeeting(ctx: Ctx, id: string) {
     puncteRich: storedRichList(m.puncteRich, m.puncte.length),
     observatiiRich: storedRich(m.observatiiRich),
     formulaRich: storedRich(m.formulaRich),
+    convocatLa: fromDbDate(m.convocatLa),
+    voturi: storedVotes(m.voturi),
   };
 }
 

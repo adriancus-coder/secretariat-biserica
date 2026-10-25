@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { todayIso, toDbDate } from "@/lib/dates";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import type { FormState } from "@/lib/form-state";
-import { attendanceRulesInput, churchSettingsSchema, SETTINGS_FIELDS } from "@/lib/schemas/settings";
+import { attendanceRulesInput, churchSettingsSchema, meetingTypeFlagsInput, SETTINGS_FIELDS } from "@/lib/schemas/settings";
 import { attendanceRulesText, resolveAttendanceRules } from "@/lib/attendance";
 import { NOMEN_DEFAULTS } from "@/lib/labels";
 import { privacyTemplate } from "@/lib/privacy";
@@ -24,6 +24,9 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
     // Rules only for the meeting types being saved (an empty list means the default types).
     const tipuri = input.tipuriSedinte.length ? input.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte;
     const regulaPrezenta = attendanceRulesInput(formData, tipuri);
+    // Which types are a General Assembly (Statut art. 46) and which show a quorum (none by default).
+    const tipuriAG = meetingTypeFlagsInput(formData, tipuri, "ag");
+    const tipuriCvorum = meetingTypeFlagsInput(formData, tipuri, "cvorum");
     await prisma.$transaction(async (tx) => {
       // The slug is the public address of the application form: unique across all churches.
       const clash = await tx.church.findFirst({ where: { slug: input.slug, id: { not: ctx.user.churchId } }, select: { id: true } });
@@ -32,7 +35,7 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
       // The template itself is not stored: the notice then follows changes of the church's details.
       const template = privacyTemplate({ ...input, privacyAdoptedAt: before.privacyAdoptedAt?.toISOString().slice(0, 10) ?? null }).trim();
       const privacyText = input.privacyText.trim() === template ? "" : input.privacyText;
-      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, privacyText, regulaPrezenta } });
+      const after = await tx.church.update({ where: { id: ctx.user.churchId }, data: { ...input, privacyText, regulaPrezenta, tipuriAG, tipuriCvorum } });
       const rulesView = (c: typeof before) =>
         attendanceRulesText(resolveAttendanceRules(c.tipuriSedinte.length ? c.tipuriSedinte : NOMEN_DEFAULTS.tipuriSedinte, c.regulaPrezenta));
       await writeAudit(tx, ctx.user, {
@@ -41,8 +44,8 @@ export async function saveChurchSettingsAction(_prev: FormState, formData: FormD
         entityLabel: after.nume,
         action: "UPDATE",
         fields: SETTINGS_FIELDS,
-        before: { ...before, regulaPrezenta: rulesView(before) },
-        after: { ...after, regulaPrezenta: rulesView(after) },
+        before: { ...before, regulaPrezenta: rulesView(before), tipuriAG: before.tipuriAG.join(", "), tipuriCvorum: before.tipuriCvorum.join(", ") },
+        after: { ...after, regulaPrezenta: rulesView(after), tipuriAG: after.tipuriAG.join(", "), tipuriCvorum: after.tipuriCvorum.join(", ") },
       });
     });
     revalidatePath("/", "layout");

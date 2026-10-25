@@ -34,7 +34,15 @@ async function auditView(tx: Tx, id: string) {
   if (!m) return null;
   const names = (status: "PRESENT" | "ABSENT") =>
     attendanceText(m.prezenti.filter((p) => p.status === status).map((p) => memberName(p.person)).sort(compareRo));
-  return { ...m, prezenti: names("PRESENT"), absenti: names("ABSENT"), puncte: pointsText(m.puncte), formatare: minutesFormatting(m) };
+  const votes = Array.isArray(m.voturi) ? (m.voturi as ({ pentru: number; contra: number; abtineri: number; secret?: boolean } | null)[]) : [];
+  return {
+    ...m,
+    prezenti: names("PRESENT"),
+    absenti: names("ABSENT"),
+    puncte: pointsText(m.puncte),
+    formatare: minutesFormatting(m),
+    voturi: votes.map((v, i) => (v ? `${i + 1}: ${v.pentru}/${v.contra}/${v.abtineri}${v.secret ? " secret" : ""}` : "")).filter(Boolean).join("; "),
+  };
 }
 
 /**
@@ -72,12 +80,15 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
-    const { prezenti: ids, nr: wantedNr, puncteRich, observatiiRich, formulaRich, ...fields } = parseOrThrow(meetingSchema, meetingFormInput(formData));
+    const { prezenti: ids, nr: wantedNr, puncteRich, observatiiRich, formulaRich, voturi, convocatLa, ...fields } = parseOrThrow(meetingSchema, meetingFormInput(formData));
     // The editor's documents (null clears the column: the plain text is then all there is).
     const rich = {
       puncteRich: puncteRich ? (puncteRich as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
       observatiiRich: observatiiRich ? (observatiiRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
       formulaRich: formulaRich ? (formulaRich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
+      // Votes aligned with the points (only as many as there are points).
+      voturi: voturi ? (voturi.slice(0, fields.puncte.length) as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
+      convocatLa: toDbDate(convocatLa),
     };
     const prezenti = await assertPersonsInChurch(ctx.db, ids);
     // Import review: the "Nepotriviți" names matched by hand are remembered as aliases of the attendees.

@@ -47,6 +47,42 @@ describe("documente tipărite", () => {
     expect(printToText(spec).split("\n")).toEqual(expected.split("\n"));
   });
 
+  it("Adunarea Generală: linia membrilor și a convocării, voturile sub fiecare punct, fără formula „în unanimitate”", () => {
+    const lines = printToText(
+      meetingPrint(
+        {
+          nr: 3,
+          tip: "Adunare generală",
+          data: "2026-03-15",
+          prezenti: [{ prenume: "Ana", nume: "Pop" }],
+          absenti: [],
+          invitati: "",
+          ordine: "",
+          puncte: ["Darea de seamă", "Bugetul"],
+          observatii: "",
+          formulaIncheiere: "Toate punctele au fost votate în unanimitate de membrii prezenți.",
+          adunare: "Membri cu drepturi depline: 40 · prezenți: 23 · convocată la 1 martie 2026 (14 zile înainte)",
+          voturi: ["Votat: pentru 20, contra 2, abțineri 1 — adoptat", null],
+        },
+        church,
+      ),
+    ).split("\n");
+    expect(lines.slice(1)).toEqual([
+      "Proces verbal nr. 3",
+      "Încheiat azi, 15.03.2026, cu ocazia ședinței de adunare generală.",
+      "La ședință au fost prezenți: 1 membru.",
+      "Ana Pop",
+      "Membri cu drepturi depline: 40 · prezenți: 23 · convocată la 1 martie 2026 (14 zile înainte)",
+      "În cadrul ședinței s-au discutat și aprobat următoarele:",
+      "1. Darea de seamă",
+      "Votat: pentru 20, contra 2, abțineri 1 — adoptat",
+      "2. Bugetul",
+      "Întocmit,",
+      "Secretar, Ioana Pop | Pastor, Daniel Mureșan",
+      "Semnătura | Semnătura",
+    ]);
+  });
+
   it("procesul-verbal fără număr, cu cvorum, ordine de zi și observații", () => {
     const lines = printToText(
       meetingPrint(

@@ -80,10 +80,19 @@ export async function buildDocumentDraft(ctx: Ctx, input: DraftInput): Promise<{
   const reportText = tip === "raport" ? await generateReportText(ctx, reportYear) : undefined;
   const exceptieDomiciliu = tip === "recomandare" && input.exceptieDomiciliu === true && permissions.disciplina(ctx.user.role);
   const discipline = tip === "recomandare" && person ? await recommendationDiscipline(ctx, person.id, exceptieDomiciliu) : null;
-  let text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText, discipline, exceptieDomiciliu });
+  const meeting = tip === "convocare" && input.sedintaId ? await ctx.db.meeting.findUnique({ where: { id: input.sedintaId } }) : null;
+  const convocare = meeting
+    ? { data: fromDbDate(meeting.data)!, ora: meeting.ora, loc: meeting.loc, scop: meeting.convocareText, puncte: meeting.puncte.length ? meeting.puncte : meeting.ordine.split("\n").map((l) => l.replace(/^\d+[.)]\s*/, "").trim()).filter(Boolean), tipAG: meeting.tipAG }
+    : null;
+  let text = generateDocumentText({ tip, person, family, familyHeadId, church, catre: input.catre, scop: input.scop, reportText, discipline, exceptieDomiciliu, convocare });
   // The 5-year table is appended after the parity-tested text, which stays unchanged.
   if (tip === "raport" && input.evolutie) text = `${text.trimEnd()}\n\n${evolutionText((await loadStatistics(ctx, reportYear)).rows.slice(-5))}`;
-  const titlu = tip === "raport" ? `Dare de seamă anuală ${reportYear}` : defaultDocumentTitle(tip, person, input.catre);
+  const titlu =
+    tip === "raport"
+      ? `Dare de seamă anuală ${reportYear}`
+      : tip === "convocare" && meeting
+        ? `Convocare Adunare Generală ${fromDbDate(meeting.data)!.split("-").reverse().join(".")}`
+        : defaultDocumentTitle(tip, person, input.catre);
   return { text, titlu };
 }
 

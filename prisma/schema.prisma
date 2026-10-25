@@ -60,6 +60,10 @@ model Church {
   gradeRudenie     String[] @default([])
   /// Attendance rule per meeting type: { "<tip>": "TOTI" | "COMITET" | "MANUAL" }. Missing = default (src/lib/attendance.ts).
   regulaPrezenta   Json     @default("{}")
+  /// Meeting types that are a General Assembly (Statut art. 46); empty = the type named "Adunare generală".
+  tipuriAG         String[] @default([])
+  /// Meeting types whose minutes show the quorum line (default: none).
+  tipuriCvorum     String[] @default([])
   /// Default page layout of the printed minutes (src/lib/page-layout.ts); {} = the built-in layout.
   pvLayout         Json     @default("{}")
   /// Default page layout of the registered documents (src/lib/page-layout.ts); {} = the standard layout.
@@ -651,6 +655,14 @@ model Meeting {
   formulaRich      Json?
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
   asteptati        Int?
+  /// General Assembly (Statut art. 46): when it was announced, its scope, ordinary / extraordinary,
+  /// convened by the Comunitate (art. 461: 7 days instead of 14).
+  convocatLa            DateTime?          @db.Date
+  convocareText         String             @default("")
+  tipAG                 GeneralAssemblyKind?
+  convocataDeComunitate Boolean            @default(false)
+  /// Votes per point, aligned with `puncte`: {pentru, contra, abtineri, secret} or null (src/lib/general-assembly.ts).
+  voturi                Json?
   /// This meeting's own page layout (src/lib/page-layout.ts); null = the church's default.
   layout           Json?
 
@@ -836,6 +848,13 @@ enum DocumentType {
   recomandare
   scrisoare
   raport
+  /// "Convocare Adunare Generală" (Statut art. 46), generated from a meeting.
+  convocare
+}
+
+enum GeneralAssemblyKind {
+  ORDINARA
+  EXTRAORDINARA
 }
 
 model Document {

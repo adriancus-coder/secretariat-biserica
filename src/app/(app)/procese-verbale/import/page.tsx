@@ -23,6 +23,7 @@ export default async function MinutesImportPage() {
         tipuri={church.nomen.tipuriSedinte}
         rules={church.attendanceRules}
         prefill={prefill}
+        tipuriAG={church.tipuriAG}
       />
     </>
   );

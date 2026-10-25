@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { idSchema } from "@/lib/validation";
 import { permissions } from "@/lib/permissions";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { todayIso } from "@/lib/dates";
@@ -18,6 +19,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
   const people = await personOptions(ctx);
   const personId = typeof sp.persoana === "string" && people.some((p) => p.id === sp.persoana) ? sp.persoana : "";
   const an = Number(sp.an);
+  const sedintaId = typeof sp.sedinta === "string" && idSchema.safeParse(sp.sedinta).success ? sp.sedinta : null;
   const anRaport = tip === "raport" ? String(Number.isInteger(an) && an > 1800 && an < 2201 ? an : Number(today.slice(0, 4))) : "";
   const [draft, nextNr] = await Promise.all([
     // A recommendation the user may not issue (Statut art. 27) starts empty; saving explains why.
@@ -28,6 +30,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
       scop: "",
       anRaport: anRaport ? Number(anRaport) : null,
       data: today,
+      sedintaId,
     }).catch(() => ({ text: "", titlu: "" })),
     nextDocumentNumber(ctx, Number(today.slice(0, 4))),
   ]);
@@ -38,7 +41,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
       <PageHead title={tip === "raport" ? `Dare de seamă ${anRaport}` : "Document nou"} />
       <DocumentForm
         id={null}
-        initial={{ tip, nr: "", data: today, personId, catre: "", scop: "", titlu: draft.titlu, text: draft.text, anRaport }}
+        initial={{ tip, nr: "", data: today, personId, catre: "", scop: "", titlu: draft.titlu, text: draft.text, anRaport, sedintaId: sedintaId ?? "" }}
         people={people}
         nextNr={nextNr}
         canDiscipline={permissions.disciplina(ctx.user.role)}

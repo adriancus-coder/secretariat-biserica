@@ -43,7 +43,12 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
           ordine: m.ordine,
           observatii: m.observatii,
           formulaIncheiere: m.formulaIncheiere,
+          convocatLa: m.convocatLa ?? "",
+          convocareText: m.convocareText,
+          tipAG: m.tipAG ?? "",
+          convocataDeComunitate: m.convocataDeComunitate ? "on" : "",
         }}
+        votes={m.voturi}
         points={m.puncte}
         rich={{ puncte: m.puncteRich, observatii: m.observatiiRich, formula: m.formulaRich }}
         selected={selected}
@@ -51,6 +56,7 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
         tipuri={church.nomen.tipuriSedinte}
         rules={church.attendanceRules}
         prefill={prefill}
+        tipuriAG={church.tipuriAG}
         cancelHref={`/procese-verbale/${id}`}
       />
     </>

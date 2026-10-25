@@ -18,6 +18,7 @@ interface FormProps {
   tipuri: string[];
   rules: Record<string, AttendanceRule>;
   prefill: Record<"TOTI" | "COMITET", string[]>;
+  tipuriAG: string[];
 }
 
 /**

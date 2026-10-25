@@ -7,7 +7,7 @@ import { defaultDocumentTitle, generateDocumentText } from "@/domain/documents";
 import { buildReportText } from "@/domain/report";
 import { computeStats } from "@/domain/stats";
 import { inYear } from "@/lib/dates";
-import { DOCUMENT_TYPES } from "@/lib/labels";
+import { PROTOTYPE_DOCUMENT_TYPES } from "@/lib/labels";
 import { person as makePerson } from "@/domain/test-helpers";
 import { loadPrototype, type PrototypeApi } from "../prototype/harness";
 import { randomDataset, rng, toPrototypeEvent, toPrototypeMember, type Dataset } from "../prototype/fixtures";
@@ -141,7 +141,8 @@ describe("paritate cu prototipul: șabloanele de documente", () => {
         proto.S.settings = { nume: church.nume, adresa: church.adresa };
         const candidates: (Dataset["persons"][number] | null)[] = [null, ...ds.persons];
         for (const person of candidates) {
-          for (const tip of DOCUMENT_TYPES) {
+          // "convocare" is not a prototype type (Statut art. 46): only the prototype's types are compared.
+          for (const tip of PROTOTYPE_DOCUMENT_TYPES) {
             if (tip === "raport") continue; // acoperit de testul dării de seamă
             // Documented deviations in "din părinții …" (see the tests below): the prototype includes
             // the person if they have a parent relation, and takes "Părinte" but not "Soț"; the app

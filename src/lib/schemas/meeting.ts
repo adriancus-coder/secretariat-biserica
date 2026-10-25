@@ -2,7 +2,8 @@ import { z } from "zod";
 import { DEFAULT_CLOSING, MAX_POINTS, minutesFromRich, POINT_MAX } from "../minutes";
 import type { RichDoc } from "../rich-text";
 import { checkRich, richField } from "./rich-text";
-import { idSchema, longText, optionalInt, optionalTime, requiredDate, requiredText, text } from "../validation";
+import { idSchema, longText, optionalDate, optionalEnum, optionalInt, optionalTime, requiredDate, requiredText, text } from "../validation";
+import { votesField } from "../general-assembly";
 
 export const MEETING_FIELDS = [
   "nr",
@@ -20,6 +21,10 @@ export const MEETING_FIELDS = [
   "observatii",
   "formulaIncheiere",
   "formatare",
+  "convocatLa",
+  "convocareText",
+  "tipAG",
+  "voturi",
 ] as const;
 
 /** The points' rich documents: a JSON array in the hidden field `puncteRich`, one document per point. */
@@ -90,6 +95,12 @@ export const meetingSchema = z
     puncteRich: richPointsField,
     observatiiRich: richField,
     formulaRich: richField,
+    // General Assembly (Statut art. 46) and the votes per point.
+    convocatLa: optionalDate,
+    convocareText: longText(2000, "Scopul adunării"),
+    tipAG: optionalEnum(["ORDINARA", "EXTRAORDINARA"] as const),
+    convocataDeComunitate: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
+    voturi: votesField,
   })
   .transform((m, ctx) => {
     const out = { ...m, ...minutesFromRich(m) };

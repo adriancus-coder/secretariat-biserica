@@ -699,6 +699,20 @@
     font-weight: 400;
     color: var(--ink);
   }
+  .attendance-type {
+    padding: 4px 0 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .attendance-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 18px;
+  }
+  .attendance-flags .check {
+    border-bottom: 0;
+    min-height: 44px;
+    padding: 0;
+  }
   .attendance-rule select {
     width: auto;
     flex: 0 0 auto;
@@ -748,6 +762,33 @@
   }
   .points-tools .btn {
     min-width: 40px;
+  }
+  .points-vote {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 8px;
+  }
+  .points-vote label {
+    display: grid;
+    gap: 2px;
+    font-size: 0.8125rem;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .points-vote input[type="number"] {
+    width: 5.5rem;
+    min-height: 44px;
+  }
+  .points-vote label.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 0;
+    min-height: 44px;
+    padding: 0;
+    color: var(--ink);
   }
   /* Minutes: signatures */
   .sign-list {

@@ -78,7 +78,9 @@ export const GENDERS = ["M", "F"] as const;
 export type GenderKey = (typeof GENDERS)[number];
 export const GENDER_LABEL: Record<GenderKey, string> = { M: "Masculin", F: "Feminin" };
 
-export const DOCUMENT_TYPES = ["adeverinta", "botez", "binecuvantare", "recomandare", "scrisoare", "raport"] as const;
+export const DOCUMENT_TYPES = ["adeverinta", "botez", "binecuvantare", "recomandare", "scrisoare", "raport", "convocare"] as const;
+/** The prototype's document types (the parity tests compare these). */
+export const PROTOTYPE_DOCUMENT_TYPES = ["adeverinta", "botez", "binecuvantare", "recomandare", "scrisoare", "raport"] as const;
 export type DocumentTypeKey = (typeof DOCUMENT_TYPES)[number];
 /** DTYPES din prototip. */
 export const DOCUMENT_TYPE_LABEL: Record<DocumentTypeKey, string> = {
@@ -88,6 +90,7 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentTypeKey, string> = {
   recomandare: "Scrisoare de recomandare (transfer)",
   scrisoare: "Scrisoare / adresă oficială",
   raport: "Dare de seamă anuală",
+  convocare: "Convocare Adunare Generală",
 };
 /** Titlul tipărit pe document (docHtml din prototip). */
 export const DOCUMENT_HEADING: Record<DocumentTypeKey, string> = {
@@ -97,6 +100,7 @@ export const DOCUMENT_HEADING: Record<DocumentTypeKey, string> = {
   recomandare: "Scrisoare de recomandare",
   scrisoare: "",
   raport: "Dare de seamă anuală",
+  convocare: "Convocare",
 };
 
 export const ROLES = ["ADMIN", "SECRETAR", "VIZUALIZARE"] as const;

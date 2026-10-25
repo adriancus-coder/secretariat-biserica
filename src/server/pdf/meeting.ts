@@ -1,6 +1,6 @@
 import "server-only";
 import { meetingPrint, type PrintSpec } from "@/domain/print";
-import { quorumLine } from "@/lib/attendance";
+import { minutesAttendance } from "@/lib/general-assembly";
 import { dotDateTime } from "@/lib/dates";
 import { resolveLayout, type PageLayout } from "@/lib/page-layout";
 import { renderDocx } from "../docx/render";
@@ -15,6 +15,7 @@ type MeetingRecord = NonNullable<Awaited<ReturnType<typeof getMeeting>>>;
  * meeting's page layout (its own, else the church's default); `layout` previews unsaved changes.
  */
 export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: PageLayout): PrintSpec {
+  const lines = minutesAttendance({ ...m, present: m.prezenti.length, absent: m.absenti.length }, church);
   const spec = meetingPrint(
     {
       nr: m.nr,
@@ -30,7 +31,7 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: P
       observatiiRich: m.observatiiRich,
       formulaIncheiere: m.formulaIncheiere,
       formulaRich: m.formulaRich,
-      cvorum: quorumLine(m.asteptati, m.absenti.length),
+      ...lines,
       semnaturi: m.prezenti.map((p) => ({
         name: `${p.prenume} ${p.nume}`.trim(),
         image: p.signature ? new Uint8Array(p.signature.png) : null,

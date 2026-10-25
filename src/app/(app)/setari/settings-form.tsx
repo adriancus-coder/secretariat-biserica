@@ -1,5 +1,6 @@
 "use client";
 
+import { isGeneralAssembly } from "@/lib/general-assembly";
 import Link from "next/link";
 import { useActionState, type ReactNode } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -16,6 +17,8 @@ export function SettingsForm({
   church,
   nomen,
   attendanceRules,
+  tipuriAG,
+  tipuriCvorum,
   formUrl,
   readOnly,
   privacyText,
@@ -33,6 +36,8 @@ export function SettingsForm({
   extractAvailable: boolean;
   nomen: Nomenclatures;
   attendanceRules: Record<string, AttendanceRule>;
+  tipuriAG: string[];
+  tipuriCvorum: string[];
   /** Full address of the public application form, for the copy button. */
   formUrl: string;
   readOnly: boolean;
@@ -156,10 +161,12 @@ export function SettingsForm({
           <div className="text-[0.8125rem] font-medium text-ink-2 mb-1">Lista de prezență la ședința nouă</div>
           <p className="hint !mt-0 mb-2">
             „Toți membrii” bifează membrii în evidență, „Comitetul” pe cei bifați „Membru în comitet” pe fișa persoanei; cei bifați automat și debifați apar ca
-            absenți. Un tip nou primește regula după salvare.
+            absenți. Un tip nou primește regula după salvare. „Adunare Generală” arată în procesul-verbal membrii cu drepturi depline, prezenții și
+            convocarea în loc de cvorum (Statut art. 46; fără nicio bifă: tipul „Adunare generală”); „Cvorum” arată linia de cvorum.
           </p>
           {nomen.tipuriSedinte.map((t) => (
-            <label key={t} className="attendance-rule">
+            <div key={t} className="attendance-type">
+            <label className="attendance-rule">
               <span className="min-w-0">{t}</span>
               <select name={`regula:${t}`} defaultValue={v?.[`regula:${t}`] ?? attendanceRules[t] ?? "MANUAL"} aria-label={`Prezența la ${t}`}>
                 {ATTENDANCE_RULES.map((r) => (
@@ -169,6 +176,17 @@ export function SettingsForm({
                 ))}
               </select>
             </label>
+            <div className="attendance-flags">
+              <label className="check">
+                <input type="checkbox" name={`ag:${t}`} defaultChecked={v ? v[`ag:${t}`] === "on" : isGeneralAssembly(t, tipuriAG)} />
+                Adunare Generală
+              </label>
+              <label className="check">
+                <input type="checkbox" name={`cvorum:${t}`} defaultChecked={v ? v[`cvorum:${t}`] === "on" : tipuriCvorum.includes(t)} />
+                Cvorum
+              </label>
+            </div>
+            </div>
           ))}
         </div>
         {nom("tipuriEvenimente", "Tipuri de evenimente", nomen.tipuriEvenimente)}

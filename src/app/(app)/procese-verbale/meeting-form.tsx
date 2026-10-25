@@ -9,6 +9,7 @@ import { Field, nomenOptions, SelectField, TextAreaField, TextField } from "@/co
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
+import { AG_KIND_LABEL, convocationWarning, isGeneralAssembly, type Vote } from "@/lib/general-assembly";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import type { PickedName } from "@/lib/minutes-import";
 import { plainToRich, type RichDoc } from "@/lib/rich-text";
@@ -27,6 +28,8 @@ export function MeetingForm({
   tipuri,
   rules,
   prefill,
+  tipuriAG = [],
+  votes,
   cancelHref,
   onImported,
   pickedNames,
@@ -46,6 +49,10 @@ export function MeetingForm({
   rules: Record<string, AttendanceRule>;
   /** The persons each automatic rule checks. */
   prefill: Record<"TOTI" | "COMITET", string[]>;
+  /** Meeting types that are a General Assembly (empty = "Adunare generală"). */
+  tipuriAG?: string[];
+  /** The recorded votes, aligned with `points`. */
+  votes?: (Vote | null)[] | null;
   cancelHref: string;
   /** Import review: the meeting is saved without leaving the page; called with the saved state. */
   onImported?: (state: MeetingFormState) => void;
@@ -53,6 +60,7 @@ export function MeetingForm({
   const [attendees, setAttendees] = useState<Set<string>>(() => new Set(selected));
   const [tip, setTip] = useState(initial.tip ?? "");
   const rule = rules[tip] ?? "MANUAL";
+  const ag = isGeneralAssembly(tip, tipuriAG);
 
   /** A new type with an automatic rule refills the list; a non-empty, different list is replaced only after confirmation. */
   function changeType(next: string) {
@@ -73,6 +81,11 @@ export function MeetingForm({
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
   const inRegister = people.filter((p) => !p.note).length;
+  // The announcement's warning follows the dates as they are typed (Statut art. 46 alin. 1, art. 461).
+  const [date, setDate] = useState(val("data"));
+  const [convocatLa, setConvocatLa] = useState(val("convocatLa"));
+  const [byCommunity, setByCommunity] = useState(val("convocataDeComunitate") === "on");
+  const warning = ag && date ? convocationWarning(date, convocatLa || null, byCommunity) : null;
 
   const previewHost = `preview-${id ?? "nou"}`;
   // Built once: the editors keep their own state afterwards (also across validation errors).
@@ -108,8 +121,49 @@ export function MeetingForm({
           options={nomenOptions(tipuri, tip)}
           hint={rule === "MANUAL" ? undefined : `Prezența: ${ATTENDANCE_RULE_LABEL[rule].toLowerCase()} (cei debifați apar ca absenți).`}
         />
-        <TextField name="data" label="Data" type="date" defaultValue={val("data")} error={e.data} required />
+        <TextField name="data" label="Data" type="date" defaultValue={val("data")} onChange={(ev) => setDate(ev.target.value)} error={e.data} required />
       </div>
+      {ag ? (
+        <fieldset className="card !mb-3">
+          <legend className="font-semibold">Adunare Generală</legend>
+          <div className="row2">
+            <SelectField
+              name="tipAG"
+              label="Felul adunării"
+              defaultValue={val("tipAG")}
+              error={e.tipAG}
+              options={[
+                { value: "", label: "— nespecificat —" },
+                ...Object.entries(AG_KIND_LABEL).map(([value, label]) => ({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })),
+              ]}
+            />
+            <TextField
+              name="convocatLa"
+              label="Convocată (anunțată) la"
+              type="date"
+              defaultValue={val("convocatLa")}
+              onChange={(ev) => setConvocatLa(ev.target.value)}
+              error={e.convocatLa}
+            />
+          </div>
+          <label className="check">
+            <input type="checkbox" name="convocataDeComunitate" defaultChecked={byCommunity} onChange={(ev) => setByCommunity(ev.target.checked)} />
+            Convocată de Comunitate (Statut art. 461)
+          </label>
+          <TextAreaField
+            name="convocareText"
+            label="Scopul adunării (anunțul)"
+            defaultValue={val("convocareText")}
+            error={e.convocareText}
+            hint="Statut art. 46 alin. 1: anunțul precizează scopul adunării."
+          />
+          {warning ? (
+            <p className="tag tag-warn !block whitespace-normal" role="status">
+              {warning}
+            </p>
+          ) : null}
+        </fieldset>
+      ) : null}
       <div className="row2">
         <TextField name="ora" label="Ora" type="time" defaultValue={val("ora")} error={e.ora} />
         <TextField name="loc" label="Locul" defaultValue={val("loc")} error={e.loc} />
@@ -120,7 +174,7 @@ export function MeetingForm({
       </Field>
       <TextField name="invitati" label="Invitați / alte persoane" defaultValue={val("invitati")} error={e.invitati} />
       <TextAreaField name="ordine" label="Ordinea de zi" placeholder={"1. …\n2. …"} defaultValue={val("ordine")} error={e.ordine} />
-      <PointsEditor initial={points} initialRich={rich?.puncte} error={e.puncte ?? e.puncteRich} />
+      <PointsEditor initial={points} initialRich={rich?.puncte} initialVotes={votes} error={e.puncte ?? e.puncteRich ?? e.voturi} />
       <Field label="Observații (opțional)" htmlFor={`obs-${previewHost}`} error={e.observatii ?? e.observatiiRich}>
         <RichEditor name="observatiiRich" id={`obs-${previewHost}`} initial={observatiiDoc} label="Observații" minRows={3} invalid={Boolean(e.observatii ?? e.observatiiRich)} />
       </Field>

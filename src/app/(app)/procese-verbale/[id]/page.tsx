@@ -5,7 +5,7 @@ import { AuditTrail } from "@/components/audit-trail";
 import { RichView } from "@/components/rich-editor/rich-view";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
-import { quorumLine } from "@/lib/attendance";
+import { isGeneralAssembly, minutesAttendance, AG_KIND_LABEL } from "@/lib/general-assembly";
 import { fmt } from "@/lib/format";
 import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
@@ -30,7 +30,8 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   const [x, church] = await Promise.all([getMeeting(ctx, id), getChurch(ctx)]);
   if (!x) notFound();
   const canWrite = permissions.write(ctx.user.role);
-  const cvorum = quorumLine(x.asteptati, x.absenti.length);
+  const lines = minutesAttendance({ ...x, present: x.prezenti.length, absent: x.absenti.length }, church);
+  const ag = isGeneralAssembly(x.tip, church.tipuriAG);
   const numberLabel = minutesNumber(x);
   // A closed meeting is read-only (the server refuses edits too).
   const canEdit = canWrite && !x.locked;
@@ -73,6 +74,11 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true }).join(" ")}`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
           />
         ) : null}
+        {canWrite && ag ? (
+          <Link href={`/documente/nou?tip=convocare&sedinta=${x.id}`} className="btn">
+            Convocare (document)
+          </Link>
+        ) : null}
         {canEdit && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
         {canEdit ? (
           <Link href={`/procese-verbale/${x.id}/editare`} className="btn btn-primary">
@@ -89,7 +95,10 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
           {x.loc ? ` · ${x.loc}` : ""}
         </dd>
         <dt>Tip</dt>
-        <dd>{x.tip}</dd>
+        <dd>
+          {x.tip}
+          {x.tipAG ? ` ${AG_KIND_LABEL[x.tipAG]}` : ""}
+        </dd>
         {x.presedinte ? (
           <>
             <dt>Președinte de ședință</dt>
@@ -112,10 +121,22 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             <dd>{x.invitati}</dd>
           </>
         ) : null}
-        {cvorum ? (
+        {lines.adunare ? (
+          <>
+            <dt>Adunare Generală</dt>
+            <dd>{lines.adunare}</dd>
+          </>
+        ) : null}
+        {ag && x.convocareText ? (
+          <>
+            <dt>Anunțul convocării</dt>
+            <dd className="whitespace-pre-wrap">{x.convocareText}</dd>
+          </>
+        ) : null}
+        {lines.cvorum ? (
           <>
             <dt>Cvorum</dt>
-            <dd>{cvorum}</dd>
+            <dd>{lines.cvorum}</dd>
           </>
         ) : null}
         {x.ordine ? (
@@ -133,6 +154,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
                 return (
                   <li key={i} className={doc ? undefined : "whitespace-pre-wrap"}>
                     {doc ? <RichView doc={doc} /> : p}
+                    {lines.voturi?.[i] ? <span className="block text-sm text-ink-2">{lines.voturi[i]}</span> : null}
                   </li>
                 );
               })}

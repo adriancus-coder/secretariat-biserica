@@ -1,5 +1,6 @@
 import { meetingPrint } from "@/domain/print";
-import { absentees, quorumLine } from "@/lib/attendance";
+import { absentees } from "@/lib/attendance";
+import { minutesAttendance } from "@/lib/general-assembly";
 import { dotDateTime } from "@/lib/dates";
 import { resolveLayout } from "@/lib/page-layout";
 import { meetingFormInput, meetingSchema } from "@/lib/schemas/meeting";
@@ -49,7 +50,18 @@ export async function POST(req: Request) {
       observatiiRich: m.observatiiRich,
       formulaIncheiere: m.formulaIncheiere,
       formulaRich: m.formulaRich,
-      cvorum: quorumLine(rule === "MANUAL" ? null : expected.length, absentIds.length),
+      ...minutesAttendance(
+        {
+          tip: m.tip,
+          data: m.data,
+          asteptati: rule === "MANUAL" ? null : expected.length,
+          present: present.length,
+          absent: absentIds.length,
+          convocatLa: m.convocatLa ?? null,
+          voturi: m.voturi ?? null,
+        },
+        church,
+      ),
       semnaturi: present.map((p) => {
         const s = signed.get(p.id);
         return { name: `${p.prenume} ${p.nume}`.trim(), image: s ? new Uint8Array(s.png) : null, signedAt: s ? dotDateTime(s.signedAt) : null };

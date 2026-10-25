@@ -4,6 +4,7 @@
  * randarea efectivă se face în src/server/pdf/render.ts.
  */
 import { fmtL, memberName } from "@/lib/format";
+import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
 import type { PageLayout } from "@/lib/page-layout";
 import { ALIGN_LABEL, richLines, type RichDoc, type RichLine } from "@/lib/rich-text";
@@ -103,6 +104,10 @@ export interface MeetingPrint {
   formulaRich?: RichDoc | null;
   /** "Prezenți n din m (p %)" for meeting types with an attendance rule; omitted otherwise. */
   cvorum?: string | null;
+  /** The General Assembly's line (members with full rights, present, announcement) instead of a quorum. */
+  adunare?: string | null;
+  /** "Votat: pentru …" under each point (aligned with `puncte`, null = no vote recorded). */
+  voturi?: (string | null)[] | null;
   /** The signature table, one row per person present (in the order of `prezenti`). */
   semnaturi?: SignatureCell[];
   /** "11.09.2026 14:03" when the minutes were closed. */
@@ -132,19 +137,24 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   ];
   if (x.semnaturi?.length) blocks.push({ type: "signatureTable", rows: x.semnaturi });
   if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
+  if (x.adunare) blocks.push(para(x.adunare));
   if (x.cvorum) blocks.push(para(`Cvorum: ${x.cvorum.replace(/^Prezenți/, "prezenți")}`));
   if (x.invitati) blocks.push(para(`Invitați: ${x.invitati}`));
   if (x.ordine) blocks.push(para("Ordinea de zi:"), pre(x.ordine));
   blocks.push(para("În cadrul ședinței s-au discutat și aprobat următoarele:"));
   const richPoints = x.puncteRich?.length === x.puncte.length && x.puncteRich.some(Boolean) ? x.puncteRich : null;
-  if (richPoints) {
+  const votes = x.voturi?.some(Boolean) ? x.voturi : null;
+  if (richPoints || votes) {
     x.puncte.forEach((p, i) => {
-      const doc = richPoints[i];
+      const doc = richPoints?.[i];
       blocks.push(doc ? { type: "rich", doc, marker: `${i + 1}.` } : { type: "list", items: [p], ordered: true, start: i + 1 });
+      const vote = votes?.[i];
+      if (vote) blocks.push(para(vote));
     });
   } else if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
   if (x.observatii || x.observatiiRich) blocks.push(para("Observații:"), x.observatiiRich ? { type: "rich", doc: x.observatiiRich } : pre(x.observatii));
-  blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
+  // With recorded votes the default "votate în unanimitate" would contradict them: it is left out.
+  if (!(votes && x.formulaIncheiere === DEFAULT_CLOSING)) blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
   blocks.push(para("Întocmit,"));
   blocks.push({
     type: "signed",
@@ -175,7 +185,12 @@ export function documentPrint(x: DocumentPrint, church: ChurchInfo): PrintSpec {
   const blocks: Block[] = [{ type: "nr", text: `Nr. ${x.nr} din ${fmtL(x.data)}` }];
   if (heading) blocks.push({ type: "title", text: heading });
   blocks.push(x.textRich ? { type: "rich", doc: x.textRich } : pre(x.text));
-  blocks.push(pastorSecretarySignatures(church, x.tip === "raport"));
+  // The General Assembly's convocation is signed by the pastor (Statut art. 46).
+  blocks.push(
+    x.tip === "convocare"
+      ? { type: "signatures", left: { label: "", name: "" }, right: { label: "Pastor", name: church.pastor } }
+      : pastorSecretarySignatures(church, x.tip === "raport"),
+  );
   return { title: x.titlu || heading || "Document", church, blocks };
 }
 

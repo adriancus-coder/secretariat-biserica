@@ -1,3 +1,4 @@
+import { storedVotes, type Vote } from "./general-assembly";
 import { MAX_POINTS, minutesFromRich, POINT_MAX } from "./minutes";
 import type { RichDoc } from "./rich-text";
 import { storedRich } from "./schemas/rich-text";
@@ -6,7 +7,8 @@ import { storedRich } from "./schemas/rich-text";
  * Meeting fields beyond the prototype's JSON, on each meeting next to `prezenti`, `discutii` and
  * `hotarari`: `absenti` (person ids), `asteptati` (how many the attendance rule expected), `nr`,
  * `puncte`, `observatii` and `formulaIncheiere`, and their rich versions `puncteRich`, `observatiiRich`,
- * `formulaRich`. Files without them import unchanged (the points then
+ * `formulaRich`, and the General Assembly's `convocatLa`, `convocareText`, `tipAG`,
+ * `convocataDeComunitate` with the votes per point `voturi`. Files without them import unchanged (the points then
  * come from `hotarari` / `discutii`, see splitDecisions).
  */
 
@@ -31,6 +33,13 @@ export interface MeetingExtra {
   inchisLa?: string | null;
   /** The meeting's own page layout (src/lib/page-layout.ts); absent = the church's default. */
   asezare?: PageLayout;
+  /** General Assembly (Statut art. 46): the announcement date (ISO), its text, the kind, convened by the Comunitate. */
+  convocatLa?: string;
+  convocareText?: string;
+  tipAG?: "ORDINARA" | "EXTRAORDINARA";
+  convocataDeComunitate?: boolean;
+  /** Votes per point, aligned with `puncte` (null = no vote). */
+  voturi?: (Vote | null)[];
 }
 
 /** Adds the extra fields to the exported meetings (in place). */
@@ -50,6 +59,11 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
     if (x.asezare) m.asezare = x.asezare;
     if (x.inchisLa) m.inchisLa = x.inchisLa;
+    if (x.convocatLa) m.convocatLa = x.convocatLa;
+    if (x.convocareText) m.convocareText = x.convocareText;
+    if (x.tipAG) m.tipAG = x.tipAG;
+    if (x.convocataDeComunitate) m.convocataDeComunitate = true;
+    if (x.voturi) m.voturi = x.voturi;
   }
 }
 
@@ -119,7 +133,29 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     }
     if (typeof m.inchisLa === "string" && !Number.isNaN(Date.parse(m.inchisLa))) x.inchisLa = m.inchisLa;
     if (typeof m.asezare === "object" && m.asezare !== null) x.asezare = storedLayout(m.asezare);
-    if (x.absenti.length || x.asteptati !== null || x.nr || x.puncte || x.observatii !== undefined || x.formulaIncheiere || x.semnaturi || x.inchisLa || x.asezare) {
+    if (typeof m.convocatLa === "string" && /^\d{4}-\d{2}-\d{2}$/.test(m.convocatLa) && !Number.isNaN(Date.parse(m.convocatLa))) x.convocatLa = m.convocatLa;
+    const convocare = str(m.convocareText, 2000);
+    if (convocare) x.convocareText = convocare;
+    if (m.tipAG === "ORDINARA" || m.tipAG === "EXTRAORDINARA") x.tipAG = m.tipAG;
+    if (m.convocataDeComunitate === true) x.convocataDeComunitate = true;
+    const votes = storedVotes(m.voturi);
+    if (votes) x.voturi = votes;
+    if (
+      x.absenti.length ||
+      x.asteptati !== null ||
+      x.nr ||
+      x.puncte ||
+      x.observatii !== undefined ||
+      x.formulaIncheiere ||
+      x.semnaturi ||
+      x.inchisLa ||
+      x.asezare ||
+      x.convocatLa ||
+      x.convocareText ||
+      x.tipAG ||
+      x.convocataDeComunitate ||
+      x.voturi
+    ) {
       out.set(String(m.id ?? key).trim(), x);
     }
   }

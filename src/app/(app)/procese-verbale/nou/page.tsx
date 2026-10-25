@@ -32,6 +32,7 @@ export default async function NewMeetingPage({ searchParams }: PageProps<"/proce
         tipuri={church.nomen.tipuriSedinte}
         rules={church.attendanceRules}
         prefill={prefill}
+        tipuriAG={church.tipuriAG}
         cancelHref="/procese-verbale"
       />
     </>

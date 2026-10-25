@@ -33,6 +33,7 @@ export async function documentDraftAction(input: {
   data: string;
   evolutie?: boolean;
   exceptieDomiciliu?: boolean;
+  sedintaId?: string;
 }): Promise<{ text: string; titlu: string } | { error: string }> {
   try {
     const ctx = await actionCtx("write");

@@ -50,6 +50,8 @@ export const SETTINGS_FIELDS = [
   "comunitate",
   "extractEnabled",
   "regulaPrezenta",
+  "tipuriAG",
+  "tipuriCvorum",
 ] as const;
 
 export const churchSettingsSchema = z.object({
@@ -85,6 +87,11 @@ export function attendanceRulesInput(formData: FormData, tipuri: readonly string
       return [t, (ATTENDANCE_RULES as readonly unknown[]).includes(v) ? (v as AttendanceRule) : "MANUAL"];
     }),
   );
+}
+
+/** The meeting types ticked in the settings form under `<prefix>:<tip>` ("ag", "cvorum"). */
+export function meetingTypeFlagsInput(formData: FormData, tipuri: readonly string[], prefix: "ag" | "cvorum"): string[] {
+  return tipuri.filter((t) => formData.get(`${prefix}:${t}`) === "on");
 }
 
 export const inviteSchema = z.object({

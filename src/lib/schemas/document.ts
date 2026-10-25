@@ -45,6 +45,8 @@ export const draftSchema = z.object({
   /** Dare de seamă: append the 5-year evolution table (outside the prototype's text). */
   evolutie: z.boolean().optional(),
   exceptieDomiciliu: z.boolean().optional(),
+  /** Convocare: the General Assembly meeting it announces. */
+  sedintaId: optionalId,
 });
 
 export type DraftInput = z.output<typeof draftSchema>;

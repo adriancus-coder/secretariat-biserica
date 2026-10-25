@@ -72,6 +72,8 @@ export default async function SettingsPage() {
         church={church}
         nomen={church.nomen}
         attendanceRules={church.attendanceRules}
+        tipuriAG={church.tipuriAG}
+        tipuriCvorum={church.tipuriCvorum}
         formUrl={formUrl}
         privacyText={church.privacyText.trim() || privacyTemplate(church)}
         privacyUrl={appUrl(`/confidentialitate/${church.slug}`, await requestOrigin())}

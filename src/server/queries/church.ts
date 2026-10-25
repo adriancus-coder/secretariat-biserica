@@ -18,6 +18,9 @@ export interface ChurchSettings extends ChurchInfo {
   savedNomen: Nomenclatures;
   /** Attendance rule of every meeting type in `nomen.tipuriSedinte`. */
   attendanceRules: Record<string, AttendanceRule>;
+  /** Meeting types that are a General Assembly (empty = "Adunare generală") and those showing a quorum. */
+  tipuriAG: string[];
+  tipuriCvorum: string[];
   /** Preselected recipients when the minutes are e-mailed ("" = none). */
   pastorEmail: string;
   secretarEmail: string;
@@ -72,6 +75,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),
+    tipuriAG: c.tipuriAG,
+    tipuriCvorum: c.tipuriCvorum,
   };
 });
 

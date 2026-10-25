@@ -356,6 +356,15 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - On save, `expectedAttendees` (as of the meeting date) minus the persons present become ABSENT rows, and `Meeting.asteptati` stores the expected count. The quorum line uses it, so meetings saved before the rules show no quorum.
 - Export/import: `absenti`, `asteptati`, `nr`, `puncte`, `observatii` and `formulaIncheiere` on each meeting (`src/lib/meeting-backup.ts`).
 
+### General Assembly and votes (Statut art. 46)
+
+- `src/lib/general-assembly.ts` (pure). A type is an AG when ticked in Setări (`Church.tipuriAG`; empty = the type named "Adunare generală"); the quorum line shows only for the types in `Church.tipuriCvorum` (default none).
+- An AG meeting has `convocatLa`, `convocareText` (the scope), `tipAG` (ORDINARA | EXTRAORDINARA) and `convocataDeComunitate`. The form warns, never blocks, when the announcement is missing or under 14 days before (7 when the Comunitate convenes it, art. 461). The minutes show "Membri cu drepturi depline: m · prezenți: n · convocată la <data> (<zile> zile înainte)" instead of a quorum (`minutesAttendance()`, shared by the PDF, Word, page and preview).
+- Votes per point (any type, optional): `Meeting.voturi` JSON aligned with `puncte` (`voteSchema`, hidden field `voturi`). Printed under each point as "Votat: pentru X, contra Y, abțineri Z — adoptat|respins"; AG and committee types need more than half of those present, others more for than against. With votes recorded the default closing ("votate în unanimitate") is left out.
+- "Convocare Adunare Generală" (`convocare`) is a numbered outgoing document built from the meeting (`/documente/nou?tip=convocare&sedinta=<id>`), signed by the pastor.
+- Acasă (write roles), from 1 October: "Adunarea Generală ordinară nu a avut loc în <an>" (art. 46 alin. 3).
+- Export/import: `convocatLa`, `convocareText`, `tipAG`, `convocataDeComunitate`, `voturi` on meetings.
+
 ### Minutes (procese-verbale)
 
 - Numbered per year like documents: `lockMeetingRegister` then `nextFreeMeetingNumber` (`src/server/doc-numbering.ts`), unique `(churchId, anRegistru, nr)`. A manual number is checked; meetings saved before numbering have `nr = null` until edited or "Atribuie număr".

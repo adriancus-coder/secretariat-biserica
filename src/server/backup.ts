@@ -23,6 +23,7 @@ import { nameKey } from "@/lib/name-match";
 import { roleKey } from "@/lib/roles";
 import { noteWithSlujire } from "@/lib/slujire";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
+import { storedVotes } from "@/lib/general-assembly";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
 import { normalizeSignature } from "./signature-image";
@@ -313,6 +314,11 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       layout: true,
       locked: true,
       lockedAt: true,
+      convocatLa: true,
+      convocareText: true,
+      tipAG: true,
+      convocataDeComunitate: true,
+      voturi: true,
       prezenti: { where: { status: "ABSENT" }, select: { personId: true } },
       signatures: { select: { personId: true, imagePng: true, signedAt: true } },
     },
@@ -335,6 +341,11 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
         })),
         inchisLa: m.locked ? (m.lockedAt ?? new Date()).toISOString() : null,
         ...(m.layout ? { asezare: storedLayout(m.layout) } : {}),
+        ...(m.convocatLa ? { convocatLa: fromDbDate(m.convocatLa)! } : {}),
+        ...(m.convocareText ? { convocareText: m.convocareText } : {}),
+        ...(m.tipAG ? { tipAG: m.tipAG } : {}),
+        ...(m.convocataDeComunitate ? { convocataDeComunitate: true } : {}),
+        ...(storedVotes(m.voturi) ? { voturi: storedVotes(m.voturi)! } : {}),
       },
     ]),
   );
@@ -750,6 +761,11 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           locked: Boolean(extra?.inchisLa),
           lockedAt: extra?.inchisLa ? new Date(extra.inchisLa) : null,
           ...(extra?.asezare ? { layout: { ...extra.asezare } as Prisma.InputJsonObject } : {}),
+          convocatLa: toDbDate(extra?.convocatLa ?? null),
+          convocareText: extra?.convocareText ?? "",
+          tipAG: extra?.tipAG ?? null,
+          convocataDeComunitate: extra?.convocataDeComunitate ?? false,
+          voturi: extra?.voturi ? (extra.voturi.slice(0, (extra?.puncte ?? split!.puncte).length) as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
         const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];

@@ -6,6 +6,7 @@ import { AGE_BANDS, percentOf } from "@/domain/stats";
 import { categoryHref } from "@/lib/category-params";
 import { ageAt, monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 import { fmt, fmtShort, memberName, MONTHS_L } from "@/lib/format";
+import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assembly";
 import { permissions } from "@/lib/permissions";
 import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
@@ -94,6 +95,16 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   // Administrators are reminded of the monthly JSON export (backup policy, docs/SECURITY.md).
   const exportDays = permissions.admin(ctx.user.role) ? await daysSinceLastExport(ctx) : undefined;
   const exportDue = exportDays !== undefined && (exportDays === null || exportDays > EXPORT_REMINDER_DAYS);
+  // Statut art. 46 alin. 3: the ordinary General Assembly every year; reminded from 1 October.
+  let agMissing = false;
+  if (canWrite && Number(today.slice(5, 7)) >= 10) {
+    const y = today.slice(0, 4);
+    const held = await ctx.db.meeting.findMany({
+      where: { data: { gte: toDbDate(`${y}-01-01`)!, lte: toDbDate(`${y}-12-31`)! }, OR: [{ tipAG: null }, { tipAG: "ORDINARA" }] },
+      select: { tip: true },
+    });
+    agMissing = ordinaryAssemblyMissing(today, held.filter((m) => isGeneralAssembly(m.tip, church.tipuriAG)).length);
+  }
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -103,6 +114,12 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {agMissing ? (
+        <div className="alert mb-4" role="status">
+          Adunarea Generală ordinară nu a avut loc în {today.slice(0, 4)} (Statut art. 46 alin. 3).{" "}
+          <Link href="/procese-verbale/nou">Ședință nouă</Link>
+        </div>
+      ) : null}
       {away3 ? (
         <div className="alert mb-4" role="status">
           <Link href={categoryHref("plecati-3-luni", undefined)}>{away3} plecați de peste 3 luni</Link>

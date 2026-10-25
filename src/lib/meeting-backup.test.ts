@@ -11,6 +11,24 @@ describe("meeting extras in the backup", () => {
     expect(parseMeetingExtras({ meetings })).toEqual(new Map([["m1", extra]]));
   });
 
+  it("round-trips the General Assembly fields and the votes", () => {
+    const meetings: Record<string, Record<string, unknown>> = { m1: { tip: "Adunare generală" } };
+    const extra: MeetingExtra = {
+      absenti: [],
+      asteptati: null,
+      puncte: ["Unu", "Doi"],
+      convocatLa: "2026-03-01",
+      convocareText: "Alegerea comitetului",
+      tipAG: "ORDINARA",
+      convocataDeComunitate: true,
+      voturi: [{ pentru: 20, contra: 3, abtineri: 1, secret: true }, null],
+    };
+    addMeetingExtras(meetings, new Map([["m1", extra]]));
+    expect(parseMeetingExtras({ meetings })).toEqual(new Map([["m1", extra]]));
+    const bad = parseMeetingExtras({ meetings: { m1: { convocatLa: "ieri", tipAG: "ALTA", voturi: [{ pentru: -1 }] } } });
+    expect(bad.size).toBe(0);
+  });
+
   it("ignores older files and malformed values", () => {
     expect(parseMeetingExtras({ meetings: { m1: { prezenti: ["a"], hotarari: "x" } } }).size).toBe(0);
     expect(parseMeetingExtras({}).size).toBe(0);

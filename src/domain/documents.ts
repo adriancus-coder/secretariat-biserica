@@ -44,6 +44,8 @@ export interface DocumentTemplateInput {
    */
   discipline?: { forma: string; dataInceput: string } | null;
   exceptieDomiciliu?: boolean;
+  /** "Convocare Adunare Generală" (Statut art. 46; not in the prototype): from the meeting. */
+  convocare?: { data: string; ora: string; loc: string; scop: string; puncte: string[]; tipAG: "ORDINARA" | "EXTRAORDINARA" | null } | null;
 }
 
 const BLANK_NAME = "____________________";
@@ -64,6 +66,7 @@ export function generateDocumentText({
   reportText,
   discipline,
   exceptieDomiciliu,
+  convocare,
 }: DocumentTemplateInput): string {
   const f = m?.gen === "F";
   const nume = m ? memberName(m) : BLANK_NAME;
@@ -112,6 +115,12 @@ export function generateDocumentText({
       return `Către ${catre || BLANK_NAME},\n\n${scop ? `Ref.: ${scop}\n\n` : ""}`;
     case "raport":
       return reportText ?? "";
+    case "convocare": {
+      const g = convocare;
+      const kind = g?.tipAG === "EXTRAORDINARA" ? "extraordinară" : g?.tipAG === "ORDINARA" ? "ordinară" : "";
+      const agenda = g?.puncte.length ? `\n\nOrdinea de zi:\n${g.puncte.map((p, i) => `${i + 1}. ${p}`).join("\n")}` : "";
+      return `În temeiul Statutului Cultului Creștin Penticostal (art. 46), conducerea ${bis} convoacă Adunarea Generală${kind ? ` ${kind}` : ""} a membrilor bisericii, care va avea loc în data de ${g?.data ? fmtL(g.data) : BLANK}${g?.ora ? `, ora ${g.ora}` : ""}, ${g?.loc ? `la ${g.loc}` : `la sediul bisericii, ${c.adresa || BLANK}`}.\n\nScopul adunării: ${g?.scop || BLANK}${agenda}\n\nSunt chemați să participe toți membrii cu drepturi depline ai bisericii.`;
+    }
   }
 }
 

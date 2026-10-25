@@ -24,6 +24,8 @@ export interface DocumentFormInitial {
   textRich?: RichDoc | null;
   anRaport: string;
   exceptieDomiciliu?: boolean;
+  /** Convocare: the General Assembly meeting it announces. */
+  sedintaId?: string;
 }
 
 export function DocumentForm({
@@ -83,6 +85,7 @@ export function DocumentForm({
       anRaport: next.anRaport ?? anRaport,
       evolutie: next.evolutie ?? evolutie,
       exceptieDomiciliu: next.exceptieDomiciliu ?? exceptie,
+      sedintaId: initial.sedintaId ?? "",
       data: dataRef.current?.value ?? initial.data,
     });
     if (current !== request.current) return; // un răspuns mai vechi decât ultima cerere
