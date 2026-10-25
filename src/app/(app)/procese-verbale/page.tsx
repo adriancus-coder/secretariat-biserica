@@ -18,6 +18,11 @@ export default async function MeetingsPage({ searchParams }: PageProps<"/procese
     <>
       <PageHead title="Procese-verbale" sub={`${data.total} ședințe înregistrate`}>
         {permissions.write(ctx.user.role) ? (
+          <Link href="/procese-verbale/import" className="btn">
+            Importă
+          </Link>
+        ) : null}
+        {permissions.write(ctx.user.role) ? (
           <Link href="/procese-verbale/nou" className="btn btn-primary">
             + Ședință nouă
           </Link>

@@ -54,6 +54,12 @@ services:
       # Optional sender; defaults to "Secretariat Biserică <secretariat@sanctuaryvoice.com>".
       - key: EMAIL_FROM
         sync: false
+      # Optional: reading scanned documents and photos with Claude (off without a key).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Optional model for the extraction; defaults to claude-sonnet-5-5.
+      - key: EXTRACT_MODEL
+        sync: false
       # Leave empty: while the database is empty the first church can register anyway.
       # "true" only to let more churches register on this server.
       - key: ALLOW_SIGNUP

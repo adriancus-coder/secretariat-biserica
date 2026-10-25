@@ -88,6 +88,8 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | `ALLOW_SIGNUP` | nu | `true` permite înregistrarea de biserici noi din `/inregistrare`. Implicit doar prima biserică. |
 | `APP_TIME_ZONE` | nu | Fusul orar pentru „azi” (implicit `Europe/Bucharest`; ex. `Europe/Oslo`). |
 | `RESEND_API_KEY` | nu | Cheia [Resend](https://resend.com) pentru trimiterea invitațiilor și a linkurilor de resetare pe e-mail. Fără ea, administratorul copiază linkurile din **Setări → Utilizatori**. |
+| `ANTHROPIC_API_KEY` | nu | Cheia API Claude pentru citirea documentelor scanate și a fotografiilor (**Persoane → Adaugă din document**, **Procese-verbale → Importă**). Fără ea, butoanele arată „Extragerea din imagini nu este configurată”. |
+| `EXTRACT_MODEL` | nu | Modelul folosit la citire; implicit `claude-sonnet-5-5`. |
 | `EMAIL_FROM` | nu | Expeditorul e-mailurilor (implicit `Secretariat Biserică <secretariat@sanctuaryvoice.com>`); domeniul trebuie verificat în Resend. |
 | `TEST_DATABASE_URL` | pentru teste | Baza de date (separată!) pentru testele de integrare; fără ea sunt sărite. |
 
@@ -209,6 +211,8 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
    | `APP_URL` | The public address. A new service gets `https://<service-name>.onrender.com`; if the exact URL is not known yet, set it right after the first deploy. Links in e-mails are built from it. |
    | `AUTH_URL` | The same public address. Auth.js builds its redirects from it; behind Render's proxy, Next.js only sees its internal address (`https://localhost:10000`). |
    | `RESEND_API_KEY` | A Resend API key with sending access. Leave it empty to start without e-mail: invitation and password-reset links are then copied manually from Setări → Utilizatori. |
+   | `ANTHROPIC_API_KEY` | Optional. A Claude API key for reading scanned documents and photos. Leave it empty to keep the feature off. |
+   | `EXTRACT_MODEL` | Optional. The model for that reading; defaults to `claude-sonnet-5-5`. |
    | `EMAIL_FROM` | Optional. The default is `Secretariat Biserică <secretariat@sanctuaryvoice.com>`; the sender's domain must be verified in Resend. |
    | `ALLOW_SIGNUP` | Leave it empty. While the database is empty, the first church can register anyway; registration then closes by itself. Set `true` only to let more churches register. |
 

@@ -504,6 +504,7 @@ enum AuditEntity {
   APPLICATION
   CHURCH_ROLE
   FAMILY
+  EXTRACT
 }
 
 enum AuditAction {

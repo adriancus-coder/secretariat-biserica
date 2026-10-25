@@ -263,6 +263,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Content: `puncte` (ordered list, sent as JSON in the hidden field `puncte`), `observatii`, `formulaIncheiere`. The old `discutii` / `hotarari` were moved there by the `minutes_numbering` migration (`splitDecisions()` in `src/lib/minutes.ts` mirrors it) and stay empty; never write them.
 - The PDF follows `docs/samples/proces-verbal-model.md`; `print.test.ts` compares `printToText` with its example line by line. Change both together.
 
+### Reading documents with Claude (extraction)
+
+- `src/server/extract.ts`: PDF / JPG / PNG (≤ 20 MB, 30 s timeout) sent to the Claude API with a strict JSON schema per kind (`src/lib/schemas/extract.ts`). The answer is validated again with zod and anything off-schema is refused. The model comes from `EXTRACT_MODEL`, default `claude-sonnet-5-5`, with server-side refusal fallback.
+- Off unless `ANTHROPIC_API_KEY` is set (`isExtractConfigured()`). Log only the kind, the duration and the token counts, never content. Files are read in memory and never stored.
+- 60 extractions per church per day (`sharedRateLimiter("extract")`), and an `EXTRACT` audit entry (file name and size) per extraction.
+- Tests pass a mock `ExtractClient`; they must never call the real API.
+
 ### Families
 
 - `Family` is a tenant model with a head (`headId`, unique) and members (`Person.familyId`). The old text column is `Person.familieVeche`: kept for one release, then dropped by a later migration. Never write it.

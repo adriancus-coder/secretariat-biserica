@@ -24,6 +24,7 @@ Since the original brief:
 - Church roles (funcții) per person, with the committee shown on Acasă and usable as a Persoane filter.
 - Attendance rules per meeting type: automatic attendee lists, absentees and quorum in the minutes.
 - Families as records defined by their head (`/familii`), replacing the free-text family name.
+- Minutes numbered per year and printed in the church's format; reading scanned documents and photos with Claude (person and minutes drafts).
 
 Also in place:
 
@@ -75,6 +76,7 @@ Also in place:
   - Button heights are fixed: `.btn` is at least 44 px and `.btn-sm` at least 40 px. Small controls that are not `.btn` (calendar day cells, pager links, inline text links) have not been audited yet.
 - Absentees are computed from today's register as of the meeting date (who was a member, who held a committee role then). Editing a meeting saved before the attendance rules computes its absentees for the first time; role history only exists from the `din` dates entered.
 - Role end dates (`until`) are stored and exported but not yet editable in the UI.
+- Documents read with Claude are not stored (no object storage yet); HEIC photos are not converted on the server (phones send JPEG through the file picker).
 - `Person.familieVeche` (the family text before families became records) is still in the database. Drop it in a migration once production has run a release with families.
 - Person search no longer includes the family name; rows saved before families became records still contain the old family text until they are saved again.
 - The `/am-uitat-parola` limit is kept in process memory: 3 requests per e-mail address per 15 minutes.

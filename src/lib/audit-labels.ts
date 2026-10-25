@@ -83,6 +83,8 @@ export const FIELD_LABELS: Record<string, string> = {
   formulaIncheiere: "Formula de încheiere",
   cap: "Capul familiei",
   observatie: "Observație",
+  fisier: "Fișier",
+  marime: "Mărime",
   comitet: "Face parte din comitet",
   activ: "Activă",
   pozitie: "Poziția în listă",
@@ -121,4 +123,5 @@ export const ENTITY_LABEL = {
   APPLICATION: "Cerere de membru",
   CHURCH_ROLE: "Funcție în biserică",
   FAMILY: "Familie",
+  EXTRACT: "Citire din document",
 } as const;

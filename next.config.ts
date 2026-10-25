@@ -20,10 +20,10 @@ const nextConfig: NextConfig = {
     // forbidden() pentru paginile interzise rolului curent.
     authInterrupts: true,
     serverActions: {
-      // Importul JSON (copie de siguranță) poate depăși limita implicită de 1 MB.
-      bodySizeLimit: "20mb",
+      // Importul JSON (copie de siguranță) și documentele citite cu Claude (cel mult 20 MB, plus anvelopa formularului).
+      bodySizeLimit: "25mb",
     },
-    proxyClientMaxBodySize: "20mb",
+    proxyClientMaxBodySize: "25mb",
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
