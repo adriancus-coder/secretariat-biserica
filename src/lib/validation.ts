@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isIsoDate } from "./dates";
+import { isIsoDate, todayIso } from "./dates";
 
 z.config(z.locales.ro());
 
@@ -26,6 +26,23 @@ export const optionalDate = str
   .refine((s) => s === "" || isIsoDate(s), "Dată invalidă.")
   .refine((s) => s === "" || (s >= "1850-01-01" && s <= "2200-12-31"), "Dată în afara intervalului acceptat.")
   .transform((s) => (s === "" ? null : s));
+
+/** A year from 1900 to the current year, or null when empty ("sau doar anul" fields). */
+export const optionalPastYear = str
+  .transform((s) => s.trim())
+  .superRefine((s, ctx) => {
+    if (s === "") return;
+    const max = Number(todayIso().slice(0, 4));
+    if (!/^\d{4}$/.test(s) || Number(s) < 1900 || Number(s) > max) {
+      ctx.addIssue({ code: "custom", message: `Anul trebuie să fie între 1900 și ${max}.` });
+    }
+  })
+  .transform((s) => (s === "" ? null : Number(s)));
+
+/** The stored baptism year: the full date's year when there is a date, else the year entered alone. */
+export function baptismYearOf(dataBotez: string | null, botezAn: number | null): number | null {
+  return dataBotez ? Number(dataBotez.slice(0, 4)) : botezAn;
+}
 
 export function requiredDate(message = "Data este obligatorie.") {
   return optionalDate.refine((s): s is string => s !== null, message).transform((s) => s as string);

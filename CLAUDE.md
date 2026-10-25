@@ -172,6 +172,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - "Today" is `todayIso()` in `APP_TIME_ZONE`.
   - Never use `new Date()` for calendar logic.
   - Ages are computed from strings (`ageAt`).
+- Baptism: `dataBotez` (full date) and `botezAn` (year). A full date also fills `botezAn` (`baptismYearOf`); a year alone leaves `dataBotez` null. Statistics count a baptism by its year; texts say "în anul <an>" when there is no date.
 
 ### Search and sorting
 

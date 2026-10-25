@@ -7,6 +7,7 @@ import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
+import { todayIso } from "@/lib/dates";
 import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_LABEL } from "@/lib/labels";
 import { savePersonAction } from "@/server/actions/persons";
@@ -100,12 +101,23 @@ export function PersonForm({
           <legend>Botez în apă</legend>
           <div className="row2">
             <TextField name="dataBotez" label="Data botezului" type="date" defaultValue={val("dataBotez")} error={e.dataBotez} />
-            <TextField name="botezBiserica" label="Biserica" placeholder="ex. Betel Oslo" defaultValue={val("botezBiserica")} error={e.botezBiserica} />
+            <TextField
+              name="botezAn"
+              label="sau doar anul"
+              type="number"
+              inputMode="numeric"
+              min={1900}
+              max={Number(todayIso().slice(0, 4))}
+              placeholder="ex. 2010"
+              defaultValue={val("dataBotez") ? "" : val("botezAn")}
+              error={e.botezAn}
+            />
           </div>
           <div className="row2">
+            <TextField name="botezBiserica" label="Biserica" placeholder="ex. Betel Oslo" defaultValue={val("botezBiserica")} error={e.botezBiserica} />
             <TextField name="botezLocalitate" label="Localitatea" defaultValue={val("botezLocalitate")} error={e.botezLocalitate} />
-            <TextField name="botezOficiant" label="Oficiat de" placeholder="ex. pastor Ioan Pop" defaultValue={val("botezOficiant")} error={e.botezOficiant} />
           </div>
+          <TextField name="botezOficiant" label="Oficiat de" placeholder="ex. pastor Ioan Pop" defaultValue={val("botezOficiant")} error={e.botezOficiant} />
         </fieldset>
         <TextField
           name="dataBinecuvantare"

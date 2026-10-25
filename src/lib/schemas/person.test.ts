@@ -36,4 +36,15 @@ describe("validarea persoanei", () => {
     expect(q.error!.issues.map((i) => i.path[0])).toEqual(["dataIesire"]);
     expect(personDateErrors(personSchema.parse(form({ dataNasterii: "2020-01-01" })), "2019-01-01")).toHaveProperty("dataNasterii");
   });
+
+  it("a full baptism date also fills the year; the year alone leaves the date empty", () => {
+    expect(personSchema.parse(form({ dataBotez: "2008-06-15", botezAn: "2001" }))).toMatchObject({ dataBotez: "2008-06-15", botezAn: 2008 });
+    expect(personSchema.parse(form({ botezAn: "2010" }))).toMatchObject({ dataBotez: null, botezAn: 2010 });
+    expect(personSchema.parse(form({ botezAn: "" }))).toMatchObject({ dataBotez: null, botezAn: null });
+    for (const bad of ["1899", "3000", "20x0", "10"]) {
+      const r = personSchema.safeParse(form({ botezAn: bad }));
+      expect(r.success, bad).toBe(false);
+      expect(r.error!.issues.map((i) => i.path[0])).toEqual(["botezAn"]);
+    }
+  });
 });

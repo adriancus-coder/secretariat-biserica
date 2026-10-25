@@ -96,10 +96,11 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   const copiiMembri = copii.filter((p) => p.familyId && memberFams.has(p.familyId));
   const apart = ev.filter((p) => p.statut === "APARTINATOR");
   const prieteni = ev.filter((p) => p.statut === "PRIETEN");
-  const botezati = ev.filter((p) => p.dataBotez && p.dataBotez <= endDate);
+  // A baptism known only by its year counts by that year (not in the prototype).
+  const botezati = ev.filter((p) => (p.dataBotez ? p.dataBotez <= endDate : p.botezAn !== null && p.botezAn <= y));
 
   const intrTransfer = persons.filter((p) => p.modIntrare === "TRANSFER" && inYear(p.dataMembru, y));
-  const intrBotez = persons.filter((p) => inYear(p.dataBotez, y));
+  const intrBotez = persons.filter((p) => (p.dataBotez ? inYear(p.dataBotez, y) : p.botezAn === y));
   const reprimiri = persons.filter((p) => p.modIntrare === "REPRIMIRE" && inYear(p.dataMembru, y));
   const iesiri = persons.filter((p) => inYear(p.dataIesire, y));
   const binecuv = persons.filter((p) => inYear(p.dataBinecuvantare, y));
@@ -151,6 +152,7 @@ export function reportYears(persons: PersonRecord[], currentYear: number): numbe
     for (const d of [p.dataMembru, p.dataBotez, p.dataIesire, p.dataBinecuvantare]) {
       if (d) years.add(Number(d.slice(0, 4)));
     }
+    if (p.botezAn) years.add(p.botezAn);
   }
   years.add(currentYear);
   return [...years].sort((a, b) => b - a);

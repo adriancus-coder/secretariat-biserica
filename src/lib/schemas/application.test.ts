@@ -19,6 +19,12 @@ describe("applicationSchema", () => {
     expect(r).toMatchObject({ kind: "CERERE_MEMBRALITATE", bisericaProvenienta: "", dataBotez: "2008-07-20", botezBiserica: "Y" });
   });
 
+  it("keeps a year-only baptism for transfers and drops it for other kinds", () => {
+    expect(applicationSchema.parse({ ...base, botezAn: "2010" })).toMatchObject({ dataBotez: null, botezAn: 2010 });
+    expect(applicationSchema.parse({ ...base, dataBotez: "2008-07-20", botezAn: "2010" })).toMatchObject({ botezAn: 2008 });
+    expect(applicationSchema.parse({ ...base, kind: "BOTEZ", botezAn: "2010" })).toMatchObject({ botezAn: null });
+  });
+
   it("requires consent, a kind and names, reported together", () => {
     const r = applicationSchema.safeParse({ nume: "", prenume: "", telefon: "", email: "" });
     expect(r.success).toBe(false);

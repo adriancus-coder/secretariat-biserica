@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { todayIso } from "../dates";
 import { APPLICATION_KINDS, GENDERS } from "../labels";
-import { longText, optionalDate, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { baptismYearOf, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const APPLICATION_MESSAGE_MAX = 2000;
 
@@ -23,6 +23,7 @@ const applicationFields = z.object({
   rudenie: text(60, "Gradul de rudenie"),
   bisericaProvenienta: text(160, "Biserica de proveniență"),
   dataBotez: optionalDate,
+  botezAn: optionalPastYear,
   botezBiserica: text(160, "Biserica botezului"),
   botezLocalitate: text(160, "Localitatea botezului"),
   botezOficiant: text(160, "Numele celui care a oficiat botezul"),
@@ -51,12 +52,13 @@ export const applicationSchema = applicationFields
       }
     }
   })
+  .transform((v) => ({ ...v, botezAn: baptismYearOf(v.dataBotez, v.botezAn) }))
   .transform((v) =>
     v.kind === "TRANSFER"
       ? v
       : v.kind === "CERERE_MEMBRALITATE"
         ? { ...v, bisericaProvenienta: "" }
-        : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
+        : { ...v, bisericaProvenienta: "", dataBotez: null as string | null, botezAn: null as number | null, botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
   );
 
 /** Kinds whose applicant is already baptised: the form asks for the baptism details. */

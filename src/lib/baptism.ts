@@ -3,6 +3,8 @@
 export interface BaptismDetails {
   /** Already formatted for display ("15 iun. 2008"), or empty. */
   data: string;
+  /** The year, used when only the year is known (no date): "în anul 2010". */
+  botezAn?: number | null;
   botezBiserica: string;
   botezLocalitate: string;
   botezOficiant: string;
@@ -22,7 +24,7 @@ export function baptismSentence(b: BaptismDetails, verb = "Botezat"): string {
   const church = b.botezBiserica.trim();
   const place = b.botezLocalitate.trim();
   const parts = [
-    b.data ? `la ${b.data}` : "",
+    b.data ? `la ${b.data}` : b.botezAn ? `în anul ${b.botezAn}` : "",
     church ? `în ${churchName(church)}` : "",
     place ? (church ? place : `în ${place}`) : "",
     b.botezOficiant.trim() ? `de ${b.botezOficiant.trim()}` : "",

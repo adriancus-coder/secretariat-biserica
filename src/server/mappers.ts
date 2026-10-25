@@ -18,6 +18,7 @@ export const personRecordSelect = {
   modIntrare: true,
   bisericaProvenienta: true,
   dataBotez: true,
+  botezAn: true,
   botezBiserica: true,
   botezLocalitate: true,
   botezOficiant: true,
@@ -44,6 +45,7 @@ export function toPersonRecord(p: PersonRecordRow): PersonRecord {
     modIntrare: p.modIntrare,
     bisericaProvenienta: p.bisericaProvenienta,
     dataBotez: fromDbDate(p.dataBotez),
+    botezAn: p.botezAn,
     // The domain keeps the prototype's single "locBotez"; the locality is what it held.
     locBotez: p.botezLocalitate,
     botezBiserica: p.botezBiserica,
@@ -67,6 +69,7 @@ export function toDocPerson(p: PersonRecord): DocPerson {
     dataNasterii: p.dataNasterii,
     dataMembru: p.dataMembru,
     dataBotez: p.dataBotez,
+    botezAn: p.botezAn,
     locBotez: p.locBotez,
     botezBiserica: p.botezBiserica,
     botezOficiant: p.botezOficiant,

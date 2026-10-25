@@ -60,6 +60,7 @@ type P = {
   modIntrare?: "BOTEZ" | "TRANSFER" | "NASCUT_IN_BISERICA" | "REPRIMIRE" | "ALTUL";
   bisericaProvenienta?: string;
   dataBotez?: string;
+  botezAn?: number;
   botezBiserica?: string;
   botezLocalitate?: string;
   botezOficiant?: string;
@@ -196,6 +197,7 @@ async function main() {
       modIntrare: p.modIntrare ?? null,
       bisericaProvenienta: p.bisericaProvenienta ?? "",
       dataBotez: p.dataBotez ? date(p.dataBotez) : null,
+      botezAn: p.dataBotez ? Number(p.dataBotez.slice(0, 4)) : (p.botezAn ?? null),
       botezBiserica: p.botezBiserica ?? "",
       botezLocalitate: p.botezLocalitate ?? "",
       botezOficiant: p.botezOficiant ?? "",
@@ -371,6 +373,7 @@ async function main() {
     modIntrare: p.modIntrare,
     bisericaProvenienta: p.bisericaProvenienta,
     dataBotez: p.dataBotez?.toISOString().slice(0, 10) ?? null,
+    botezAn: p.botezAn,
     locBotez: p.botezLocalitate,
     botezBiserica: p.botezBiserica,
     botezOficiant: p.botezOficiant,

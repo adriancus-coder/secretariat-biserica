@@ -7,6 +7,7 @@ import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { APPLICATION_KIND_LABEL, APPLICATION_KINDS, GENDER_LABEL, GENDERS, type ApplicationKindKey } from "@/lib/labels";
 import { APPLICATION_MESSAGE_MAX, hasBaptismFields } from "@/lib/schemas/application";
+import { todayIso } from "@/lib/dates";
 import { STATUTE, type StatuteKind } from "@/lib/statutes";
 import { submitApplicationAction } from "@/server/actions/applications";
 
@@ -139,12 +140,23 @@ export function ApplicationForm({ slug, rudenie, statutes }: { slug: string; rud
             <legend>Botez în apă</legend>
             <div className="row2 stack-sm">
               <TextField name="dataBotez" label="Data botezului" type="date" defaultValue={v.dataBotez ?? ""} error={e.dataBotez} />
-              <TextField name="botezBiserica" label="Biserica" defaultValue={v.botezBiserica ?? ""} error={e.botezBiserica} />
+              <TextField
+                name="botezAn"
+                label="sau doar anul"
+                type="number"
+                inputMode="numeric"
+                min={1900}
+                max={Number(todayIso().slice(0, 4))}
+                placeholder="ex. 2010"
+                defaultValue={v.botezAn ?? ""}
+                error={e.botezAn}
+              />
             </div>
             <div className="row2 stack-sm">
+              <TextField name="botezBiserica" label="Biserica" defaultValue={v.botezBiserica ?? ""} error={e.botezBiserica} />
               <TextField name="botezLocalitate" label="Localitatea" defaultValue={v.botezLocalitate ?? ""} error={e.botezLocalitate} />
-              <TextField name="botezOficiant" label="Oficiat de" defaultValue={v.botezOficiant ?? ""} error={e.botezOficiant} />
             </div>
+            <TextField name="botezOficiant" label="Oficiat de" defaultValue={v.botezOficiant ?? ""} error={e.botezOficiant} />
           </fieldset>
         </fieldset>
       ) : null}

@@ -331,6 +331,10 @@ corecții deliberate:
 16. **Modul de intrare „Cerere de membralitate”** (și tipul de cerere online cu același nume) se adaugă
     celor din prototip; în copia de siguranță apare cu această etichetă. Statisticile nu îl numără
     separat (ca „Altul”); documentele afișează data intrării ca la orice alt mod.
+17. **Botezul cunoscut doar după an:** lângă data botezului se poate trece doar anul („sau doar anul”).
+    Pagina persoanei, certificatele, adeverința și scrisoarea de recomandare scriu atunci „în anul 2010”;
+    statisticile și darea de seamă numără botezul după an (prototipul, fără dată, nu îl număra). În
+    copia de siguranță apare ca `botezAn`; fișierele mai vechi se importă neschimbat.
 
 ## Limitări și pași următori
 

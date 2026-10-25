@@ -53,6 +53,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       dataMembru: member ? todayIso() : "",
       bisericaProvenienta: app.bisericaProvenienta,
       dataBotez: fromDbDate(app.dataBotez) ?? "",
+      botezAn: app.dataBotez || app.botezAn === null ? "" : String(app.botezAn),
       botezBiserica: app.botezBiserica,
       botezLocalitate: app.botezLocalitate,
       botezOficiant: app.botezOficiant,

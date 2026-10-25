@@ -17,4 +17,10 @@ describe("baptismSentence", () => {
     );
     expect(baptismSentence(none)).toBe("");
   });
+
+  it("a baptism known only by its year reads „în anul …”; a date wins", () => {
+    const none = { data: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "" };
+    expect(baptismSentence({ ...none, botezAn: 2010 })).toBe("Botezat în anul 2010");
+    expect(baptismSentence({ ...none, data: "15 iun. 2010", botezAn: 2010 })).toBe("Botezat la 15 iun. 2010");
+  });
 });

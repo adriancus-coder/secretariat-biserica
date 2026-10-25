@@ -11,6 +11,7 @@ const base: DocPerson = {
   dataNasterii: "2010-03-05",
   dataMembru: "2020-06-10",
   dataBotez: "2020-06-10",
+  botezAn: 2020,
   locBotez: "baptisteriul bisericii",
   botezBiserica: "",
   botezOficiant: "",

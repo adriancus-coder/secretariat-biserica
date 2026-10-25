@@ -22,6 +22,8 @@ export interface BApplication {
   rudenie: string;
   bisericaProvenienta: string;
   dataBotez: string | null;
+  /** The baptism year (from the date, or alone when only the year is known). */
+  botezAn: number | null;
   botezBiserica: string;
   botezLocalitate: string;
   botezOficiant: string;
@@ -63,6 +65,7 @@ const entry = z.object({
   rudenie: str(60),
   bisericaProvenienta: str(160),
   dataBotez: day,
+  botezAn: z.unknown().optional().transform((v) => (typeof v === "number" && Number.isInteger(v) && v >= 1900 && v <= 2200 ? v : null)),
   botezBiserica: str(160),
   botezLocalitate: str(160),
   botezOficiant: str(160),
@@ -119,6 +122,7 @@ export function parseApplicationsJson(root: unknown, memberIds: ReadonlySet<stri
     applications.push({
       ...data,
       botezLocalitate: data.botezLocalitate || locBotez,
+      botezAn: data.dataBotez ? Number(data.dataBotez.slice(0, 4)) : data.botezAn,
       id,
       membruId,
       createdAt: data.createdAt ?? new Date(0).toISOString(),

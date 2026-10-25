@@ -231,3 +231,41 @@ describe("documented deviations from the prototype (baptism church and officiant
     expect(buildReportText(2026, s, { evenimente: 0, sedinte: 0, documente: 0 })).toContain("Rusu Ion (Betel Oslo, Ioan Ardelean)");
   });
 });
+
+describe("documented deviations from the prototype (baptism known only by its year)", () => {
+  const today = "2026-09-28";
+  const proto = loadPrototype(today);
+  const church = { nume: "Maranata Stavanger", adresa: "Kongsgårdbakken 1, Stavanger" };
+  const yearOnly = makePerson({ id: "a", nume: "Pop", prenume: "Ana", gen: "F", statut: "MEMBRU", dataNasterii: "1990-01-01", dataMembru: "2010-09-01", modIntrare: "BOTEZ", botezAn: 2010, createdAt: "2009-01-01" });
+  const full = makePerson({ id: "b", nume: "Rusu", prenume: "Ion", gen: "M", statut: "MEMBRU", dataNasterii: "1990-01-01", dataMembru: "2010-09-01", modIntrare: "BOTEZ", dataBotez: "2010-06-15", botezAn: 2010, createdAt: "2009-01-01" });
+  const loadProto = () => {
+    proto.S.members = Object.fromEntries([yearOnly, full].map((p) => [p.id, toPrototypeMember({ ...p, familie: "" })]));
+    proto.S.events = {};
+  };
+
+  it("statistics count a year-only baptism by its year (the prototype, which has no year, does not)", () => {
+    loadProto();
+    const s = computeStats([yearOnly, full], [], { year: 2010, today });
+    expect(s.intrBotez.map((p) => p.id).sort()).toEqual(["a", "b"]);
+    expect(s.botezati.map((p) => p.id).sort()).toEqual(["a", "b"]);
+    expect(computeStats([yearOnly], [], { year: 2009, today }).botezati).toEqual([]);
+    expect(proto.stats(2010).botezati.length).toBe(1);
+  });
+
+  it("the year-end report lists the year-only baptism", () => {
+    loadProto();
+    const s = computeStats([yearOnly, full], [], { year: 2010, today });
+    expect(buildReportText(2010, s, { evenimente: 0, sedinte: 0, documente: 0 })).toContain("2 botezați în 2010 (");
+    expect(proto.reportText(2010)).toContain("1 botezați în 2010 (");
+  });
+
+  it("certificates read „în anul 2010”; a full date still reads the full date", () => {
+    const doc = (tip: "botez" | "adeverinta" | "recomandare", person: typeof full) =>
+      generateDocumentText({ tip, person: { ...person }, family: [], church, catre: "", scop: "" });
+    expect(doc("botez", yearOnly)).toContain("în Numele Tatălui, al Fiului și al Sfântului Duh, în anul 2010, în cadrul Biserica Maranata Stavanger.");
+    expect(doc("adeverinta", yearOnly)).toContain("fiind botezată în apă în anul 2010.");
+    expect(doc("recomandare", yearOnly)).toContain("botezată în apă în anul 2010, care");
+    expect(doc("botez", full)).toContain("la data de 15 iunie 2010");
+    expect(doc("adeverinta", full)).toContain("fiind botezat în apă la data de 15 iunie 2010.");
+  });
+});

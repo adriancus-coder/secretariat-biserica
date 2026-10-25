@@ -217,6 +217,8 @@ model Person {
   modIntrare          EntryMode?
   bisericaProvenienta String     @default("")
   dataBotez           DateTime?  @db.Date
+  /// Baptism year: filled from dataBotez, or alone when only the year is known.
+  botezAn             Int?
   /// Water baptism: church, locality and the minister who baptised (replace the old free "locBotez").
   botezBiserica       String     @default("")
   botezLocalitate     String     @default("")
@@ -725,6 +727,7 @@ model Application {
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")
   dataBotez           DateTime? @db.Date
+  botezAn             Int?
   botezBiserica       String    @default("")
   botezLocalitate     String    @default("")
   botezOficiant       String    @default("")

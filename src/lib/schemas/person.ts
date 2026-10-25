@@ -2,7 +2,7 @@ import { z } from "zod";
 import { todayIso } from "../dates";
 import { ENTRY_MODES, EXIT_MODES, GENDERS, PERSON_STATUSES } from "../labels";
 import { NEW_FAMILY } from "../families";
-import { idSchema, longText, optionalDate, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { baptismYearOf, idSchema, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const PERSON_FIELDS = [
   "nume",
@@ -18,6 +18,7 @@ export const PERSON_FIELDS = [
   "modIntrare",
   "bisericaProvenienta",
   "dataBotez",
+  "botezAn",
   "botezBiserica",
   "botezLocalitate",
   "botezOficiant",
@@ -44,6 +45,7 @@ const personFields = z.object({
   modIntrare: optionalEnum(ENTRY_MODES),
   bisericaProvenienta: text(160, "Biserica de proveniență"),
   dataBotez: optionalDate,
+  botezAn: optionalPastYear,
   botezBiserica: text(160, "Biserica botezului"),
   botezLocalitate: text(160, "Localitatea botezului"),
   botezOficiant: text(160, "Numele celui care a oficiat botezul"),
@@ -56,11 +58,14 @@ const personFields = z.object({
 });
 
 /** Validarea completă, inclusiv verificările de consistență a datelor (raportate împreună cu celelalte erori). */
-export const personSchema = personFields.superRefine((v, ctx) => {
-  for (const [path, message] of Object.entries(personDateErrors(v, todayIso()))) {
-    ctx.addIssue({ code: "custom", path: [path], message });
-  }
-});
+export const personSchema = personFields
+  .superRefine((v, ctx) => {
+    for (const [path, message] of Object.entries(personDateErrors(v, todayIso()))) {
+      ctx.addIssue({ code: "custom", path: [path], message });
+    }
+  })
+  // A full baptism date also fills the year; the year alone leaves the date empty.
+  .transform((v) => ({ ...v, botezAn: baptismYearOf(v.dataBotez, v.botezAn) }));
 
 export type PersonInput = z.output<typeof personFields>;
 

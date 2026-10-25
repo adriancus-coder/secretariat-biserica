@@ -27,6 +27,7 @@ const person = {
   gen: "F",
   dataNasterii: "1994-11-11",
   dataBotez: "2012-06-03",
+  botezAn: 2012,
   botezBiserica: null,
   botezLocalitate: null,
   botezOficiant: null,

@@ -53,4 +53,23 @@ describe.skipIf(!hasTestDb)("baptism details in the JSON backup", () => {
     const p = await target.db.person.findFirstOrThrow({ where: { nume: "Rusu" } });
     expect([p.botezBiserica, p.botezLocalitate, p.botezOficiant]).toEqual(["", "Râul Someș, Cluj", ""]);
   });
+
+  it("a year-only baptism round-trips as botezAn; an older file takes the year from the date", async () => {
+    await prisma.person.create({ data: { churchId: source.user.churchId, nume: "Lungu", prenume: "Eva", botezAn: 2010 } });
+    const data = toPrototypeJson(await loadBackup(source));
+    addMemberBaptism(data.members as Record<string, Record<string, unknown>>, await loadBaptism(source));
+    const json = JSON.parse(JSON.stringify(data));
+    const parsed = parsePrototypeJson(json);
+    if (!parsed.ok) throw new Error("parse");
+    await importBackup(target, parsed.backup, "replace", { baptism: parseMemberBaptism(json) });
+    const eva = await target.db.person.findFirstOrThrow({ where: { nume: "Lungu" } });
+    expect([eva.dataBotez, eva.botezAn]).toEqual([null, 2010]);
+
+    const old = { members: { m1: { id: "m1", nume: "Rusu", prenume: "Debora", statut: "membru", dataBotez: "2008-06-15", locBotez: "Oslo" } } };
+    const parsedOld = parsePrototypeJson(old);
+    if (!parsedOld.ok) throw new Error("parse");
+    await importBackup(target, parsedOld.backup, "replace", { baptism: parseMemberBaptism(old) });
+    const debora = await target.db.person.findFirstOrThrow({ where: { nume: "Rusu" } });
+    expect([debora.dataBotez?.toISOString().slice(0, 10), debora.botezAn, debora.botezLocalitate]).toEqual(["2008-06-15", 2008, "Oslo"]);
+  });
 });

@@ -21,6 +21,7 @@ export const personDraftSchema = z
     gen: z.enum(["M", "F"]).nullable(),
     dataNasterii: isoOrNull,
     dataBotez: isoOrNull,
+    botezAn: z.number().int().min(1900).max(2200).nullable(),
     botezBiserica: textOrNull,
     botezLocalitate: textOrNull,
     botezOficiant: textOrNull,
@@ -57,13 +58,14 @@ const names = { type: "array", items: { type: "string" } } as const;
 export const personDraftJsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["nume", "prenume", "gen", "dataNasterii", "dataBotez", "botezBiserica", "botezLocalitate", "botezOficiant", "bisericaProvenienta", "telefon", "email", "adresa", "kind"],
+  required: ["nume", "prenume", "gen", "dataNasterii", "dataBotez", "botezAn", "botezBiserica", "botezLocalitate", "botezOficiant", "bisericaProvenienta", "telefon", "email", "adresa", "kind"],
   properties: {
     nume: { ...str, description: "Numele de familie" },
     prenume: str,
     gen: { type: ["string", "null"], enum: ["M", "F", null] },
     dataNasterii: date,
     dataBotez: date,
+    botezAn: { type: ["integer", "null"], description: "Anul botezului, când documentul dă doar anul (fără zi și lună); altfel anul datei botezului sau null" },
     botezBiserica: { ...str, description: "Biserica în care a fost botezată persoana; null dacă nu scrie" },
     botezLocalitate: { ...str, description: "Localitatea botezului; null dacă nu scrie" },
     botezOficiant: { ...str, description: "Cine a oficiat botezul (pastorul); null dacă nu scrie" },

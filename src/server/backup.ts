@@ -23,8 +23,9 @@ const byName = { orderBy: { createdAt: "asc" as const } };
 
 /** Member id → baptism church / locality / officiant, for the export (see addMemberBaptism). */
 export async function loadBaptism(ctx: Ctx): Promise<Map<string, BaptismFields>> {
-  const rows = await ctx.db.person.findMany({ select: { id: true, botezBiserica: true, botezLocalitate: true, botezOficiant: true } });
-  return new Map(rows.map(({ id, ...b }) => [id, b]));
+  const rows = await ctx.db.person.findMany({ select: { id: true, botezBiserica: true, botezLocalitate: true, botezOficiant: true, botezAn: true, dataBotez: true } });
+  // The year is written only for a baptism known by its year alone (the date carries it otherwise).
+  return new Map(rows.map(({ id, dataBotez, botezAn, ...b }) => [id, { ...b, botezAn: dataBotez ? null : botezAn }]));
 }
 
 /** Toate datele bisericii, pentru export. */
@@ -167,6 +168,7 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
     rudenie: a.rudenie,
     bisericaProvenienta: a.bisericaProvenienta,
     dataBotez: fromDbDate(a.dataBotez),
+    botezAn: a.botezAn,
     botezBiserica: a.botezBiserica,
     botezLocalitate: a.botezLocalitate,
     botezOficiant: a.botezOficiant,
@@ -376,14 +378,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         modIntrare: m.modIntrare,
         bisericaProvenienta: m.bisericaProvenienta,
         dataBotez: toDbDate(m.dataBotez),
-        ...importedBaptism(extras.baptism?.get(m.id), m.locBotez),
+        ...importedBaptism(extras.baptism?.get(m.id), m.locBotez, m.dataBotez),
         dataBinecuvantare: toDbDate(m.dataBinecuvantare),
         dataIesire: toDbDate(m.dataIesire),
         modIesire: m.modIesire,
         bisericaDestinatie: m.bisericaDestinatie,
         slujire: m.slujire,
         note: noteWithSlujire(m.note, m.slujire),
-        ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez) }),
+        ...personDerived({ ...m, ...importedBaptism(extras.baptism?.get(m.id), m.locBotez, m.dataBotez) }),
       });
       const newPersons: Prisma.PersonCreateManyInput[] = [];
       for (const m of backup.members) {
@@ -750,6 +752,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             rudenie: a.rudenie,
             bisericaProvenienta: a.bisericaProvenienta,
             dataBotez: toDbDate(a.dataBotez),
+            botezAn: a.botezAn,
             botezBiserica: a.botezBiserica,
             botezLocalitate: a.botezLocalitate,
             botezOficiant: a.botezOficiant,

@@ -26,6 +26,7 @@ export const FIELD_LABELS: Record<string, string> = {
   modIntrare: "Mod de intrare",
   bisericaProvenienta: "Biserica de proveniență",
   dataBotez: "Botez în apă",
+  botezAn: "Anul botezului",
   botezBiserica: "Biserica botezului",
   botezLocalitate: "Localitatea botezului",
   botezOficiant: "Botez oficiat de",
