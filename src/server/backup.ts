@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import type { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
-import type { MeetingAttendanceExtra } from "@/lib/attendance-backup";
+import type { MeetingExtra } from "@/lib/meeting-backup";
+import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { defaultFamilyName, pickHead } from "@/lib/families";
 import type { BFamily, ParsedFamilies } from "@/lib/families-backup";
 import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
@@ -66,8 +67,9 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
       prezenti: m.prezenti.map((p) => p.personId),
       invitati: m.invitati,
       ordine: m.ordine,
-      discutii: m.discutii,
-      hotarari: m.hotarari,
+      // The prototype's free texts, for older readers: the points as "1. …" lines, the observations as discussions.
+      discutii: m.observatii,
+      hotarari: pointsText(m.puncte),
       createdAt: day(m.createdAt),
     })),
     events: events.map((e) => ({
@@ -185,13 +187,32 @@ export async function loadRoles(ctx: Ctx): Promise<{ roles: BRole[]; functii: Ma
   };
 }
 
-/** Meeting id → absentees and expected count, for the meetings' `absenti` / `asteptati` in the export. */
-export async function loadMeetingAttendance(ctx: Ctx): Promise<Map<string, MeetingAttendanceExtra>> {
+/** Meeting id → the fields beyond the prototype's format (absentees, numbering, points …), for the export. */
+export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingExtra>> {
   const rows = await ctx.db.meeting.findMany({
-    where: { OR: [{ asteptati: { not: null } }, { prezenti: { some: { status: "ABSENT" } } }] },
-    select: { id: true, asteptati: true, prezenti: { where: { status: "ABSENT" }, select: { personId: true } } },
+    select: {
+      id: true,
+      asteptati: true,
+      nr: true,
+      puncte: true,
+      observatii: true,
+      formulaIncheiere: true,
+      prezenti: { where: { status: "ABSENT" }, select: { personId: true } },
+    },
   });
-  return new Map(rows.map((m) => [m.id, { absenti: m.prezenti.map((p) => p.personId), asteptati: m.asteptati }]));
+  return new Map(
+    rows.map((m) => [
+      m.id,
+      {
+        absenti: m.prezenti.map((p) => p.personId),
+        asteptati: m.asteptati,
+        nr: m.nr,
+        puncte: m.puncte,
+        observatii: m.observatii,
+        formulaIncheiere: m.formulaIncheiere,
+      },
+    ]),
+  );
 }
 
 /** Families and each person's family, for the `families` collection and members' `familyId`. */
@@ -209,8 +230,8 @@ export interface ImportExtras {
   applications?: BApplication[] | null;
   roles?: ParsedRoles | null;
   families?: ParsedFamilies | null;
-  /** Meeting id → absentees and expected count, as in the file (see parseMeetingAttendance). */
-  attendance?: ReadonlyMap<string, MeetingAttendanceExtra>;
+  /** Meeting id → the fields beyond the prototype's format, as in the file (see parseMeetingExtras). */
+  meetings?: ReadonlyMap<string, MeetingExtra>;
 }
 
 export interface ImportSummary {
@@ -442,8 +463,25 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
 
       // Ședințe
       const meet = await planIds(tx, TABLES.meetings, backup.meetings.map((m) => m.id), churchId);
+      // Minutes numbers: kept when free in their year, otherwise the meeting stays without a number.
+      const updatingMeetings = backup.meetings.filter((m) => meet.existing.has(m.id)).map((m) => meet.map.get(m.id)!);
+      if (updatingMeetings.length) await tx.meeting.updateMany({ where: { id: { in: updatingMeetings } }, data: { nr: null, anRegistru: null } });
+      const takenNumbers = new Set(
+        (await tx.meeting.findMany({ where: { nr: { not: null } }, select: { nr: true, anRegistru: true } })).map((r) => `${r.anRegistru}:${r.nr}`),
+      );
+      const unnumbered: string[] = [];
       for (const m of backup.meetings) {
         const id = meet.map.get(m.id)!;
+        const extra = extras.meetings?.get(m.id);
+        // Points: from the app's own fields, or from the prototype's texts (as the minutes_numbering migration did).
+        const split = extra?.puncte ? null : splitDecisions(m.hotarari, m.discutii);
+        const year = Number(m.data.slice(0, 4));
+        let nr = extra?.nr ?? null;
+        if (nr !== null && takenNumbers.has(`${year}:${nr}`)) {
+          unnumbered.push(`${nr}/${year}`);
+          nr = null;
+        }
+        if (nr !== null) takenNumbers.add(`${year}:${nr}`);
         const data = {
           titlu: m.titlu,
           tip: m.tip,
@@ -453,12 +491,16 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           presedinte: m.presedinte,
           invitati: m.invitati,
           ordine: m.ordine,
-          discutii: m.discutii,
-          hotarari: m.hotarari,
-          asteptati: extras.attendance?.get(m.id)?.asteptati ?? null,
+          discutii: "",
+          hotarari: "",
+          puncte: extra?.puncte ?? split!.puncte,
+          observatii: extra?.observatii ?? split?.observatii ?? "",
+          formulaIncheiere: extra?.formulaIncheiere ?? DEFAULT_CLOSING,
+          nr,
+          anRegistru: nr !== null ? year : null,
+          asteptati: extra?.asteptati ?? null,
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
-        const extra = extras.attendance?.get(m.id);
         const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
         const rows = [
           ...prezenti.map((personId) => ({ personId, status: "PRESENT" as const })),
@@ -470,6 +512,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           await tx.meeting.create({ data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows } } });
         }
       }
+
+      if (unnumbered.length) warnings.push(`Procese-verbale rămase fără număr (numărul era deja folosit): ${unnumbered.join(", ")}.`);
 
       // Evenimente
       const evs = await planIds(tx, TABLES.events, backup.events.map((e) => e.id), churchId);

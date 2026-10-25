@@ -6,8 +6,10 @@ import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { quorumLine } from "@/lib/attendance";
 import { fmt } from "@/lib/format";
+import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
-import { deleteMeetingAction } from "@/server/actions/meetings";
+import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
+import { AssignNumberButton } from "./assign-number";
 import { getMeeting } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
 
@@ -20,6 +22,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   if (!x) notFound();
   const canWrite = permissions.write(ctx.user.role);
   const cvorum = quorumLine(x.asteptati, x.absenti.length);
+  const numberLabel = minutesNumber(x);
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "MEETING", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -27,10 +30,18 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   return (
     <>
       <BackLink href="/procese-verbale">Procese-verbale</BackLink>
-      <PageHead title={x.titlu || x.tip} sub={x.tip}>
+      <PageHead
+        title={x.titlu || x.tip}
+        sub={
+          <>
+            {numberLabel ?? <span className="tag tag-warn">fără număr</span>} · {x.tip}
+          </>
+        }
+      >
         <a href={`/pdf/proces-verbal/${x.id}`} target="_blank" rel="noopener" className="btn">
           Tipărește (PDF)
         </a>
+        {canWrite && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
         {canWrite ? (
           <Link href={`/procese-verbale/${x.id}/editare`} className="btn btn-primary">
             Editează
@@ -81,18 +92,28 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             <dd className="whitespace-pre-wrap">{x.ordine}</dd>
           </>
         ) : null}
-        {x.discutii ? (
+        <dt>Puncte discutate și aprobate</dt>
+        <dd>
+          {x.puncte.length ? (
+            <ol className="list-decimal pl-5 space-y-1">
+              {x.puncte.map((p, i) => (
+                <li key={i} className="whitespace-pre-wrap">
+                  {p}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            "—"
+          )}
+        </dd>
+        {x.observatii ? (
           <>
-            <dt>Discuții</dt>
-            <dd className="whitespace-pre-wrap">{x.discutii}</dd>
+            <dt>Observații</dt>
+            <dd className="whitespace-pre-wrap">{x.observatii}</dd>
           </>
         ) : null}
-        {x.hotarari ? (
-          <>
-            <dt>Hotărâri</dt>
-            <dd className="whitespace-pre-wrap">{x.hotarari}</dd>
-          </>
-        ) : null}
+        <dt>Formula de încheiere</dt>
+        <dd>{x.formulaIncheiere}</dd>
       </dl>
 
       {audit.length ? (

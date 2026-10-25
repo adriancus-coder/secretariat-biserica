@@ -692,6 +692,38 @@
     min-width: 0;
     min-height: 40px;
   }
+  /* Minutes: points editor */
+  .points {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+  }
+  .points li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 8px;
+    align-items: start;
+  }
+  .points-nr {
+    padding-top: 10px;
+    font-family: var(--font-serif);
+    min-width: 1.6em;
+    text-align: right;
+  }
+  .points textarea {
+    min-height: 64px;
+  }
+  .points-tools {
+    grid-column: 2;
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+  .points-tools .btn {
+    min-width: 40px;
+  }
   /* Person form: church roles */
   .roles-grid {
     display: grid;

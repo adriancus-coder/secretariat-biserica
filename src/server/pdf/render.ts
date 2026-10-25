@@ -84,10 +84,10 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
       }
       case "title": {
         doc.font("Serif-SemiBold").fontSize(17);
-        doc.text(block.text.toLocaleUpperCase("ro-RO"), left, doc.y, {
+        doc.text(block.asWritten ? block.text : block.text.toLocaleUpperCase("ro-RO"), left, doc.y, {
           width,
           align: "center",
-          characterSpacing: 17 * 0.06,
+          characterSpacing: block.asWritten ? 0 : 17 * 0.06,
         });
         doc.y += 18;
         break;
@@ -154,6 +154,28 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         }
         doc.x = left;
         doc.y = top + blockHeight - 48;
+        break;
+      }
+      case "signed": {
+        // "Secretar, <nume>" / "Pastor, <nume>", then "Semnătura" with room to sign, in two columns.
+        const blockHeight = 24 + 2 * BODY_SIZE * LINE_HEIGHT + 40;
+        if (doc.y + blockHeight > bottomLimit()) doc.addPage();
+        const colW = width * 0.45;
+        const top = doc.y + 18;
+        const cols: [Signature, number][] = [
+          [block.left, left],
+          [block.right, left + width - colW],
+        ];
+        for (const [sig, x] of cols) {
+          doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000");
+          doc.text(`${sig.label}, ${sig.name}`.replace(/, $/, ","), x, top, { width: colW });
+          const sy = top + BODY_SIZE * LINE_HEIGHT + 6;
+          doc.text("Semnătura", x, sy, { width: colW });
+          const ly = sy + BODY_SIZE * LINE_HEIGHT + 28;
+          doc.moveTo(x, ly).lineTo(x + colW * 0.8, ly).lineWidth(0.7).strokeColor("#000").stroke();
+        }
+        doc.x = left;
+        doc.y = top + blockHeight;
         break;
       }
     }

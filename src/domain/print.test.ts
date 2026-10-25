@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { documentPrint, eventPrint, groupPrint, meetingPrint, printToText, reportPrint } from "./print";
 
 const church = {
@@ -12,62 +14,68 @@ const church = {
 };
 
 describe("documente tipărite", () => {
-  it("procesul-verbal listează absenții și cvorumul când tipul are regulă de prezență", () => {
+  it("procesul-verbal urmează formatul bisericii (docs/samples/proces-verbal-model.md)", () => {
+    const sample = readFileSync(join(process.cwd(), "docs/samples/proces-verbal-model.md"), "utf8");
+    const expected = [...sample.matchAll(/```text\n([\s\S]*?)```/g)].at(-1)![1].trimEnd();
+    const p = (prenume: string, nume: string) => ({ prenume, nume });
     const spec = meetingPrint(
       {
-        titlu: "",
-        tip: "Adunare generală",
-        data: "2026-09-18",
-        ora: "",
-        loc: "",
-        presedinte: "",
+        nr: 16,
+        tip: "Comitet",
+        data: "2026-09-11",
+        prezenti: [p("Mihai", "Ionescu"), p("Daniel", "Mureșan"), p("Ioana", "Pop"), p("Ion", "Popescu"), p("Petru", "Ștefănescu")],
+        absenti: [p("Emanuel", "Ciobanu")],
         invitati: "Lucia Avram",
         ordine: "",
-        discutii: "",
-        hotarari: "",
-        prezenti: ["Ionescu Mihai", "Popescu Ion"],
-        absenti: ["Pop Ioana"],
-        cvorum: "Prezenți 2 din 3 (67 %)",
+        puncte: [
+          "Ziua Recoltei va avea loc pe 4 octombrie, cu agapă comună.",
+          "Seara de evanghelizare: invitat pastor Ioan Bunaciu.",
+          "Conferința tinerilor se amână pentru primăvară.",
+        ],
+        observatii: "",
+        formulaIncheiere: "Toate punctele au fost votate în unanimitate de membrii prezenți.",
       },
       church,
     );
-    const lines = printToText(spec).split("\n");
-    expect(lines[3]).toBe("Prezenți (2): Ionescu Mihai, Popescu Ion. Absenți (1): Pop Ioana. Invitați: Lucia Avram.");
-    expect(lines[4]).toBe("Prezenți 2 din 3 (67 %).");
+    expect(printToText(spec).split("\n")).toEqual(expected.split("\n"));
   });
 
-  it("procesul-verbal are formularea oficială din prototip", () => {
-    const spec = meetingPrint(
-      {
-        titlu: "Planificare toamnă",
-        tip: "Comitet",
-        data: "2026-09-18",
-        ora: "18:30",
-        loc: "Sala mică",
-        presedinte: "",
-        invitati: "Lucia Avram",
-        ordine: "1. Ziua Recoltei\n2. Evanghelizare",
-        discutii: "",
-        hotarari: "Se hotărăște agapă comună.",
-        prezenti: ["Ionescu Mihai", "Popescu Ion"],
-      },
-      church,
-    );
-    expect(printToText(spec)).toBe(
-      [
-        "Biserica Maranata Stavanger",
-        "Proces-verbal",
-        "Încheiat astăzi, 18 septembrie 2026, ora 18:30, la Sala mică, cu ocazia ședinței de tip „Comitet” — Planificare toamnă.",
-        "Prezenți (2): Ionescu Mihai, Popescu Ion. Invitați: Lucia Avram.",
-        "Ordinea de zi:",
-        "1. Ziua Recoltei\n2. Evanghelizare",
-        "Hotărâri:",
-        "Se hotărăște agapă comună.",
-        "Drept care s-a încheiat prezentul proces-verbal.",
-        // fără președinte de ședință, semnează pastorul
-        "Președinte de ședință: Daniel Mureșan | Secretar: Ioana Pop",
-      ].join("\n"),
-    );
+  it("procesul-verbal fără număr, cu cvorum, ordine de zi și observații", () => {
+    const lines = printToText(
+      meetingPrint(
+        {
+          nr: null,
+          tip: "Adunare generală",
+          data: "2026-01-26",
+          prezenti: [{ prenume: "Ana", nume: "Pop" }],
+          absenti: [],
+          invitati: "",
+          ordine: "1. Darea de seamă",
+          puncte: [],
+          observatii: "Discuții:\nS-a citit darea de seamă.",
+          formulaIncheiere: "Încheiat și semnat.",
+          cvorum: "Prezenți 1 din 2 (50 %)",
+        },
+        church,
+      ),
+    ).split("\n");
+    expect(lines.slice(1)).toEqual([
+      "Proces verbal",
+      "Încheiat azi, 26.01.2026, cu ocazia ședinței de adunare generală.",
+      "La ședință au fost prezenți: 1 membru.",
+      "Ana Pop",
+      "Cvorum: prezenți 1 din 2 (50 %)",
+      "Ordinea de zi:",
+      "1. Darea de seamă",
+      "În cadrul ședinței s-au discutat și aprobat următoarele:",
+      "Observații:",
+      "Discuții:",
+      "S-a citit darea de seamă.",
+      "Încheiat și semnat.",
+      "Întocmit,",
+      "Secretar, Ioana Pop | Pastor, Daniel Mureșan",
+      "Semnătura | Semnătura",
+    ]);
   });
 
   it("documentul din registru: număr, titlu, text, semnături (inversate la darea de seamă)", () => {

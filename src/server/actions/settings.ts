@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { parsePrototypeJson } from "@/domain/backup";
 import { parseApplicationsJson } from "@/lib/application-backup";
-import { parseMeetingAttendance } from "@/lib/attendance-backup";
+import { parseMeetingExtras } from "@/lib/meeting-backup";
 import { parseFamiliesJson } from "@/lib/families-backup";
 import { parseRolesJson } from "@/lib/roles-backup";
 import type { FormState } from "@/lib/form-state";
@@ -88,7 +88,7 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
       details = extraErrors;
       throw new ActionError(`Importul a fost oprit: ${extraErrors.length} probleme în fișier. Nicio modificare nu a fost făcută.`);
     }
-    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, attendance: parseMeetingAttendance(raw) });
+    const summary = await importBackup(ctx, parsed.backup, mode, { applications: apps.applications, roles, families, meetings: parseMeetingExtras(raw) });
     details = [...parsed.warnings, ...apps.warnings, ...roles.warnings, ...summary.avertismente];
     revalidatePath("/", "layout");
     return {

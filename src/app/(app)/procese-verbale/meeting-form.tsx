@@ -7,13 +7,16 @@ import { Field, nomenOptions, SelectField, TextAreaField, TextField } from "@/co
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
+import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { saveMeetingAction } from "@/server/actions/meetings";
+import { PointsEditor } from "./points-editor";
 
 const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((x) => b.has(x));
 
 export function MeetingForm({
   id,
   initial,
+  points,
   selected,
   people,
   tipuri,
@@ -23,6 +26,8 @@ export function MeetingForm({
 }: {
   id: string | null;
   initial: Record<string, string>;
+  /** The meeting's points ("Puncte discutate și aprobate"). */
+  points: string[];
   selected: string[];
   people: ChecklistOption[];
   tipuri: string[];
@@ -55,7 +60,19 @@ export function MeetingForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <TextField name="titlu" label="Titlu" placeholder="ex. Ședință de comitet — planificare toamnă" defaultValue={val("titlu")} error={e.titlu} />
+      <div className="row2">
+        <TextField
+          name="nr"
+          label="Număr proces-verbal"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          defaultValue={val("nr")}
+          error={e.nr}
+          hint="Gol: următorul număr liber din anul ședinței."
+        />
+        <TextField name="titlu" label="Titlu" placeholder="ex. Planificare toamnă" defaultValue={val("titlu")} error={e.titlu} />
+      </div>
       <div className="row2">
         <SelectField
           name="tip"
@@ -78,8 +95,14 @@ export function MeetingForm({
       </Field>
       <TextField name="invitati" label="Invitați / alte persoane" defaultValue={val("invitati")} error={e.invitati} />
       <TextAreaField name="ordine" label="Ordinea de zi" placeholder={"1. …\n2. …"} defaultValue={val("ordine")} error={e.ordine} />
-      <TextAreaField name="discutii" label="Discuții" defaultValue={val("discutii")} error={e.discutii} />
-      <TextAreaField name="hotarari" label="Hotărâri" placeholder="Se hotărăște …" defaultValue={val("hotarari")} error={e.hotarari} />
+      <PointsEditor initial={points} error={e.puncte} />
+      <TextAreaField name="observatii" label="Observații (opțional)" defaultValue={val("observatii")} error={e.observatii} />
+      <TextField
+        name="formulaIncheiere"
+        label="Formula de încheiere"
+        defaultValue={val("formulaIncheiere") || DEFAULT_CLOSING}
+        error={e.formulaIncheiere}
+      />
       <FormMessage state={state} />
       <div className="actions">
         <Link href={cancelHref} className="btn btn-ghost">

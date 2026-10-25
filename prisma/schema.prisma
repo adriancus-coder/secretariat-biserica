@@ -301,6 +301,13 @@ model Meeting {
   ordine     String   @default("")
   discutii   String   @default("")
   hotarari   String   @default("")
+  /// Number in the minutes register of the year `anRegistru` (the year of `data`); null = not numbered yet.
+  nr               Int?
+  anRegistru       Int?
+  /// "Puncte discutate și aprobate", in order. Replaces the free texts discutii/hotarari (migrated into puncte/observatii).
+  puncte           String[] @default([])
+  observatii       String   @default("")
+  formulaIncheiere String   @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
   asteptati  Int?
 
@@ -309,6 +316,7 @@ model Meeting {
 
   prezenti MeetingAttendee[]
 
+  @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
   @@map("meetings")
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { pageParam, Pager } from "@/components/ui/pager";
 import { dateBadge } from "@/lib/format";
+import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
 import { listMeetings } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
@@ -37,7 +38,8 @@ export default async function MeetingsPage({ searchParams }: PageProps<"/procese
                 <div className="body">
                   <div className="t">{m.titlu || m.tip}</div>
                   <div className="m">
-                    {m.tip} · {m.prezenti} prezenți{m.areHotarari ? " · hotărâri" : ""}
+                    {minutesNumber(m) ?? "fără număr"} · {m.tip} · {m.prezenti} prezenți
+                    {m.puncte ? ` · ${m.puncte === 1 ? "1 punct" : `${m.puncte} puncte`}` : ""}
                   </div>
                 </div>
               </Link>

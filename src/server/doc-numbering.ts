@@ -20,3 +20,20 @@ export async function nextFreeNumber(tx: NumberingTx, churchId: string, year: nu
   const agg = await tx.document.aggregate({ where: { churchId, anRegistru: year }, _max: { nr: true } });
   return (agg._max.nr ?? 0) + 1;
 }
+
+type MeetingNumberingTx = {
+  $executeRaw: NumberingTx["$executeRaw"];
+  meeting: {
+    aggregate: (args: { where: Prisma.MeetingWhereInput; _max: { nr: true } }) => Promise<{ _max: { nr: number | null } }>;
+  };
+};
+
+/** The minutes register works like the document register: one lock and one numbering per (church, year). */
+export async function lockMeetingRegister(tx: MeetingNumberingTx, churchId: string, year: number): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pv-nr:${churchId}:${year}`}))`;
+}
+
+export async function nextFreeMeetingNumber(tx: MeetingNumberingTx, churchId: string, year: number): Promise<number> {
+  const agg = await tx.meeting.aggregate({ where: { churchId, anRegistru: year }, _max: { nr: true } });
+  return (agg._max.nr ?? 0) + 1;
+}

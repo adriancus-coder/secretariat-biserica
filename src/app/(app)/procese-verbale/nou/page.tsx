@@ -26,6 +26,7 @@ export default async function NewMeetingPage({ searchParams }: PageProps<"/proce
       <MeetingForm
         id={null}
         initial={{ data, tip, presedinte: church.pastor }}
+        points={[]}
         selected={selected}
         people={people}
         tipuri={church.nomen.tipuriSedinte}

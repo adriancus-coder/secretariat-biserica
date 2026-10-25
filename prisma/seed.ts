@@ -22,6 +22,7 @@ import type { PersonRecord } from "../src/domain/types";
 import { inYear, todayIso } from "../src/lib/dates";
 import { noteSearchText, personDerived } from "../src/lib/person-derived";
 import { defaultFamilyName, pickHead } from "../src/lib/families";
+import { splitDecisions } from "../src/lib/minutes";
 import { defaultRolesData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
@@ -281,7 +282,13 @@ async function main() {
     { titlu: "Pregătirea botezului", tip: "Comitet", data: clampPast(d(0, 4, 27)), prezenti: comitet, ordine: "1. Candidații la botez\n2. Organizarea agapei", discutii: "Au fost ascultate mărturiile candidaților Samuel Munteanu și Beniamin Ciobanu.", hotarari: "Botezul va avea loc pe 24 mai." },
     { titlu: "Planificare toamnă", tip: "Comitet", data: addDays(TODAY, -10), prezenti: comitet.filter((k) => k !== "petru"), invitati: "Lucia Avram (agape)", ordine: "1. Ziua Recoltei\n2. Seara de evanghelizare\n3. Conferința tinerilor", hotarari: "Ziua Recoltei cu agapă comună.\nInvitat la evanghelizare: pastor Ioan Bunaciu." },
   ];
-  for (const m of meetings) {
+  // Numbered per year in date order (the minutes register); points from the decisions text.
+  const meetingNumbers = new Map<number, number>();
+  for (const m of [...meetings].sort((a, b) => a.data.localeCompare(b.data))) {
+    const year = Number(m.data.slice(0, 4));
+    const nr = (meetingNumbers.get(year) ?? 0) + 1;
+    meetingNumbers.set(year, nr);
+    const { puncte, observatii } = splitDecisions(m.hotarari ?? "", m.discutii ?? "");
     await prisma.meeting.create({
       data: {
         churchId,
@@ -293,8 +300,10 @@ async function main() {
         presedinte: "Daniel Mureșan",
         invitati: m.invitati ?? "",
         ordine: m.ordine,
-        discutii: m.discutii ?? "",
-        hotarari: m.hotarari ?? "",
+        nr,
+        anRegistru: year,
+        puncte,
+        observatii,
         prezenti: { create: m.prezenti.map((k) => ({ personId: pid(k) })) },
       },
     });

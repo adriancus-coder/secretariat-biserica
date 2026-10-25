@@ -16,7 +16,7 @@ calculul statisticilor, șabloanele de documente și darea de seamă. Echivalen�
 | --- | --- |
 | **Acasă** | Persoane în evidență, membri (%), familii, botezați, aparținători, prieteni nebotezați, copii minori, copii ai membrilor, bărbați/femei, distribuția pe vârste, mișcarea anului, evenimente următoare, aniversări. Selector de an (situație retroactivă) și buton „Dare de seamă”. |
 | **Persoane** | Registru complet (statut, familie și grad de rudenie, intrare/botez/binecuvântare/ieșire, slujire, note). Filtre Membri / Toate / Foști, căutare fără diacritice (inclusiv după telefon), paginare, vedere pe familii. Fișa persoanei: familia, grupurile, mențiunile, documentele, istoricul modificărilor. |
-| **Procese-verbale** | Tip, dată, oră, loc, președinte, prezenți bifați din registru, invitați, ordinea de zi, discuții, hotărâri. PDF în format oficial. |
+| **Procese-verbale** | Numerotate pe an („PV nr. 16/2026”), cu tip, dată, prezenți și absenți, invitați, ordinea de zi, punctele discutate și aprobate, observații și formula de încheiere. PDF în formatul bisericii (`docs/samples/proces-verbal-model.md`). |
 | **Calendar** | Vedere lunară (cu ședințele), liste viitoare/trecute, evenimente cu invitat, responsabil, descriere și agapă („cine aduce ce”). |
 | **Documente** | Registru de ieșire cu numerotare automată pe an. Textul se generează din datele persoanei și ale bisericii, cu acordurile de gen, este editabil, apoi se salvează și se exportă PDF. |
 | **Dare de seamă** | „Situația membrală la 31.12.AAAA” pentru orice an, calculată retroactiv; se salvează ca document în registru. |

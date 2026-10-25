@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parsePrototypeJson, toPrototypeJson } from "@/domain/backup";
-import { addMeetingAttendance, parseMeetingAttendance } from "@/lib/attendance-backup";
+import { addMeetingExtras, parseMeetingExtras } from "@/lib/meeting-backup";
 import { expectedAttendees } from "@/server/queries/attendance";
-import { importBackup, loadBackup, loadMeetingAttendance } from "@/server/backup";
+import { importBackup, loadBackup, loadMeetingExtras } from "@/server/backup";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
@@ -74,14 +74,14 @@ describe.skipIf(!hasTestDb)("meeting attendance rules", () => {
       } as never,
     });
     const data = toPrototypeJson(await loadBackup(a));
-    addMeetingAttendance(data.meetings as Record<string, Record<string, unknown>>, await loadMeetingAttendance(a));
+    addMeetingExtras(data.meetings as Record<string, Record<string, unknown>>, await loadMeetingExtras(a));
     const json = JSON.parse(JSON.stringify(data));
     const meeting = Object.values(json.meetings)[0] as Record<string, unknown>;
     expect(meeting.prezenti).toEqual([ids.diacon]);
     expect(meeting.absenti).toEqual([ids.membru]);
     const parsed = parsePrototypeJson(json);
     if (!parsed.ok) throw new Error("parse");
-    await importBackup(b, parsed.backup, "merge", { attendance: parseMeetingAttendance(json) });
+    await importBackup(b, parsed.backup, "merge", { meetings: parseMeetingExtras(json) });
     const m = await b.db.meeting.findFirstOrThrow({ include: { prezenti: { include: { person: true } } } });
     expect(m.asteptati).toBe(2);
     expect(m.prezenti.map((p) => [p.person.nume, p.status]).sort()).toEqual([

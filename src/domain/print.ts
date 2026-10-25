@@ -16,10 +16,13 @@ export interface Signature {
 
 export type Block =
   | { type: "nr"; text: string }
-  | { type: "title"; text: string }
+  /** Centered heading, in capitals unless `asWritten` (the minutes keep "Proces verbal nr. 16"). */
+  | { type: "title"; text: string; asWritten?: boolean }
   | { type: "para"; runs: Run[]; pre?: boolean }
   | { type: "list"; items: string[]; ordered?: boolean }
-  | { type: "signatures"; left: Signature; right: Signature };
+  | { type: "signatures"; left: Signature; right: Signature }
+  /** "Secretar, Ioana Pop" with "Semnătura" and a line under it, in two columns (the minutes). */
+  | { type: "signed"; left: Signature; right: Signature };
 
 export interface PrintSpec {
   title: string;
@@ -47,49 +50,61 @@ export function pastorSecretarySignatures(c: ChurchInfo, secretaryFirst = false)
 }
 
 export interface MeetingPrint {
-  titlu: string;
+  nr: number | null;
   tip: string;
   data: string;
-  ora: string;
-  loc: string;
-  presedinte: string;
+  /** Present persons, already in register order (by surname). */
+  prezenti: { nume: string; prenume: string }[];
+  absenti: { nume: string; prenume: string }[];
   invitati: string;
   ordine: string;
-  discutii: string;
-  hotarari: string;
-  /** Numele prezenților, în ordine alfabetică. */
-  prezenti: string[];
-  /** Expected by the type's attendance rule but not present, in alphabetical order. */
-  absenti?: string[];
-  /** "Prezenți n din m (p %)", for the types with an attendance rule; omitted otherwise. */
+  puncte: string[];
+  observatii: string;
+  formulaIncheiere: string;
+  /** "Prezenți n din m (p %)" for meeting types with an attendance rule; omitted otherwise. */
   cvorum?: string | null;
 }
 
-/** Procesul-verbal în formatul oficial (printMeeting din prototip). */
+/** "Ioana Pop": the minutes write names first name first. */
+const firstLast = (p: { nume: string; prenume: string }) => `${p.prenume} ${p.nume}`.trim();
+
+/** "11.09.2026". */
+export function fmtDot(iso: string): string {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+}
+
+/**
+ * Procesul-verbal in the church's format (docs/samples/proces-verbal-model.md), for every meeting type:
+ * number, date and type, the persons present (count and names), absentees and guests, the numbered
+ * points, the closing sentence, and the Secretar / Pastor signatures from the church settings.
+ */
 export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
+  const n = x.prezenti.length;
   const blocks: Block[] = [
-    { type: "title", text: "Proces-verbal" },
-    para(
-      `Încheiat astăzi, ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}, ${x.loc ? `la ${x.loc}, ` : ""}cu ocazia ședinței de tip „${x.tip}”${x.titlu ? ` — ${x.titlu}` : ""}${x.presedinte ? `, prezidată de ${x.presedinte}` : ""}.`,
-    ),
-    para(
-      b(`Prezenți (${x.prezenti.length}):`),
-      ` ${x.prezenti.join(", ") || "—"}.`,
-      ...(x.absenti?.length ? [b(` Absenți (${x.absenti.length}):`), ` ${x.absenti.join(", ")}.`] : []),
-      ...(x.invitati ? [b(" Invitați:"), ` ${x.invitati}.`] : []),
-    ),
+    { type: "title", text: x.nr !== null ? `Proces verbal nr. ${x.nr}` : "Proces verbal", asWritten: true },
+    para(`Încheiat azi, ${fmtDot(x.data)}, cu ocazia ședinței de ${x.tip.toLocaleLowerCase("ro-RO")}.`),
+    para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`),
+    para(x.prezenti.map(firstLast).join(", ") || "—"),
   ];
-  if (x.cvorum) blocks.push(para(`${x.cvorum}.`));
-  if (x.ordine) blocks.push(para(b("Ordinea de zi:")), pre(x.ordine));
-  if (x.discutii) blocks.push(para(b("Discuții:")), pre(x.discutii));
-  if (x.hotarari) blocks.push(para(b("Hotărâri:")), pre(x.hotarari));
-  blocks.push(para("Drept care s-a încheiat prezentul proces-verbal."));
+  if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
+  if (x.cvorum) blocks.push(para(`Cvorum: ${x.cvorum.replace(/^Prezenți/, "prezenți")}`));
+  if (x.invitati) blocks.push(para(`Invitați: ${x.invitati}`));
+  if (x.ordine) blocks.push(para("Ordinea de zi:"), pre(x.ordine));
+  blocks.push(para("În cadrul ședinței s-au discutat și aprobat următoarele:"));
+  if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
+  if (x.observatii) blocks.push(para("Observații:"), pre(x.observatii));
+  blocks.push(para(x.formulaIncheiere));
+  blocks.push(para("Întocmit,"));
   blocks.push({
-    type: "signatures",
-    left: { label: "Președinte de ședință", name: x.presedinte || church.pastor },
-    right: { label: "Secretar", name: church.secretar },
+    type: "signed",
+    left: { label: "Secretar", name: church.secretar },
+    right: { label: "Pastor", name: church.pastor },
   });
-  return { title: `Proces-verbal ${x.data}${x.titlu ? ` — ${x.titlu}` : ""}`, church, blocks };
+  return {
+    title: `Proces verbal${x.nr !== null ? ` nr. ${x.nr}` : ""} ${fmtDot(x.data)}`,
+    church,
+    blocks,
+  };
 }
 
 export interface DocumentPrint {
@@ -180,7 +195,10 @@ export function printToText(spec: PrintSpec): string {
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
     else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${i + 1}.` : "•"} ${it}`));
-    else lines.push(`${blk.left.label}: ${blk.left.name} | ${blk.right.label}: ${blk.right.name}`);
+    else if (blk.type === "signed") {
+      lines.push(`${blk.left.label}, ${blk.left.name} | ${blk.right.label}, ${blk.right.name}`);
+      lines.push("Semnătura | Semnătura");
+    } else lines.push(`${blk.left.label}: ${blk.left.name} | ${blk.right.label}: ${blk.right.name}`);
   }
   return lines.join("\n");
 }

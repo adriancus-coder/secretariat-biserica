@@ -14,22 +14,20 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/proces-v
   const pdf = await renderPdf(
     meetingPrint(
       {
-        titlu: m.titlu,
+        nr: m.nr,
         tip: m.tip,
         data: m.data,
-        ora: m.ora,
-        loc: m.loc,
-        presedinte: m.presedinte,
+        prezenti: m.prezenti,
+        absenti: m.absenti,
         invitati: m.invitati,
         ordine: m.ordine,
-        discutii: m.discutii,
-        hotarari: m.hotarari,
-        prezenti: m.prezenti.map((p) => p.name),
-        absenti: m.absenti.map((p) => p.name),
+        puncte: m.puncte,
+        observatii: m.observatii,
+        formulaIncheiere: m.formulaIncheiere,
         cvorum: quorumLine(m.asteptati, m.absenti.length),
       },
       church,
     ),
   );
-  return pdfResponse(pdf, pdfFileName(`proces-verbal-${m.data}-${m.titlu || m.tip}`));
+  return pdfResponse(pdf, pdfFileName(m.nr !== null ? `PV-${m.nr}-${m.anRegistru}-${m.tip}` : `proces-verbal-${m.data}-${m.titlu || m.tip}`));
 }

@@ -255,7 +255,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Each meeting type has a rule (`Church.regulaPrezenta`, `src/lib/attendance.ts`): `TOTI` (members in the record), `COMITET` (holders of an active committee role) or `MANUAL`. Defaults: Adunare generală → TOTI, Comitet and Frați slujitori → COMITET.
 - `MeetingAttendee.status` is PRESENT or ABSENT. Anything that lists the persons present must filter on `status: "PRESENT"`.
 - On save, `expectedAttendees` (as of the meeting date) minus the persons present become ABSENT rows, and `Meeting.asteptati` stores the expected count. The quorum line uses it, so meetings saved before the rules show no quorum.
-- Export/import: `absenti` and `asteptati` on each meeting (`src/lib/attendance-backup.ts`).
+- Export/import: `absenti`, `asteptati`, `nr`, `puncte`, `observatii` and `formulaIncheiere` on each meeting (`src/lib/meeting-backup.ts`).
+
+### Minutes (procese-verbale)
+
+- Numbered per year like documents: `lockMeetingRegister` then `nextFreeMeetingNumber` (`src/server/doc-numbering.ts`), unique `(churchId, anRegistru, nr)`. A manual number is checked; meetings saved before numbering have `nr = null` until edited or "Atribuie număr".
+- Content: `puncte` (ordered list, sent as JSON in the hidden field `puncte`), `observatii`, `formulaIncheiere`. The old `discutii` / `hotarari` were moved there by the `minutes_numbering` migration (`splitDecisions()` in `src/lib/minutes.ts` mirrors it) and stay empty; never write them.
+- The PDF follows `docs/samples/proces-verbal-model.md`; `print.test.ts` compares `printToText` with its example line by line. Change both together.
 
 ### Families
 

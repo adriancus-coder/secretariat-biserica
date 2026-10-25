@@ -23,6 +23,7 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
       <MeetingForm
         id={id}
         initial={{
+          nr: m.nr !== null ? String(m.nr) : "",
           titlu: m.titlu,
           tip: m.tip,
           data: m.data,
@@ -31,9 +32,10 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
           presedinte: m.presedinte,
           invitati: m.invitati,
           ordine: m.ordine,
-          discutii: m.discutii,
-          hotarari: m.hotarari,
+          observatii: m.observatii,
+          formulaIncheiere: m.formulaIncheiere,
         }}
+        points={m.puncte}
         selected={selected}
         people={people}
         tipuri={church.nomen.tipuriSedinte}

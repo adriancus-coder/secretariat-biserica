@@ -1,7 +1,6 @@
 import "server-only";
 import { fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
-import { compareRo } from "@/lib/text";
 import type { ChecklistOption } from "@/components/person-checklist";
 import type { Ctx } from "../session";
 
@@ -15,7 +14,16 @@ export async function listMeetings(ctx: Ctx, page: number) {
     orderBy: [{ data: "desc" }, { ora: "desc" }, { createdAt: "desc" }],
     skip: (current - 1) * MEETINGS_PAGE_SIZE,
     take: MEETINGS_PAGE_SIZE,
-    select: { id: true, titlu: true, tip: true, data: true, hotarari: true, _count: { select: { prezenti: { where: { status: "PRESENT" } } } } },
+    select: {
+      id: true,
+      titlu: true,
+      tip: true,
+      data: true,
+      nr: true,
+      anRegistru: true,
+      puncte: true,
+      _count: { select: { prezenti: { where: { status: "PRESENT" } } } },
+    },
   });
   return {
     items: rows.map((m) => ({
@@ -24,7 +32,9 @@ export async function listMeetings(ctx: Ctx, page: number) {
       tip: m.tip,
       data: fromDbDate(m.data)!,
       prezenti: m._count.prezenti,
-      areHotarari: m.hotarari.length > 0,
+      puncte: m.puncte.length,
+      nr: m.nr,
+      anRegistru: m.anRegistru,
     })),
     total,
     page: current,
@@ -35,14 +45,14 @@ export async function listMeetings(ctx: Ctx, page: number) {
 export async function getMeeting(ctx: Ctx, id: string) {
   const m = await ctx.db.meeting.findUnique({
     where: { id },
-    include: { prezenti: { include: { person: { select: { id: true, nume: true, prenume: true } } } } },
+    include: { prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true } } } } },
   });
   if (!m) return null;
   const list = (status: "PRESENT" | "ABSENT") =>
     m.prezenti
       .filter((p) => p.status === status)
-      .map((p) => ({ id: p.person.id, name: memberName(p.person) }))
-      .sort((a, b) => compareRo(a.name, b.name));
+      .sort((a, b) => a.person.sortKey.localeCompare(b.person.sortKey))
+      .map((p) => ({ id: p.person.id, name: memberName(p.person), nume: p.person.nume, prenume: p.person.prenume }));
   return { ...m, data: fromDbDate(m.data)!, prezenti: list("PRESENT"), absenti: list("ABSENT") };
 }
 
