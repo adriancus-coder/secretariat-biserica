@@ -25,6 +25,13 @@ describe("documente tipărite", () => {
         data: "2026-09-11",
         prezenti: [p("Mihai", "Ionescu"), p("Daniel", "Mureșan"), p("Ioana", "Pop"), p("Ion", "Popescu"), p("Petru", "Ștefănescu")],
         absenti: [p("Emanuel", "Ciobanu")],
+        semnaturi: [
+          { name: "Mihai Ionescu", image: new Uint8Array([1]), signedAt: "11.09.2026 19:42" },
+          { name: "Daniel Mureșan", image: new Uint8Array([1]), signedAt: "11.09.2026 19:43" },
+          { name: "Ioana Pop", image: null, signedAt: null },
+          { name: "Ion Popescu", image: null, signedAt: null },
+          { name: "Petru Ștefănescu", image: null, signedAt: null },
+        ],
         invitati: "Lucia Avram",
         ordine: "",
         puncte: [
@@ -55,6 +62,7 @@ describe("documente tipărite", () => {
           observatii: "Discuții:\nS-a citit darea de seamă.",
           formulaIncheiere: "Încheiat și semnat.",
           cvorum: "Prezenți 1 din 2 (50 %)",
+          inchisLa: "26.01.2026 20:15",
         },
         church,
       ),
@@ -75,6 +83,7 @@ describe("documente tipărite", () => {
       "Întocmit,",
       "Secretar, Ioana Pop | Pastor, Daniel Mureșan",
       "Semnătura | Semnătura",
+      "Proces-verbal închis la 26.01.2026 20:15",
     ]);
   });
 

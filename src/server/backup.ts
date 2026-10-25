@@ -11,6 +11,7 @@ import type { BPersonRole, BRole, ParsedRoles } from "@/lib/roles-backup";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
+import { normalizeSignature } from "./signature-image";
 import type { Ctx } from "./session";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
@@ -197,7 +198,10 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       puncte: true,
       observatii: true,
       formulaIncheiere: true,
+      locked: true,
+      lockedAt: true,
       prezenti: { where: { status: "ABSENT" }, select: { personId: true } },
+      signatures: { select: { personId: true, imagePng: true, signedAt: true } },
     },
   });
   return new Map(
@@ -210,6 +214,12 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
         puncte: m.puncte,
         observatii: m.observatii,
         formulaIncheiere: m.formulaIncheiere,
+        semnaturi: m.signatures.map((s) => ({
+          persoanaId: s.personId,
+          imagine: Buffer.from(s.imagePng).toString("base64"),
+          semnatLa: s.signedAt.toISOString(),
+        })),
+        inchisLa: m.locked ? (m.lockedAt ?? new Date()).toISOString() : null,
       },
     ]),
   );
@@ -470,6 +480,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         (await tx.meeting.findMany({ where: { nr: { not: null } }, select: { nr: true, anRegistru: true } })).map((r) => `${r.anRegistru}:${r.nr}`),
       );
       const unnumbered: string[] = [];
+      let badSignatures = 0;
       for (const m of backup.meetings) {
         const id = meet.map.get(m.id)!;
         const extra = extras.meetings?.get(m.id);
@@ -499,6 +510,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           nr,
           anRegistru: nr !== null ? year : null,
           asteptati: extra?.asteptati ?? null,
+          locked: Boolean(extra?.inchisLa),
+          lockedAt: extra?.inchisLa ? new Date(extra.inchisLa) : null,
         };
         const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
         const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
@@ -506,13 +519,30 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           ...prezenti.map((personId) => ({ personId, status: "PRESENT" as const })),
           ...absenti.map((personId) => ({ personId, status: "ABSENT" as const })),
         ];
+        // Signatures: only of persons present, re-checked like a newly drawn one.
+        const signatures = [];
+        for (const s of extra?.semnaturi ?? []) {
+          const personId = pid(s.persoanaId);
+          if (!personId || !prezenti.includes(personId)) continue;
+          try {
+            signatures.push({ personId, imagePng: new Uint8Array(await normalizeSignature(s.imagine)), signedAt: new Date(s.semnatLa) });
+          } catch {
+            badSignatures++;
+          }
+        }
         if (meet.existing.has(m.id)) {
-          await tx.meeting.update({ where: { id }, data: { ...data, prezenti: { deleteMany: {}, create: rows } } });
+          await tx.meeting.update({
+            where: { id },
+            data: { ...data, prezenti: { deleteMany: {}, create: rows }, ...(extra?.semnaturi ? { signatures: { deleteMany: {}, create: signatures } } : {}) },
+          });
         } else {
-          await tx.meeting.create({ data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows } } });
+          await tx.meeting.create({
+            data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows }, signatures: { create: signatures } },
+          });
         }
       }
 
+      if (badSignatures) warnings.push(`${badSignatures} semnături nu erau imagini valide și nu au fost importate.`);
       if (unnumbered.length) warnings.push(`Procese-verbale rămase fără număr (numărul era deja folosit): ${unnumbered.join(", ")}.`);
 
       // Evenimente

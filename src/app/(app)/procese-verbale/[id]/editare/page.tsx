@@ -14,6 +14,15 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
   const ctx = await requireCtx("write");
   const [m, church] = await Promise.all([getMeeting(ctx, id), getChurch(ctx)]);
   if (!m) notFound();
+  if (m.locked) {
+    return (
+      <>
+        <BackLink href={`/procese-verbale/${id}`}>{m.titlu || m.tip}</BackLink>
+        <PageHead title="Proces-verbal închis" />
+        <p className="hint">Procesul-verbal este închis și nu mai poate fi modificat. Doar administratorul îl poate redeschide.</p>
+      </>
+    );
+  }
   const selected = m.prezenti.map((p) => p.id);
   const [people, prefill] = await Promise.all([attendeeOptions(ctx, selected), attendancePrefill(ctx, m.data)]);
   return (

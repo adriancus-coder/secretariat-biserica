@@ -16,6 +16,10 @@ export interface MeetingExtra {
   puncte?: string[];
   observatii?: string;
   formulaIncheiere?: string;
+  /** Drawn signatures of persons present: PNG as base64, signing time as ISO. */
+  semnaturi?: { persoanaId: string; imagine: string; semnatLa: string }[];
+  /** Closed (read-only) minutes, with the closing time as ISO. */
+  inchisLa?: string | null;
 }
 
 /** Adds the extra fields to the exported meetings (in place). */
@@ -29,6 +33,8 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.puncte) m.puncte = x.puncte;
     if (x.observatii !== undefined) m.observatii = x.observatii;
     if (x.formulaIncheiere !== undefined) m.formulaIncheiere = x.formulaIncheiere;
+    if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
+    if (x.inchisLa) m.inchisLa = x.inchisLa;
   }
 }
 
@@ -61,7 +67,23 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     if (obs !== undefined) x.observatii = obs;
     const formula = str(m.formulaIncheiere, 300);
     if (formula) x.formulaIncheiere = formula;
-    if (x.absenti.length || x.asteptati !== null || x.nr || x.puncte || x.observatii !== undefined || x.formulaIncheiere) {
+    if (Array.isArray(m.semnaturi)) {
+      const list = m.semnaturi
+        .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+        .map((s) => ({ persoanaId: s.persoanaId, imagine: s.imagine, semnatLa: s.semnatLa }))
+        .filter(
+          (s): s is { persoanaId: string; imagine: string; semnatLa: string } =>
+            typeof s.persoanaId === "string" &&
+            ID_RE.test(s.persoanaId) &&
+            typeof s.imagine === "string" &&
+            s.imagine.length <= 200_000 &&
+            typeof s.semnatLa === "string" &&
+            !Number.isNaN(Date.parse(s.semnatLa)),
+        );
+      if (list.length) x.semnaturi = list;
+    }
+    if (typeof m.inchisLa === "string" && !Number.isNaN(Date.parse(m.inchisLa))) x.inchisLa = m.inchisLa;
+    if (x.absenti.length || x.asteptati !== null || x.nr || x.puncte || x.observatii !== undefined || x.formulaIncheiere || x.semnaturi || x.inchisLa) {
       out.set(String(m.id ?? key).trim(), x);
     }
   }

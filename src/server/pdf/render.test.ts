@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { documentPrint, meetingPrint } from "@/domain/print";
 import { pdfFileName, renderPdf } from "./render";
@@ -45,6 +46,35 @@ describe("generarea PDF", () => {
       ),
     );
     expect((pdf.toString("latin1").match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThan(1);
+  });
+
+  it("un proces-verbal cu semnături desenate și închis", async () => {
+    const png = await sharp({ create: { width: 300, height: 100, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.6 } } }).png().toBuffer();
+    const pdf = await renderPdf(
+      meetingPrint(
+        {
+          nr: 3,
+          tip: "Comitet",
+          data: "2026-09-18",
+          prezenti: [{ prenume: "Ioana", nume: "Pop" }, { prenume: "Ion", nume: "Popescu" }],
+          absenti: [],
+          invitati: "",
+          ordine: "",
+          puncte: ["Un punct"],
+          observatii: "",
+          formulaIncheiere: "Gata.",
+          semnaturi: [
+            { name: "Ioana Pop", image: new Uint8Array(png), signedAt: "18.09.2026 19:00" },
+            { name: "Ion Popescu", image: null, signedAt: null },
+          ],
+          inchisLa: "18.09.2026 20:00",
+        },
+        church,
+      ),
+    );
+    const s = pdf.toString("latin1");
+    expect(s.startsWith("%PDF-")).toBe(true);
+    expect((s.match(/\/Subtype \/Image/g) ?? []).length).toBeGreaterThanOrEqual(1);
   });
 
   it("nume de fișier fără diacritice", () => {

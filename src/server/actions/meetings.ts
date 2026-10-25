@@ -20,6 +20,8 @@ import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
+const LOCKED = "Procesul-verbal este închis. Doar administratorul îl poate redeschide.";
+
 /** Instantaneu pentru jurnal: câmpurile ședinței + prezenții și absenții (număr și nume). */
 async function auditView(tx: Tx, id: string) {
   const m = await tx.meeting.findUnique({
@@ -66,8 +68,9 @@ export async function saveMeetingAction(id: string | null, _prev: FormState, for
     savedId = await ctx.db.$transaction(async (tx) => {
       // Like the document register: the year of the meeting date, numbers serialized per (church, year).
       await lockMeetingRegister(tx, ctx.user.churchId, year);
-      const previous = id ? await tx.meeting.findUnique({ where: { id }, select: { nr: true, anRegistru: true } }) : null;
+      const previous = id ? await tx.meeting.findUnique({ where: { id }, select: { nr: true, anRegistru: true, locked: true } }) : null;
       if (id && !previous) throw new ActionError("Procesul-verbal nu mai există.");
+      if (previous?.locked) throw new ActionError(LOCKED);
       let nr: number;
       if (wantedNr !== null) {
         const clash = await tx.meeting.findFirst({
@@ -87,6 +90,8 @@ export async function saveMeetingAction(id: string | null, _prev: FormState, for
           where: { id },
           data: { ...data, prezenti: { deleteMany: {}, create: rows } },
         });
+        // A signature belongs to someone present: removing a person from the list removes it.
+        await tx.meetingSignature.deleteMany({ where: { meetingId: id, personId: { notIn: prezenti } } });
         const after = await auditView(tx, id);
         await writeAudit(tx, ctx.user, {
           entity: "MEETING",
@@ -124,8 +129,9 @@ export async function assignMeetingNumberAction(id: string): Promise<FormState> 
     const ctx = await actionCtx("write");
     parseOrThrow(idSchema, id);
     await ctx.db.$transaction(async (tx) => {
-      const m = await tx.meeting.findUnique({ where: { id }, select: { data: true, nr: true } });
+      const m = await tx.meeting.findUnique({ where: { id }, select: { data: true, nr: true, locked: true } });
       if (!m) throw new ActionError("Procesul-verbal nu mai există.");
+      if (m.locked) throw new ActionError(LOCKED);
       if (m.nr !== null) return;
       const year = m.data.getUTCFullYear();
       await lockMeetingRegister(tx, ctx.user.churchId, year);
@@ -147,6 +153,7 @@ export async function deleteMeetingAction(id: string): Promise<FormState> {
     await ctx.db.$transaction(async (tx) => {
       const before = await auditView(tx, id);
       if (!before) throw new ActionError("Procesul-verbal nu mai există.");
+      if (before.locked) throw new ActionError(LOCKED);
       await tx.meeting.delete({ where: { id } });
       await writeAudit(tx, ctx.user, {
         entity: "MEETING",

@@ -11,6 +11,7 @@ Proces verbal nr. <nr>
 Încheiat azi, <ZZ.LL.AAAA>, cu ocazia ședinței de <tip, lowercase: comitet / adunare generală / …>.
 La ședință au fost prezenți: <n> membri.
 <names, comma separated, Prenume Nume order>
+Nume | Semnătura                (one row per person present: the drawn signature, or a line to sign on paper)
 [Absenți: <names>]            (only when absentees exist)
 [Invitați: <names>]
 În cadrul ședinței s-au discutat și aprobat următoarele:
@@ -25,10 +26,11 @@ Semnătura                             Semnătura
 Optional lines the app adds only when they have content: `Cvorum: …` (after Absenți, for meeting
 types with an attendance rule), `Ordinea de zi: …` (meetings that have one, before the points) and
 `Observații: …` (after the points). A meeting without a number prints `Proces verbal` alone.
+A closed meeting has `Proces-verbal închis la <ZZ.LL.AAAA HH:MM>` at the bottom of every page.
 
 ## Example
 
-Comitet meeting no. 16 of 11.09.2026, five persons present, one absent, one guest, three points.
+Comitet meeting no. 16 of 11.09.2026, five persons present (two signed on the tablet), one absent, one guest, three points.
 `printToText` puts the church name on the first line and joins the two signature columns with ` | `.
 
 ```text
@@ -37,6 +39,12 @@ Proces verbal nr. 16
 Încheiat azi, 11.09.2026, cu ocazia ședinței de comitet.
 La ședință au fost prezenți: 5 membri.
 Mihai Ionescu, Daniel Mureșan, Ioana Pop, Ion Popescu, Petru Ștefănescu
+Nume | Semnătura
+Mihai Ionescu | semnat 11.09.2026 19:42
+Daniel Mureșan | semnat 11.09.2026 19:43
+Ioana Pop | ________________
+Ion Popescu | ________________
+Petru Ștefănescu | ________________
 Absenți: Emanuel Ciobanu
 Invitați: Lucia Avram
 În cadrul ședinței s-au discutat și aprobat următoarele:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, ageAt, fromDbDate, inYear, isIsoDate, toDbDate, todayIso, weekdayMondayFirst } from "./dates";
+import { addMonths, ageAt, fromDbDate, inYear, isIsoDate, toDbDate, todayIso, weekdayMondayFirst, dotDateTime } from "./dates";
 import { fmt, fmtL, memberName } from "./format";
 
 describe("date ISO", () => {
@@ -55,5 +55,12 @@ describe("formatări", () => {
   it("memberName", () => {
     expect(memberName({ nume: "Pop", prenume: "Ion" })).toBe("Pop Ion");
     expect(memberName({ nume: "Pop", prenume: "" })).toBe("Pop");
+  });
+});
+
+describe("dotDateTime", () => {
+  it("formats in the given time zone", () => {
+    expect(dotDateTime(new Date("2026-09-11T11:03:00Z"), "Europe/Bucharest")).toBe("11.09.2026 14:03");
+    expect(dotDateTime(new Date("2026-12-31T23:30:00Z"), "Europe/Oslo")).toBe("01.01.2027 00:30");
   });
 });

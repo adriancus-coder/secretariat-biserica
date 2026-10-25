@@ -22,12 +22,24 @@ export type Block =
   | { type: "list"; items: string[]; ordered?: boolean }
   | { type: "signatures"; left: Signature; right: Signature }
   /** "Secretar, Ioana Pop" with "Semnătura" and a line under it, in two columns (the minutes). */
-  | { type: "signed"; left: Signature; right: Signature };
+  | { type: "signed"; left: Signature; right: Signature }
+  /** "Nume | Semnătura": one row per person, with the drawn signature (PNG) or an empty line to sign on paper. */
+  | { type: "signatureTable"; rows: SignatureCell[] };
+
+export interface SignatureCell {
+  name: string;
+  /** PNG bytes of the drawn signature, or null for a line to sign by hand. */
+  image: Uint8Array | null;
+  /** "11.09.2026 14:03", shown under the image. */
+  signedAt: string | null;
+}
 
 export interface PrintSpec {
   title: string;
   church: ChurchInfo;
   blocks: Block[];
+  /** A line at the bottom of every page (e.g. "Proces-verbal închis la …"). */
+  footer?: string;
 }
 
 export const b = (text: string): Run => ({ text, bold: true });
@@ -63,6 +75,10 @@ export interface MeetingPrint {
   formulaIncheiere: string;
   /** "Prezenți n din m (p %)" for meeting types with an attendance rule; omitted otherwise. */
   cvorum?: string | null;
+  /** The signature table, one row per person present (in the order of `prezenti`). */
+  semnaturi?: SignatureCell[];
+  /** "11.09.2026 14:03" when the minutes were closed. */
+  inchisLa?: string | null;
 }
 
 /** "Ioana Pop": the minutes write names first name first. */
@@ -86,6 +102,7 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`),
     para(x.prezenti.map(firstLast).join(", ") || "—"),
   ];
+  if (x.semnaturi?.length) blocks.push({ type: "signatureTable", rows: x.semnaturi });
   if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
   if (x.cvorum) blocks.push(para(`Cvorum: ${x.cvorum.replace(/^Prezenți/, "prezenți")}`));
   if (x.invitati) blocks.push(para(`Invitați: ${x.invitati}`));
@@ -104,6 +121,7 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     title: `Proces verbal${x.nr !== null ? ` nr. ${x.nr}` : ""} ${fmtDot(x.data)}`,
     church,
     blocks,
+    ...(x.inchisLa ? { footer: `Proces-verbal închis la ${x.inchisLa}` } : {}),
   };
 }
 
@@ -195,10 +213,14 @@ export function printToText(spec: PrintSpec): string {
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
     else if (blk.type === "list") blk.items.forEach((it, i) => lines.push(`${blk.ordered ? `${i + 1}.` : "•"} ${it}`));
-    else if (blk.type === "signed") {
+    else if (blk.type === "signatureTable") {
+      lines.push("Nume | Semnătura");
+      for (const r of blk.rows) lines.push(`${r.name} | ${r.image ? `semnat ${r.signedAt ?? ""}`.trim() : "________________"}`);
+    } else if (blk.type === "signed") {
       lines.push(`${blk.left.label}, ${blk.left.name} | ${blk.right.label}, ${blk.right.name}`);
       lines.push("Semnătura | Semnătura");
     } else lines.push(`${blk.left.label}: ${blk.left.name} | ${blk.right.label}: ${blk.right.name}`);
   }
+  if (spec.footer) lines.push(spec.footer);
   return lines.join("\n");
 }

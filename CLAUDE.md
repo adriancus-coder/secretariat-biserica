@@ -262,6 +262,8 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Numbered per year like documents: `lockMeetingRegister` then `nextFreeMeetingNumber` (`src/server/doc-numbering.ts`), unique `(churchId, anRegistru, nr)`. A manual number is checked; meetings saved before numbering have `nr = null` until edited or "Atribuie număr".
 - Content: `puncte` (ordered list, sent as JSON in the hidden field `puncte`), `observatii`, `formulaIncheiere`. The old `discutii` / `hotarari` were moved there by the `minutes_numbering` migration (`splitDecisions()` in `src/lib/minutes.ts` mirrors it) and stay empty; never write them.
 - The PDF follows `docs/samples/proces-verbal-model.md`; `print.test.ts` compares `printToText` with its example line by line. Change both together.
+- Signatures: `MeetingSignature` (no `churchId`, reached through Meeting), one per person present. The pad's PNG is re-encoded by `normalizeSignature()` (sharp, ≤ 600×200 px, ≤ 40 KB), also on import.
+- `Meeting.locked`: a closed meeting is read-only. Every meeting write checks it on the server (`ActionError`); only `admin` can reopen it. Signing, deleting a signature, closing and reopening are audited (names, never the image).
 
 ### Reading documents with Claude (extraction)
 

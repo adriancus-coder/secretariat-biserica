@@ -92,6 +92,7 @@ model User {
   passwordResets      PasswordReset[] @relation("ResetFor")
   resetsIssued        PasswordReset[] @relation("ResetIssuedBy")
   applicationsDecided Application[]   @relation("ApplicationDecidedBy")
+  signaturesCollected MeetingSignature[] @relation("SignatureCollectedBy")
 
   @@index([churchId])
   @@map("users")
@@ -216,6 +217,7 @@ model Person {
   application Application?
   roles       PersonRole[]
   headOf      Family?           @relation("FamilyHead")
+  signatures  MeetingSignature[]
 
   @@index([churchId, sortKey])
   @@index([churchId, familyId])
@@ -314,11 +316,32 @@ model Meeting {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prezenti MeetingAttendee[]
+  /// A closed (signed) meeting is read-only until an administrator reopens it.
+  locked   Boolean   @default(false)
+  lockedAt DateTime?
+
+  prezenti   MeetingAttendee[]
+  signatures MeetingSignature[]
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
   @@map("meetings")
+}
+
+/// The handwritten signature of a person present at a meeting (PNG, at most 600×200 and 40 KB). Reached only through Meeting.
+model MeetingSignature {
+  id             String   @id @default(cuid())
+  meetingId      String
+  meeting        Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  personId       String
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  imagePng       Bytes
+  signedAt       DateTime @default(now())
+  signedByUserId String?
+  signedBy       User?    @relation("SignatureCollectedBy", fields: [signedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([meetingId, personId])
+  @@map("meeting_signatures")
 }
 
 enum AttendanceStatus {

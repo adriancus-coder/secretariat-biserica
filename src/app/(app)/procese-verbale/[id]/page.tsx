@@ -9,6 +9,8 @@ import { fmt } from "@/lib/format";
 import { minutesNumber } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
 import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
+import { dotDateTime } from "@/lib/dates";
+import { Signatures } from "./signatures";
 import { AssignNumberButton } from "./assign-number";
 import { getMeeting } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
@@ -23,6 +25,8 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
   const canWrite = permissions.write(ctx.user.role);
   const cvorum = quorumLine(x.asteptati, x.absenti.length);
   const numberLabel = minutesNumber(x);
+  // A closed meeting is read-only (the server refuses edits too).
+  const canEdit = canWrite && !x.locked;
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "MEETING", entityId: id }, orderBy: { createdAt: "desc" }, take: 30 })
     : [];
@@ -35,14 +39,15 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         sub={
           <>
             {numberLabel ?? <span className="tag tag-warn">fără număr</span>} · {x.tip}
+            {x.locked ? <span className="tag tag-ok ml-1.5">închis{x.lockedAt ? ` la ${dotDateTime(x.lockedAt)}` : ""}</span> : null}
           </>
         }
       >
         <a href={`/pdf/proces-verbal/${x.id}`} target="_blank" rel="noopener" className="btn">
           Tipărește (PDF)
         </a>
-        {canWrite && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
-        {canWrite ? (
+        {canEdit && !numberLabel ? <AssignNumberButton action={assignMeetingNumberAction.bind(null, x.id)} /> : null}
+        {canEdit ? (
           <Link href={`/procese-verbale/${x.id}/editare`} className="btn btn-primary">
             Editează
           </Link>
@@ -116,6 +121,19 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <dd>{x.formulaIncheiere}</dd>
       </dl>
 
+      <Signatures
+        meetingId={x.id}
+        locked={x.locked}
+        canWrite={canWrite}
+        canUnlock={permissions.admin(ctx.user.role)}
+        rows={x.prezenti.map((p) => ({
+          id: p.id,
+          name: p.name,
+          image: p.signature ? `data:image/png;base64,${p.signature.png.toString("base64")}` : null,
+          signedAt: p.signature ? dotDateTime(p.signature.signedAt) : null,
+        }))}
+      />
+
       {audit.length ? (
         <div className="card">
           <h3>Istoric modificări</h3>
@@ -123,7 +141,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         </div>
       ) : null}
 
-      {canWrite ? (
+      {canEdit ? (
         <div className="actions">
           <DeleteButton action={deleteMeetingAction.bind(null, x.id)} confirmMessage="Ștergeți procesul-verbal?" />
         </div>

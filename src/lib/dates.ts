@@ -80,3 +80,13 @@ export function weekdayMondayFirst(year: number, month0: number, day: number): n
 export function isoFromParts(year: number, month0: number, day: number): string {
   return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+/** "11.09.2026 14:03" in the app's time zone (signatures, closing time of the minutes). */
+export function dotDateTime(d: Date, timeZone: string = appTimeZone()): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.day}.${parts.month}.${parts.year} ${parts.hour}:${parts.minute}`;
+}

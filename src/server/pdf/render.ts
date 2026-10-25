@@ -156,6 +156,44 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         doc.y = top + blockHeight - 48;
         break;
       }
+      case "signatureTable": {
+        // Two columns: name | signature (image with the signing time under it, or a line to sign on paper).
+        const nameW = width * 0.5;
+        const sigX = left + nameW + 12;
+        const sigW = width - nameW - 12;
+        const rowH = 52;
+        const header = () => {
+          doc.font("Serif-SemiBold").fontSize(11).fillColor("#000");
+          const y = doc.y;
+          doc.text("Nume", left, y, { width: nameW });
+          doc.text("Semnătura", sigX, y, { width: sigW });
+          const ly = y + 16;
+          doc.moveTo(left, ly).lineTo(left + width, ly).lineWidth(0.7).strokeColor("#000").stroke();
+          doc.y = ly + 4;
+        };
+        doc.y += 4;
+        header();
+        for (const row of block.rows) {
+          if (doc.y + rowH > bottomLimit()) {
+            doc.addPage();
+            header();
+          }
+          const top = doc.y;
+          doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000").text(row.name, left, top + 14, { width: nameW, lineBreak: false, ellipsis: true });
+          if (row.image) {
+            doc.image(Buffer.from(row.image), sigX, top + 2, { fit: [sigW * 0.8, rowH - 16] });
+            doc.font("Serif").fontSize(8).fillColor("#555").text(`semnat ${row.signedAt ?? ""}`, sigX, top + rowH - 13, { width: sigW, lineBreak: false });
+          } else {
+            const ly = top + rowH - 14;
+            doc.moveTo(sigX, ly).lineTo(sigX + sigW * 0.8, ly).lineWidth(0.6).strokeColor("#000").stroke();
+          }
+          doc.moveTo(left, top + rowH).lineTo(left + width, top + rowH).lineWidth(0.3).strokeColor("#999").stroke();
+          doc.y = top + rowH + 2;
+        }
+        doc.x = left;
+        doc.y += 10;
+        break;
+      }
       case "signed": {
         // "Secretar, <nume>" / "Pastor, <nume>", then "Semnătura" with room to sign, in two columns.
         const blockHeight = 24 + 2 * BODY_SIZE * LINE_HEIGHT + 40;
@@ -181,15 +219,14 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
     }
   }
 
-  // Numerotarea paginilor (doar pentru documentele de mai multe pagini).
+  // Numerotarea paginilor (doar pentru documentele de mai multe pagini) și subsolul (ex. „Proces-verbal închis la …”).
   const range = doc.bufferedPageRange();
-  if (range.count > 1) {
-    for (let i = range.start; i < range.start + range.count; i++) {
-      doc.switchToPage(i);
-      const y = doc.page.height - MARGIN.bottom / 2 - 5;
-      doc.font("Serif").fontSize(9).fillColor("#555");
-      doc.text(`Pagina ${i + 1} din ${range.count}`, left, y, { width, align: "center", lineBreak: false });
-    }
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    const y = doc.page.height - MARGIN.bottom / 2 - 5;
+    doc.font("Serif").fontSize(9).fillColor("#555");
+    if (spec.footer) doc.text(spec.footer, left, y - 12, { width, align: "center", lineBreak: false });
+    if (range.count > 1) doc.text(`Pagina ${i + 1} din ${range.count}`, left, y, { width, align: "center", lineBreak: false });
   }
   doc.end();
   return done;

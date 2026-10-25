@@ -45,14 +45,24 @@ export async function listMeetings(ctx: Ctx, page: number) {
 export async function getMeeting(ctx: Ctx, id: string) {
   const m = await ctx.db.meeting.findUnique({
     where: { id },
-    include: { prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true } } } } },
+    include: {
+      prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true } } } },
+      signatures: { select: { personId: true, signedAt: true, imagePng: true } },
+    },
   });
   if (!m) return null;
+  const signed = new Map(m.signatures.map((s) => [s.personId, { signedAt: s.signedAt, png: Buffer.from(s.imagePng) }]));
   const list = (status: "PRESENT" | "ABSENT") =>
     m.prezenti
       .filter((p) => p.status === status)
       .sort((a, b) => a.person.sortKey.localeCompare(b.person.sortKey))
-      .map((p) => ({ id: p.person.id, name: memberName(p.person), nume: p.person.nume, prenume: p.person.prenume }));
+      .map((p) => ({
+        id: p.person.id,
+        name: memberName(p.person),
+        nume: p.person.nume,
+        prenume: p.person.prenume,
+        signature: status === "PRESENT" ? (signed.get(p.person.id) ?? null) : null,
+      }));
   return { ...m, data: fromDbDate(m.data)!, prezenti: list("PRESENT"), absenti: list("ABSENT") };
 }
 
