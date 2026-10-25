@@ -14,7 +14,10 @@ describe("second factor helpers", () => {
     expect(a).not.toContain("JBSWY3DPEHPK3PXP");
     expect(decryptSecret(a)).toBe("JBSWY3DPEHPK3PXP");
     const [v, iv, tag, ct] = a.split(".");
-    const tampered = [v, iv, tag, `${ct.slice(0, -2)}AA`].join(".");
+    // Flip one bit of the ciphertext bytes (editing base64 characters can leave the bytes unchanged).
+    const bytes = Buffer.from(ct, "base64url");
+    bytes[0] ^= 1;
+    const tampered = [v, iv, tag, bytes.toString("base64url")].join(".");
     expect(() => decryptSecret(tampered)).toThrow();
   });
 
