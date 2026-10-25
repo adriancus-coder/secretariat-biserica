@@ -21,6 +21,8 @@
   --warn: #9b4b2e;
   --warn-soft: #f6e3db;
   --accent: var(--navy);
+  /* Text links: navy on paper, a light blue on the dark paper (navy is too dark there). */
+  --link: var(--navy);
   --shadow: 0 12px 30px rgba(30, 36, 54, 0.14);
   /* Chart series (Statistici): distinct in both themes. */
   --chart-1: #243458;
@@ -48,6 +50,7 @@
     --warn: #e39a7b;
     --warn-soft: #3a2620;
     --accent: var(--gold);
+    --link: #9fb8ee;
     --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
     --chart-1: #8fa8e0;
     --chart-2: #7fc49f;
@@ -74,6 +77,7 @@
   --warn: #e39a7b;
   --warn-soft: #3a2620;
   --accent: var(--gold);
+  --link: #9fb8ee;
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
   --chart-1: #8fa8e0;
   --chart-2: #7fc49f;
@@ -129,7 +133,7 @@
     line-height: 1.15;
   }
   a {
-    color: var(--navy);
+    color: var(--link);
   }
   :focus-visible {
     outline: 2px solid var(--gold);
