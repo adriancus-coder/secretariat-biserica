@@ -6,6 +6,8 @@ export interface NavItem {
   icon: IconName;
   /** Pe telefon, secțiunile secundare sunt în meniul „Mai mult”. */
   primary: boolean;
+  /** Shown only to roles that can write (the page itself also checks on the server). */
+  writeOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -19,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/grupuri", label: "Grupuri", icon: "grupuri", primary: false },
   { href: "/mentiuni", label: "Mențiuni", icon: "mentiuni", primary: false },
   { href: "/cereri", label: "Cereri", icon: "cereri", primary: false },
+  { href: "/de-verificat", label: "De verificat", icon: "verificat", primary: false, writeOnly: true },
   { href: "/setari", label: "Setări", icon: "setari", primary: false },
 ];
 

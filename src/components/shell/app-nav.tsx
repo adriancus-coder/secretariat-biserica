@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 import { Icon } from "./icons";
 import { NAV_ITEMS, isActive, isMoreActive } from "./nav-items";
 
-/** Pending membership applications, shown as a badge (only passed to roles that can act on them). */
-export function AppNav({ pendingApplications = 0 }: { pendingApplications?: number }) {
+/**
+ * Pending items shown as badges, by section ("/cereri", "/de-verificat"); only passed to roles that
+ * can act on them, which also see the write-only sections.
+ */
+export function AppNav({ badges = {}, canWrite = false }: { badges?: Record<string, number>; canWrite?: boolean }) {
+  const total = Object.values(badges).reduce((a, b) => a + b, 0);
   const pathname = usePathname();
   const badge = (n: number) =>
     n > 0 ? (
@@ -16,7 +20,7 @@ export function AppNav({ pendingApplications = 0 }: { pendingApplications?: numb
     ) : null;
   return (
     <nav className="shell-nav" aria-label="Navigare principală">
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.filter((item) => canWrite || !item.writeOnly).map((item) => {
         const on = isActive(pathname, item.href);
         return (
           <Link
@@ -27,14 +31,14 @@ export function AppNav({ pendingApplications = 0 }: { pendingApplications?: numb
           >
             <Icon name={item.icon} />
             {item.label}
-            {item.href === "/cereri" ? badge(pendingApplications) : null}
+            {badge(badges[item.href] ?? 0)}
           </Link>
         );
       })}
       <Link href="/mai-mult" className="mobile-only" aria-current={isMoreActive(pathname) ? "page" : undefined}>
         <Icon name="mai" />
         Mai mult
-        {badge(pendingApplications)}
+        {badge(total)}
       </Link>
     </nav>
   );

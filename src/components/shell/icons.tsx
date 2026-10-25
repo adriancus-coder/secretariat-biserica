@@ -16,6 +16,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M15.5 14.5a5 5 0 0 1 6 5" />
     </>
   ),
+  verificat: (
+    <>
+      <path d="M9 11l3 3 8-8" />
+      <path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" />
+    </>
+  ),
   statistici: (
     <>
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />

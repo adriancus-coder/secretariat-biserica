@@ -9,25 +9,24 @@ import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
-import { tenantDb } from "@/server/tenant-db";
+import { pendingBadges } from "@/server/queries/badges";
 
 export const metadata: Metadata = { title: "Mai mult" };
 
 export default async function MorePage() {
   const user = await requireUser();
-  const pending = permissions.write(user.role)
-    ? await tenantDb(user.churchId).application.count({ where: { status: "PENDING" } })
-    : 0;
+  const canWrite = permissions.write(user.role);
+  const badges = canWrite ? await pendingBadges(user.churchId) : {};
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <>
       <PageHead title="Mai mult" />
       <div className="moremenu">
-        {NAV_ITEMS.filter((i) => !i.primary).map((i) => (
+        {NAV_ITEMS.filter((i) => !i.primary && (canWrite || !i.writeOnly)).map((i) => (
           <Link key={i.href} href={i.href}>
             <Icon name={i.icon} />
             {i.label}
-            {i.href === "/cereri" && pending > 0 ? <span className="badge">{pending}</span> : null}
+            {badges[i.href] ? <span className="badge">{badges[i.href]}</span> : null}
           </Link>
         ))}
         <Link href="/cont">

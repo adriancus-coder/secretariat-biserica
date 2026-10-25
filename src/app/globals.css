@@ -1379,6 +1379,30 @@
     color: var(--ok);
   }
 
+  /* "De verificat": actual → proposed per field, a 44 px checkbox per row. */
+  .review-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  .review-table th,
+  .review-table td {
+    padding: 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .review-table input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    margin: 10px;
+  }
+  .review-old {
+    color: var(--ink-3);
+  }
+  .review-new {
+    font-weight: 600;
+  }
   /* Data-update form: changed fields, children, Da / Nu answers (44 px targets). */
   .field-changed input,
   .field-changed select {

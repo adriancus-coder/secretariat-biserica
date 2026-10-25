@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createMissingLinks } from "@/server/campaigns";
 import { adultChildren, writeOnlineConsents } from "@/server/data-update";
+import { applyDecision } from "@/server/review";
 import { hashToken, linkToken } from "@/server/campaign-tokens";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
@@ -72,5 +73,92 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
     expect(rows.filter((r) => r.personId === head.id).map((r) => `${r.kind}:${r.granted}`).sort()).toEqual(["BIRTHDAY:false", "CONTACT:true", "DIRECTORY:false", "INFO_NOTE:true", "PHOTOS:true"]);
     expect(rows.filter((r) => r.personId === kid.id).every((r) => r.givenByPersonId === head.id && r.source === "ONLINE" && r.textVersion === "v1")).toBe(true);
     expect(rows.filter((r) => r.personId === kid.id).map((r) => r.kind)).not.toContain("INFO_NOTE");
+  });
+
+  describe("the secretary's decision (De verificat)", () => {
+    const consents = { PHOTOS: true, BIRTHDAY: true, CONTACT: false, DIRECTORY: false };
+    const childConsents = { PHOTOS: false, BIRTHDAY: true, CONTACT: false, DIRECTORY: false };
+    const self = (over: Record<string, unknown> = {}) => ({
+      nume: "Vlad",
+      prenume: "Maria",
+      gen: "F",
+      dataNasterii: "1985-03-03",
+      dataCasatoriei: null,
+      telefon: "+47 911 11 111",
+      email: "",
+      adresa: "",
+      dataBotez: "2003-06-01",
+      botezAn: 2003,
+      botezBiserica: "",
+      botezLocalitate: "",
+      botezOficiant: "",
+      numeTata: "",
+      numeMama: "",
+      ...over,
+    });
+    let mother = "";
+    let campaignId = "";
+    const submit = async (proposed: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      (await ctx.db.dataUpdateSubmission.create({ data: { campaignId, personId: mother, via: "PERSONAL", proposed, ...extra } as never })).id;
+
+    beforeAll(async () => {
+      const churchId = ctx.user.churchId;
+      mother = (
+        await prisma.person.create({
+          data: { churchId, nume: "Vlad", prenume: "Maria", gen: "F", statut: "MEMBRU", sortKey: "vlad maria", searchText: "x", dataNasterii: new Date("1985-03-03"), telefon: "+47 900 00 000", dataBotez: new Date("2003-06-01"), botezAn: 2003 },
+        })
+      ).id;
+      campaignId = (await ctx.db.dataCampaign.findFirstOrThrow()).id;
+    });
+
+    it("accepting only the phone updates the person and creates no child", async () => {
+      const id = await submit({ self: self(), children: [{ id: null, nume: "Vlad", prenume: "Ioan", gen: "M", dataNasterii: "2019-01-01", dataBinecuvantare: null, consents: childConsents }], consents, nota: true });
+      await applyDecision(ctx, id, { decizie: "selectate", nota: "", chosen: new Set(["s:telefon"]) });
+      const p = await ctx.db.person.findUniqueOrThrow({ where: { id: mother } });
+      expect(p.telefon).toBe("+47 911 11 111");
+      expect(p.searchText).toContain("4791111111");
+      expect(await ctx.db.person.count({ where: { prenume: "Ioan" } })).toBe(0);
+      expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).status).toBe("PARTIAL");
+      const audit = await ctx.db.auditLog.findFirstOrThrow({ where: { entity: "PERSON", entityId: mother }, orderBy: { createdAt: "desc" } });
+      expect(JSON.stringify(audit.changes)).toContain("Actualizare date");
+    });
+
+    it("accepting everything creates the child in the mother's family, as an aparținător, with the parent's consents", async () => {
+      const id = await submit({ self: self({ adresa: "Stavanger" }), children: [{ id: null, nume: "Vlad", prenume: "Ioan", gen: "M", dataNasterii: "2019-01-01", dataBinecuvantare: null, consents: childConsents }], consents, nota: true });
+      await applyDecision(ctx, id, { decizie: "toate", nota: "", chosen: new Set() });
+      const m = await ctx.db.person.findUniqueOrThrow({ where: { id: mother } });
+      const child = await ctx.db.person.findFirstOrThrow({ where: { prenume: "Ioan" } });
+      expect(m.adresa).toBe("Stavanger");
+      expect(child.familyId).toBe(m.familyId);
+      expect(m.familyId).not.toBeNull();
+      expect([child.statut, child.rudenie]).toEqual(["APARTINATOR", "Fiu"]);
+      const family = await ctx.db.family.findUniqueOrThrow({ where: { id: m.familyId! } });
+      expect(family.headId).toBe(mother);
+      const cs = await ctx.db.consent.findMany({ where: { personId: child.id } });
+      expect(cs.map((c) => c.kind).sort()).toEqual(["BIRTHDAY", "CONTACT", "DIRECTORY", "PHOTOS"]);
+      expect(cs.every((c) => c.givenByPersonId === mother)).toBe(true);
+      expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).status).toBe("ACCEPTED");
+    });
+
+    it("an unmatched general submission is linked to the chosen person and its consents are written then", async () => {
+      const id = (
+        await ctx.db.dataUpdateSubmission.create({
+          data: { campaignId, personId: null, via: "GENERAL", proposed: { self: self({ email: "maria@x.no" }), children: [], consents, nota: true, typed: { nume: "Maria V", telefon: "1" } } } as never,
+        })
+      ).id;
+      const before = await ctx.db.consent.count({ where: { personId: mother } });
+      await applyDecision(ctx, id, { decizie: "toate", nota: "", chosen: new Set(), persoana: mother });
+      expect((await ctx.db.person.findUniqueOrThrow({ where: { id: mother } })).email).toBe("maria@x.no");
+      expect(await ctx.db.consent.count({ where: { personId: mother } })).toBe(before + 5);
+      expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).personId).toBe(mother);
+    });
+
+    it("a rejection changes nothing and keeps the note; a decided submission cannot be decided again", async () => {
+      const id = await submit({ self: self({ telefon: "+47 999 99 999" }), children: [], consents, nota: true });
+      await applyDecision(ctx, id, { decizie: "respinge", nota: "număr greșit", chosen: new Set() });
+      expect((await ctx.db.person.findUniqueOrThrow({ where: { id: mother } })).telefon).toBe("+47 911 11 111");
+      expect(await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).toMatchObject({ status: "REJECTED", note: "număr greșit" });
+      await expect(applyDecision(ctx, id, { decizie: "toate", nota: "", chosen: new Set() })).rejects.toThrow("deja verificat");
+    });
   });
 });

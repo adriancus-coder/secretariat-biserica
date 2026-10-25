@@ -8,15 +8,14 @@ import { Flash } from "@/components/ui/flash";
 import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
-import { tenantDb } from "@/server/tenant-db";
+import { pendingBadges } from "@/server/queries/badges";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const pendingApplications = permissions.write(user.role)
-    ? await tenantDb(user.churchId).application.count({ where: { status: "PENDING" } })
-    : 0;
+  const canWrite = permissions.write(user.role);
+  const badges = canWrite ? await pendingBadges(user.churchId) : {};
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <div className="shell">
@@ -30,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {ROLE_LABEL[user.role]}
           </Link>
         </header>
-        <AppNav pendingApplications={pendingApplications} />
+        <AppNav badges={badges} canWrite={canWrite} />
         <div className="shell-user desk-only">
           <TextSizeControl current={textSize} tone="dark" />
           <Link href="/cont" className="who">

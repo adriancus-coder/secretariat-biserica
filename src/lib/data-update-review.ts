@@ -1,0 +1,47 @@
+/** The secretary's review of a data-update submission: what changes against the register. Pure. */
+import { fmt } from "./format";
+import { GENDER_LABEL, type GenderKey } from "./labels";
+import { CHILD_FIELDS, CHILD_LABEL, SELF_FIELDS, SELF_LABEL, type ChildData, type ChildField, type SelfData, type SelfField } from "./schemas/data-update";
+
+export interface FieldChange<F extends string> {
+  field: F;
+  label: string;
+  before: string;
+  after: string;
+}
+
+const DATE_FIELDS = new Set(["dataNasterii", "dataCasatoriei", "dataBotez", "dataBinecuvantare"]);
+const norm = (v: unknown) => (v === null || v === undefined ? "" : String(v).trim());
+
+/** A value as shown to the secretary (dates as "1 mai 2015", gender as its label). */
+export function displayValue(field: string, v: unknown): string {
+  const s = norm(v);
+  if (!s) return "—";
+  if (DATE_FIELDS.has(field)) return fmt(s);
+  if (field === "gen") return GENDER_LABEL[s as GenderKey] ?? s;
+  return s;
+}
+
+/** The person's own fields that differ (spaces at the ends ignored). */
+export function selfChanges(register: Partial<SelfData> | null, proposed: SelfData): FieldChange<SelfField>[] {
+  return SELF_FIELDS.filter((f) => norm(register?.[f]) !== norm(proposed[f])).map((f) => ({
+    field: f,
+    label: SELF_LABEL[f],
+    before: displayValue(f, register?.[f]),
+    after: displayValue(f, proposed[f]),
+  }));
+}
+
+export function childChanges(register: Partial<Omit<ChildData, "consents">>, proposed: Omit<ChildData, "consents">): FieldChange<ChildField>[] {
+  return CHILD_FIELDS.filter((f) => norm(register[f]) !== norm(proposed[f])).map((f) => ({
+    field: f,
+    label: CHILD_LABEL[f],
+    before: displayValue(f, register[f]),
+    after: displayValue(f, proposed[f]),
+  }));
+}
+
+/** The decision's status: everything accepted, part of it, or (rejected) nothing. */
+export function decisionStatus(total: number, accepted: number): "ACCEPTED" | "PARTIAL" {
+  return accepted >= total ? "ACCEPTED" : "PARTIAL";
+}
