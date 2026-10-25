@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
 import { compareRo } from "@/lib/text";
-import { idSchema } from "@/lib/validation";
+import { booleanArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { normalizeSignature, SignatureImageError } from "../signature-image";
 import { actionCtx, ActionError, type Ctx } from "../session";
@@ -112,6 +112,7 @@ export async function lockMeetingAction(meetingId: string, confirmed: boolean): 
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("write");
     parseOrThrow(idSchema, meetingId);
+    parseOrThrow(booleanArg, confirmed);
     await ctx.db.$transaction(async (tx) => {
       const before = await signatureView(tx, meetingId);
       if (before.meeting.locked) return;

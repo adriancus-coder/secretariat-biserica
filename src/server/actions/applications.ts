@@ -20,6 +20,7 @@ import { clientIp } from "../ip-limits";
 import { actionCtx, ActionError } from "../session";
 import { tenantDb } from "../tenant-db";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
+import { logError } from "../log";
 
 /** 5 submissions per hour for the same visitor (IP address) and church. */
 const submissions = sharedRateLimiter("applications", { limit: 5, windowMs: 3_600_000 });
@@ -103,7 +104,7 @@ export async function submitApplicationAction(slug: string, _prev: FormState, fo
           kindLabel: APPLICATION_KIND_LABEL[created.kind],
         });
       } catch (error) {
-        console.error("[applications] notification failed:", error instanceof Error ? error.message : String(error));
+        logError("applications-notify", error);
       }
     });
     sent = true;

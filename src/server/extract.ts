@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { z } from "zod";
+import { sniffFileType } from "@/lib/file-type";
 import {
   EXTRACT_MAX_BYTES,
   EXTRACT_MEDIA_TYPES,
@@ -70,16 +71,22 @@ const SCHEMAS = {
 } as const;
 
 export interface ExtractInput {
-  mediaType: string;
   data: Buffer;
 }
 
-export function checkExtractFile(file: { size: number; type: string }): ExtractMediaType {
-  if (!file.size) throw new ExtractError("Alegeți un fișier.");
-  if (file.size > EXTRACT_MAX_BYTES) throw new ExtractError("Fișierul depășește 20 MB.");
-  const type = (EXTRACT_MEDIA_TYPES as readonly string[]).find((t) => t === file.type);
-  if (!type) throw new ExtractError("Se pot citi doar fișiere PDF, JPG sau PNG.");
-  return type as ExtractMediaType;
+/**
+ * The file's real type, from its first bytes (never the browser's claim); size and type checked. A
+ * file claiming another of the accepted types (a photo renamed .pdf) is refused.
+ */
+export function checkExtractFile(data: Uint8Array, declared: ExtractMediaType | "" = ""): ExtractMediaType {
+  if (!data.length) throw new ExtractError("Alegeți un fișier.");
+  if (data.length > EXTRACT_MAX_BYTES) throw new ExtractError("Fișierul depășește 20 MB.");
+  const type = sniffFileType(data);
+  if (!type || !(EXTRACT_MEDIA_TYPES as readonly string[]).includes(type)) throw new ExtractError("Se pot citi doar fișiere PDF, JPG sau PNG.");
+  if (declared && declared !== type) {
+    throw new ExtractError("Conținutul fișierului nu corespunde tipului său (de exemplu, o poză redenumită .pdf). Încărcați fișierul original.");
+  }
+  return type;
 }
 
 let defaultClient: Anthropic | undefined;
@@ -88,7 +95,7 @@ export async function extractDocument(kind: "proces-verbal", input: ExtractInput
 export async function extractDocument(kind: "persoana", input: ExtractInput, client?: ExtractClient): Promise<PersonDraft>;
 export async function extractDocument(kind: ExtractKind, input: ExtractInput, client?: ExtractClient): Promise<MinutesDraft | PersonDraft> {
   if (!client && !isExtractConfigured()) throw new ExtractError("Extragerea din imagini nu este configurată.");
-  const mediaType = checkExtractFile({ size: input.data.length, type: input.mediaType });
+  const mediaType = checkExtractFile(input.data);
   const api: ExtractClient = client ?? (defaultClient ??= new Anthropic());
   const data = input.data.toString("base64");
   const source: Anthropic.Beta.Messages.BetaContentBlockParam =

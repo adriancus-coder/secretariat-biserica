@@ -37,6 +37,14 @@ Out of scope: a compromised Render account or database host, and a compromised a
 
 Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: users with an authenticator app then sign in with an e-mail code or a recovery code and set the app up again.
 
+## Upload and input limits
+
+- Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.
+- Word files: at most 5 MB, and the uncompressed size declared by the ZIP's central directory must stay under 50 MB (`src/server/zip-size.ts`), checked before mammoth unpacks anything.
+- Scans read with Claude: the type comes from the file's first bytes (`src/lib/file-type.ts`), never from the browser; a file whose name claims another accepted type is refused.
+- Arguments that the client binds to server actions (booleans, directions) are parsed with zod like form fields.
+- Unexpected errors are logged by `logError()` (`src/server/log.ts`): a short id, the error name and code and the first line of the message with e-mail addresses masked; never the error object or request data.
+
 ## Removing a person (GDPR erasure)
 
 An administrator chooses between deleting the person for good and anonymising the record. Anonymising keeps what the statistics need (statut, gender, dates, family) and removes everything else:

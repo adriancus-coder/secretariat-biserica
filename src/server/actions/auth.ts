@@ -29,6 +29,7 @@ import { sendSignupExistsEmail } from "../email";
 import { finishSignIn } from "../sign-in";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { signupAllowed } from "../queries/auth";
+import { logError } from "../log";
 
 /**
  * Signs in after the password: a user with a second factor (or whose church requires one) goes to
@@ -192,7 +193,7 @@ export async function forgotPasswordAction(_prev: FormState, formData: FormData)
       try {
         await requestPasswordReset(email);
       } catch (error) {
-        console.error("[password-reset] request failed:", error instanceof Error ? error.message : String(error));
+        logError("password-reset", error);
       }
     });
     return { ok: true, message: "Dacă adresa există, veți primi un e-mail.", values: { email } };

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
 import { ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import { inviteSchema } from "@/lib/schemas/settings";
-import { idSchema } from "@/lib/validation";
+import { booleanArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { prisma } from "../db";
 import { sendInvitationEmail, sendPasswordResetEmail, type EmailResult } from "../email";
@@ -141,6 +141,7 @@ export async function setUserActiveAction(userId: string, active: boolean): Prom
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, userId);
+    parseOrThrow(booleanArg, active);
     if (userId === ctx.user.id && !active) throw new ActionError("Nu vă puteți dezactiva propriul cont.");
     const user = await ctx.db.user.findUnique({ where: { id: userId } });
     if (!user) throw new ActionError("Utilizatorul nu există.");

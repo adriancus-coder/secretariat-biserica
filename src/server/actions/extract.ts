@@ -3,7 +3,8 @@
 import { randomUUID } from "node:crypto";
 import type { FormState } from "@/lib/form-state";
 import type { ImportDraft } from "@/lib/minutes-import";
-import type { PersonDraft } from "@/lib/schemas/extract";
+import { declaredFileType } from "@/lib/file-type";
+import { EXTRACT_MAX_BYTES, type PersonDraft } from "@/lib/schemas/extract";
 import { writeAudit } from "../audit";
 import { checkExtractFile, extractDocument, ExtractError, type ExtractKind } from "../extract";
 import { reviewDraft } from "../minutes-import";
@@ -21,8 +22,10 @@ async function readUpload(ctx: Ctx, kind: ExtractKind, formData: FormData) {
   if (!church?.extractEnabled) throw new ActionError("Citirea automată a documentelor nu este pornită. Administratorul o poate porni din Setări.");
   const file = formData.get("fisier");
   if (!(file instanceof File)) throw new ActionError("Alegeți un fișier.");
+  if (file.size > EXTRACT_MAX_BYTES) throw new ActionError("Fișierul depășește 20 MB.");
+  const data = Buffer.from(await file.arrayBuffer());
   try {
-    checkExtractFile(file);
+    checkExtractFile(data, declaredFileType(file.name, file.type));
   } catch (e) {
     if (e instanceof ExtractError) throw new ActionError(e.message);
     throw e;
@@ -39,7 +42,7 @@ async function readUpload(ctx: Ctx, kind: ExtractKind, formData: FormData) {
     fields: ["tip", "fisier", "marime"],
     after: { tip: KIND_LABEL[kind], fisier: file.name.slice(0, 200), marime: `${Math.max(1, Math.round(file.size / 1024))} KB` },
   });
-  return { mediaType: file.type, data: Buffer.from(await file.arrayBuffer()), fileName: file.name };
+  return { data, fileName: file.name };
 }
 
 /** The extraction, with its messages shown in the form. */

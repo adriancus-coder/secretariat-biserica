@@ -7,9 +7,12 @@ import { matchMeetingType, matchPersonName } from "@/lib/name-match";
 import type { MinutesDraft } from "@/lib/schemas/extract";
 import { loadAliasMap } from "./person-aliases";
 import { getChurch } from "./queries/church";
+import { zipUncompressedSize } from "./zip-size";
 import type { Ctx } from "./session";
 
 export const DOCX_MAX_BYTES = 5 * 1024 * 1024;
+/** What the Word file may expand to (all its parts together). */
+export const DOCX_MAX_UNCOMPRESSED = 50 * 1024 * 1024;
 export const DOCX_MAX_FILES = 30;
 const DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -21,8 +24,13 @@ export async function docxText(file: File): Promise<string> {
     throw new DocxError(`„${file.name}” nu este un document Word (.docx).`);
   }
   if (file.size > DOCX_MAX_BYTES) throw new DocxError(`„${file.name}” depășește 5 MB.`);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  // A small ZIP can expand to gigabytes: its declared size is checked before anything is unpacked.
+  const expanded = zipUncompressedSize(buffer);
+  if (expanded === null) throw new DocxError(`„${file.name}” nu este un document Word valid. Salvați-l din nou ca .docx și reîncercați.`);
+  if (expanded > DOCX_MAX_UNCOMPRESSED) throw new DocxError(`„${file.name}” este prea mare după despachetare (peste 50 MB).`);
   try {
-    return (await mammoth.extractRawText({ buffer: Buffer.from(await file.arrayBuffer()) })).value;
+    return (await mammoth.extractRawText({ buffer })).value;
   } catch {
     throw new DocxError(`„${file.name}” nu a putut fi citit. Salvați-l din nou ca .docx și reîncercați.`);
   }

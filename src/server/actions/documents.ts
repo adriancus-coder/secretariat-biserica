@@ -13,6 +13,7 @@ import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
 import { buildDocumentDraft } from "../queries/documents";
 import { actionCtx, ActionError } from "../session";
 import { isUniqueViolation, parseOrThrow, runFormAction, ValidationError } from "./run";
+import { logError } from "../log";
 
 const label = (d: { nr: number; anRegistru: number; titlu: string; tip: keyof typeof DOCUMENT_TYPE_LABEL }) =>
   `Nr. ${d.nr}/${d.anRegistru} — ${d.titlu || DOCUMENT_TYPE_LABEL[d.tip]}`;
@@ -33,7 +34,7 @@ export async function documentDraftAction(input: {
     return await buildDocumentDraft(ctx, parsed.data);
   } catch (e) {
     if (e instanceof ActionError) return { error: e.message };
-    console.error("[documentDraft]", e);
+    logError("documentDraft", e);
     return { error: "Textul nu a putut fi generat." };
   }
 }

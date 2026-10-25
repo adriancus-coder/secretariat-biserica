@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
-import { DEFAULT_EXTRACT_MODEL, extractDocument, ExtractError, type ExtractClient } from "./extract";
+import { checkExtractFile, DEFAULT_EXTRACT_MODEL, extractDocument, ExtractError, type ExtractClient } from "./extract";
 
 function reply(json: unknown, stop: Anthropic.Beta.Messages.BetaMessage["stop_reason"] = "end_turn") {
   return {
@@ -19,7 +19,8 @@ function mockClient(answer: Anthropic.Beta.Messages.BetaMessage) {
   return { client: { beta: { messages: { create } } } as ExtractClient, create };
 }
 
-const pdf = { mediaType: "application/pdf", data: Buffer.from("%PDF-1.7 Ioana Pop secret") };
+const pdf = { data: Buffer.from("%PDF-1.7 Ioana Pop secret") };
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
 const person = {
   nume: "Enache",
@@ -67,7 +68,7 @@ describe("extractDocument", () => {
 
   it("returns a minutes draft for images", async () => {
     const { client, create } = mockClient(reply(minutes));
-    expect(await extractDocument("proces-verbal", { mediaType: "image/jpeg", data: Buffer.from("jpg") }, client)).toEqual(minutes);
+    expect(await extractDocument("proces-verbal", { data: JPEG }, client)).toEqual(minutes);
     expect(create.mock.calls[0][0].messages[0].content[0]).toMatchObject({ type: "image", source: { media_type: "image/jpeg" } });
   });
 
@@ -94,8 +95,12 @@ describe("extractDocument", () => {
 
   it("refuses unsupported or oversized files before calling the API", async () => {
     const { client, create } = mockClient(reply(person));
-    await expect(extractDocument("persoana", { mediaType: "image/heic", data: Buffer.from("x") }, client)).rejects.toThrow("PDF, JPG sau PNG");
-    await expect(extractDocument("persoana", { mediaType: "application/pdf", data: Buffer.alloc(21 * 1024 * 1024) }, client)).rejects.toThrow("20 MB");
+    await expect(extractDocument("persoana", { data: Buffer.from("x") }, client)).rejects.toThrow("PDF, JPG sau PNG");
+    await expect(extractDocument("persoana", { data: Buffer.alloc(21 * 1024 * 1024) }, client)).rejects.toThrow("20 MB");
+    // A JPEG renamed .pdf is refused (the bytes decide, not the name).
+    expect(() => checkExtractFile(JPEG, "application/pdf")).toThrow("nu corespunde");
+    // Bytes that are none of the three types are refused whatever the name or the claimed type.
+    await expect(extractDocument("persoana", { data: Buffer.from("GIF89a....") }, client)).rejects.toThrow("PDF, JPG sau PNG");
     expect(create).not.toHaveBeenCalled();
   });
 

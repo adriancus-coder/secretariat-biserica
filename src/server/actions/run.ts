@@ -4,6 +4,7 @@ import type { z } from "zod";
 import type { FormState } from "@/lib/form-state";
 import { fieldErrors, formValues } from "@/lib/validation";
 import { ActionError } from "../session";
+import { logError } from "../log";
 
 /** Eroare de validare cu mesaje pe câmpuri. */
 export class ValidationError extends Error {
@@ -33,7 +34,7 @@ export async function runFormAction(formData: FormData | null, body: () => Promi
       return { message: "Există deja o înregistrare cu aceste date (valoare duplicat).", values };
     }
     if (isNotFound(error)) return { message: "Înregistrarea nu mai există.", values };
-    console.error("[action]", error);
+    logError("action", error);
     return { message: "A apărut o eroare neașteptată. Încercați din nou.", values };
   }
 }

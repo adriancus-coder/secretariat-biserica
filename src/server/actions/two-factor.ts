@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import type { FormState } from "@/lib/form-state";
 import { confirmPasswordSchema, readCode } from "@/lib/schemas/two-factor";
+import { booleanArg } from "@/lib/validation";
 import { prisma } from "../db";
 import { isEmailConfigured, sendLoginCodeEmail } from "../email";
 import { verifyPassword } from "../password";
@@ -222,6 +223,7 @@ export async function disableTotpAction(_prev: TwoFactorState, formData: FormDat
 }
 
 export async function setEmailOtpAction(enable: boolean, _prev: TwoFactorState, formData: FormData): Promise<TwoFactorState> {
+  if (!booleanArg.safeParse(enable).success) return { message: "Valoare invalidă." };
   const { user, error } = await accountUser(formData);
   if (error) return { message: error };
   if (enable && !isEmailConfigured()) return { message: "Trimiterea pe e-mail nu este configurată; folosiți aplicația de autentificare." };

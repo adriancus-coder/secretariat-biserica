@@ -27,11 +27,18 @@ import { splitDecisions } from "../src/lib/minutes";
 import { defaultRoleGroupsData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
+import { seedRefusal } from "../src/lib/seed-guard";
 
 const DEMO_CHURCH_ID = "demo";
 /** Public application form of the demo church: /cerere/maranata-stavanger */
 const DEMO_SLUG = "maranata-stavanger";
 const PASSWORD = "demo1234";
+
+const refusal = seedRefusal(process.env);
+if (refusal) {
+  console.error(`[seed] refused: ${refusal}. The demo seed is for local development only (set SEED_ALLOW=true to override).`);
+  process.exit(1);
+}
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
 

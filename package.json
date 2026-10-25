@@ -53,6 +53,7 @@
     "acorn": "^8.18.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.3",
+    "jszip": "3.10.2",
     "prisma": "7.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

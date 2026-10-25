@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
 import { roleKey } from "@/lib/roles";
 import { GROUP_FIELDS, ROLE_FIELDS, roleGroupSchema, roleSchema } from "@/lib/schemas/roles";
-import { idSchema } from "@/lib/validation";
+import { booleanArg, directionArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
@@ -72,7 +72,7 @@ export async function moveRoleGroupAction(id: string, direction: "up" | "down"):
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, id);
-    if (direction !== "up" && direction !== "down") throw new ActionError("Direcție invalidă.");
+    parseOrThrow(directionArg, direction);
     await ctx.db.$transaction(async (tx) => {
       const groups = await orderedGroups(tx);
       const from = groups.findIndex((g) => g.id === id);
@@ -104,6 +104,7 @@ export async function setRoleGroupActiveAction(id: string, active: boolean): Pro
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, id);
+    parseOrThrow(booleanArg, active);
     await ctx.db.$transaction(async (tx) => {
       const groups = await orderedGroups(tx);
       const index = groups.findIndex((g) => g.id === id);
@@ -245,7 +246,7 @@ export async function moveRoleAction(id: string, direction: "up" | "down"): Prom
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, id);
-    if (direction !== "up" && direction !== "down") throw new ActionError("Direcție invalidă.");
+    parseOrThrow(directionArg, direction);
     await ctx.db.$transaction(async (tx) => {
       const role = await tx.churchRole.findUnique({ where: { id }, select: { groupId: true } });
       if (!role) throw new ActionError("Intrarea nu mai există.");
@@ -282,6 +283,7 @@ export async function setRoleActiveAction(id: string, active: boolean): Promise<
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("admin");
     parseOrThrow(idSchema, id);
+    parseOrThrow(booleanArg, active);
     await ctx.db.$transaction(async (tx) => {
       const found = await tx.churchRole.findUnique({ where: { id }, select: { groupId: true } });
       if (!found) throw new ActionError("Intrarea nu mai există.");

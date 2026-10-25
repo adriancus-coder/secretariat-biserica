@@ -337,7 +337,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 
 - Never edit an applied migration: Prisma checks its checksum. Add a new migration instead. Example: `note_search` has a wrong backfill, which `note_search_fix` corrects.
 - Declare trigram indexes in the schema: `@@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)`.
-- The seed only recreates the church with id `demo`. Never run it against production.
+- The seed only recreates the church with id `demo`. Never run it against production: it refuses when `NODE_ENV=production` or the database host is not localhost/127.0.0.1 (`src/lib/seed-guard.ts`) unless `SEED_ALLOW=true`.
 
 ### Tests
 
