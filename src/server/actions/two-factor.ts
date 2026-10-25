@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import type { FormState } from "@/lib/form-state";
+import { confirmPasswordSchema, readCode } from "@/lib/schemas/two-factor";
 import { prisma } from "../db";
 import { isEmailConfigured, sendLoginCodeEmail } from "../email";
 import { verifyPassword } from "../password";
@@ -54,8 +55,8 @@ export async function verifyLoginCodeAction(_prev: FormState, formData: FormData
   const challenge = await currentChallenge();
   if (!challenge || challenge.setupRequired) redirect("/autentificare?expirat=1");
   const user = challenge.user;
-  const code = String(formData.get("cod") ?? "").trim();
-  if (!code) return { message: "Introduceți codul." };
+  const { code, error: codeError } = readCode(formData);
+  if (codeError !== undefined) return { message: codeError };
   if (!(await hitIpLimit("code"))) return { message: IP_LIMIT_MESSAGE };
 
   let ok = false;
@@ -136,7 +137,9 @@ export async function confirmSetupAction(_prev: TwoFactorState, formData: FormDa
   if (!challenge?.setupRequired) redirect("/autentificare?expirat=1");
   const user = challenge.user;
   const method = formData.get("metoda") === "email" ? "email" : "totp";
-  const code = String(formData.get("cod") ?? "").replace(/\s/g, "");
+  const read = readCode(formData);
+  if (read.error !== undefined) return { message: read.error };
+  const code = read.code.replace(/\s/g, "");
   let data: { totpEnabled?: boolean; totpLastStep?: number; emailOtpEnabled?: boolean } | null = null;
   if (method === "totp" && user.totpSecretEnc) {
     const step = verifyTotp(decryptSecret(user.totpSecretEnc), code);
@@ -169,8 +172,8 @@ async function accountUser(formData: FormData) {
   const current = await getCurrentUser();
   if (!current) redirect("/autentificare");
   const user = await prisma.user.findUniqueOrThrow({ where: { id: current.id }, include: { church: { select: { nume: true, require2fa: true } } } });
-  const password = String(formData.get("parola") ?? "");
-  if (!password || !(await verifyPassword(password, user.passwordHash))) return { user, error: "Parola nu este corectă." };
+  const password = confirmPasswordSchema.safeParse(formData.get("parola"));
+  if (!password.success || !(await verifyPassword(password.data, user.passwordHash))) return { user, error: "Parola nu este corectă." };
   return { user, error: null };
 }
 
@@ -188,7 +191,8 @@ export async function confirmTotpAction(prev: TwoFactorState, formData: FormData
   const current = await getCurrentUser();
   if (!current) redirect("/autentificare");
   const user = await prisma.user.findUniqueOrThrow({ where: { id: current.id } });
-  const step = user.totpSecretEnc ? verifyTotp(decryptSecret(user.totpSecretEnc), String(formData.get("cod") ?? "")) : null;
+  const read = readCode(formData);
+  const step = user.totpSecretEnc && read.code !== undefined ? verifyTotp(decryptSecret(user.totpSecretEnc), read.code) : null;
   if (step === null) return { ...prev, ok: false, message: "Codul nu este corect. Verificați ora telefonului și încercați din nou." };
   const recovery = user.recoveryCodes.length ? null : newRecoveryCodes();
   await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: true, totpLastStep: step, ...(recovery ? { recoveryCodes: recovery.hashes } : {}) } });

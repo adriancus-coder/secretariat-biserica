@@ -354,12 +354,33 @@ export async function sendApplicationLinkEmail(p: { to: string[]; subject: strin
   return send(config, "application-link", to, minutesEmail({ subject: p.subject, message }), to);
 }
 
+// ---------- Signup with an address that already has an account ----------
+
+export function signupExistsEmail(p: { link: string; name: string }): EmailContent {
+  const intro = "Cineva a încercat să înregistreze o biserică nouă cu adresa dumneavoastră de e-mail, care are deja un cont în aplicația de secretariat.";
+  const closing = "Dacă ați fost dumneavoastră, autentificați-vă cu contul existent sau alegeți o parolă nouă. Dacă nu, ignorați mesajul: contul rămâne neschimbat.";
+  return {
+    subject: "Adresa dumneavoastră are deja un cont",
+    text: [`Bună ziua, ${p.name},`, "", intro, "", "Parolă nouă:", p.link, "", closing].join("\n"),
+    html: htmlLayout([htmlParagraph(`Bună ziua, ${esc(p.name)},`), htmlParagraph(esc(intro)), htmlButton(p.link, "Alege o parolă nouă"), htmlParagraph(esc(closing), MUTED)]),
+  };
+}
+
+/** Sent instead of telling the signup form that the address is taken. Never throws; nothing logged but the outcome. */
+export async function sendSignupExistsEmail(p: { to: string; name: string }): Promise<EmailResult> {
+  const config = emailConfig();
+  if (!config) return disabled();
+  const link = new URL("/am-uitat-parola", config.appUrl).toString();
+  return deliver(config, "signup with existing address", p.to, signupExistsEmail({ ...p, link }), p.to);
+}
+
 // ---------- Login code (second factor) ----------
 
 export function loginCodeEmail(p: { code: string; churchName: string; validMinutes: number }): EmailContent {
   const closing = `Codul este valabil ${quantity(p.validMinutes, "un minut", "minute")} și poate fi folosit o singură dată. Dacă nu încercați să vă autentificați, schimbați-vă parola.`;
   return {
-    subject: `Cod de autentificare: ${p.code}`,
+    // The code is only in the body: subjects show up in notifications and mail logs.
+    subject: "Codul dumneavoastră de autentificare",
     text: [`Codul de autentificare în secretariatul bisericii ${p.churchName} este:`, "", p.code, "", closing].join("\n"),
     html: htmlLayout([
       htmlParagraph(`Codul de autentificare în secretariatul bisericii <b>${esc(p.churchName)}</b> este:`),

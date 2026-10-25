@@ -25,6 +25,7 @@ import { checkPassword } from "../login";
 import { hitIpLimit, IP_LIMIT_MESSAGE } from "../ip-limits";
 import { passwordProblem } from "../password-policy";
 import { hasSecondFactor, setChallengeCookie, startChallenge } from "../two-factor";
+import { sendSignupExistsEmail } from "../email";
 import { finishSignIn } from "../sign-in";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { signupAllowed } from "../queries/auth";
@@ -40,7 +41,7 @@ async function signInOrMessage(email: string, password: string, redirectTo: stri
     return {
       message:
         check.reason === "locked"
-          ? "Prea multe încercări eșuate. Contul este blocat temporar — reîncercați peste 15 minute."
+          ? "Contul a fost blocat temporar după încercări eșuate; reîncercați în 15 minute."
           : "Adresa de e-mail sau parola nu sunt corecte.",
       values: { email },
     };
@@ -82,7 +83,14 @@ export async function logoutEverywhereAction() {
   await signOut({ redirectTo: "/autentificare" });
 }
 
-/** Înregistrarea unei biserici noi, împreună cu primul administrator. */
+/** The neutral answer of the signup form for an address that already has an account. */
+const SIGNUP_NEUTRAL = "Dacă adresa poate fi folosită, veți primi un e-mail.";
+
+/**
+ * Înregistrarea unei biserici noi, împreună cu primul administrator. An address that already has an
+ * account gets the neutral answer (and, when e-mail is configured, a message to that account), so the
+ * form does not reveal which addresses are registered.
+ */
 export async function signupAction(_prev: FormState, formData: FormData): Promise<FormState> {
   let credentials: { email: string; password: string } | undefined;
   const state = await runFormAction(formData, async () => {
@@ -93,10 +101,14 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
     const data = parseOrThrow(signupSchema, Object.fromEntries(formData));
     const weak = passwordProblem(data.password, { email: data.email, name: data.name });
     if (weak) throw new ValidationError({ password: weak });
-    if (await prisma.user.findUnique({ where: { email: data.email } })) {
-      throw new ValidationError({ email: "Există deja un cont cu această adresă de e-mail." });
-    }
     const passwordHash = await hashPassword(data.password);
+    const existing = await prisma.user.findUnique({ where: { email: data.email }, select: { email: true, name: true } });
+    if (existing) {
+      after(async () => {
+        await sendSignupExistsEmail({ to: existing.email, name: existing.name });
+      });
+      return { ok: true, message: SIGNUP_NEUTRAL };
+    }
     await prisma.$transaction(async (tx) => {
       const slug = await uniqueChurchSlug(tx, data.churchName);
       const church = await tx.church.create({ data: { nume: data.churchName, slug } });

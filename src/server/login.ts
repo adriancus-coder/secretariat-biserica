@@ -5,7 +5,9 @@ import { burnPasswordCheck, hashPassword, needsRehash, verifyPassword } from "./
 
 /**
  * The first step of a login: e-mail and password, with the per-account lock after repeated failures.
- * The answer never says whether the e-mail exists (the same work is done either way).
+ * The answer never says whether the e-mail exists or the account is locked: an unknown address, a
+ * wrong password and a locked account all cost one scrypt check and give "invalid". Only the right
+ * password on a locked account learns about the lock ("locked").
  */
 export async function checkPassword(rawEmail: string, password: string) {
   const email = rawEmail.trim().toLowerCase();
@@ -15,8 +17,9 @@ export async function checkPassword(rawEmail: string, password: string) {
     await burnPasswordCheck(password);
     return { ok: false as const, reason: "invalid" as const };
   }
-  if (isLocked(user)) return { ok: false as const, reason: "locked" as const };
-  if (!(await verifyPassword(password, user.passwordHash))) {
+  const correct = await verifyPassword(password, user.passwordHash);
+  if (isLocked(user)) return { ok: false as const, reason: correct ? ("locked" as const) : ("invalid" as const) };
+  if (!correct) {
     await prisma.user.update({ where: { id: user.id }, data: afterFailedLogin(user) });
     return { ok: false as const, reason: "invalid" as const };
   }

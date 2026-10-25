@@ -293,3 +293,14 @@ describe("application link", () => {
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+describe("login code", () => {
+  it("keeps the code out of the subject", async () => {
+    await sendLoginCodeEmail({ to: "ana@example.org", code: "481516", churchName: "Maranata Stavanger", validMinutes: 10 });
+    const payload = send.mock.calls[0][0];
+    expect(payload.subject).toBe("Codul dumneavoastră de autentificare");
+    expect(payload.subject).not.toContain("481516");
+    expect(payload.text).toContain("481516");
+    expect(loggedText()).not.toContain("481516");
+  });
+});
