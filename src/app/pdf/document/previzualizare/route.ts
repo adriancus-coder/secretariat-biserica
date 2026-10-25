@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { documentPrint } from "@/domain/print";
+import { DRAFT_WATERMARK } from "@/server/pdf/document";
 import { DOCUMENT_TYPES } from "@/lib/labels";
 import { richField } from "@/lib/schemas/rich-text";
 import { resolveLayout } from "@/lib/page-layout";
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   // An existing document keeps its own page layout in the preview; a new one gets the church's default.
   const previewId = idSchema.safeParse(form.get("previewId"));
   const existing = previewId.success ? await ctx.db.document.findUnique({ where: { id: previewId.data }, select: { layout: true } }) : null;
-  const spec = documentPrint({ tip, nr: nr ?? "____", data, text, textRich }, church);
+  const spec = documentPrint({ tip, nr: nr ?? "____", data, text, textRich, watermark: DRAFT_WATERMARK }, church);
   const pdf = await renderPdf({ ...spec, layout: resolveLayout(church.docLayout, existing?.layout) });
   return pdfResponse(pdf, "previzualizare.pdf");
 }

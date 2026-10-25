@@ -4,9 +4,9 @@ import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { pageParam, Pager, stringParam } from "@/components/ui/pager";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { dateBadge } from "@/lib/format";
-import { DOCUMENT_TYPE_LABEL } from "@/lib/labels";
+import { DOCUMENT_TYPE_LABEL, DOCUMENT_STATE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
-import { listDocuments } from "@/server/queries/documents";
+import { documentsToSign, listDocuments } from "@/server/queries/documents";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "Documente" };
@@ -18,10 +18,16 @@ export default async function DocumentsPage({ searchParams }: PageProps<"/docume
   const year = Number.isInteger(an) && an > 1800 ? an : null;
   const data = await listDocuments(ctx, { page: pageParam(sp.pagina), year });
   const canWrite = permissions.write(ctx.user.role);
+  const toSign = permissions.pastor(ctx.user) ? (await documentsToSign(ctx)).length : 0;
 
   return (
     <>
       <PageHead title="Documente" sub="Adeverințe, certificate, scrisori, dări de seamă — registru de ieșire">
+        {permissions.pastor(ctx.user) ? (
+          <Link href="/documente/de-semnat" className="btn">
+            De semnat{toSign ? <span className="badge">{toSign}</span> : null}
+          </Link>
+        ) : null}
         {canWrite ? (
           <Link href="/documente/nou" className="btn btn-primary">
             + Document
@@ -69,6 +75,7 @@ export default async function DocumentsPage({ searchParams }: PageProps<"/docume
                     {x.persoana || x.catre ? ` · ${x.persoana || x.catre}` : ""}
                   </div>
                 </div>
+                {x.stare !== "APROBAT" ? <span className={`tag ${x.stare === "RESPINS" ? "tag-warn" : "tag-gold"}`}>{DOCUMENT_STATE_LABEL[x.stare]}</span> : null}
                 <span className="tag">{DOCUMENT_TYPE_LABEL[x.tip].split(" ")[0]}</span>
               </Link>
             );

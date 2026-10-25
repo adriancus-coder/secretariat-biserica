@@ -28,7 +28,7 @@ export async function listDocuments(ctx: Ctx, { page, year }: { page: number; ye
     orderBy: [{ data: "desc" }, { nr: "desc" }],
     skip: (current - 1) * DOCUMENTS_PAGE_SIZE,
     take: DOCUMENTS_PAGE_SIZE,
-    select: { id: true, tip: true, nr: true, anRegistru: true, data: true, titlu: true, persoana: true, catre: true },
+    select: { id: true, tip: true, nr: true, anRegistru: true, data: true, titlu: true, persoana: true, catre: true, stare: true },
   });
   return {
     items: rows.map((d) => ({ ...d, data: fromDbDate(d.data)! })),
@@ -37,6 +37,16 @@ export async function listDocuments(ctx: Ctx, { page, year }: { page: number; ye
     pages,
     years: years.map((y) => y.anRegistru).sort((a, b) => b - a),
   };
+}
+
+/** "De semnat": documents sent to the pastor and waiting for approval, oldest first. */
+export async function documentsToSign(ctx: Ctx) {
+  const rows = await ctx.db.document.findMany({
+    where: { stare: "DE_SEMNAT" },
+    orderBy: [{ trimisLaSemnatLa: "asc" }, { nr: "asc" }],
+    select: { id: true, tip: true, nr: true, anRegistru: true, data: true, titlu: true, persoana: true, catre: true, trimisLaSemnatLa: true },
+  });
+  return rows.map((d) => ({ ...d, data: fromDbDate(d.data)! }));
 }
 
 export async function getDocument(ctx: Ctx, id: string) {

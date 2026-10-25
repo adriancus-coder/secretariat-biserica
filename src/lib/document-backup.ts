@@ -4,13 +4,25 @@ import { storedRich } from "./schemas/rich-text";
 
 /**
  * Document fields beyond the prototype's JSON, on each document next to `text`: `textRich` (the
- * editor's document) and `asezare` (its own page layout). Files without them import unchanged. Pure.
+ * editor's document), `asezare` (its own page layout) and, for a document not approved by the
+ * pastor, `stare` (+ `motivRespingere`). Files without them import unchanged (an absent state is an
+ * issued, approved document). Signatures are never exported. Pure.
  */
 
 export interface DocumentExtra {
   textRich?: RichDoc;
   /** The document's own page layout; absent = the church's default. */
   asezare?: PageLayout;
+  /** Only a document not yet approved; a sent one comes back as a draft (to be sent again). */
+  stare?: "CIORNA" | "RESPINS";
+  motivRespingere?: string;
+}
+
+/** The exported state of a document: nothing for an approved one. */
+export function exportedState(stare: string, motiv: string | null): Pick<DocumentExtra, "stare" | "motivRespingere"> {
+  if (stare === "APROBAT") return {};
+  if (stare === "RESPINS") return { stare: "RESPINS", ...(motiv ? { motivRespingere: motiv } : {}) };
+  return { stare: "CIORNA" };
 }
 
 /** Adds the extra fields to the exported documents (in place). */
@@ -20,6 +32,8 @@ export function addDocumentExtras(documents: Record<string, Record<string, unkno
     if (!d) continue;
     if (x.textRich) d.textRich = x.textRich;
     if (x.asezare) d.asezare = x.asezare;
+    if (x.stare) d.stare = x.stare;
+    if (x.motivRespingere) d.motivRespingere = x.motivRespingere;
   }
 }
 
@@ -40,7 +54,12 @@ export function parseDocumentExtras(root: unknown): Map<string, DocumentExtra> {
     const plain = doc ? richToPlain(doc) : "";
     if (doc && plain.trim() && plain.length <= 100000) x.textRich = doc;
     if (typeof d.asezare === "object" && d.asezare !== null) x.asezare = storedLayout(d.asezare);
-    if (x.textRich || x.asezare) out.set(String(d.id ?? key).trim(), x);
+    if (d.stare === "CIORNA" || d.stare === "DE_SEMNAT") x.stare = "CIORNA";
+    if (d.stare === "RESPINS") {
+      x.stare = "RESPINS";
+      if (typeof d.motivRespingere === "string" && d.motivRespingere.trim()) x.motivRespingere = d.motivRespingere.trim().slice(0, 1000);
+    }
+    if (x.textRich || x.asezare || x.stare) out.set(String(d.id ?? key).trim(), x);
   }
   return out;
 }

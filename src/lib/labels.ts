@@ -78,6 +78,16 @@ export const GENDERS = ["M", "F"] as const;
 export type GenderKey = (typeof GENDERS)[number];
 export const GENDER_LABEL: Record<GenderKey, string> = { M: "Masculin", F: "Feminin" };
 
+/** Pastor approval of a registered document (Statut art. 38–39). */
+export const DOCUMENT_STATES = ["CIORNA", "DE_SEMNAT", "APROBAT", "RESPINS"] as const;
+export type DocumentStateKey = (typeof DOCUMENT_STATES)[number];
+export const DOCUMENT_STATE_LABEL: Record<DocumentStateKey, string> = {
+  CIORNA: "Ciornă",
+  DE_SEMNAT: "La pastor, de semnat",
+  APROBAT: "Aprobat",
+  RESPINS: "Respins de pastor",
+};
+
 export const DOCUMENT_TYPES = ["adeverinta", "botez", "binecuvantare", "recomandare", "scrisoare", "raport", "convocare"] as const;
 /** The prototype's document types (the parity tests compare these). */
 export const PROTOTYPE_DOCUMENT_TYPES = ["adeverinta", "botez", "binecuvantare", "recomandare", "scrisoare", "raport"] as const;

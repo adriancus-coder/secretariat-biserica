@@ -8,14 +8,16 @@ import { loadCategories } from "@/server/queries/categories";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fmt } from "@/lib/format";
-import { DOCUMENT_TYPE_LABEL } from "@/lib/labels";
+import { DOCUMENT_STATE_LABEL, DOCUMENT_TYPE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { deleteDocumentAction } from "@/server/actions/documents";
 import { getDocument } from "@/server/queries/documents";
 import { requireCtx } from "@/server/session";
 import { prisma } from "@/server/db";
 import { freshSignatureRequired, signatureNote } from "@/lib/signatures";
-import { signDocumentAction } from "@/server/actions/document-signatures";
+import { approveDocumentAction, rejectDocumentAction, sendToPastorAction, signDocumentAction } from "@/server/actions/document-signatures";
+import { ApprovalCard } from "./approval-card";
+import { dotDateTime } from "@/lib/dates";
 import { SignaturesCard } from "./signatures-card";
 
 export const metadata: Metadata = { title: "Document" };
@@ -38,10 +40,18 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
   const signatures = Object.fromEntries(
     sigRows.map((r) => [r.role, { name: r.name, image: `data:image/png;base64,${Buffer.from(r.imagePng).toString("base64")}`, note: signatureNote(r) }]),
   );
-  const steps = [
-    ...(permissions.pastor(ctx.user) ? [{ role: "PASTOR" as const, label: "Semnează ca pastor", sign: signDocumentAction.bind(null, x.id, "PASTOR") }] : []),
-    ...(canWrite ? [{ role: "SECRETAR" as const, label: "Semnează ca secretar", sign: signDocumentAction.bind(null, x.id, "SECRETAR") }] : []),
-  ];
+  // The pastor signs by approving (below); the secretary signs before the approval.
+  const steps =
+    canWrite && x.stare !== "APROBAT" ? [{ role: "SECRETAR" as const, label: "Semnează ca secretar", sign: signDocumentAction.bind(null, x.id, "SECRETAR") }] : [];
+  const approver = x.aprobatDeUserId ? await prisma.user.findFirst({ where: { id: x.aprobatDeUserId, churchId: ctx.user.churchId }, select: { name: true } }) : null;
+  const approvalInfo =
+    x.stare === "APROBAT" && x.aprobatLa
+      ? `aprobat la ${dotDateTime(x.aprobatLa)}${approver ? ` de ${approver.name}` : ""}`
+      : x.stare === "APROBAT"
+        ? "document înregistrat înainte de aprobarea în aplicație"
+        : x.stare === "DE_SEMNAT" && x.trimisLaSemnatLa
+          ? `trimis la ${dotDateTime(x.trimisLaSemnatLa)}`
+          : null;
   const savedHint = !passkeys
     ? "Activați Face ID / amprenta în Cont → Securitate."
     : !me.signatureSavedAt
@@ -56,10 +66,10 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
       <BackLink href="/documente">Documente</BackLink>
       <PageHead title={x.titlu || DOCUMENT_TYPE_LABEL[x.tip]} sub={DOCUMENT_TYPE_LABEL[x.tip]}>
         <a href={`/pdf/document/${x.id}`} target="_blank" rel="noopener" className="btn">
-          Tipărește (PDF)
+          {x.stare === "APROBAT" ? "Tipărește (PDF)" : "Previzualizează (ciornă)"}
         </a>
         <a href={`/pdf/document/${x.id}/word`} className="btn" download>
-          Deschide în Word
+          {x.stare === "APROBAT" ? "Deschide în Word" : "Word (ciornă)"}
         </a>
         {canWrite ? (
           <Link href={`/documente/${x.id}/asezare`} className="btn">
@@ -104,6 +114,27 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
           <dd className="whitespace-pre-wrap font-serif card !mt-1">{x.text}</dd>
         )}
       </dl>
+      <ApprovalCard
+        stare={x.stare}
+        stareLabel={DOCUMENT_STATE_LABEL[x.stare]}
+        info={approvalInfo}
+        motiv={x.motivRespingere}
+        canSend={canWrite}
+        send={sendToPastorAction.bind(null, x.id)}
+        pastor={
+          permissions.pastor(ctx.user)
+            ? {
+                documentId: x.id,
+                me: ctx.user.name,
+                approve: approveDocumentAction.bind(null, x.id),
+                reject: rejectDocumentAction.bind(null, x.id),
+                canUseSaved: passkeys > 0 && Boolean(me.signatureSavedAt),
+                savedHint,
+                freshOnly: freshSignatureRequired(church, x.tip),
+              }
+            : null
+        }
+      />
       <SignaturesCard
         documentId={x.id}
         me={ctx.user.name}

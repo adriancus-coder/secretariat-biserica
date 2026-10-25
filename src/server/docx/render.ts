@@ -5,6 +5,7 @@ import {
   convertMillimetersToTwip,
   Document,
   Footer,
+  Header,
   ImageRun,
   Packer,
   PageNumber,
@@ -247,6 +248,10 @@ export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
           },
         },
         footers: { default: footer },
+        // A draft or a document awaiting the pastor: the mark at the top of every page.
+        ...(spec.watermark
+          ? { headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [text(spec.watermark, { size: 20, bold: true, color: "C0392B" })] })] }) } }
+          : {}),
         children: [...letterhead, ...spec.blocks.flatMap((b) => blockToDocx(b, L))],
       },
     ],

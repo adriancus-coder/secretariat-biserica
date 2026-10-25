@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Mai mult" };
 export default async function MorePage() {
   const user = await requireUser();
   const canWrite = permissions.write(user.role);
-  const badges = canWrite ? await pendingBadges(user.churchId) : {};
+  const badges = await pendingBadges(user);
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <>

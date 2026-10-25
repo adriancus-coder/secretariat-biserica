@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
-import type { DocumentExtra } from "@/lib/document-backup";
+import { exportedState, type DocumentExtra } from "@/lib/document-backup";
 import type { GroupExtra } from "@/lib/group-backup";
 import type { BCommittee, MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
@@ -394,13 +394,13 @@ export async function loadGroupExtras(ctx: Ctx): Promise<Map<string, GroupExtra>
 /** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
 export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
   const rows = await ctx.db.document.findMany({
-    where: { OR: [{ textRich: { not: Prisma.DbNull } }, { layout: { not: Prisma.DbNull } }] },
-    select: { id: true, textRich: true, layout: true },
+    where: { OR: [{ textRich: { not: Prisma.DbNull } }, { layout: { not: Prisma.DbNull } }, { stare: { not: "APROBAT" } }] },
+    select: { id: true, textRich: true, layout: true, stare: true, motivRespingere: true },
   });
   const out = new Map<string, DocumentExtra>();
   for (const r of rows) {
     const doc = storedRich(r.textRich);
-    out.set(r.id, { ...(doc ? { textRich: doc } : {}), ...(r.layout ? { asezare: storedLayout(r.layout) } : {}) });
+    out.set(r.id, { ...(doc ? { textRich: doc } : {}), ...(r.layout ? { asezare: storedLayout(r.layout) } : {}), ...exportedState(r.stare, r.motivRespingere) });
   }
   return out;
 }
@@ -956,6 +956,9 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         textRich: rich ? (rich as unknown as Prisma.InputJsonObject) : Prisma.DbNull,
         layout: extra?.asezare ? ({ ...extra.asezare } as Prisma.InputJsonObject) : Prisma.DbNull,
         anRaport: x.tip === "raport" ? (x.an ?? Number(x.data.slice(0, 4))) : x.an,
+        // Issued documents (no state in the file) are approved; signatures are not imported.
+        stare: (extra?.stare ?? "APROBAT") as "CIORNA" | "RESPINS" | "APROBAT",
+        motivRespingere: extra?.motivRespingere ?? "",
         };
       };
       // Actualizările întâi pe numere temporare negative, ca să nu se ciocnească între ele.

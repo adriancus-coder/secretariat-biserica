@@ -10,15 +10,21 @@ import type { ChurchSettings } from "../queries/church";
  * routes, in its page layout (its own, else the church's default); `layout` previews unsaved changes.
  */
 export function documentSpec(
-  doc: { tip: DocumentTypeKey; nr: number; data: string; text: string; textRich: RichDoc | null; titlu: string; layout: unknown; signatures?: DocumentPrint["signatures"] },
+  doc: { tip: DocumentTypeKey; nr: number; data: string; text: string; textRich: RichDoc | null; titlu: string; layout: unknown; signatures?: DocumentPrint["signatures"]; stare?: string },
   church: ChurchSettings,
   layout?: PageLayout,
 ): PrintSpec {
-  const spec = documentPrint({ tip: doc.tip, nr: doc.nr, data: doc.data, text: doc.text, textRich: doc.textRich, titlu: doc.titlu, signatures: doc.signatures }, church);
+  const draft = doc.stare !== undefined && doc.stare !== "APROBAT";
+  // Until the pastor approves: the draft mark, and never the pastor's signature.
+  const signatures = draft && doc.signatures ? { ...doc.signatures, PASTOR: undefined } : doc.signatures;
+  const spec = documentPrint({ tip: doc.tip, nr: doc.nr, data: doc.data, text: doc.text, textRich: doc.textRich, titlu: doc.titlu, signatures, ...(draft ? { watermark: DRAFT_WATERMARK } : {}) }, church);
   return { ...spec, layout: layout ?? resolveLayout(church.docLayout, doc.layout) };
 }
 
+/** The mark on a document not yet approved by the pastor (draft, sent, rejected). */
+export const DRAFT_WATERMARK = "CIORNĂ — neaprobat";
+
 /** `<titlu or type>-nr-<nr>-<year>` (without extension). */
-export function documentFileBase(doc: { titlu: string; tip: string; nr: number; anRegistru: number }): string {
-  return `${doc.titlu || doc.tip}-nr-${doc.nr}-${doc.anRegistru}`;
+export function documentFileBase(doc: { titlu: string; tip: string; nr: number; anRegistru: number; stare?: string }): string {
+  return `${doc.stare && doc.stare !== "APROBAT" ? "CIORNA-" : ""}${doc.titlu || doc.tip}-nr-${doc.nr}-${doc.anRegistru}`;
 }

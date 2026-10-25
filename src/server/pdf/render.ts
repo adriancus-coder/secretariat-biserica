@@ -413,6 +413,16 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
     doc.font("Serif").fontSize(9).fillColor("#555");
     if (spec.footer) doc.text(spec.footer, left, y - 12, { width, align: "center", lineBreak: false });
     if (range.count > 1) doc.text(`Pagina ${i + 1} din ${range.count}`, left, y, { width, align: "center", lineBreak: false });
+    // A draft or a document awaiting the pastor: a diagonal mark across the page.
+    if (spec.watermark) {
+      const cx = doc.page.width / 2;
+      const cy = doc.page.height / 2;
+      doc.save();
+      doc.rotate(-35, { origin: [cx, cy] });
+      doc.font("Serif-SemiBold").fontSize(34).fillColor("#b03a2e").fillOpacity(0.16);
+      doc.text(spec.watermark, cx - 300, cy - 20, { width: 600, align: "center", lineBreak: false });
+      doc.restore();
+    }
   }
   doc.end();
   return done;

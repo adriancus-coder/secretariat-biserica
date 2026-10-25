@@ -15,7 +15,7 @@ import { requireUser } from "@/server/session";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const canWrite = permissions.write(user.role);
-  const badges = canWrite ? await pendingBadges(user.churchId) : {};
+  const badges = await pendingBadges(user);
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <div className="shell">

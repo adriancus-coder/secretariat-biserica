@@ -291,6 +291,36 @@ export async function sendNewApplicationEmail(p: {
   return result;
 }
 
+// ---------- Pastor approval of documents ----------
+
+/** No personal data in the message: only that a document waits, and the link. */
+export function documentApprovalEmail(p: { link: string; churchName: string; kind: "trimis" | "aprobat" | "respins" }): EmailContent {
+  const line =
+    p.kind === "trimis"
+      ? "Un document din registrul bisericii așteaptă aprobarea și semnătura dumneavoastră."
+      : p.kind === "aprobat"
+        ? "Un document trimis spre semnare a fost aprobat de pastor."
+        : "Un document trimis spre semnare a fost respins de pastor; motivul este în aplicație.";
+  return {
+    subject: p.kind === "trimis" ? "Un document așteaptă semnătura dumneavoastră" : p.kind === "aprobat" ? "Document aprobat de pastor" : "Document respins de pastor",
+    text: ["Bună ziua,", "", line, "", p.link, "", `Secretariatul bisericii ${p.churchName}`].join("\n"),
+    html: htmlLayout([htmlParagraph("Bună ziua,"), htmlParagraph(esc(line)), htmlButton(p.link, "Deschide documentul"), htmlParagraph(`Secretariatul bisericii ${esc(p.churchName)}`)]),
+  };
+}
+
+/** Tells the pastors (or the secretary) about a document waiting or decided; one message per recipient. */
+export async function sendDocumentApprovalEmail(p: { to: string[]; documentId: string; churchName: string; kind: "trimis" | "aprobat" | "respins" }): Promise<EmailResult> {
+  const config = emailConfig();
+  if (!config) return disabled();
+  const link = new URL(`/documente/${p.documentId}`, config.appUrl).toString();
+  const content = documentApprovalEmail({ link, churchName: p.churchName, kind: p.kind });
+  let result: EmailResult = "sent";
+  for (const to of p.to) {
+    if ((await deliver(config, `document ${p.kind}`, to, content, p.documentId)) !== "sent") result = "failed";
+  }
+  return result;
+}
+
 // ---------- Minutes ----------
 
 /** Resend accepts up to 40 MB per message; minutes PDFs are far smaller, so 10 MB is a safe cap. */

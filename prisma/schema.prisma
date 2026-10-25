@@ -160,6 +160,7 @@ model User {
   loginChallenges     LoginChallenge[]
   passkeys            UserPasskey[]
   documentSignatures  DocumentSignature[]
+  documentsApproved   Document[]          @relation("DocumentApprovedBy")
   webauthnChallenges  WebAuthnChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
@@ -953,6 +954,13 @@ enum GeneralAssemblyKind {
   EXTRAORDINARA
 }
 
+enum DocumentState {
+  CIORNA
+  DE_SEMNAT
+  APROBAT
+  RESPINS
+}
+
 enum SignatureRole {
   PASTOR
   SECRETAR
@@ -1025,6 +1033,13 @@ model Document {
   @@index([churchId, data])
   @@index([personId])
   @@map("documents")
+  /// Pastor approval (Statut art. 38–39): CIORNA → DE_SEMNAT → APROBAT, or RESPINS back to the secretary.
+  stare            DocumentState @default(CIORNA)
+  trimisLaSemnatLa DateTime?
+  aprobatDeUserId  String?
+  aprobatDe        User?         @relation("DocumentApprovedBy", fields: [aprobatDeUserId], references: [id], onDelete: SetNull)
+  aprobatLa        DateTime?
+  motivRespingere  String        @default("")
   signatures DocumentSignature[]
 }
 

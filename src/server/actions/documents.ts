@@ -6,7 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { toDbDate } from "@/lib/dates";
 import type { FormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
-import { DOCUMENT_TYPE_LABEL } from "@/lib/labels";
+import { DOCUMENT_STATE_LABEL, DOCUMENT_TYPE_LABEL, type DocumentStateKey } from "@/lib/labels";
 import { richFormatSummary } from "@/lib/rich-text";
 import { DOCUMENT_FIELDS, documentSchema, draftSchema } from "@/lib/schemas/document";
 import { storedRich } from "@/lib/schemas/rich-text";
@@ -16,7 +16,9 @@ import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
 import { buildDocumentDraft } from "../queries/documents";
 import { recommendationDiscipline } from "../discipline";
 import { permissions } from "@/lib/permissions";
-import { actionCtx, ActionError } from "../session";
+import { actionCtx, ActionError, type Ctx } from "../session";
+
+type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 import { isUniqueViolation, parseOrThrow, runFormAction, ValidationError } from "./run";
 import { logError } from "../log";
 
@@ -92,6 +94,9 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
           // Numele persoanei rămâne cel de la emitere, dacă persoana nu s-a schimbat.
           const persoana = person ? (person.id === before.personId && before.persoana ? before.persoana : memberName(person)) : "";
           const after = auditView(await tx.document.update({ where: { id }, data: { ...fields, nr, persoana } }))!;
+          // A changed document goes back to a draft: its signatures (and an approval) no longer apply.
+          const changed = DOCUMENT_FIELDS.some((f) => JSON.stringify(before[f]) !== JSON.stringify(after[f]));
+          if (changed) await resetApproval(tx, ctx, { id, label: label(after), stare: before.stare });
           await writeAudit(tx, ctx.user, {
             entity: "DOCUMENT",
             entityId: id,
@@ -126,6 +131,26 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
   if (!savedId) return state;
   revalidatePath("/", "layout");
   redirect(`/documente/${savedId}?inregistrat=1`);
+}
+
+/**
+ * Back to CIORNA after an edit: an approved (or pending) document loses its approval and both
+ * signatures; audited with the old state and the removed signatures (names only).
+ */
+async function resetApproval(tx: Tx, ctx: Ctx, doc: { id: string; label: string; stare: DocumentStateKey }) {
+  const sigs = await tx.documentSignature.findMany({ where: { documentId: doc.id }, select: { role: true, name: true } });
+  if (doc.stare === "CIORNA" && !sigs.length) return;
+  await tx.documentSignature.deleteMany({ where: { documentId: doc.id } });
+  await tx.document.update({ where: { id: doc.id }, data: { stare: "CIORNA", trimisLaSemnatLa: null, aprobatDeUserId: null, aprobatLa: null } });
+  await writeAudit(tx, ctx.user, {
+    entity: "DOCUMENT",
+    entityId: doc.id,
+    entityLabel: doc.label,
+    action: "UPDATE",
+    fields: ["stare", "semnaturi"],
+    before: { stare: DOCUMENT_STATE_LABEL[doc.stare], semnaturi: sigs.map((s) => `${s.role === "PASTOR" ? "pastor" : "secretar"}: ${s.name}`).join(", ") },
+    after: { stare: DOCUMENT_STATE_LABEL.CIORNA, semnaturi: "" },
+  });
 }
 
 export async function deleteDocumentAction(id: string): Promise<FormState> {

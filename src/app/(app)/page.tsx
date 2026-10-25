@@ -134,6 +134,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         select: { id: true, userName: true, createdAt: true },
       })
     : [];
+  // The pastor's queue (Statut art. 39): documents waiting for approval and signature.
+  const toSign = permissions.pastor(ctx.user) ? await ctx.db.document.count({ where: { stare: "DE_SEMNAT" } }) : 0;
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -143,6 +145,14 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
+      {toSign ? (
+        <div className="alert mb-4" role="status">
+          <Link href="/documente/de-semnat">
+            {toSign === 1 ? "Un document așteaptă" : `${toSign} documente așteaptă`} aprobarea și semnătura dumneavoastră
+          </Link>{" "}
+          <span className="badge">{toSign}</span>
+        </div>
+      ) : null}
       {recoverySignIns.length ? (
         <div className="alert mb-4" role="status">
           {recoverySignIns.map((r) => (

@@ -208,6 +208,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Setări → "Semnătura se desenează de fiecare dată" (`Church.semnaturaUnica` "" | TOATE | TIPURI + `semnaturaUnicaTipuri`): the saved option is hidden for those types and refused on the server.
 - PDF / Word: the `signatures` block cells take `image` and `note` ("semnat la <data, ora>" + " · confirmat pe dispozitivul titularului" for SALVATA, `signatureNote()` in `src/lib/signatures.ts`); `documentPrint({ signatures })`, loaded by the routes with `printSignatures()`.
 
+### Document approval (pastor)
+
+- `Document.stare` CIORNA | DE_SEMNAT | APROBAT | RESPINS (`DOCUMENT_STATE_LABEL`), `trimisLaSemnatLa`, `aprobatDeUserId`, `aprobatLa`, `motivRespingere`. Every document type with a pastor signature needs approval. The `document_approval` migration marked existing documents APROBAT (without signatures).
+- Secretary: saves a CIORNA, signs the secretary place (`signDocumentAction(id, "SECRETAR")`), "Trimite pastorului spre semnare" (`sendToPastorAction`: DE_SEMNAT, e-mail to the pastor users with a generic text and the link, `sendDocumentApprovalEmail`). Pastor: "De semnat" (`/documente/de-semnat`, permission `pastor`; badge on "Documente" via `pendingBadges(user)` and on Acasă), "Aprobă și semnează" (`approveDocumentAction`: fresh drawing or saved signature + device unlock, then APROBAT, `aprobatLa`), "Respinge" with a reason (`rejectDocumentAction`: RESPINS; the secretary who sent it is told by e-mail). The pastor place is never signed through `signDocumentAction`.
+- Editing an APROBAT document (any change) makes it CIORNA again and removes both signatures (`resetApproval` in `src/server/actions/documents.ts`, audited `stare` / `semnaturi`).
+- Not approved: PDF and Word carry `DRAFT_WATERMARK` "CIORNĂ — neaprobat" (PDF diagonal on every page; Word in the page header), never the pastor's signature, and a "CIORNA-" file name (`documentSpec`, `documentFileBase`); the page says "Documentul nu este încă aprobat de pastor".
+- Export/import: `stare` (+ `motivRespingere`) only on documents not approved (`exportedState`, `src/lib/document-backup.ts`); a sent one comes back as CIORNA; an absent state imports as APROBAT; signatures are never exported.
+
 ### Discipline (Statut art. 27, 271, 272)
 
 - `DisciplinaryMeasure` (tenant model): forma (art. 27 alin. 3), stare CERCETARE / APLICATA / INCHEIATA, dates, minutes, motiv, forum. Permission `disciplina` = ADMIN or a pastor (`User.isPastor`), on the server for every read and write; other users never see measures, counts, categories, exports, audit entries (entity DISCIPLINE is filtered out of `/setari/jurnal`) or any hint. Never add discipline to a category, list, export or a non-admin page.

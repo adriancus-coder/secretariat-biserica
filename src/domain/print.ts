@@ -365,6 +365,7 @@ export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): strin
       lines.push(`${cell(blk.left)} | ${cell(blk.right)}`);
     }
   }
+  if (spec.watermark) lines.push(`[${spec.watermark}]`);
   if (spec.footer) lines.push(spec.footer);
   return lines.join("\n");
 }
