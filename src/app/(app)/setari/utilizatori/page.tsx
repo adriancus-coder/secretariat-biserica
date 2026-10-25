@@ -76,7 +76,7 @@ export default async function UsersPage() {
                 {u.email} · {u.lastLoginAt ? `ultima autentificare ${formatDateTime(u.lastLoginAt)}` : "nu s-a autentificat încă"}
               </div>
             </div>
-            <div className="flex gap-2 items-start flex-wrap">
+            <div className="item-actions">
               <RoleSelect userId={u.id} role={u.role} disabled={!u.active} />
               {u.active ? <ResetLinkButton userId={u.id} emailEnabled={emailEnabled} /> : null}
               {u.id !== ctx.user.id ? <ActiveToggle userId={u.id} active={u.active} /> : null}

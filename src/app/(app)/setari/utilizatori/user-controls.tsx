@@ -91,7 +91,7 @@ export function RoleSelect({ userId, role, disabled }: { userId: string; role: R
         defaultValue={role}
         disabled={disabled || pending}
         aria-label="Rol"
-        className="!w-auto !py-1.5 text-[14px]"
+        className="!w-auto min-h-10 !py-1.5 text-[14px]"
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
       >
         {roleOptions.map((o) => (

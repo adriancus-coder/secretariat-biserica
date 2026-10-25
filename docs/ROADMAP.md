@@ -64,11 +64,8 @@ Also in place:
 
 ## Known limitations and tech debt
 
-- Existing screens predate the UI rules in `CLAUDE.md`:
-  - `.btn` buttons are about 41 px high and `.btn-sm` about 31 px, below the 44 px target;
-  - most primary buttons have no icon.
-
-  Audit and align these screen by screen.
+- Existing screens predate the UI rules in `CLAUDE.md`: most primary buttons have no icon. Audit and align these screen by screen.
+  - Button heights are fixed: `.btn` is at least 44 px and `.btn-sm` at least 40 px. Small controls that are not `.btn` (calendar day cells, pager links, inline text links) have not been audited yet.
 - The `/am-uitat-parola` limit is kept in process memory: 3 requests per e-mail address per 15 minutes.
   - It resets when the app restarts and is not shared between instances. That is fine for the single Render instance.
   - Move it to PostgreSQL or Redis before running more than one instance; this belongs with step 4.
