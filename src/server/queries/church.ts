@@ -20,6 +20,8 @@ export interface ChurchSettings extends ChurchInfo {
   /** Preselected recipients when the minutes are e-mailed ("" = none). */
   pastorEmail: string;
   secretarEmail: string;
+  /** Every user must use a second factor at login. */
+  require2fa: boolean;
 }
 
 /** Memorat pe durata cererii, după id-ul bisericii (luat întotdeauna din sesiunea verificată). */
@@ -45,6 +47,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     secretar: c.secretar,
     pastorEmail: c.pastorEmail,
     secretarEmail: c.secretarEmail,
+    require2fa: c.require2fa,
     nomen,
     savedNomen: saved,
     attendanceRules: resolveAttendanceRules(nomen.tipuriSedinte, c.regulaPrezenta),

@@ -132,4 +132,5 @@ export const ENTITY_LABEL = {
   CHURCH_ROLE: "Funcție în biserică",
   FAMILY: "Familie",
   EXTRACT: "Citire din document",
+  SECURITY: "Securitate cont",
 } as const;

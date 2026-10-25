@@ -331,3 +331,25 @@ export async function sendMinutesEmail(p: {
   if (p.attachment && p.attachment.content.length > MAX_ATTACHMENT_BYTES) return { result: "failed", error: "attachment_too_large" };
   return send(config, "minutes", to, minutesEmail(p), to, p.attachment ? [p.attachment] : undefined);
 }
+
+// ---------- Login code (second factor) ----------
+
+export function loginCodeEmail(p: { code: string; churchName: string; validMinutes: number }): EmailContent {
+  const closing = `Codul este valabil ${quantity(p.validMinutes, "un minut", "minute")} și poate fi folosit o singură dată. Dacă nu încercați să vă autentificați, schimbați-vă parola.`;
+  return {
+    subject: `Cod de autentificare: ${p.code}`,
+    text: [`Codul de autentificare în secretariatul bisericii ${p.churchName} este:`, "", p.code, "", closing].join("\n"),
+    html: htmlLayout([
+      htmlParagraph(`Codul de autentificare în secretariatul bisericii <b>${esc(p.churchName)}</b> este:`),
+      htmlParagraph(esc(p.code), "margin:0 0 16px;font-size:28px;font-weight:bold;letter-spacing:6px"),
+      htmlParagraph(esc(closing), MUTED),
+    ]),
+  };
+}
+
+/** The 6-digit login code; never logged (redacted even from error messages). */
+export async function sendLoginCodeEmail(p: { to: string; code: string; churchName: string; validMinutes: number }): Promise<EmailResult> {
+  const config = emailConfig();
+  if (!config) return disabled();
+  return deliver(config, "login code", p.to, loginCodeEmail(p), p.code);
+}

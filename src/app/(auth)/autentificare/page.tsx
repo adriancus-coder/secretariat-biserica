@@ -18,6 +18,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/autentific
     <>
       <h2 className="text-2xl mb-1">Autentificare</h2>
       <p className="hint mb-5">Intrați în contul secretariatului bisericii.</p>
+      {sp.coduri ? (
+        <div className="alert" role="status">
+          Prea multe coduri greșite. Autentificați-vă din nou cu e-mailul și parola.
+        </div>
+      ) : null}
+      {sp.expirat ? (
+        <div className="alert" role="status">
+          Pasul de verificare a expirat. Autentificați-vă din nou.
+        </div>
+      ) : null}
       <LoginForm callbackUrl={callbackUrl} />
       <p className="text-center mt-2">
         <Link href="/am-uitat-parola" className="inline-flex min-h-11 items-center px-2">

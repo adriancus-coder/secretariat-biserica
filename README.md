@@ -23,7 +23,7 @@ calculul statisticilor, șabloanele de documente și darea de seamă. Echivalen�
 | **Grupuri** | Nume, responsabil, descriere, persoane; listă tipăribilă (PDF). |
 | **Mențiuni** | Note pe persoană sau familie, vizibile pe fișa persoanei. |
 | **Cereri de membru** | Formular public `/cerere/<adresa-bisericii>` (pornit din Setări), cu acord pentru păstrarea datelor și, dacă biserica le-a încărcat în Setări, acordul cu statutul cultului și cu statutul intern (bifabile după deschiderea documentului). Cererile apar la „Cereri” (cu numărul celor în așteptare); „Acceptă” deschide fișa persoanei completată din cerere, „Respinge” păstrează motivul. |
-| **Setări** | Datele organizației (antet și semnături), nomenclatoare editabile, utilizatori și roluri (invitații și resetarea parolei, trimise pe e-mail), export/import JSON compatibil cu prototipul, jurnalul de modificări. |
+| **Setări** | Datele organizației (antet și semnături), autentificare în doi pași (aplicație de autentificare sau cod pe e-mail, coduri de recuperare; poate fi obligatorie pentru toată biserica), nomenclatoare editabile, utilizatori și roluri (invitații și resetarea parolei, trimise pe e-mail), export/import JSON compatibil cu prototipul, jurnalul de modificări. |
 
 Toate PDF-urile (documente, procese-verbale, liste de grup, fișe de eveniment, dare de seamă) sunt
 generate pe server, cu antetul bisericii și semnăturile pastorului și secretarului.

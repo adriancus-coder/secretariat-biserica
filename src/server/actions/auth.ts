@@ -1,10 +1,9 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { AuthError, CredentialsSignin } from "next-auth";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { signIn, signOut } from "@/auth";
+import { signOut } from "@/auth";
 import type { FormState } from "@/lib/form-state";
 import {
   acceptInvitationSchema,
@@ -22,25 +21,37 @@ import { hashPassword, verifyPassword } from "../password";
 import { passwordResetRequests, requestPasswordReset, RESET_REQUEST_WINDOW_MINUTES } from "../password-reset";
 import { ActionError, getCurrentUser } from "../session";
 import { hashToken } from "../tokens";
+import { checkPassword } from "../login";
+import { hasSecondFactor, setChallengeCookie, startChallenge } from "../two-factor";
+import { finishSignIn } from "../sign-in";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { signupAllowed } from "../queries/auth";
 
-async function signInOrMessage(email: string, password: string, redirectTo: string): Promise<FormState | void> {
-  try {
-    await signIn("credentials", { email, password, redirectTo });
-  } catch (error) {
-    if (error instanceof CredentialsSignin) {
-      return {
-        message:
-          error.code === "blocat"
-            ? "Prea multe încercări eșuate. Contul este blocat temporar — reîncercați peste 15 minute."
-            : "Adresa de e-mail sau parola nu sunt corecte.",
-        values: { email },
-      };
-    }
-    if (error instanceof AuthError) return { message: "Autentificarea a eșuat. Încercați din nou.", values: { email } };
-    throw error; // redirect după autentificare reușită
+/**
+ * Signs in after the password: a user with a second factor (or whose church requires one) goes to
+ * the code step (/autentificare/cod or the setup); the others are signed in at once. `trusted`: the
+ * user is already signed in and has just confirmed the password (password change), so no code is asked.
+ */
+async function signInOrMessage(email: string, password: string, redirectTo: string, trusted = false): Promise<FormState | void> {
+  const check = await checkPassword(email, password);
+  if (!check.ok) {
+    return {
+      message:
+        check.reason === "locked"
+          ? "Prea multe încercări eșuate. Contul este blocat temporar — reîncercați peste 15 minute."
+          : "Adresa de e-mail sau parola nu sunt corecte.",
+      values: { email },
+    };
   }
+  const user = check.user;
+  const needsCode = !trusted && hasSecondFactor(user);
+  const needsSetup = !trusted && !needsCode && user.church.require2fa;
+  const token = await startChallenge(user.id, { verified: !needsCode && !needsSetup, setupRequired: needsSetup, callbackUrl: redirectTo });
+  if (needsCode || needsSetup) {
+    await setChallengeCookie(token);
+    redirect(needsSetup ? "/autentificare/configurare" : "/autentificare/cod");
+  }
+  return finishSignIn(token, redirectTo, email);
 }
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -203,5 +214,5 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
     credentials = { email: user.email, password: data.password };
   });
   if (!credentials) return state;
-  return (await signInOrMessage(credentials.email, credentials.password, "/cont?parola=schimbata")) ?? {};
+  return (await signInOrMessage(credentials.email, credentials.password, "/cont?parola=schimbata", true)) ?? {};
 }

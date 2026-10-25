@@ -7,6 +7,9 @@ import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { ChangePasswordForm } from "./change-password-form";
+import { SecurityCard } from "./security-card";
+import { prisma } from "@/server/db";
+import { isEmailConfigured } from "@/server/email";
 
 export const metadata: Metadata = { title: "Contul meu" };
 
@@ -14,6 +17,10 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
   const user = await requireUser();
   const sp = await searchParams;
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const security = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id },
+    select: { totpEnabled: true, emailOtpEnabled: true, recoveryCodes: true, church: { select: { require2fa: true } } },
+  });
   return (
     <>
       <PageHead title="Contul meu" sub={user.churchName} />
@@ -33,6 +40,18 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           </dd>
         </dl>
       </div>
+      {sp.recuperare === "putine" ? (
+        <div className="alert" role="status">
+          Mai aveți puține coduri de recuperare. Generați coduri noi mai jos.
+        </div>
+      ) : null}
+      <SecurityCard
+        totpEnabled={security.totpEnabled}
+        emailOtpEnabled={security.emailOtpEnabled}
+        recoveryLeft={security.recoveryCodes.length}
+        emailConfigured={isEmailConfigured()}
+        required={security.church.require2fa}
+      />
       <div className="card">
         <h3>Schimbă parola</h3>
         <ChangePasswordForm />

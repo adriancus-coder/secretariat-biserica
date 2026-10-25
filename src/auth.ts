@@ -3,54 +3,33 @@ import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { prisma } from "./server/db";
-import { afterFailedLogin, isLocked } from "./server/login-throttle";
-import { burnPasswordCheck, hashPassword, needsRehash, verifyPassword } from "./server/password";
+import { consumeChallenge } from "./server/two-factor";
 
 /** Cod de eroare generic: nu dezvăluim dacă e-mailul există sau parola e greșită. */
 class InvalidCredentials extends CredentialsSignin {
   code = "credentiale";
 }
-class TooManyAttempts extends CredentialsSignin {
-  code = "blocat";
-}
 
-const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(200),
-  password: z.string().min(1).max(200),
-});
+const credentialsSchema = z.object({ challenge: z.string().min(20).max(200) });
 
+/**
+ * The credentials provider accepts only a verified login challenge: the password (and, when the
+ * user has one, the second factor) were checked by the login actions (src/server/actions/auth.ts,
+ * two-factor.ts). A direct e-mail + password post is refused, so the second factor cannot be skipped.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
-      credentials: { email: {}, password: {} },
+      credentials: { challenge: {} },
       async authorize(raw) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) throw new InvalidCredentials();
-        const { email, password } = parsed.data;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.active) {
-          await burnPasswordCheck(password);
-          throw new InvalidCredentials();
-        }
-        if (isLocked(user)) throw new TooManyAttempts();
-
-        const ok = await verifyPassword(password, user.passwordHash);
-        if (!ok) {
-          await prisma.user.update({ where: { id: user.id }, data: afterFailedLogin(user) });
-          throw new InvalidCredentials();
-        }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            failedLoginCount: 0,
-            lastFailedLoginAt: null,
-            lastLoginAt: new Date(),
-            ...(needsRehash(user.passwordHash) ? { passwordHash: await hashPassword(password) } : {}),
-          },
-        });
+        const userId = await consumeChallenge(parsed.data.challenge);
+        if (!userId) throw new InvalidCredentials();
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || !user.active) throw new InvalidCredentials();
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
         return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
       },
     }),

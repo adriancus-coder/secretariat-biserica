@@ -19,7 +19,7 @@ export function SettingsForm({
   formUrl,
   readOnly,
 }: {
-  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean };
+  church: Record<ChurchTextFields, string> & { applicationsOpen: boolean; require2fa: boolean };
   nomen: Nomenclatures;
   attendanceRules: Record<string, AttendanceRule>;
   /** Full address of the public application form, for the copy button. */
@@ -31,6 +31,7 @@ export function SettingsForm({
   const e = state.errors ?? {};
   const val = (k: ChurchTextFields) => v?.[k] ?? church[k];
   const applicationsOpen = v ? v.applicationsOpen === "on" : church.applicationsOpen;
+  const require2fa = v ? v.require2fa === "on" : church.require2fa;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
       name={name}
@@ -84,6 +85,15 @@ export function SettingsForm({
           <span>
             <span className="block font-medium">Primește cereri de membru online</span>
             <span className="hint block !mt-0">Când este pornit, oricine are adresa de mai sus poate trimite o cerere.</span>
+          </span>
+        </label>
+        <label className="switch-row">
+          <input type="checkbox" role="switch" name="require2fa" defaultChecked={require2fa} />
+          <span>
+            <span className="block font-medium">Autentificare în doi pași obligatorie</span>
+            <span className="hint block !mt-0">
+              La următoarea autentificare, utilizatorii fără cod (aplicație sau e-mail) sunt îndrumați să-l configureze.
+            </span>
           </span>
         </label>
       </fieldset>

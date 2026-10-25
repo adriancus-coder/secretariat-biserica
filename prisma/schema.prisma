@@ -32,6 +32,8 @@ model Church {
   slug             String  @unique
   /// Whether the public form accepts membership applications.
   applicationsOpen Boolean @default(false)
+  /// Every user must use a second factor (users without one are sent to its setup at login).
+  require2fa       Boolean @default(false)
   adresa           String  @default("")
   orgNr            String  @default("")
   telefon          String  @default("")
@@ -85,6 +87,15 @@ model User {
   /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
   sessionVersion Int     @default(0)
 
+  // Second factor: TOTP (secret encrypted at rest, see src/server/two-factor.ts) and/or a code by e-mail.
+  totpSecretEnc   String?
+  totpEnabled     Boolean  @default(false)
+  /// Last accepted TOTP time step: a code is accepted once.
+  totpLastStep    Int?
+  emailOtpEnabled Boolean  @default(false)
+  /// Single-use recovery codes, hashed (sha256).
+  recoveryCodes   String[] @default([])
+
   failedLoginCount  Int       @default(0)
   lastFailedLoginAt DateTime?
   lastLoginAt       DateTime?
@@ -99,6 +110,7 @@ model User {
   applicationsDecided Application[]      @relation("ApplicationDecidedBy")
   signaturesCollected MeetingSignature[] @relation("SignatureCollectedBy")
   meetingSends        MeetingSend[]
+  loginChallenges     LoginChallenge[]
   churchDocuments     ChurchDocument[]
 
   @@index([churchId])
@@ -383,6 +395,30 @@ model MeetingSignature {
   @@map("meeting_signatures")
 }
 
+/// The second step of a login, after a correct password: identified by a random token kept in an
+/// httpOnly cookie (only its hash is stored). Used with the global client (authentication).
+model LoginChallenge {
+  id                 String    @id @default(cuid())
+  tokenHash          String    @unique
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  expiresAt          DateTime
+  /// Wrong codes so far; at 5 the challenge is deleted and the login starts again.
+  attempts           Int       @default(0)
+  /// The e-mail code (hashed) and its expiry, when one was sent.
+  emailCodeHash      String?
+  emailCodeExpiresAt DateTime?
+  /// The church requires a second factor and the user has none: setup first.
+  setupRequired      Boolean   @default(false)
+  /// Set when the code was accepted; the challenge is then consumed by the sign-in.
+  verifiedAt         DateTime?
+  callbackUrl        String    @default("/")
+
+  @@index([userId])
+  @@map("login_challenges")
+}
+
 enum ChurchDocumentKind {
   STATUT_CULT
   STATUT_INTERN
@@ -615,6 +651,7 @@ enum AuditEntity {
   CHURCH_ROLE
   FAMILY
   EXTRACT
+  SECURITY
 }
 
 enum AuditAction {

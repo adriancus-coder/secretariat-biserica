@@ -54,7 +54,7 @@ Never run `prisma migrate reset` / `npm run db:reset` or any other destructive d
   - The package is ESM (`"type": "module"`).
 - **Auth.js v5 beta** (`next-auth@5.0.0-beta.32`): Credentials provider with 7-day JWT sessions.
   - `src/auth.config.ts` has no database access; the proxy uses it.
-  - `src/auth.ts` adds the database-backed provider.
+  - `src/auth.ts` adds the database-backed provider. It accepts only a verified login challenge (see "Two-step authentication"), never an e-mail and password directly.
 - **Other libraries**:
   - Zod 4 with the Romanian locale.
   - Tailwind 4: `@theme inline` in `src/app/globals.css` maps the prototype's CSS variables.
@@ -239,6 +239,13 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - The church and the officiant are part of `personDerived` searchText.
 - Domain records keep the prototype's `locBotez`, filled from the locality (`src/server/mappers.ts`).
 - Export/import: the three fields on members (`src/lib/baptism-backup.ts`), `locBotez` written with the locality; older files import `locBotez` as the locality.
+
+### Two-step authentication
+
+- Login: `signInOrMessage` (`src/server/actions/auth.ts`) checks the password (`checkPassword`, `src/server/login.ts`, with the account lock), then starts a `LoginChallenge` (`src/server/two-factor.ts`). Without a second factor it is verified at once and passed to `signIn`; with one, the browser gets an httpOnly cookie and goes to `/autentificare/cod`; when `Church.require2fa` is on and the user has none, to `/autentificare/configurare`.
+- Factors: TOTP (`src/server/totp.ts`, RFC 6238 with node:crypto; the secret encrypted with AES-256-GCM under a key derived from `AUTH_SECRET`; each code accepted once via `totpLastStep`), a 6-digit e-mail code (hashed, 10 min, single use; only when e-mail is configured), and 8 single-use hashed recovery codes. 5 wrong codes delete the challenge.
+- Cont → Securitate: enable/disable each method and regenerate recovery codes, each with the password; the last method cannot be disabled while the church requires 2FA. Audit entity `SECURITY` (enable/disable, wrong codes, recovery code used); codes are never logged or stored in clear.
+- `src/server/sign-in.ts` (`finishSignIn`) is deliberately not a server action.
 
 ### Membership applications
 

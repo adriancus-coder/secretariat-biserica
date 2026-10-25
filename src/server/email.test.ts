@@ -9,6 +9,7 @@ import {
   newApplicationEmail,
   passwordResetEmail,
   sendInvitationEmail,
+  sendLoginCodeEmail,
   sendMinutesEmail,
   sendNewApplicationEmail,
   sendPasswordResetEmail,
@@ -253,5 +254,18 @@ describe("minutes", () => {
     expect(text).toBe("<b>Salut</b>\nrând 2\n\nParagraf");
     expect(html).toContain("&lt;b&gt;Salut&lt;/b&gt;<br>rând 2</p>");
     expect(html).toContain(">Paragraf</p>");
+  });
+});
+
+describe("login code", () => {
+  it("sends the code to the account address and never logs it", async () => {
+    send.mockResolvedValueOnce({ data: null, error: { name: "validation_error", statusCode: 422, message: "bad 482913" }, headers: null });
+    await expect(sendLoginCodeEmail({ to: "ana@example.org", code: "482913", churchName: "Maranata", validMinutes: 10 })).resolves.toBe("failed");
+    await expect(sendLoginCodeEmail({ to: "ana@example.org", code: "482913", churchName: "Maranata", validMinutes: 10 })).resolves.toBe("sent");
+    expect(send.mock.calls[1][0].to).toBe("ana@example.org");
+    expect(send.mock.calls[1][0].text).toContain("482913");
+    expect(send.mock.calls[1][0].text).toContain("valabil 10 minute");
+    expect(loggedText()).not.toContain("482913");
+    expect(loggedText()).not.toContain("ana@example.org");
   });
 });

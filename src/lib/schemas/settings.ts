@@ -45,6 +45,7 @@ export const SETTINGS_FIELDS = [
   "gradeRudenie",
   "slug",
   "applicationsOpen",
+  "require2fa",
   "regulaPrezenta",
 ] as const;
 
@@ -64,6 +65,7 @@ export const churchSettingsSchema = z.object({
   gradeRudenie: nomenLines,
   slug: slugField,
   applicationsOpen: checkbox,
+  require2fa: checkbox,
 });
 
 /**
