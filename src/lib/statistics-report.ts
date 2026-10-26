@@ -2,6 +2,7 @@ import type { Block, PrintSpec } from "@/domain/print";
 import type { MonthRow, Structure, YearRow } from "@/domain/evolution";
 import type { ChurchInfo } from "@/domain/types";
 import { fmt, MONTHS_L } from "./format";
+import { CHURCH_FAMILIES_TITLE, OTHER_FAMILIES_TITLE } from "./labels";
 import { orderRows, parseSort, type SortColumn, type SortState, type SortValue } from "./table-sort";
 
 /** The Statistici tables (PDF and Excel share them) and the PDF spec. Aggregate numbers only, no names. Pure. */
@@ -120,8 +121,8 @@ export function statisticsTableDefs(d: StatisticsReport): StatTableDef[] {
       name: "Familii",
       columns: [col("indicator", "Indicator", "text"), col("valoare", "Valoare")],
       rows: [
-        ["Familii ale bisericii (cu cel puțin un membru)", st.families.count, st.families.count],
-        ["Familii fără membri", st.families.withoutMembers, st.families.withoutMembers],
+        [CHURCH_FAMILIES_TITLE, st.families.count, st.families.count],
+        [OTHER_FAMILIES_TITLE, st.families.withoutMembers, st.families.withoutMembers],
         ["Persoane pe familie, în medie", dec(st.families.avgSize), st.families.avgSize],
         ["Familii cu copii minori", st.families.withMinors, st.families.withMinors],
         ["Persoane singure în familie", st.families.alone, st.families.alone],

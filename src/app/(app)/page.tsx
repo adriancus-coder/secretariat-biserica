@@ -25,6 +25,7 @@ import { deleteExpiredContactsAction } from "@/server/actions/statute";
 import { expiredContactWhere } from "@/server/retention";
 import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
+import { ChurchFamiliesStat } from "@/components/church-families-stat";
 import { PRIETENI_LABEL } from "@/lib/labels";
 
 /** A bar whose number opens the list of persons behind it. */
@@ -316,8 +317,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <div className="stats">
         <Stat value={s.ev.length} label="persoane în evidență" href={cat("toti")} />
         <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} href={cat("membri")} />
-        <Stat value={s.fams} label="familii" href="/familii" />
-        {s.famsFaraMembri ? <Stat value={s.famsFaraMembri} label="familii fără membri" href="/familii?filtru=fara-membri" /> : null}
+        <ChurchFamiliesStat count={s.fams} others={s.famsFaraMembri} />
       </div>
       <div className="stats">
         <Stat value={s.botezati.length} label="botezați" href={cat("botezati")} />

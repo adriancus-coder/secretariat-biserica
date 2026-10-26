@@ -5,7 +5,8 @@ import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { hrefWith, pageParam, Pager, stringParam } from "@/components/ui/pager";
 import { SearchBox } from "@/components/ui/search-box";
 import { initial } from "@/lib/format";
-import { FAMILY_FILTER_LABEL, FAMILY_FILTERS, listFamilyRecords, type FamilyFilter } from "@/server/queries/families";
+import { FAMILY_FILTER_LABEL, OTHER_FAMILIES_HINT, OTHER_FAMILY_TAG } from "@/lib/labels";
+import { FAMILY_FILTERS, listFamilyRecords, type FamilyFilter } from "@/server/queries/families";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "Familii" };
@@ -14,7 +15,8 @@ export default async function FamiliesPage({ searchParams }: PageProps<"/familii
   const ctx = await requireCtx();
   const sp = await searchParams;
   const q = stringParam(sp.q).slice(0, 100);
-  const raw = stringParam(sp.filtru);
+  // The old key `fara-membri` (before FAMILIES-WORDING) still opens the other families.
+  const raw = stringParam(sp.filtru) === "fara-membri" ? "alte" : stringParam(sp.filtru);
   const filter: FamilyFilter = (FAMILY_FILTERS as readonly string[]).includes(raw) ? (raw as FamilyFilter) : "biserica";
   const data = await listFamilyRecords(ctx, { q, page: pageParam(sp.pagina), filter });
   const params = { q: q || undefined, filtru: filter === "biserica" ? undefined : filter };
@@ -25,9 +27,10 @@ export default async function FamiliesPage({ searchParams }: PageProps<"/familii
         O familie se creează din fișa persoanei („Familie nouă”), iar persoana devine capul familiei. Familiile bisericii au cel puțin un membru; celelalte rămân
         în registru, dar nu se numără și nu intră la rugăciunea săptămânală.
       </p>
+      {filter === "alte" ? <p className="hint mb-3">{OTHER_FAMILIES_HINT}</p> : null}
       <nav className="segs" aria-label="Filtru">
         {FAMILY_FILTERS.map((f) => (
-          <Link key={f} href={hrefWith("/familii", params, { filtru: f === "biserica" ? null : f, pagina: null })} aria-current={filter === f ? "true" : undefined}>
+          <Link key={f} href={hrefWith("/familii", params, { filtru: f === "biserica" ? null : f, pagina: null })} aria-current={filter === f ? "true" : undefined} title={f === "alte" ? OTHER_FAMILIES_HINT : undefined}>
             {FAMILY_FILTER_LABEL[f]} ({data.counts[f]})
           </Link>
         ))}
@@ -49,7 +52,7 @@ export default async function FamiliesPage({ searchParams }: PageProps<"/familii
               <div className="body">
                 <div className="t">
                   {f.nume}
-                  {f.church ? null : <span className="tag ml-2">fără membri</span>}
+                  {f.church ? null : <span className="tag ml-2" title={OTHER_FAMILIES_HINT}>{OTHER_FAMILY_TAG}</span>}
                 </div>
                 <div className="m">
                   {f.count === 1 ? "1 persoană" : `${f.count} persoane`}

@@ -50,7 +50,8 @@ describe("statistics report", () => {
     expect(evo.rows[0].slice(0, 3)).toEqual([2025, 41, 2]);
     expect(months.rows[2]).toEqual(["martie", 3, 0]);
     expect(ages.rows).toEqual([["0–13", 2, 3, 5], ["65+", 1, 0, 1]]);
-    expect(fam.rows[1]).toEqual(["Familii fără membri", 1]);
+    expect(fam.rows[0]).toEqual(["Familii ale bisericii", 10]);
+    expect(fam.rows[1]).toEqual(["Alte familii în evidență", 1]);
     expect(fam.rows[2]).toEqual(["Persoane pe familie, în medie", "3,2"]);
   });
 

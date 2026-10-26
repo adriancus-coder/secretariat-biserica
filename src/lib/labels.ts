@@ -21,6 +21,24 @@ export const STATUS_LABEL_SHORT: Record<PersonStatusKey, string> = { ...STATUS_L
 export const PRIETENI_LABEL = "prieteni ai casei Domnului (nebotezați)";
 /** The same, at the start of a line or a table row. */
 export const PRIETENI_TITLE = "Prieteni ai casei Domnului (nebotezați)";
+
+/*
+ * FAMILIES-WORDING: the families of the church (at least one active member, isChurchFamily) and the other
+ * families of the register. Never written by hand outside this file (families-wording.test.ts scans src/).
+ */
+export const CHURCH_FAMILIES_LABEL = "familii ale bisericii";
+export const CHURCH_FAMILIES_TITLE = "Familii ale bisericii";
+export const OTHER_FAMILIES_LABEL = "alte familii în evidență";
+export const OTHER_FAMILIES_TITLE = "Alte familii în evidență";
+/** The row tag on /familii. */
+export const OTHER_FAMILY_TAG = "fără membri ai bisericii";
+export const OTHER_FAMILIES_HINT = "Familii în care nimeni nu are calitatea de membru (doar aparținători, prieteni ai casei Domnului sau botezați fără calitate de membru).";
+/** The /familii filters (`?filtru=`): the church's families (default), the others, all. */
+export const FAMILY_FILTER_LABEL = { biserica: "Familiile bisericii", alte: "Alte familii", toate: "Toate" } as const;
+/** „+ 2 alte familii în evidență” under the church families' figure (Acasă, Statistici); null at 0. */
+export function otherFamiliesLine(n: number): string | null {
+  return n > 0 ? `+ ${n} ${n === 1 ? "altă familie în evidență" : OTHER_FAMILIES_LABEL}` : null;
+}
 /** The JSON backup keeps the prototype's word (like "Reprimire"), so older files and the prototype stay compatible. */
 export const PROTOTYPE_STATUS_LABEL: Record<PersonStatusKey, string> = { ...STATUS_LABEL, PRIETEN: "Prieten" };
 /** Older labels still accepted by the import (JSON backup), all → PRIETEN. */

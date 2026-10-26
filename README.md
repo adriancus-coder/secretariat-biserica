@@ -419,10 +419,14 @@ corecții deliberate:
     Rândul din darea de seamă rămâne „Prieteni ai casei Domnului (nebotezați): N” (diferența 18).
 24. **Familiile bisericii:** se numără doar familiile cu cel puțin un membru (statut Membru la data
     situației, fără ieșire, neanonimizat; `isChurchFamily`); prototipul număra toate familiile. Rândul
-    „- N familii” din darea de seamă, cardurile de pe Acasă și din Statistici și tabelul „Familii” (PDF,
-    Excel) au doar familiile bisericii; lângă ele, „familii fără membri” (când sunt). Rugăciunea
-    săptămânală ia doar familiile bisericii și persoanele fără familie care sunt membri. Lista Familii
-    arată implicit familiile bisericii („Fără membri” și „Toate” ca filtre).
+    „- N familii” din darea de seamă (N = familiile bisericii), cardul „familii ale bisericii” de pe
+    Acasă și din Statistici și tabelul „Familii” (PDF, Excel: „Familii ale bisericii”) au doar familiile
+    bisericii; celelalte apar ca „Alte familii în evidență” (tabel) și, sub card, ca linkul
+    „+ N alte familii în evidență” (când sunt; fără card separat). Rugăciunea săptămânală ia doar
+    familiile bisericii și persoanele fără familie care sunt membri. Lista Familii arată implicit
+    familiile bisericii; filtrele sunt „Familiile bisericii | Alte familii | Toate” (`?filtru=alte`), iar
+    celelalte familii au eticheta „fără membri ai bisericii”. Suma celor două numere este numărul
+    prototipului (testul de paritate).
 
 ## Atribuiri
 

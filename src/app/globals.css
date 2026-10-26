@@ -1555,6 +1555,36 @@
   .stat span {
     font-size: 0.75rem;
     color: var(--ink-3);
+    /* A long word („necompletată”) in a narrow card at 130 %: hyphenated, else broken, never outside the card. */
+    display: block;
+    hyphens: auto;
+    overflow-wrap: anywhere;
+  }
+  /* FAMILIES-WORDING: „familii ale bisericii” with „+ N alte familii în evidență” under it. */
+  .stat.stat-families {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  .stat-families .stat-main {
+    display: block;
+    flex: 1 1 auto;
+    padding: 10px 12px 4px;
+    color: var(--ink);
+    text-decoration: none;
+    border-radius: 12px;
+  }
+  .stat-families .stat-main:hover b {
+    text-decoration: underline;
+  }
+  .stat-families .stat-more {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 12px 6px;
+    font-size: 0.75rem;
+    color: var(--link);
+    text-decoration: underline;
   }
   /* A figure that needs attention (e.g. "stare civilă necompletată" above 0). */
   .stat.stat-warn {
@@ -2559,9 +2589,10 @@
   /* "36 / 40": two numbers on one line exactly as tall as a single figure. */
   .stat b.stat-pair {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.3em;
-    height: 1em;
+    gap: 0 0.3em;
+    min-height: 1em;
   }
   .stat-links {
     display: flex;

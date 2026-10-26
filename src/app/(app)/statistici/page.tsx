@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChurchFamiliesStat } from "@/components/church-families-stat";
 import { LineChart, Pyramid, StackedBars } from "@/components/charts";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
@@ -228,16 +229,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
       <section className="card">
         <h3>Familii</h3>
         <div className="stats">
-          <Link href="/familii" className="stat stat-link">
-            <b>{st.families.count}</b>
-            <span>familii</span>
-          </Link>
-          {st.families.withoutMembers ? (
-            <Link href="/familii?filtru=fara-membri" className="stat stat-link">
-              <b>{st.families.withoutMembers}</b>
-              <span>familii fără membri</span>
-            </Link>
-          ) : null}
+          <ChurchFamiliesStat count={st.families.count} others={st.families.withoutMembers} />
           <div className="stat">
             <b>{num(st.families.avgSize)}</b>
             <span>persoane pe familie, în medie</span>

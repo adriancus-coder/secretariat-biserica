@@ -11,9 +11,8 @@ import type { Ctx } from "../session";
 export const FAMILIES_PAGE_SIZE = 30;
 
 /** FAMILIES-WITH-MEMBERS: the Familii list shows the families of the church by default (isChurchFamily). */
-export const FAMILY_FILTERS = ["biserica", "fara-membri", "toate"] as const;
+export const FAMILY_FILTERS = ["biserica", "alte", "toate"] as const;
 export type FamilyFilter = (typeof FAMILY_FILTERS)[number];
-export const FAMILY_FILTER_LABEL: Record<FamilyFilter, string> = { biserica: "Familiile bisericii", "fara-membri": "Fără membri", toate: "Toate" };
 
 /**
  * Families matching the search (family name, or the name / phone of a member) within the chosen filter,
@@ -42,7 +41,7 @@ export async function listFamilyRecords(ctx: Ctx, { q, page, filter = "biserica"
     },
   });
   const all = rows.map((f) => ({ ...f, church: isChurchFamily(f.members) }));
-  const counts: Record<FamilyFilter, number> = { biserica: all.filter((f) => f.church).length, "fara-membri": all.filter((f) => !f.church).length, toate: all.length };
+  const counts: Record<FamilyFilter, number> = { biserica: all.filter((f) => f.church).length, alte: all.filter((f) => !f.church).length, toate: all.length };
   const chosen = filter === "toate" ? all : all.filter((f) => f.church === (filter === "biserica"));
   // By the head's surname and first name (Romanian alphabet), like the persons list.
   const sorted = chosen.sort((a, b) => (a.head?.sortKey ?? "~").localeCompare(b.head?.sortKey ?? "~") || compareRo(a.nume, b.nume));
