@@ -138,6 +138,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
         WHERE "churchId" = ${ctx.user.churchId} AND "personId" = ${id}`;
     }
     await tx.correspondence.updateMany({ where: { personId: id }, data: { personId: null } });
+    // PATRIMONY: a good whose responsible was the person keeps no link to them.
+    await tx.asset.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });
     await scrubPersonTraces(tx, ctx.user.churchId, needles);
     // Its group memberships were deleted above; the groups of its former roles are re-synced (no-op unless they drifted).
     await syncRoleGroups(tx, ctx.user, { roleIds: heldRoles });

@@ -55,6 +55,8 @@ Also in place:
 - **Hosting and e-mail:** Render (Frankfurt, web service plus managed PostgreSQL) and Resend for e-mail.
 - **Security baseline** (`docs/SECURITY.md`): nonce-based CSP without `'unsafe-inline'` for scripts, HSTS, CI `npm audit` gate with an expiring allow-list (`audit-allowlist.json`) and dependency review on pull requests. Pages denied by role keep the "Acces restricționat" page with HTTP 200 (streamed); route handlers answer 403.
 
+Done since the last list: **Evidența patrimoniului** (former point 9, Statut art. 43 alin. 7 and art. 54–55) is `/patrimoniu` (PATRIMONY); the correspondence register (art. 43 alin. 7) is `/corespondenta`; access to discipline is given by a pastor (art. 44 lit. d).
+
 ## Next steps (priority order)
 
 1. **Render + Resend**:
@@ -74,7 +76,6 @@ Also in place:
 6. **Attachments:** scanned files on documents and meeting minutes. This needs object storage.
 7. **SMS code as an extra factor** for the data-update campaign's identity check (after name + phone). This needs an SMS provider.
 8. **Profil de statut pe biserică:** the statute rules (categories, AG notice, committee mandate, discipline forms, who may officiate) are those of the Cultul Creștin Penticostal; other denominations need a per-church statute profile instead of the built-in rules and article numbers.
-9. **Evidența patrimoniului** (Statut art. 43 alin. 7): the church's inventory of goods and buildings.
 
 ## Known limitations and tech debt
 

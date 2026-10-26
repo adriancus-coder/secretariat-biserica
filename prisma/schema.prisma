@@ -59,6 +59,8 @@ model Church {
   tipuriSedinte           String[]  @default([])
   tipuriEvenimente        String[]  @default([])
   tipuriMentiuni          String[]  @default([])
+  /// PATRIMONY: the categories of goods ("" list = NOMEN_DEFAULTS.categoriiPatrimoniu).
+  categoriiPatrimoniu     String[]  @default([])
   gradeRudenie            String[]  @default([])
   /// Attendance rule per meeting type: { "<tip>": "TOTI" | "COMITET" | "MANUAL" }. Missing = default (src/lib/attendance.ts).
   regulaPrezenta          Json      @default("{}")
@@ -126,6 +128,7 @@ model Church {
   dataUpdateSubmissions DataUpdateSubmission[]
   consents              Consent[]
   correspondence        Correspondence[]
+  assets                Asset[]
 
   @@map("churches")
 }
@@ -361,6 +364,7 @@ model Person {
   mentiuni              Note[]
   documents             Document[]
   correspondence        Correspondence[]
+  assetsResponsible     Asset[]
   application           Application?
   roles                 PersonRole[]
   headOf                Family?                @relation("FamilyHead")
@@ -1123,6 +1127,54 @@ model Document {
   @@map("documents")
 }
 
+enum AssetOrigin {
+  CUMPARARE
+  DONATIE
+  ALTELE
+}
+
+enum AssetState {
+  BUN
+  NECESITA_REPARATII
+  SCOS_DIN_UZ
+}
+
+/// PATRIMONY (Statut art. 43 alin. 7: the secretary „ține la zi evidența patrimoniului”; art. 54–55):
+/// the church's inventory of goods. Never deleted: a good leaves by "Scoate din uz" (date and reason).
+/// No personal data except the optional responsible person.
+model Asset {
+  id            String      @id @default(cuid())
+  churchId      String
+  church        Church      @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nrInventar    Int
+  denumire      String
+  /// From the nomenclature Church.categoriiPatrimoniu.
+  categorie     String
+  cantitate     Int         @default(1)
+  /// The value of the whole line, in NOK (optional, whole kroner).
+  valoare       Int?
+  dataIntrarii  DateTime?   @db.Date
+  provenienta   AssetOrigin @default(CUMPARARE)
+  /// Where it is.
+  loc           String      @default("")
+  stare         AssetState  @default(BUN)
+  dataIesirii   DateTime?   @db.Date
+  motivIesirii  String      @default("")
+  observatii    String      @default("")
+  /// Free text, or the person of the register (responsabilId).
+  responsabil   String      @default("")
+  responsabilId String?
+  responsabilP  Person?     @relation(fields: [responsabilId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([churchId, nrInventar])
+  @@index([churchId, categorie])
+  @@index([responsabilId])
+  @@map("assets")
+}
+
 enum CorrespondenceDirection {
   INTRARE
   IESIRE
@@ -1250,6 +1302,7 @@ model Note {
 
 enum AuditEntity {
   CORRESPONDENCE
+  ASSET
   PERSON
   DOCUMENT
   MEETING

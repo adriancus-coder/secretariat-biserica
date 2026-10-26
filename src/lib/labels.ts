@@ -166,6 +166,8 @@ export const NOMEN_DEFAULTS = {
   ],
   tipuriMentiuni: ["Generală", "Pastorală", "Disciplină", "Familie", "Slujire", "Altele"],
   rudenie: ["Cap de familie", "Soție", "Soț", "Fiu", "Fiică", "Părinte", "Altul"],
+  /** PATRIMONY: the categories of the church's goods (Statut art. 43 alin. 7, art. 54–55). */
+  categoriiPatrimoniu: ["Clădiri și terenuri", "Mobilier", "Instrumente muzicale", "Sonorizare și video", "Echipamente IT", "Bucătărie", "Altele"],
 } as const;
 export type NomenKey = keyof typeof NOMEN_DEFAULTS;
 
@@ -181,6 +183,7 @@ export function resolveNomen(saved: Partial<Record<NomenKey, string[] | null | u
     tipuriSedinte: pick("tipuriSedinte"),
     tipuriEvenimente: pick("tipuriEvenimente"),
     tipuriMentiuni: pick("tipuriMentiuni"),
+    categoriiPatrimoniu: pick("categoriiPatrimoniu"),
     rudenie: pick("rudenie"),
   };
 }

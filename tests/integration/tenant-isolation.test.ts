@@ -260,6 +260,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await b.correspondence.delete({ where: { id: cb.id } });
   });
 
+  it("the inventory of goods is isolated per church; each has its own inventory numbers", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const g = await a.asset.create({ data: { nrInventar: 1, denumire: "Pian", categorie: "Instrumente muzicale", responsabilId: personA } as never });
+    expect(g.churchId).toBe(churchA);
+    expect(await b.asset.findUnique({ where: { id: g.id } })).toBeNull();
+    expect(await b.asset.findFirst({ where: { responsabilId: personA } })).toBeNull();
+    expect(await b.asset.count()).toBe(0);
+    expect((await b.asset.updateMany({ data: { loc: "x" } })).count).toBe(0);
+    expect((await b.asset.deleteMany({})).count).toBe(0);
+    await expect(b.asset.delete({ where: { id: g.id } })).rejects.toMatchObject({ code: "P2025" });
+    const gb = await b.asset.create({ data: { nrInventar: 1, denumire: "Masă", categorie: "Mobilier" } as never });
+    expect(gb.churchId).toBe(churchB);
+    await a.asset.delete({ where: { id: g.id } });
+    await b.asset.delete({ where: { id: gb.id } });
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

@@ -102,6 +102,12 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   bifa: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  patrimoniu: (
+    <>
+      <path d="M3 8 12 3l9 5v8l-9 5-9-5z" />
+      <path d="M3 8l9 5 9-5M12 13v8" />
+    </>
+  ),
   familii: (
     <>
       <path d="M3 11 12 4l9 7" />

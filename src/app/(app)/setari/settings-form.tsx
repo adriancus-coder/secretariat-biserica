@@ -213,6 +213,7 @@ export function SettingsForm({
         {nom("tipuriEvenimente", "Tipuri de evenimente", nomen.tipuriEvenimente)}
         {nom("tipuriMentiuni", "Tipuri de mențiuni", nomen.tipuriMentiuni)}
         {nom("gradeRudenie", "Grade de rudenie", nomen.rudenie)}
+        {nom("categoriiPatrimoniu", "Categorii de bunuri (patrimoniu)", nomen.categoriiPatrimoniu)}
         <p className="hint mb-2.5">
           Funcțiile și slujirile (pastor, diacon, cor, media …) au pagina lor: <Link href="/setari/functii">Funcții și slujiri</Link>.
         </p>

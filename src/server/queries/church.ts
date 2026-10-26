@@ -63,6 +63,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     tipuriSedinte: c.tipuriSedinte,
     tipuriEvenimente: c.tipuriEvenimente,
     tipuriMentiuni: c.tipuriMentiuni,
+    categoriiPatrimoniu: c.categoriiPatrimoniu,
     rudenie: c.gradeRudenie,
   };
   const nomen = resolveNomen(saved);

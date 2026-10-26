@@ -1,5 +1,6 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
+import type { BAsset } from "@/lib/asset-backup";
 import type { BCorrespondence } from "@/lib/correspondence-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BCampaign, BConsent } from "@/lib/consents-backup";
@@ -477,6 +478,8 @@ export interface ImportExtras {
   committee?: BCommittee | null;
   /** The correspondence register (see src/lib/correspondence-backup.ts); null = not in the file. */
   correspondence?: BCorrespondence[] | null;
+  /** The inventory of goods (see src/lib/asset-backup.ts); null = not in the file. */
+  assets?: BAsset[] | null;
 }
 
 export interface ImportSummary {
@@ -507,6 +510,7 @@ const TABLES = {
   discipline: "disciplinary_measures",
   campaigns: "data_campaigns",
   correspondence: "correspondence",
+  assets: "assets",
 } as const;
 
 /**
@@ -555,6 +559,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
         if (extras.correspondence) await tx.correspondence.deleteMany({});
+        if (extras.assets) await tx.asset.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
         if (rolesIn?.groups) await tx.roleGroup.deleteMany({ where: { roles: { none: {} } } });
         await tx.family.deleteMany({});
@@ -1220,6 +1225,40 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (renumbered) warnings.push(`${renumbered} înregistrări din registrul de corespondență au primit un număr nou (numărul era deja folosit).`);
       }
 
+      // The inventory (PATRIMONY): a number already used by another good gets the next free one (with a warning).
+      if (extras.assets?.length) {
+        const plan = await planIds(tx, TABLES.assets, extras.assets.map((a) => a.id), churchId);
+        let renumbered = 0;
+        for (const a of extras.assets) {
+          const id = plan.map.get(a.id)!;
+          let nrInventar = a.nrInventar;
+          if (await tx.asset.findFirst({ where: { nrInventar, id: { not: id } }, select: { id: true } })) {
+            nrInventar = ((await tx.asset.aggregate({ _max: { nrInventar: true } }))._max.nrInventar ?? 0) + 1;
+            renumbered++;
+          }
+          const responsabilId = pid(a.membru);
+          const data = {
+            nrInventar,
+            denumire: a.denumire,
+            categorie: a.categorie,
+            cantitate: a.cantitate,
+            valoare: a.valoare,
+            dataIntrarii: toDbDate(a.dataIntrarii),
+            provenienta: a.provenienta,
+            loc: a.loc,
+            stare: a.stare,
+            dataIesirii: toDbDate(a.dataIesirii),
+            motivIesirii: a.motivIesirii,
+            observatii: a.observatii,
+            responsabil: responsabilId ? "" : a.responsabil,
+            responsabilId,
+          };
+          if (plan.existing.has(a.id)) await tx.asset.update({ where: { id }, data });
+          else await tx.asset.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
+        }
+        if (renumbered) warnings.push(`${renumbered} bunuri din inventar au primit un număr de inventar nou (numărul era deja folosit).`);
+      }
+
       // KINSHIP-AUTO: the imported families give their links too (the same check as after any family change).
       await syncKinship(tx as never, ctx.user, "all", { label: "actualizare după import" });
 
@@ -1276,4 +1315,10 @@ function registerData(r: RegisterFields | undefined) {
 export async function loadCorrespondence(ctx: Ctx) {
   const rows = await ctx.db.correspondence.findMany({ orderBy: [{ an: "asc" }, { nr: "asc" }] });
   return rows.map((r) => ({ ...r, data: fromDbDate(r.data)! }));
+}
+
+/** The inventory for `patrimoniu` (PATRIMONY). */
+export async function loadAssetsForBackup(ctx: Ctx) {
+  const rows = await ctx.db.asset.findMany({ orderBy: { nrInventar: "asc" } });
+  return rows.map((a) => ({ ...a, dataIntrarii: fromDbDate(a.dataIntrarii), dataIesirii: fromDbDate(a.dataIesirii) }));
 }

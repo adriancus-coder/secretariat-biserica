@@ -12,10 +12,10 @@ describe("sidebar (820 px and up)", () => {
     expect(new Set(placed).size).toBe(placed.length);
   });
 
-  it("an administrator sees all 14 entries, grouped, with Setări at the bottom", () => {
+  it("an administrator sees all 15 entries, grouped, with Setări at the bottom", () => {
     const s = sideNav(forRole("ADMIN"));
     expect(s.groups.map((g) => g.title)).toEqual(["Principal", "Evidență", "Rapoarte", "Comunitate"]);
-    expect(labels(s)).toEqual(["Acasă", "Persoane", "Familii", "Calendar", "Ședințe", "Cereri", "De verificat", "Documente", "Corespondență", "Mențiuni", "Grupuri", "Statistici", "Rugăciune", "Setări"]);
+    expect(labels(s)).toEqual(["Acasă", "Persoane", "Familii", "Calendar", "Ședințe", "Cereri", "De verificat", "Documente", "Corespondență", "Patrimoniu", "Mențiuni", "Grupuri", "Statistici", "Rugăciune", "Setări"]);
   });
 
   it("leaves out groups without an allowed entry: Vizualizare has no Comunitate, Rugăciune only Comunitate", () => {

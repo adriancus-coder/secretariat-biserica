@@ -1,5 +1,6 @@
 import { getChurch } from "./church";
 import "server-only";
+import { patrimonyLine } from "@/lib/patrimony";
 import { buildReportText, type YearActivity } from "@/domain/report";
 import { computeStats, reportYears, type Stats } from "@/domain/stats";
 import type { PersonRecord } from "@/domain/types";
@@ -61,5 +62,13 @@ export async function generateReportText(ctx: Ctx, year: number): Promise<string
     yearActivity(ctx, year),
     getChurch(ctx),
   ]);
-  return buildReportText(year, computeStats(persons, events, { year, today }), activity, church.nume);
+  const text = buildReportText(year, computeStats(persons, events, { year, today }), activity, church.nume);
+  // PATRIMONY: an optional line after the parity-tested text (no values), only when goods are in the inventory.
+  const end = toDbDate(`${year}-12-31`)!;
+  const goods = await ctx.db.asset.count({
+    where: { OR: [{ dataIntrarii: null }, { dataIntrarii: { lte: end } }], AND: [{ OR: [{ dataIesirii: null }, { dataIesirii: { gt: end } }] }] },
+  });
+  const line = patrimonyLine(goods);
+  return line ? `${text}
+${line}` : text;
 }
