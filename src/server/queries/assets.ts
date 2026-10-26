@@ -18,15 +18,21 @@ const SELECT = {
   motivIesirii: true,
   responsabil: true,
   responsabilP: { select: { nume: true, prenume: true } },
+  /** PATRIMONY-PHOTOS: the main photo (ordine 0) for the list's thumbnail. */
+  photos: { orderBy: { ordine: "asc" }, take: 1, select: { id: true } },
 } as const;
 
-type Row = { dataIntrarii: Date | null; dataIesirii: Date | null; responsabil: string; responsabilP: { nume: string; prenume: string } | null };
-const toRow = <T extends Row>({ responsabilP, ...a }: T) => ({
-  ...a,
-  dataIntrarii: fromDbDate(a.dataIntrarii),
-  dataIesirii: fromDbDate(a.dataIesirii),
-  responsabil: responsabilP ? `${responsabilP.nume} ${responsabilP.prenume}`.trim() : a.responsabil,
-});
+type Row = { dataIntrarii: Date | null; dataIesirii: Date | null; responsabil: string; responsabilP: { nume: string; prenume: string } | null; photos: { id: string }[] };
+function toRow<T extends Row>(row: T): Omit<T, "responsabilP" | "photos" | "dataIntrarii" | "dataIesirii"> & { dataIntrarii: string | null; dataIesirii: string | null; responsabil: string; photoId: string | null } {
+  const { responsabilP, photos, ...a } = row;
+  return {
+    ...(a as Omit<T, "responsabilP" | "photos" | "dataIntrarii" | "dataIesirii">),
+    photoId: photos[0]?.id ?? null,
+    dataIntrarii: fromDbDate(a.dataIntrarii),
+    dataIesirii: fromDbDate(a.dataIesirii),
+    responsabil: responsabilP ? `${responsabilP.nume} ${responsabilP.prenume}`.trim() : a.responsabil,
+  };
+}
 
 /** Every good of the inventory (PATRIMONY), in use or not. */
 export async function loadAssets(ctx: Ctx): Promise<AssetRow[]> {
@@ -35,7 +41,9 @@ export async function loadAssets(ctx: Ctx): Promise<AssetRow[]> {
 
 export async function getAsset(ctx: Ctx, id: string) {
   const a = await ctx.db.asset.findUnique({ where: { id }, select: { ...SELECT, observatii: true, responsabilId: true } });
-  return a ? toRow(a) : null;
+  if (!a) return null;
+  const photos = await ctx.db.assetPhoto.findMany({ where: { assetId: id }, orderBy: [{ ordine: "asc" }, { createdAt: "asc" }], select: { id: true, width: true, height: true } });
+  return { ...toRow(a), photos };
 }
 
 export async function nextInventoryNumber(db: Ctx["db"]): Promise<number> {

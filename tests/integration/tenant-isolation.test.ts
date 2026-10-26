@@ -277,6 +277,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await b.asset.delete({ where: { id: gb.id } });
   });
 
+  it("the photos of the goods are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const g = await a.asset.create({ data: { nrInventar: 50, denumire: "Pian", categorie: "Instrumente muzicale" } as never });
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff]);
+    const p = await a.assetPhoto.create({ data: { assetId: g.id, width: 1, height: 1, bytes: 6, data: bytes, thumb: bytes } as never });
+    expect(p.churchId).toBe(churchA);
+    expect(await b.assetPhoto.findUnique({ where: { id: p.id } })).toBeNull();
+    expect(await b.assetPhoto.count()).toBe(0);
+    expect((await b.assetPhoto.aggregate({ _sum: { bytes: true } }))._sum.bytes).toBeNull();
+    expect((await b.assetPhoto.deleteMany({})).count).toBe(0);
+    await expect(b.assetPhoto.delete({ where: { id: p.id } })).rejects.toMatchObject({ code: "P2025" });
+    // Deleting the good deletes its photos.
+    await a.asset.delete({ where: { id: g.id } });
+    expect(await prisma.assetPhoto.findUnique({ where: { id: p.id } })).toBeNull();
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

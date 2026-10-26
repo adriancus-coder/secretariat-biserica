@@ -1,4 +1,4 @@
-import { pastorSecretarySignatures, type PrintSpec } from "@/domain/print";
+import { pastorSecretarySignatures, type Block, type PrintSpec } from "@/domain/print";
 import type { ChurchInfo } from "@/domain/types";
 import { fmt } from "./format";
 import type { SortParams } from "./statistics-report";
@@ -35,6 +35,8 @@ export interface AssetRow {
   dataIesirii: string | null;
   motivIesirii: string;
   responsabil: string;
+  /** PATRIMONY-PHOTOS: the main photo, when the good has one. */
+  photoId?: string | null;
 }
 
 export function filterAssets(rows: AssetRow[], filter: AssetFilter, categorie: string, q: string): AssetRow[] {
@@ -101,15 +103,20 @@ export function categoryTotals(rows: AssetRow[]): CategoryTotal[] {
 export const inventoryTitle = (date: string) => `Inventarul bunurilor la ${fmt(date)}`;
 
 /** „Inventarul bunurilor la <data>”: the goods in use, totals per category, the pastor's and the secretary's signatures. */
-export function inventoryPrint(rows: AssetRow[], date: string, church: ChurchInfo, params: SortParams = {}): PrintSpec {
+export function inventoryPrint(rows: AssetRow[], date: string, church: ChurchInfo, params: SortParams = {}, photos?: ReadonlyMap<string, Uint8Array>): PrintSpec {
   const totals = categoryTotals(rows);
+  const sorted = sortedAssets(rows, params);
+  // „Cu poze”: the main photo's thumbnail in a first column.
+  const goods: Block = photos
+    ? { type: "table", columns: ["Poză", ...ASSET_COLUMNS.map((c) => c.label)], rows: sorted.map((a) => ["", ...assetCells(a)]), images: sorted.map((a) => (a.photoId ? (photos.get(a.photoId) ?? null) : null)) }
+    : { type: "table", columns: ASSET_COLUMNS.map((c) => c.label), rows: sorted.map(assetCells) };
   return {
     title: inventoryTitle(date),
     church,
     landscape: true,
     blocks: [
       { type: "title", text: inventoryTitle(date) },
-      { type: "table", columns: ASSET_COLUMNS.map((c) => c.label), rows: sortedAssets(rows, params).map(assetCells) },
+      goods,
       { type: "para", runs: [{ text: "Totaluri pe categorii", bold: true }] },
       {
         type: "table",

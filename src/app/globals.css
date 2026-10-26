@@ -1090,6 +1090,72 @@
     border-radius: 6px;
     border: 1px solid var(--line);
   }
+  /* PATRIMONY-PHOTOS: the thumbnails of a good, the large photo over the page, the list's 44 px thumbnail. */
+  .asset-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr));
+    gap: 8px;
+  }
+  .asset-thumb {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--field);
+  }
+  .asset-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .asset-thumb .tag {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+  }
+  .photo-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    background: rgba(15, 18, 28, 0.8);
+  }
+  .photo-panel {
+    width: min(100%, 1000px);
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--paper);
+  }
+  .photo-panel img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 70dvh;
+    object-fit: contain;
+  }
+  .asset-row-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .asset-row-thumb {
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--field);
+  }
   .sign-overlay {
     position: fixed;
     inset: 0;

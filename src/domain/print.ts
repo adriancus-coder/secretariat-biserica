@@ -39,8 +39,12 @@ export type Block =
    * it as one numbered point of the minutes. Paragraphs follow each other like lines of a text.
    */
   | { type: "rich"; doc: RichDoc; marker?: string }
-  /** A table with a header row (person lists); repeated header on every page. */
-  | { type: "table"; columns: string[]; rows: string[][] }
+  /**
+   * A table with a header row (person lists); repeated header on every page. `images` (aligned with the
+   * rows) puts a picture (JPEG / PNG) in the first column, e.g. the inventory „Cu poze”; only the PDF
+   * draws it, Word and printToText keep the text.
+   */
+  | { type: "table"; columns: string[]; rows: string[][]; images?: (Uint8Array | null)[] }
   /**
    * A vector chart (Statistici): a line per series, stacked bars, or the age pyramid (series[0] men to
    * the left, series[1] women to the right). Word and printToText show it as a table.

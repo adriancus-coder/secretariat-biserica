@@ -118,9 +118,17 @@ After any exit (exit date or Fost membru), phone, e-mail and address are visible
 ## Upload and input limits
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.
+- Photos of the goods: JPEG / PNG / WebP by content, at most 15 MB, images declaring more than 120 000 000 pixels refused before decoding, then re-encoded without metadata (see "Photos of the goods").
 - Word files: at most 5 MB, and the uncompressed size declared by the ZIP's central directory must stay under 50 MB (`src/server/zip-size.ts`), checked before mammoth unpacks anything.
 - Arguments that the client binds to server actions (booleans, directions) are parsed with zod like form fields.
 - Unexpected errors are logged by `logError()` (`src/server/log.ts`): a short id, the error name and code and the first line of the message with e-mail addresses masked; never the error object or request data.
+
+## Photos of the goods (PATRIMONY-PHOTOS)
+
+- Upload (`addAssetPhotoAction`, write roles): the type is read from the content (JPEG, PNG or WebP magic bytes; a renamed PDF is refused), files over 15 MB are refused, and an image whose header declares more than 120 megapixels is refused before any decoding (`limitInputPixels`, the INPUT-LIMITS rule).
+- Every photo is re-encoded by the server: rotated by its EXIF orientation, then written without **any** metadata (EXIF, GPS position, date, device, XMP, IPTC: sharp writes none unless asked), at most 1600 px, JPEG, plus a 400 px thumbnail. The original file is never stored. A unit test checks that a JPEG with GPS comes out without EXIF.
+- Served only by `/api/patrimoniu/poze/[id]` with the permission of `/patrimoniu` (`read`: Administrator, Secretar, Vizualizare; never Rugăciune → 403); the photo is looked up through the church's scoped client, so another church's id is a 404. `Cache-Control: private, max-age=86400`, an ETag, `nosniff`; no public URL. The CSP's `img-src 'self'` already covers them.
+- Limits: 4 photos per good, 100 MB per church. Audit (ASSET): „poză adăugată / ștearsă la bunul nr. …”, never the content. The photos are not personal data: not in the art. 15 copy; in the JSON backup only with „Include pozele patrimoniului”, and re-encoded again on import.
 
 ## Removing a person (GDPR erasure)
 

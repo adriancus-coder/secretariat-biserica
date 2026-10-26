@@ -129,6 +129,7 @@ model Church {
   consents              Consent[]
   correspondence        Correspondence[]
   assets                Asset[]
+  assetPhotos           AssetPhoto[]
 
   @@map("churches")
 }
@@ -1168,11 +1169,38 @@ model Asset {
   createdById   String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  photos        AssetPhoto[]
 
   @@unique([churchId, nrInventar])
   @@index([churchId, categorie])
   @@index([responsabilId])
   @@map("assets")
+}
+
+/// PATRIMONY-PHOTOS: photos of a good, kept in PostgreSQL like the signatures and statutes (no file
+/// storage yet, ROADMAP 6). Re-encoded by the server (src/server/asset-photo.ts): JPEG ≤ 1600 px, every
+/// metadata removed, plus a 400 px thumbnail. At most 4 per good and 100 MB per church.
+model AssetPhoto {
+  id          String   @id @default(cuid())
+  churchId    String
+  church      Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  /// 0 = the main photo (shown in the list and the PDF).
+  ordine      Int      @default(0)
+  mime        String   @default("image/jpeg")
+  width       Int
+  height      Int
+  /// Bytes of the full image and the thumbnail together (the church's quota).
+  bytes       Int
+  data        Bytes
+  thumb       Bytes
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([churchId])
+  @@index([assetId, ordine])
+  @@map("asset_photos")
 }
 
 enum CorrespondenceDirection {

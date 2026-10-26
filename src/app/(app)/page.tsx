@@ -12,6 +12,7 @@ import { permissions } from "@/lib/permissions";
 import { APPEAL_DAYS, appealDeadline } from "@/lib/discipline-print";
 import { mandateNotice } from "@/lib/committee";
 import { inventoryReminder } from "@/lib/patrimony";
+import { photoQuotaText } from "@/lib/asset-photos";
 import { assemblyCard, birthdaysCard, mandateCard, type DashCard, disciplineAccessCard } from "@/lib/pastor-dashboard";
 import { PastorDashboard } from "@/components/pastor-dashboard";
 import { committeeAbsences } from "@/server/queries/committee";
@@ -120,6 +121,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const mandate = canWrite ? mandateNotice(today, church.comitetAlesLa, church.comitetPrelungit) : null;
   // PATRIMONY (Statut art. 43 alin. 7): once a year, in November before the General Assembly (write roles).
   const inventory = canWrite ? inventoryReminder(today) : null;
+  // PATRIMONY-PHOTOS: with the reminder, the space the photos use (administrators).
+  const photoSpace = inventory && permissions.admin(ctx.user.role) ? photoQuotaText((await ctx.db.assetPhoto.aggregate({ _sum: { bytes: true } }))._sum.bytes ?? 0) : null;
   const absences = permissions.admin(ctx.user.role) ? await committeeAbsences(ctx, church) : [];
   // Administrators only (`disciplina`): open appeal windows (Statut art. 27 alin. 11) and pending appeals.
   const appeals = permissions.disciplina(ctx.user)
@@ -238,6 +241,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       {inventory ? (
         <div className="alert mb-4" role="status">
           {inventory} <Link href="/patrimoniu">Patrimoniu</Link>
+          {photoSpace ? <span className="block">{photoSpace}.</span> : null}
         </div>
       ) : null}
       {mandate && !isPastor ? (

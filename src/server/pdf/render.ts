@@ -337,7 +337,9 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         const pad = 3;
         const n = block.columns.length;
         const sample = block.rows.slice(0, 200);
-        const weight = block.columns.map((c, i) => Math.min(40, Math.max(c.length, 4, ...sample.map((r) => (r[i] ?? "").length))));
+        const imgs = block.images;
+        const IMG = 40;
+        const weight = block.columns.map((c, i) => (imgs && i === 0 ? 9 : Math.min(40, Math.max(c.length, 4, ...sample.map((r) => (r[i] ?? "").length)))));
         const sum = weight.reduce((a, b) => a + b, 0) || 1;
         const widths = weight.map((w) => (w / sum) * width);
         const xs = widths.map((_, i) => left + widths.slice(0, i).reduce((a, b) => a + b, 0));
@@ -345,8 +347,8 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.font(font).fontSize(size);
           return Math.max(...cells.map((t, i) => doc.heightOfString(t || " ", { width: widths[i] - 2 * pad }))) + 2 * pad;
         };
-        const drawRow = (cells: string[], font: string, line: number) => {
-          const h = rowHeight(cells, font);
+        const drawRow = (cells: string[], font: string, line: number, image?: Uint8Array | null) => {
+          const h = Math.max(rowHeight(cells, font), image !== undefined ? IMG + 2 * pad : 0);
           if (doc.y + h > bottomLimit()) {
             doc.addPage();
             if (font !== "Serif-Bold") drawRow(block.columns, "Serif-Bold", 0.8);
@@ -354,11 +356,12 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           const y = doc.y;
           doc.font(font).fontSize(size).fillColor("#000");
           for (let i = 0; i < n; i++) doc.text(cells[i] ?? "", xs[i] + pad, y + pad, { width: widths[i] - 2 * pad });
+          if (image) doc.image(Buffer.from(image), xs[0] + pad, y + pad, { fit: [Math.min(IMG, widths[0] - 2 * pad), IMG] });
           doc.moveTo(left, y + h).lineTo(left + width, y + h).lineWidth(line).strokeColor(line > 0.5 ? "#000" : "#999").stroke();
           doc.y = y + h;
         };
         drawRow(block.columns, "Serif-Bold", 0.8);
-        for (const r of block.rows) drawRow(r, "Serif", 0.3);
+        block.rows.forEach((r, i) => drawRow(r, "Serif", 0.3, imgs ? (imgs[i] ?? null) : undefined));
         doc.x = left;
         doc.y += 10;
         break;

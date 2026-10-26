@@ -1,6 +1,8 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
-import type { BAsset } from "@/lib/asset-backup";
+import type { BAsset, BAssetPhoto } from "@/lib/asset-backup";
+import { mb, PHOTOS_CHURCH_QUOTA, PHOTOS_PER_ASSET } from "@/lib/asset-photos";
+import { processAssetPhoto } from "./asset-photo";
 import type { BCorrespondence } from "@/lib/correspondence-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BCampaign, BConsent } from "@/lib/consents-backup";
@@ -480,6 +482,8 @@ export interface ImportExtras {
   correspondence?: BCorrespondence[] | null;
   /** The inventory of goods (see src/lib/asset-backup.ts); null = not in the file. */
   assets?: BAsset[] | null;
+  /** The photos of the goods, only in an export that asked for them; null = not in the file. */
+  assetPhotos?: BAssetPhoto[] | null;
 }
 
 export interface ImportSummary {
@@ -511,6 +515,7 @@ const TABLES = {
   campaigns: "data_campaigns",
   correspondence: "correspondence",
   assets: "assets",
+  assetPhotos: "asset_photos",
 } as const;
 
 /**
@@ -1257,6 +1262,38 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           else await tx.asset.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
         }
         if (renumbered) warnings.push(`${renumbered} bunuri din inventar au primit un număr de inventar nou (numărul era deja folosit).`);
+        // PATRIMONY-PHOTOS: each photo is checked and re-encoded again (processAssetPhoto), within the limits.
+        if (extras.assetPhotos?.length) {
+          const photoPlan = await planIds(tx, TABLES.assetPhotos, extras.assetPhotos.map((p) => p.id), churchId);
+          let used = (await tx.assetPhoto.aggregate({ _sum: { bytes: true } }))._sum.bytes ?? 0;
+          let skipped = 0;
+          for (const p of [...extras.assetPhotos].sort((a, b) => a.ordine - b.ordine)) {
+            const assetId = plan.map.get(p.bun);
+            if (!assetId || photoPlan.existing.has(p.id)) continue;
+            if ((await tx.assetPhoto.count({ where: { assetId } })) >= PHOTOS_PER_ASSET) {
+              skipped++;
+              continue;
+            }
+            let photo;
+            try {
+              photo = await processAssetPhoto(Buffer.from(p.data, "base64"));
+            } catch {
+              skipped++;
+              continue;
+            }
+            const bytes = photo.data.length + photo.thumb.length;
+            if (used + bytes > PHOTOS_CHURCH_QUOTA) {
+              skipped++;
+              continue;
+            }
+            used += bytes;
+            const ordine = await tx.assetPhoto.count({ where: { assetId } });
+            await tx.assetPhoto.create({
+              data: { id: photoPlan.map.get(p.id)!, churchId, assetId, ordine, width: photo.width, height: photo.height, bytes, data: new Uint8Array(photo.data), thumb: new Uint8Array(photo.thumb), createdById: ctx.user.id },
+            });
+          }
+          if (skipped) warnings.push(`${skipped} poze ale patrimoniului nu au fost importate (imagine nevalidă, cel mult ${PHOTOS_PER_ASSET} pe bun sau limita de ${mb(PHOTOS_CHURCH_QUOTA)} MB).`);
+        }
       }
 
       // KINSHIP-AUTO: the imported families give their links too (the same check as after any family change).

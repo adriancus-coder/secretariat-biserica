@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
+import { backupPhotosEstimate } from "@/lib/asset-photos";
 import { permissions } from "@/lib/permissions";
 import { requireCtx } from "@/server/session";
 import { hasStepUp, stepUpMethod } from "@/server/step-up";
@@ -27,6 +28,7 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
       ).map((f) => ({ id: f.id, nume: f.nume, head: f.head ? memberName(f.head) : "", members: f._count.members }))
     : [];
   const exportDays = await daysSinceLastExport(ctx);
+  const photoBytes = (await ctx.db.assetPhoto.aggregate({ _sum: { bytes: true } }))._sum.bytes ?? 0;
   const [stepMethod, stepped] = await Promise.all([stepUpMethod(user.id), hasStepUp(user)]);
   const adjusted = permissions.admin(user.role)
     ? await ctx.db.person.findMany({
@@ -69,6 +71,15 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
               </label>
               <input id="export-parola" name="parola" type="password" autoComplete="current-password" required />
             </>
+          ) : null}
+          {photoBytes ? (
+            <label className="check">
+              <input type="checkbox" name="poze" />
+              <span>
+                Include pozele patrimoniului
+                <span className="hint block !mt-0">Fișierul crește cu aproximativ {backupPhotosEstimate(photoBytes)} MB. Importul acceptă fișiere de cel mult 25 MB.</span>
+              </span>
+            </label>
           ) : null}
           <div>
             <button type="submit" className="btn" disabled={stepMethod === "passkey" && !stepped}>

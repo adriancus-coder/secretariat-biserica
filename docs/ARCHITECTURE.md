@@ -36,7 +36,7 @@ tests/                  integration (tenant isolation, numbering, anonymisation,
 
 ## Data model
 
-Every church-owned table has a `churchId` column (39 models in total). The main relations:
+Every church-owned table has a `churchId` column (40 models in total). The main relations:
 
 ```mermaid
 erDiagram
@@ -50,6 +50,7 @@ erDiagram
     Correspondence ||--o{ Correspondence : "answers"
     Church ||--o{ Asset : "inventory of goods"
     Person ||--o{ Asset : "responsible for"
+    Asset ||--o{ AssetPhoto : photos
     Church ||--o{ Event : calendar
     Church ||--o{ Group : groups
     Church ||--o{ Application : applications
@@ -94,6 +95,10 @@ erDiagram
 A parent outside the register (`KinExternalParent`: only the name as the children's `numeTata` / `numeMama` write it, Statut art. 14, and the gender) is a node `x:<id>` of the same graph; `PersonParent` points either to a person or to it (a database CHECK enforces exactly one). `src/lib/kinship-parents.ts` proposes kinship from the parents' names (a parent found in the register by name, gender and age; siblings sharing the parents' names outside the register); nothing is linked until someone confirms the proposal in De verificat, and every confirmed link passes the same rules. Ignored proposals are remembered by key (`KinProposalIgnore`).
 
 Dates of the domain (birth, baptism, meetings) are `DATE` columns handled as `YYYY-MM-DD` strings; "today" is computed in the church's time zone, never from the server clock's date.
+
+### Photos of the goods
+
+`AssetPhoto` (tenant model, cascade with the good) keeps the photos of the inventory **in PostgreSQL**, like the drawn signatures and the statutes, because the app has no file storage yet (ROADMAP 6): one service and one backup, isolated per church by the same scoped client. The cost is the database's size, so the limits are tight: every photo is re-encoded by the server (`src/server/asset-photo.ts`, sharp) as a JPEG of at most 1600 px (quality 78, about 200 KB) plus a 400 px thumbnail in its own column; at most 4 photos per good and 100 MB per church (counted from `bytes`, checked under an advisory lock). Photos are served by `/api/patrimoniu/poze/[id]?v=thumb|full` with the page's permission, never from a public address. When object storage arrives, the rows can be moved there and `data` / `thumb` dropped.
 
 ## Tenant isolation
 

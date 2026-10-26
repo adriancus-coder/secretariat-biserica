@@ -1,7 +1,7 @@
 import "server-only";
 import { parsePrototypeJson, toPrototypeJson, type Backup } from "@/domain/backup";
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
-import { assetsToJson, parseAssetsJson } from "@/lib/asset-backup";
+import { assetPhotosToJson, assetsToJson, parseAssetPhotosJson, parseAssetsJson } from "@/lib/asset-backup";
 import { correspondenceToJson, parseCorrespondenceJson } from "@/lib/correspondence-backup";
 import { externalParentsToJson, kinshipToJson, parseExternalParentsJson, parseKinshipJson } from "@/lib/kinship-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
@@ -41,7 +41,7 @@ import type { Ctx } from "./session";
  * The church's full JSON backup (the prototype's format plus the app's own collections and fields),
  * as POST /api/export sends it; shared with the tests. Returns the object and the church's name.
  */
-export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, unknown>; churchName: string }> {
+export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {}): Promise<{ data: Record<string, unknown>; churchName: string }> {
   // The Church row is not a tenant model: read by the session's church id.
   const c = await prisma.church.findUnique({
     where: { id: ctx.user.churchId },
@@ -90,6 +90,10 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       parintiExterni: externalParentsToJson(kinship.externals),
       corespondenta: correspondenceToJson(await loadCorrespondence(ctx)),
       patrimoniu: assetsToJson(await loadAssetsForBackup(ctx)),
+      // PATRIMONY-PHOTOS: only when asked ("Include pozele patrimoniului"): the file grows by about 4/3 of them.
+      ...(opts.photos
+        ? { patrimoniuPoze: assetPhotosToJson(await ctx.db.assetPhoto.findMany({ orderBy: [{ assetId: "asc" }, { ordine: "asc" }], select: { id: true, assetId: true, ordine: true, data: true } })) }
+        : {}),
       campaigns: campaignData.campaigns,
       consents: campaignData.consents,
       ...(comitet ? { comitet } : {}),
@@ -135,6 +139,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       committee: parseCommitteeJson(raw),
       correspondence: parseCorrespondenceJson(raw),
       assets: parseAssetsJson(raw),
+      assetPhotos: parseAssetPhotosJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],
   };

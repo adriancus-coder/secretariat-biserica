@@ -89,6 +89,9 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
         <SortAwareLink href="/pdf/patrimoniu" params={params} target="_blank" rel="noopener" className="btn">
           Descarcă PDF (cu semnături)
         </SortAwareLink>
+        <SortAwareLink href="/pdf/patrimoniu" params={{ ...params, poze: "1" }} target="_blank" rel="noopener" className="btn">
+          PDF cu poze
+        </SortAwareLink>
         <SortAwareLink href="/api/patrimoniu" params={params} className="btn" download>
           Exportă (Excel)
         </SortAwareLink>
@@ -106,9 +109,13 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
                 sort: assetSort(a),
                 cells: [
                   a.nrInventar,
-                  <Link key="d" href={`/patrimoniu/${a.id}`}>
-                    {a.denumire}
-                  </Link>,
+                  <span key="d" className="asset-row-name">
+                    {a.photoId ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`/api/patrimoniu/poze/${a.photoId}?v=thumb`} alt="" className="asset-row-thumb" loading="lazy" width={44} height={44} />
+                    ) : null}
+                    <Link href={`/patrimoniu/${a.id}`}>{a.denumire}</Link>
+                  </span>,
                   a.categorie,
                   a.cantitate,
                   nok(a.valoare),

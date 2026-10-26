@@ -11,6 +11,7 @@ export const TENANT_MODELS = new Set([
   "Document",
   "Correspondence",
   "Asset",
+  "AssetPhoto",
   "Group",
   "Note",
   "AuditLog",

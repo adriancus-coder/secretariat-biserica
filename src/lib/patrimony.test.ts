@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { printToText } from "@/domain/print";
+import { photoQuotaText } from "./asset-photos";
 import { categoryTotals, filterAssets, inventoryPrint, inventoryReminder, nok, patrimonyLine, type AssetRow } from "./patrimony";
 
 const a = (id: string, over: Partial<AssetRow> = {}): AssetRow => ({
@@ -44,6 +45,16 @@ describe("patrimony (Statut art. 43 alin. 7, art. 54–55)", () => {
     expect(text).not.toContain("Defect");
     expect(text).toMatch(/Pastor[\s\S]*Pop Ion/);
     expect(text).toMatch(/Secretar[\s\S]*Rusu Ana/);
+  });
+
+  it("„Cu poze”: a first column with the main photo of each good (by default without photos)", () => {
+    const img = new Uint8Array([0xff, 0xd8, 0xff]);
+    const spec = inventoryPrint([a("1", { photoId: "p1" }), a("2")], "2026-11-02", church, {}, new Map([["p1", img]]));
+    const table = spec.blocks.find((b) => b.type === "table")!;
+    expect(table.type === "table" && [table.columns[0], table.images]).toEqual(["Poză", [img, null]]);
+    const plain = inventoryPrint([a("1", { photoId: "p1" })], "2026-11-02", church).blocks.find((b) => b.type === "table")!;
+    expect(plain.type === "table" && plain.images).toBeUndefined();
+    expect(photoQuotaText(34 * 1024 * 1024)).toBe("Pozele patrimoniului: 34 MB din 100 MB");
   });
 
   it("the November reminder and the report's line without values", () => {

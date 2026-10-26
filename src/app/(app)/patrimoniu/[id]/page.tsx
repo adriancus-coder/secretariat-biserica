@@ -9,6 +9,7 @@ import { ASSET_ORIGIN_LABEL, ASSET_STATE_LABEL, nok } from "@/lib/patrimony";
 import { permissions } from "@/lib/permissions";
 import { getAsset } from "@/server/queries/assets";
 import { requireCtx } from "@/server/session";
+import { AssetPhotos } from "../asset-photos";
 import { RetireForm } from "../retire-form";
 
 export const metadata: Metadata = { title: "Patrimoniu" };
@@ -63,6 +64,7 @@ export default async function AssetPage({ params }: PageProps<"/patrimoniu/[id]"
           </>
         ) : null}
       </dl>
+      <AssetPhotos assetId={id} photos={a.photos} canWrite={canWrite && inUse} denumire={a.denumire} />
       {canWrite && inUse ? (
         <div className="mb-4">
           <RetireForm id={id} today={todayIso()} />

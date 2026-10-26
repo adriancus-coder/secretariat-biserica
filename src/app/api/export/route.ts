@@ -24,7 +24,9 @@ export async function POST(req: Request) {
   const check = await sensitiveCheck(user, String(form?.get("parola") ?? ""));
   if (check !== "ok") return Response.redirect(new URL(`/setari/date?export=${check === "device" ? "confirmare" : "parola"}`, process.env.APP_URL || req.url), 303);
   const ctx = { user, db: tenantDb(user.churchId) };
-  const { data, churchName } = await buildExportJson(ctx);
+  // PATRIMONY-PHOTOS: the photos of the goods only when "Include pozele patrimoniului" is ticked.
+  const withPhotos = form?.get("poze") === "on";
+  const { data, churchName } = await buildExportJson(ctx, { photos: withPhotos });
   const json = JSON.stringify(data, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (churchName || "biserica")
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
       entityId: user.churchId,
       entityLabel: "Export date",
       action: "CREATE",
-      changes: { export: name, marime: `${Math.max(1, Math.round(Buffer.byteLength(json) / 1024))} KB` },
+      changes: { export: name, marime: `${Math.max(1, Math.round(Buffer.byteLength(json) / 1024))} KB`, ...(withPhotos ? { poze: "da" } : {}) },
     },
   });
   return new Response(json, {
