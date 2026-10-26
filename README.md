@@ -405,6 +405,10 @@ corecții deliberate:
     Postnummerregister (Bring, NLOD), inclus ca `src/lib/postal-codes-no.json`. Copia JSON păstrează câmpurile
     separate și acceptă fișierele vechi cu adresa pe un singur rând.
 
+## Atribuiri
+
+- `src/lib/postal-codes-no.json`: Postnummerregister © Posten Bring AS, licență NLOD (Norwegian Licence for Open Government Data).
+
 ## Limitări și pași următori
 
 Limitările cunoscute și pașii următori, în ordinea priorității, sunt în [`docs/ROADMAP.md`](docs/ROADMAP.md).
