@@ -251,6 +251,8 @@ Notes:
 
 ## Arhitectură
 
+Prezentarea tehnică pentru evaluatori (în engleză): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — stack, modelul de date, izolarea între biserici, autentificare și autorizare, criptare, CI. Securitatea și raportarea vulnerabilităților: [docs/SECURITY.md](docs/SECURITY.md).
+
 ```
 prototip/                 prototipul HTML (specificația de referință)
 prisma/                   schema, migrări, seed demo

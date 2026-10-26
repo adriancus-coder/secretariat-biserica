@@ -1,6 +1,17 @@
 # Security
 
-How the app protects church data, what an attacker could aim at, and what to do when something goes wrong.
+How the app protects church data, what an attacker could aim at, and what to do when something goes wrong. The technical design (stack, tenant isolation, authentication flow, encryption) is in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## How to report a vulnerability
+
+Please report security problems privately, never in a public issue or pull request:
+
+- **Preferred:** GitHub's private vulnerability reporting — the repository's **Security** tab → **Report a vulnerability**.
+- **Or by e-mail:** secretariat@sanctuaryvoice.com, with "Security" in the subject.
+
+Include what you found and where (page, route or file), the steps to reproduce it, what an attacker could read or change, and the version (commit) if you know it. Do not access, change or keep other people's data beyond what is needed to show the problem, and do not test against a church's production data: use a local copy with the demo church (`npm run db:seed`).
+
+We confirm receipt within **3 working days**, give a first assessment within **10 working days**, and fix critical problems as fast as possible (usually within days). We tell you when the fix is deployed and credit you in the release notes if you wish.
 
 ## Threat model
 
@@ -11,6 +22,9 @@ The data is personal and sensitive: names, birth dates, addresses, phone numbers
 | One church reads or changes another church's data | Every query goes through the tenant-scoped client (`scopeToChurch`); `churchId` only comes from the session. Nested writes and raw SQL check ids by hand. `tests/integration/tenant-isolation.test.ts` covers every tenant model. |
 | A user does more than their role allows | Permissions are checked on the server in every page, route handler and action (`requireCtx`, `actionCtx`); hidden buttons are only cosmetic. |
 | Stolen or guessed password | scrypt hashes; minimum 10 characters, checked against the 10 000 most common passwords and the user's own name and e-mail; per-account lock after repeated failures (silent: a locked account answers like an unknown address, with the same scrypt work; only the right password learns about the lock); signup with a registered address gets a neutral answer and an e-mail to that account; per-IP limits on login, signup, forgot password and 2FA codes; optional or church-required second factor (authenticator app or e-mail code, recovery codes). |
+| Phishing or a stolen password used from elsewhere | Passkeys (WebAuthn: bound to the app's address, so a look-alike site gets nothing; user verification required; challenges single use, 2 minutes, bound to the purpose and the user; the signature counter must increase; 10 attempts per 15 minutes). A church can require "parolă + Face ID / amprentă" for its staff; with that policy on, every sign-in with a recovery code is shown to administrators on Acasă. |
+| Someone at an unlocked, signed-in device | Step-up for exports, discipline, pastoral notes, users and security settings: a fresh device unlock (or the password) valid 15 minutes, bound to the session version. A saved signature is placed on a document only after a device unlock for that exact document. |
+| A pastor's decisions or confidential notes reached by other staff | Approvals (documents, applications, reabilitări, excluderi) are checked for the pastor flag on the server; pastoral notes are readable only by pastors, encrypted at rest and never exported or logged (see "Pastoral notes"). |
 | Stolen session | 24-hour JWT sessions in an httpOnly, `SameSite=Lax`, `Secure` cookie; the user is reloaded from the database on every request, so deactivation, a role change, a password change or "Deconectează-te de pe toate dispozitivele" (`sessionVersion`) end sessions at once. |
 | Cross-site scripting | React escaping; Content-Security-Policy with a per-request nonce and `'strict-dynamic'` for scripts, no `'unsafe-inline'` for scripts; `object-src 'none'`, `base-uri 'self'`. |
 | Clickjacking, cross-site form posts | `frame-ancestors 'none'` and `X-Frame-Options: DENY`; `form-action 'self'`; server actions check the `Origin` header (Next.js). |
@@ -54,7 +68,7 @@ Re-encrypt even when the old secret leaked: the values are then protected by the
 
 ## Disciplinary measures
 
-Measures (Statut art. 27, 271, 272) are the most sensitive records. They are readable and writable only with the `disciplina` permission (administrators), checked on the server in every page, route handler and action (`requireCtx("disciplina")` / `actionCtx("disciplina")`). Secretaries and viewers never receive them in any page, list, count, category, export, PDF, audit view (entity DISCIPLINE is filtered out of the journal) or error message. Two server-side effects exist without showing anything: a member with an applied suspension is not counted among the expected attendees of a "Toți membrii" meeting, and a recommendation for a person with an open measure can be issued only by an administrator. The measures are in the full JSON backup only when an administrator exports it, and are deleted when the person is anonymised.
+Measures (Statut art. 27, 271, 272) are the most sensitive records. They are readable and writable only with the `disciplina` permission (pastors and administrators), after the step-up, checked on the server in every page, route handler and action (`requireCtx("disciplina")` / `actionCtx("disciplina")`). Secretaries and viewers never receive them in any page, list, count, category, export, PDF, audit view (entity DISCIPLINE is filtered out of the journal) or error message. Two server-side effects exist without showing anything: a member with an applied suspension is not counted among the expected attendees of a "Toți membrii" meeting, and a recommendation for a person with an open measure can be issued only by a pastor or an administrator. The measures are in the full JSON backup only when an administrator exports it, and are deleted when the person is anonymised.
 
 ## Pastoral notes
 
