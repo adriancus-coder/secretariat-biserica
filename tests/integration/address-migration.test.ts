@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
 
 /** The data part of the migration (from the helper function on), run again over rows in the old format. */
-const sql = readFileSync("prisma/migrations/20261110100000_address_format/migration.sql", "utf8");
+const sql = readFileSync("prisma/migrations/20261110120000_address_format/migration.sql", "utf8");
 const dataMigration = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION pg_temp.cap_if_lower"));
 
 describe.skipIf(!hasTestDb)("migration address_format", () => {
