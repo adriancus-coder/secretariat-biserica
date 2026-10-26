@@ -74,6 +74,8 @@ model Church {
   pushWeeklyAt            DateTime?
   /// The Monday whose "Familia săptămânii este pregătită" notification was sent (claimed before sending).
   pushPrayerWeek          DateTime? @db.Date
+  /// KINSHIP-AUTO: the last full check of the kinship links (null = the first one is still due).
+  kinshipCheckedAt        DateTime?
   /// The weekly prayer messages (src/lib/prayer-message.ts): for families ({parinti}, {copii}, {familia})
   /// and for a person without a family ({persoana}, {pe}, {ii}); "" = the default text.
   prayerMessage           String    @default("")

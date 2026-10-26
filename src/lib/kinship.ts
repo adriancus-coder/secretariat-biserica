@@ -90,7 +90,7 @@ export function familyLinks(members: FamilyMember[], headId: string | null): Kin
 export const MAX_PARENTS = 2;
 
 /** The ancestors of `id` through `links` (not `id` itself). */
-function ancestors(links: KinLink[], id: string): Set<string> {
+export function ancestors(links: KinLink[], id: string): Set<string> {
   const seen = new Set<string>();
   const stack = [id];
   while (stack.length) {
@@ -148,7 +148,7 @@ export interface CheckPerson {
 export const SAME_FAMILY_ERROR = "În familia comună, părintele nu este capul familiei sau soțul / soția.";
 
 /**
- * The stored links that break the rules (Setări → Date "Verifică legăturile de rudenie", De verificat):
+ * The stored links that break the rules (the automatic check, De verificat "Verifică din nou tot registrul"):
  * siblings, too close in age, or — both in the same family — a parent who is not the head or Soț /
  * Soție there (an adult Fiu "parent" of his brothers). Each link with the first reason found.
  */
@@ -165,6 +165,28 @@ export function linkViolations<L extends KinLink>(links: L[], persons: Map<strin
     else if (p.familyId && p.familyId === c.familyId && !isLinkParent(p, heads.get(p.familyId) ?? null)) out.push({ link, reason: SAME_FAMILY_ERROR });
   }
   return out;
+}
+
+export const STALE_FAMILY_LINK = "Legătura din familie nu mai corespunde familiei.";
+
+/**
+ * Links from the families (FAMILIE) that the families no longer support (KINSHIP-AUTO): the child now
+ * has parents in its family and this parent is not one of them (moved to another family as Fiu /
+ * Fiică), or both are in the same family and the family does not suggest the link (a relation changed).
+ * A child who left the family without new parents there (an adult heading his own family, a dissolved
+ * family) keeps the link: the kinship outlives the household.
+ */
+export function staleFamilyLinks<L extends KinLink & { source: string }>(links: L[], suggested: KinLink[], persons: Map<string, CheckPerson>): L[] {
+  const suggestedParents = new Map<string, string[]>();
+  for (const s of suggested) suggestedParents.set(s.childId, [...(suggestedParents.get(s.childId) ?? []), s.parentId]);
+  return links.filter((l) => {
+    if (l.source !== "FAMILIE") return false;
+    const ps = suggestedParents.get(l.childId) ?? [];
+    if (ps.length) return !ps.includes(l.parentId);
+    const p = persons.get(l.parentId);
+    const c = persons.get(l.childId);
+    return Boolean(p?.familyId && p.familyId === c?.familyId);
+  });
 }
 
 export interface KinPerson {
@@ -291,7 +313,7 @@ export interface Neam {
 }
 
 /** How many descendants `id` has (each once). */
-function descendants(g: KinGraph, id: string): Set<string> {
+export function descendants(g: KinGraph, id: string): Set<string> {
   const seen = new Set<string>();
   const stack = [id];
   while (stack.length) {

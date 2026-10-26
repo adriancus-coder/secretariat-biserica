@@ -26,6 +26,7 @@ import {
   writeOnlineConsents,
 } from "./data-update";
 import { createFamilyFor, markEdited, settleFamily } from "./families";
+import { syncKinship } from "./kinship-sync";
 import { ActionError, type Ctx } from "./session";
 
 const NEW_PERSON = "nou";
@@ -354,6 +355,8 @@ export async function applyDecision(
       await markEdited(tx, familyId);
       await settleFamily(tx, ctx.user, familyId);
     }
+    // KINSHIP-AUTO: new children, birth dates or relations approved from the campaign.
+    await syncKinship(tx as never, ctx.user, { personIds: [personId, ...created.map((c) => c.id)], familyIds: [familyId] });
 
     // Consents: the general link's answers, and new children's (a personal link wrote the others already).
     const base = {

@@ -17,6 +17,7 @@ import { todayIso } from "@/lib/dates";
 import { writeAudit } from "../audit";
 import { anonymizePerson } from "../anonymize";
 import { createFamilyFor, markEdited, settleFamily } from "../families";
+import { syncKinship } from "../kinship-sync";
 import { syncRoleGroups } from "../group-sync";
 import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
 import { reconcileNameLinks } from "../kinship";
@@ -185,6 +186,8 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         await syncRoleGroups(tx, ctx.user, { roleIds: await writePersonRoles(tx, id, roles) });
         // KINSHIP-STATUTE-PARENTS: a link confirmed from the parents' names goes when the file no longer carries that name.
         const nameLinks = await reconcileNameLinks(tx as never, id);
+        // KINSHIP-AUTO: the links from the families follow the family, the relation and the birth date.
+        await syncKinship(tx as never, ctx.user, { personIds: [id], familyIds: [before.familyId] });
         await writeAudit(tx, ctx.user, {
           entity: "PERSON",
           entityId: id,
@@ -208,6 +211,7 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         await settleFamily(tx, ctx.user, joining);
       }
       await syncRoleGroups(tx, ctx.user, { roleIds: await writePersonRoles(tx, created.id, roles) });
+      await syncKinship(tx as never, ctx.user, { personIds: [created.id] });
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: created.id,
@@ -267,6 +271,7 @@ export async function deletePersonAction(id: string): Promise<FormState> {
       await tx.person.delete({ where: { id } });
       // The family loses a member: it gets a new head, or is deleted when empty.
       if (before.familyId) await settleFamily(tx, ctx.user, before.familyId, before);
+      await syncKinship(tx as never, ctx.user, { familyIds: [before.familyId] });
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
         entityId: id,

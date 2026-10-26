@@ -163,17 +163,21 @@ export function violations(c: LinkCheck, links: StoredLink[] = c.links): { link:
   return out;
 }
 
-/** The links deleted by "Verifică legăturile de rudenie" (FAMILIE and NUME_PARINTI); the others only reported. */
-export const AUTO_SOURCES = ["FAMILIE", "NUME_PARINTI"];
+/**
+ * Deleted without asking by the automatic check (KINSHIP-AUTO): the families' own links, and a link
+ * confirmed from the names whose name the file no longer carries. Everything else is only reported.
+ */
+export const autoDeletable = (v: { link: StoredLink; reason: string }) => v.link.source === "FAMILIE" || (v.link.source === "NUME_PARINTI" && v.reason === NAME_CHANGED);
 
 /**
- * De verificat → "Legături de rudenie de verificat": the links added by hand or from the campaign that
- * break the rules (never deleted automatically), with the reason and both persons. Write roles only.
+ * De verificat → "Legături de rudenie de verificat": the links added by hand, from the campaign or
+ * confirmed from the names that break the rules (never deleted automatically), with the reason and
+ * both persons. Write roles only.
  */
 export async function manualLinksToReview(db: Db) {
   const c = await loadLinkCheck(db);
   return violations(c)
-    .filter((v) => !AUTO_SOURCES.includes(v.link.source))
+    .filter((v) => !autoDeletable(v))
     .map((v) => ({
       id: v.link.id,
       parent: { id: v.link.external ? null : v.link.parentId, name: nodeName(c, v.link.parentId) },

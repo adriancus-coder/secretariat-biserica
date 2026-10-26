@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppNav } from "@/components/shell/app-nav";
@@ -11,6 +12,7 @@ import { AppBadge } from "@/components/pwa/app-badge";
 import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
+import { runFirstKinshipCheck } from "@/server/kinship-sync";
 import { pendingBadges } from "@/server/queries/badges";
 import { requireUser } from "@/server/session";
 
@@ -19,6 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items = navItemsFor((p) => permissions[p](user));
   // The "Rugăciune" role gets no register counts at all.
   const badges = permissions.read(user) ? await pendingBadges(user) : {};
+  // KINSHIP-AUTO: the church's first full check of the kinship links, once, after the response.
+  if (permissions.write(user)) after(() => runFirstKinshipCheck(user));
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <div className="shell">

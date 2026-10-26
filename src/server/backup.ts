@@ -6,6 +6,7 @@ import type { BAlias } from "@/lib/aliases-backup";
 import type { BExternalParent, BKinship } from "@/lib/kinship-backup";
 import { externalKey } from "@/lib/kinship-parents";
 import { parentLinkError } from "@/lib/kinship";
+import { syncKinship } from "./kinship-sync";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
 import { randomUUID } from "node:crypto";
@@ -1174,6 +1175,9 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         await tx.kinExternalParent.deleteMany({ where: { children: { none: {} } } });
         if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (încălcau regulile: frați, diferență de vârstă, doi părinți sau un cerc).`);
       }
+
+      // KINSHIP-AUTO: the imported families give their links too (the same check as after any family change).
+      await syncKinship(tx as never, ctx.user, "all", { label: "actualizare după import" });
 
       const remapped = [people, meet, evs, docs, grs, nts, apps, ...(fams ? [fams] : [])].reduce(
         (n, p) => n + [...p.map].filter(([a, b]) => a !== b).length,

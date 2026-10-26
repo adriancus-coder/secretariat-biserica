@@ -10,6 +10,8 @@ import { ADDRESS_REVIEW_REASON, addressReviewWhere } from "@/server/queries/addr
 import { FAMILY_REVIEW_TITLE, familiesToReview } from "@/server/queries/family-review";
 import { kinProposals, manualLinksToReview } from "@/server/kinship";
 import { KinReview } from "./kin-review";
+import { permissions } from "@/lib/permissions";
+import { prisma } from "@/server/db";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "De verificat" };
@@ -23,12 +25,14 @@ export default async function ReviewQueuePage() {
     include: { campaign: { select: { nume: true } }, person: { select: { nume: true, prenume: true } } },
   });
   const ADDRESS_LIMIT = 200;
-  const [addressTotal, addresses, families, kinLinks, proposals] = await Promise.all([
+  const admin = permissions.admin(ctx.user);
+  const [addressTotal, addresses, families, kinLinks, proposals, church] = await Promise.all([
     ctx.db.person.count({ where: addressReviewWhere }),
     ctx.db.person.findMany({ where: addressReviewWhere, orderBy: { sortKey: "asc" }, take: ADDRESS_LIMIT, select: { id: true, nume: true, prenume: true, adresa: true, localitate: true } }),
     familiesToReview(ctx.db),
     manualLinksToReview(ctx.db),
     kinProposals(ctx.db),
+    prisma.church.findUnique({ where: { id: ctx.user.churchId }, select: { kinshipCheckedAt: true } }),
   ]);
   return (
     <>
@@ -76,7 +80,12 @@ export default async function ReviewQueuePage() {
           {addressTotal > addresses.length ? <p className="hint mt-2">Primele {addresses.length} din {addressTotal}.</p> : null}
         </section>
       ) : null}
-      <KinReview proposals={proposals.map((p) => ({ key: p.key, text: p.text }))} wrong={kinLinks} />
+      <KinReview
+        proposals={proposals.map((p) => ({ key: p.key, text: p.text }))}
+        wrong={kinLinks}
+        admin={admin}
+        checkedAt={church?.kinshipCheckedAt ? dotDateTime(church.kinshipCheckedAt) : null}
+      />
       {families.length ? (
         <section className="mt-6" aria-labelledby="familii-de-verificat">
           <h2 id="familii-de-verificat" className="text-base font-semibold mb-1">

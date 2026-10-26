@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AGE_GAP_ERROR, familyLinks, kinGraph, linkViolations, SAME_FAMILY_ERROR, SIBLINGS_ERROR, neamTree, neamuri, parentLinkError, relativeName, relatives, type KinLink, type KinPerson } from "./kinship";
+import { AGE_GAP_ERROR, familyLinks, staleFamilyLinks, kinGraph, linkViolations, SAME_FAMILY_ERROR, SIBLINGS_ERROR, neamTree, neamuri, parentLinkError, relativeName, relatives, type KinLink, type KinPerson } from "./kinship";
 
 const p = (id: string, over: Partial<KinPerson> = {}): KinPerson => ({ id, nume: "Ciobanu", prenume: id, gen: null, familyId: null, dataNasterii: null, active: true, statut: "MEMBRU", ...over });
 const link = (parentId: string, childId: string): KinLink => ({ parentId, childId });
@@ -134,6 +134,23 @@ describe("the Ciobanu case (KINSHIP-FIX-SIBLINGS)", () => {
     expect(linkViolations(stored, persons, new Map([["fD", "Felix"]])).map((v) => [v.link.id, v.reason])).toEqual([["2", SAME_FAMILY_ERROR]]);
     const withThea = [...stored, { ...link("Dumitru", "Thea"), id: "3" }];
     expect(linkViolations(withThea, persons, new Map([["fD", "Dumitru"]])).map((v) => [v.link.id, v.reason])).toEqual([["2", SIBLINGS_ERROR]]);
+  });
+});
+
+describe("links from the families follow the families (KINSHIP-AUTO)", () => {
+  const cp = (id: string, familyId: string | null, rudenie = "") => [id, { id, familyId, rudenie, dataNasterii: null }] as const;
+  const fam = (parentId: string, childId: string) => ({ parentId, childId, source: "FAMILIE" });
+
+  it("a child moved to another family as Fiică: the old family's links go, a manual link stays", () => {
+    const persons = new Map([cp("Dumitru", "fD", "Cap de familie"), cp("Felix", "fF", "Cap de familie"), cp("Thea", "fF", "Fiică")]);
+    const links = [fam("Dumitru", "Thea"), { parentId: "Ion", childId: "Thea", source: "MANUAL" }];
+    expect(staleFamilyLinks(links, [link("Felix", "Thea")], persons)).toEqual([links[0]]);
+  });
+
+  it("an adult son heading his own family keeps his parents; a relation changed in the same family drops the link", () => {
+    const persons = new Map([cp("Dumitru", "fD", "Cap de familie"), cp("Felix", "fF", "Cap de familie"), cp("Iulia", "fD", "Soție")]);
+    expect(staleFamilyLinks([fam("Dumitru", "Felix")], [], persons)).toEqual([]);
+    expect(staleFamilyLinks([fam("Dumitru", "Iulia")], [], persons)).toEqual([fam("Dumitru", "Iulia")]);
   });
 });
 

@@ -12,6 +12,7 @@ import { fromDbDate, todayIso } from "@/lib/dates";
 import { canBeHead, pickHead } from "@/lib/families";
 import { addMembersSchema, joinFamilySchema, selectedFamiliesSchema } from "@/lib/schemas/family";
 import { assertCanBeHead, createFamilyFor, dissolveFamily, FAMILY_FIELDS, familyView, markEdited, settleFamily } from "../families";
+import { syncKinship } from "../kinship-sync";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
@@ -36,6 +37,8 @@ export async function saveFamilyAction(id: string, _prev: FormState, formData: F
         }
       }
       await tx.family.update({ where: { id }, data: { ...input, autoCreated: false } });
+      // KINSHIP-AUTO: a new head changes who the parents of the family are.
+      if (input.headId !== before.headId) await syncKinship(tx as never, ctx.user, { familyIds: [id] });
       await writeAudit(tx, ctx.user, {
         entity: "FAMILY",
         entityId: id,
@@ -82,6 +85,7 @@ export async function moveToFamilyAction(personId: string, _prev: FormState, for
         await markEdited(tx, to);
         await settleFamily(tx, ctx.user, to);
       }
+      await syncKinship(tx as never, ctx.user, { personIds: [personId], familyIds: [from, to] });
       const toName = (await tx.family.findUnique({ where: { id: to }, select: { nume: true } }))?.nume ?? "";
       await writeAudit(tx, ctx.user, {
         entity: "PERSON",
@@ -126,6 +130,7 @@ async function joinFamily(tx: Tx, ctx: Ctx, familyId: string, list: { id: string
   await markEdited(tx, familyId);
   // A family without a head (only children so far) gets one if an adult joined.
   await settleFamily(tx, ctx.user, familyId);
+  await syncKinship(tx as never, ctx.user, { familyIds: [familyId] });
   await writeAudit(tx, ctx.user, {
     entity: "FAMILY",
     entityId: familyId,
@@ -207,7 +212,9 @@ export async function dissolveFamilyAction(familyId: string): Promise<FormState>
     parseOrThrow(idSchema, familyId);
     await ctx.db.$transaction(async (tx) => {
       if (!(await tx.family.findUnique({ where: { id: familyId }, select: { id: true } }))) throw new ActionError("Familia nu mai există.");
+      const members = await tx.person.findMany({ where: { familyId }, select: { id: true } });
       await dissolveFamily(tx, ctx.user, familyId);
+      await syncKinship(tx as never, ctx.user, { personIds: members.map((m) => m.id) });
     });
     done = true;
   });
@@ -229,7 +236,9 @@ export async function dissolveAutoFamiliesAction(_prev: FormState, formData: For
       async (tx) => {
         // Only families of this church that are still automatic (an edited one is no longer offered).
         const chosen = await tx.family.findMany({ where: { id: { in: ids }, autoCreated: true }, select: { id: true } });
+        const members = await tx.person.findMany({ where: { familyId: { in: chosen.map((f) => f.id) } }, select: { id: true } });
         for (const f of chosen) await dissolveFamily(tx, ctx.user, f.id, "dizolvată ca familie creată automat");
+        if (chosen.length) await syncKinship(tx as never, ctx.user, { personIds: members.map((m) => m.id) });
         return chosen.length;
       },
       { timeout: 60_000 },
@@ -254,6 +263,7 @@ export async function recalcHeadsAction(): Promise<RecalcHeadsState> {
       async (tx) => {
         const today = todayIso();
         const out: string[] = [];
+        const changedIds: string[] = [];
         const families = await tx.family.findMany({
           where: { autoCreated: true },
           orderBy: { nume: "asc" },
@@ -286,7 +296,9 @@ export async function recalcHeadsAction(): Promise<RecalcHeadsState> {
             extra: { observatie: "capul familiei a fost recalculat" },
           });
           out.push(`${f.nume}: ${old ? memberName(old) : "fără cap"} → ${head ? memberName(head) : "fără cap (doar copii)"}`);
+          changedIds.push(f.id);
         }
+        if (changedIds.length) await syncKinship(tx as never, ctx.user, { familyIds: changedIds });
         return out;
       },
       { timeout: 60_000 },

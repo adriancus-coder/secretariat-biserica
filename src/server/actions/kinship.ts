@@ -8,7 +8,8 @@ import { parentLinkError } from "@/lib/kinship";
 import { externalKey, isExternalKey } from "@/lib/kinship-parents";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
-import { AUTO_SOURCES, deleteOrphanExternals, kinName, kinProposals, loadLinkCheck, nodeName, suggestedFamilyLinks, toStoredLink, violations, type LinkCheck } from "../kinship";
+import { deleteOrphanExternals, kinName, kinProposals, loadLinkCheck, nodeName } from "../kinship";
+import { checkWholeRegister } from "../kinship-sync";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction } from "./run";
 
@@ -84,47 +85,14 @@ export async function removeKinLinkAction(linkId: string): Promise<FormState> {
   return state;
 }
 
-/** The core of "Verifică legăturile de rudenie", in the caller's transaction; counts only. */
-async function checkLinks(tx: Tx, ctx: ActionCtx) {
-  const check: LinkCheck = await loadLinkCheck(tx as never);
-  const suggested = await suggestedFamilyLinks(tx as never);
-  const links = check.links.map((l) => ({ ...l }));
-  let deleted = 0;
-  let created = 0;
-  for (let round = 0; round < 5; round++) {
-    let changed = false;
-    const wrong = violations(check, links).filter((v) => AUTO_SOURCES.includes(v.link.source));
-    for (const v of wrong) {
-      await tx.personParent.delete({ where: { id: v.link.id } });
-      links.splice(links.indexOf(v.link), 1);
-      deleted++;
-      changed = true;
-    }
-    for (const l of suggested) {
-      if (links.some((x) => x.parentId === l.parentId && x.childId === l.childId)) continue;
-      if (parentLinkError(links, l.parentId, l.childId, check.born)) continue;
-      const row = await tx.personParent.create({
-        data: { churchId: ctx.user.churchId, parentId: l.parentId, childId: l.childId, source: "FAMILIE", createdById: ctx.user.id },
-        select: { id: true, parentId: true, externalParentId: true, childId: true, source: true },
-      });
-      links.push(toStoredLink(row));
-      created++;
-      changed = true;
-    }
-    if (!changed) break;
-  }
-  await deleteOrphanExternals(tx as never);
-  const flagged = violations(check, links).filter((v) => !AUTO_SOURCES.includes(v.link.source)).length;
-  return { deleted, created, flagged };
-}
-
 /**
- * Setări → Date → "Verifică legăturile de rudenie" (administrators; idempotent): links from the
- * families or the parents' names that break the rules (siblings, age gap, a son "parent" in the common
- * family, a parent's name changed on the file) are deleted; the links the families suggest are added
- * when the rules allow, repeated until nothing changes; links added by hand or from the campaign are
- * never deleted, they are listed in De verificat, like the proposals from the parents' names. The
- * answer and the audit give counts only, never names.
+ * De verificat → "Verifică din nou tot registrul" (administrators; idempotent; the same check runs by
+ * itself after every change to a family, KINSHIP-AUTO): links from the families that break the rules
+ * or that the families no longer support are deleted, like a link from the names whose name the file
+ * no longer carries; the links the families suggest are added when the rules allow, repeated until
+ * nothing changes; links added by hand, from the campaign or from the names are never deleted, they
+ * are listed in De verificat, like the proposals from the parents' names. Marks
+ * Church.kinshipCheckedAt. The answer and the audit give counts only, never names.
  */
 export async function checkKinLinksAction(): Promise<FormState> {
   const state = await runFormAction(null, async () => {
@@ -132,15 +100,7 @@ export async function checkKinLinksAction(): Promise<FormState> {
     let r = { deleted: 0, created: 0, flagged: 0 };
     await ctx.db.$transaction(
       async (tx) => {
-        r = await checkLinks(tx, ctx);
-        await writeAudit(tx, ctx.user, {
-          entity: "SETTINGS",
-          entityId: ctx.user.churchId,
-          entityLabel: "Legături de rudenie",
-          action: "UPDATE",
-          fields: [],
-          extra: { observatie: `verificare: ${r.deleted} legături șterse, ${r.created} adăugate din familii, ${r.flagged} de verificat` },
-        });
+        r = await checkWholeRegister(tx as never, ctx.user, "verificare a întregului registru");
       },
       { timeout: 60_000 },
     );

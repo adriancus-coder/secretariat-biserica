@@ -2577,6 +2577,15 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  /* "Rudenie" on De verificat: the title, and the administrators' button beside it or below on phones. */
+  .kin-review-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
   .picker-row .tick {
     flex: 0 0 18px;
     display: inline-flex;
