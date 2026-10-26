@@ -8,7 +8,7 @@
   --paper: #fbfaf6;
   --ink: #1e2436;
   --ink-2: #4c5468;
-  --ink-3: #8a90a0;
+  --ink-3: #5c6272;
   --line: #e2dfd6;
   --field: #ffffff;
   --panel: #f2f0e9;
@@ -37,7 +37,7 @@
     --paper: #171a24;
     --ink: #edeae1;
     --ink-2: #b7b5ac;
-    --ink-3: #7c7f8c;
+    --ink-3: #9a9daa;
     --line: #2c3140;
     --field: #1e2230;
     --panel: #1c202c;
@@ -64,7 +64,7 @@
   --paper: #171a24;
   --ink: #edeae1;
   --ink-2: #b7b5ac;
-  --ink-3: #7c7f8c;
+  --ink-3: #9a9daa;
   --line: #2c3140;
   --field: #1e2230;
   --panel: #1c202c;
@@ -134,6 +134,11 @@
   }
   a {
     color: var(--link);
+  }
+  /* Links inside running text are underlined, not told apart by colour alone (WCAG 1.4.1). */
+  :where(p, label, dd, .hint, .alert) a:not(.btn):not(.pill):not(.item):not(.name-link) {
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
   :focus-visible {
     outline: 2px solid var(--gold);

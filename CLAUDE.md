@@ -528,6 +528,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Primary action: a filled button (`btn btn-primary`) with a verb and an icon. At most one per area (card, form or dialog).
 - Secondary actions: outlined buttons (`btn`), never filled.
 - Selected state: the `--accent` colour, a check mark and bold text.
+- Text colours keep 4.5:1 on every background (`--paper`, `--panel`, `--field`, the `-soft` alert / tag colours) in both themes; `src/lib/theme-contrast.test.ts` reads the tokens from globals.css. Links inside running text are underlined.
 - Long lists scroll inside their panel instead of stretching the page.
 - Names are never cut: no `truncate`, `text-ellipsis`, `line-clamp` or `whitespace-nowrap` (a unit test scans `src/`). "Name + details" rows use `NameRow` (`src/components/ui/name-row.tsx`) or a list row `.item .body` with `.t` (name) and `.m` (details): the details sit at the right when both fit and drop under the name, aligned left, otherwise; both wrap.
 - Touch targets are at least 44 px.
