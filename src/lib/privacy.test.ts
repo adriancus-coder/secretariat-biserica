@@ -1,12 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { privacyBlocks, privacyTemplate } from "./privacy";
-import { PRIVACY_NOTICE_1_1 } from "./privacy-notice";
+import { PRIVACY_NOTICE_1_2 } from "./privacy-notice";
 
-describe("privacy notice 1.1", () => {
-  it("is identical to docs/privacy-notice-1.1.md", () => {
-    const file = readFileSync(new URL("../../docs/privacy-notice-1.1.md", import.meta.url), "utf8");
-    expect(PRIVACY_NOTICE_1_1).toBe(file.replace(/\n$/, ""));
+describe("privacy notice 1.2", () => {
+  it("is identical to docs/privacy-notice-1.2.md", () => {
+    const file = readFileSync(new URL("../../docs/privacy-notice-1.2.md", import.meta.url), "utf8");
+    expect(PRIVACY_NOTICE_1_2).toBe(file.replace(/\n$/, ""));
+  });
+
+  it("names only Render and Resend as providers and no AI service", () => {
+    const t = privacyTemplate({ nume: "Maranata Stavanger", email: "s@x.no", adresa: "" });
+    expect(t).not.toMatch(new RegExp(["anth" + "ropic", "cla" + "ude"].join("|"), "i"));
+    expect(t).toContain("Render Services, Inc. și Resend, Inc. au sediul în Statele Unite ale Americii.");
+    expect(t).toContain("Biserica nu folosește servicii de inteligență artificială pentru prelucrarea datelor persoanelor.");
   });
 
   it("fills the church's details; an empty setting keeps its placeholder", () => {
@@ -19,7 +26,7 @@ describe("privacy notice 1.1", () => {
       comunitate: "Comunitatea Penticostală Nord",
       privacyAdoptedAt: "2026-11-01",
     });
-    expect(t).toContain("Biserica Penticostală Betel Oslo\nVersiunea 1.1 — în vigoare de la 1 noiembrie 2026");
+    expect(t).toContain("Biserica Penticostală Betel Oslo\nVersiunea 1.2 — în vigoare de la 1 noiembrie 2026");
     expect(t).toContain("Operatorul datelor este Biserica Penticostală Betel Oslo, Storgata 1, Oslo, organisasjonsnummer 998 877 665");
     expect(t).toContain("Cultului Creștin Penticostal, Comunitatea Penticostală Nord, denumită");
     expect(t).toContain("la post@betel.no sau +47 22 00 00 00");
@@ -30,7 +37,7 @@ describe("privacy notice 1.1", () => {
     expect(empty).toContain("în vigoare de la [data]");
   });
 
-  it("reads the 1.1 model line by line: numbered headings, list items, paragraphs", () => {
+  it("reads the 1.2 model line by line: numbered headings, list items, paragraphs", () => {
     const blocks = privacyBlocks(privacyTemplate({ nume: "Maranata Stavanger", email: "", adresa: "" }));
     expect(blocks[0]).toEqual({ type: "h", text: "NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL" });
     expect(blocks).toContainEqual({ type: "h", text: "1. Cine suntem" });

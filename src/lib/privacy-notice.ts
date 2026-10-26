@@ -1,13 +1,15 @@
 /**
- * The model privacy notice, version 1.1 (Statut art. 14; GDPR art. 6, 9, 13). Identical to
- * docs/privacy-notice-1.1.md (privacy.test.ts compares them); `privacyTemplate()` fills the
+ * The model privacy notice, version 1.2 (Statut art. 14; GDPR art. 6, 9, 13). Identical to
+ * docs/privacy-notice-1.2.md (privacy.test.ts compares them); `privacyTemplate()` fills the
  * bracketed placeholders from the church's settings. Do not edit one without the other.
+ * Version 1.1 (docs/privacy-notice-1.1.md) stays in docs only, as history: 1.2 drops the
+ * automated-reading provider (the feature was withdrawn) and names the two providers left.
  */
-export const PRIVACY_NOTICE_VERSION = "1.1";
+export const PRIVACY_NOTICE_VERSION = "1.2";
 
-export const PRIVACY_NOTICE_1_1 = `NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL
+export const PRIVACY_NOTICE_1_2 = `NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL
 Biserica Penticostală Maranata Stavanger
-Versiunea 1.1 — în vigoare de la [data]
+Versiunea 1.2 — în vigoare de la [data]
 
 1. Cine suntem
 Operatorul datelor este Biserica Penticostală Maranata Stavanger, [adresa], organisasjonsnummer [nr.], biserică locală a Cultului Creștin Penticostal, [Comunitatea de care aparține biserica], denumită în continuare „Biserica”.
@@ -40,9 +42,9 @@ Datele copiilor sub 18 ani sunt furnizate de părinți sau de tutorii legali, ca
 - Alte biserici și forurile Cultului: la transfer, biserica la care vă transferați primește datele necesare; în cazurile prevăzute de Statut, Comunitatea de care aparține Biserica primește informările obligatorii.
 - Furnizori care prelucrează date în numele Bisericii, pe bază de contract, numai la instrucțiunile noastre:
    - Render Services, Inc. — găzduirea aplicației și a bazei de date, pe servere din Uniunea Europeană (Frankfurt, Germania);
-   - Resend, Inc. — trimiterea e-mailurilor din aplicație;
-   - Anthropic PBC — doar dacă Biserica folosește citirea automată a documentelor scanate, pentru completarea formularelor; documentul nu este păstrat de acest furnizor.
-Unii dintre acești furnizori au sediul în Statele Unite ale Americii. Transferul se face numai cu garanțiile prevăzute de GDPR (cadrul UE–SUA privind confidențialitatea datelor sau clauze contractuale standard aprobate de Comisia Europeană).
+   - Resend, Inc. — trimiterea e-mailurilor din aplicație.
+Render Services, Inc. și Resend, Inc. au sediul în Statele Unite ale Americii. Transferul datelor către ei se face numai cu garanțiile prevăzute de GDPR (cadrul UE–SUA privind confidențialitatea datelor sau clauze contractuale standard aprobate de Comisia Europeană).
+Biserica nu folosește servicii de inteligență artificială pentru prelucrarea datelor persoanelor.
 - Datele nu sunt vândute, nu sunt folosite pentru reclame și nu sunt transmise în afara celor de mai sus fără acordul dumneavoastră, cu excepția situațiilor în care legea ne obligă.
 
 6. Cât timp păstrăm datele

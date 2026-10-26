@@ -212,7 +212,7 @@ export const DISCIPLINARY_FORUMS = ["LOCAL", "COMUNITATE"] as const;
 export type DisciplinaryForumKey = (typeof DISCIPLINARY_FORUMS)[number];
 export const DISCIPLINARY_FORUM_LABEL: Record<DisciplinaryForumKey, string> = { LOCAL: "Biserica locală", COMUNITATE: "Comunitatea" };
 
-/** The privacy notice and the four optional consents (privacy notice 1.1, point 3 d). */
+/** The privacy notice and the four optional consents (privacy notice 1.2, point 3 d). */
 export const CONSENT_KINDS = ["INFO_NOTE", "PHOTOS", "BIRTHDAY", "CONTACT", "DIRECTORY"] as const;
 export type ConsentKindKey = (typeof CONSENT_KINDS)[number];
 export const OPTIONAL_CONSENTS = ["PHOTOS", "BIRTHDAY", "CONTACT", "DIRECTORY"] as const satisfies readonly ConsentKindKey[];

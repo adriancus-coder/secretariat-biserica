@@ -18,6 +18,7 @@ import {
   resolvePersonalLink,
   writeOnlineConsents,
 } from "../data-update";
+import { currentPrivacyVersion } from "../campaigns";
 import { prisma } from "../db";
 import { clientIp, IP_LIMIT_MESSAGE } from "../ip-limits";
 import { sharedRateLimiter } from "../rate-limit";
@@ -102,7 +103,8 @@ export async function submitPersonalUpdateAction(token: string, _prev: FormState
     const adult = await db.person.findUniqueOrThrow({ where: { id: r.link.personId }, include: { family: { select: { headId: true } } } });
     const own = new Set((await adultChildren(db, adult)).map((c) => c.id));
     // Only the adult's own minor children can be changed; anything else becomes a new child.
-    const proposal: DataUpdateProposal = { ...parsed.value, children: parsed.value.children.map((c) => (c.id && own.has(c.id) ? c : { ...c, id: null })) };
+    const versiuneNota = await currentPrivacyVersion(r.link.churchId);
+    const proposal: DataUpdateProposal = { ...parsed.value, children: parsed.value.children.map((c) => (c.id && own.has(c.id) ? c : { ...c, id: null })), versiuneNota };
     await db.$transaction(async (tx) => {
       const pending = await tx.dataUpdateSubmission.findFirst({ where: { linkId: r.link.id, status: "PENDING" }, select: { id: true } });
       const json = proposal as unknown as Prisma.InputJsonObject;
@@ -111,7 +113,7 @@ export async function submitPersonalUpdateAction(token: string, _prev: FormState
         : await tx.dataUpdateSubmission.create({
             data: { churchId: r.link.churchId, campaignId: r.campaign.id, linkId: r.link.id, personId: adult.id, via: "PERSONAL", proposed: json },
           });
-      const base = { churchId: r.link.churchId, submissionId: submission.id, textVersion: r.campaign.privacyTextVersion };
+      const base = { churchId: r.link.churchId, submissionId: submission.id, textVersion: versiuneNota };
       await writeOnlineConsents(tx, { ...base, personId: adult.id, answers: proposal.consents, nota: true });
       for (const c of proposal.children) {
         if (c.id) await writeOnlineConsents(tx, { ...base, personId: c.id, answers: c.consents, nota: false, givenByPersonId: adult.id });
@@ -172,6 +174,7 @@ export async function submitGeneralUpdateAction(token: string, _prev: FormState,
       ...parsed.value,
       children: parsed.value.children.map((c) => ({ ...c, id: null })),
       typed: { nume: identity.nume, telefon: identity.telefon },
+      versiuneNota: await currentPrivacyVersion(r.campaign.churchId),
     };
     await db.$transaction(async (tx) => {
       await tx.dataUpdateSubmission.create({

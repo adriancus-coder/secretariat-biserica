@@ -305,7 +305,8 @@ export async function applyDecision(
     const base = {
       churchId: ctx.user.churchId,
       submissionId: id,
-      textVersion: s.campaign.privacyTextVersion,
+      // The notice the person saw when answering; answers sent before 1.2 fall back to the campaign's.
+      textVersion: p.versiuneNota ?? s.campaign.privacyTextVersion,
     };
     if (s.via === "GENERAL")
       await writeOnlineConsents(tx, {

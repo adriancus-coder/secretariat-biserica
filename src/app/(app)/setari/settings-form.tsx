@@ -10,6 +10,7 @@ import { initialFormState } from "@/lib/form-state";
 import { ATTENDANCE_RULE_LABEL, ATTENDANCE_RULES, type AttendanceRule } from "@/lib/attendance";
 import { DOCUMENT_TYPE_LABEL, DOCUMENT_TYPES, type Nomenclatures } from "@/lib/labels";
 import { saveChurchSettingsAction } from "@/server/actions/settings";
+import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 
 type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
 
@@ -162,7 +163,7 @@ export function SettingsForm({
           <a href={privacyUrl} target="_blank" rel="noopener noreferrer" className="break-all">
             {privacyUrl}
           </a>
-          . Șters complet, textul revine la modelul bisericii (versiunea 1.1), completat cu datele de mai sus.
+          . Șters complet, textul revine la modelul bisericii (versiunea {PRIVACY_NOTICE_VERSION}), completat cu datele de mai sus.
         </p>
         <TextAreaField
           name="privacyText"

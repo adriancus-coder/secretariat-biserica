@@ -1,5 +1,5 @@
 import { fmtL } from "./format";
-import { PRIVACY_NOTICE_1_1 } from "./privacy-notice";
+import { PRIVACY_NOTICE_1_2 } from "./privacy-notice";
 
 export interface PrivacyChurch {
   nume: string;
@@ -13,7 +13,7 @@ export interface PrivacyChurch {
 }
 
 /**
- * The model privacy notice (version 1.1, docs/privacy-notice-1.1.md) filled with the church's
+ * The model privacy notice (version 1.2, docs/privacy-notice-1.2.md) filled with the church's
  * settings; an empty setting leaves its bracketed placeholder visible. Pure.
  */
 export function privacyTemplate(c: PrivacyChurch): string {
@@ -28,14 +28,14 @@ export function privacyTemplate(c: PrivacyChurch): string {
     fill("[telefon]", c.telefon),
     fill("[Comunitatea de care aparține biserica]", c.comunitate),
     fill("[data]", c.privacyAdoptedAt ? fmtL(c.privacyAdoptedAt) : ""),
-  ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_1);
+  ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_2);
 }
 
 export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string } | { type: "li"; text: string };
 
 /**
  * "## Titlu" → heading; other non-empty lines (joined until a blank line) → paragraph. A text without
- * "## " headings (the 1.1 model) is read line by line: "1. Cine suntem" and an all-capitals line are
+ * "## " headings (the 1.1 / 1.2 models) is read line by line: "1. Cine suntem" and an all-capitals line are
  * headings, "- …" lines are list items, every other line is a paragraph.
  */
 export function privacyBlocks(text: string): PrivacyBlock[] {

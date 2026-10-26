@@ -99,7 +99,7 @@ export async function importDataAction(_prev: ImportState, formData: FormData): 
 }
 
 /**
- * "Folosește modelul nou": the church publishes the model notice (version 1.1) filled with its
+ * "Folosește modelul nou": the church publishes the current model notice (PRIVACY_NOTICE_VERSION) filled with its
  * settings, from today ("[data]"). Its own edited text is replaced only by this explicit choice.
  */
 export async function adoptPrivacyModelAction(): Promise<void> {

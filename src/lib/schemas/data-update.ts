@@ -99,6 +99,8 @@ export interface DataUpdateProposal {
   nota: true;
   /** General link only: what the person typed at the identity step (for the secretary's match). */
   typed?: { nume: string; telefon: string };
+  /** The notice version published when the answer was sent (the consents' textVersion); older answers have none. */
+  versiuneNota?: string;
 }
 
 /** The form's fields → the proposal, with field errors (children as `copii.<i>.<field>`). */

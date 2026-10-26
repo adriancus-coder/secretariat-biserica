@@ -2,17 +2,27 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { isCampaignAdult } from "@/lib/campaign";
 import { fromDbDate, todayIso } from "@/lib/dates";
-import { privacyTemplate } from "@/lib/privacy";
+import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
+import { prisma } from "./db";
 import { generalToken, hashToken, linkToken, newNonce } from "./campaign-tokens";
 import type { ChurchSettings } from "./queries/church";
 import type { Ctx } from "./session";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
-/** The notice as published now, hashed: the textVersion of the consents given during the campaign. */
-export function privacyVersionOf(church: ChurchSettings): string {
-  const text = church.privacyText.trim() || privacyTemplate(church);
-  return createHash("sha256").update(text).digest("hex").slice(0, 16);
+/**
+ * The version of the notice as published now, stored with each consent (`textVersion`): the model's
+ * number ("1.2") while the church publishes the model, else "text-" + a hash of its own text.
+ * Consents keep the version they were given under; older ones hold a hash of the whole text.
+ */
+export function privacyVersionOf(church: Pick<ChurchSettings, "privacyText">): string {
+  const own = church.privacyText.trim();
+  return own ? `text-${createHash("sha256").update(own).digest("hex").slice(0, 16)}` : PRIVACY_NOTICE_VERSION;
+}
+
+/** The same, for a public form (global client: the church id comes from the link's row). */
+export async function currentPrivacyVersion(churchId: string): Promise<string> {
+  return privacyVersionOf(await prisma.church.findUniqueOrThrow({ where: { id: churchId }, select: { privacyText: true } }));
 }
 
 /** A fresh nonce and token hash for a personal link with this id. */
