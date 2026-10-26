@@ -300,6 +300,7 @@
   .shell-user .logout {
     display: flex;
     align-items: center;
+    min-height: 2.75rem;
     gap: 10px;
     color: #c9cdd9;
     text-decoration: none;
@@ -369,6 +370,12 @@
       max-width: 1000px;
       margin: 0;
     }
+  }
+  /* Tablets with the sidebar (820–1023 px): less side padding, so forms keep two 260 px columns. */
+  @media (min-width: 820px) and (max-width: 1023px) {
+    .shell-main {
+      padding: 24px 16px 48px;
+    }
     .desk-only {
       display: flex !important;
     }
@@ -423,7 +430,9 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
-  @media (min-width: 820px) {
+  /* Tablet and up (portrait included): cards side by side; from 820 px the sidebar takes 220 px and
+     each column still gets about 270 px. */
+  @media (min-width: 600px) {
     .two {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
@@ -573,7 +582,7 @@
     padding: 6px 10px;
     font-size: 0.8125rem;
     border-radius: 8px;
-    min-height: 40px;
+    min-height: 2.75rem;
   }
   .btn:disabled,
   .btn[aria-disabled="true"] {
@@ -1400,10 +1409,15 @@
     flex: 1 0 100%;
     padding-left: 52px;
   }
-  @media (min-width: 820px) {
+  /* Beside the name only on desktop; on tablets (sidebar + narrower main) they stay under it. */
+  @media (min-width: 1024px) {
     .item .item-actions {
-      flex: 0 0 auto;
+      flex: 0 1 auto;
       padding-left: 0;
+    }
+    /* The name keeps room for itself; controls that do not fit beside it wrap under it. */
+    .item:has(> .item-actions) > .body {
+      flex: 1 1 16rem;
     }
   }
   .item .t {
@@ -1785,6 +1799,7 @@
   /* "Așezare în pagină": the form, and the PDF preview beside it on wide screens. */
   .layout-editor {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     align-items: start;
   }
@@ -2233,6 +2248,8 @@ select {
 }
 input[type="file"] {
   max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0;
 }
 html[data-text-size] main .truncate {
   white-space: normal;
@@ -2243,9 +2260,6 @@ html[data-text-size] main .truncate {
 html[data-text-size] .btn {
   white-space: normal;
   text-align: center;
-}
-html[data-text-size] .btn-sm {
-  min-height: 44px;
 }
 
 /*
