@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { whatsappUrl, answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerMessage, prayerMessageError, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
+import { whatsappUrl, answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
 
 const TODAY = "2026-10-28";
 const m = (id: string, prenume: string, over: Partial<PrayerMember> = {}): PrayerMember => ({
@@ -62,15 +62,6 @@ describe("weekly prayer", () => {
     expect(weekStartOf("2026-10-26")).toBe("2026-10-26");
     expect(weekStartOf("2026-11-01")).toBe("2026-10-26");
     expect(weekStartOf("2026-10-28")).toBe("2026-10-26");
-  });
-
-  it("fills the message; {familia} is the only variable", () => {
-    expect(prayerMessage("", "Familia Popescu: Ion și Maria")).toBe("Săptămâna aceasta ne rugăm pentru Familia Popescu: Ion și Maria. Să-i purtăm în rugăciune!");
-    expect(prayerMessage("Ne rugăm pentru {familia}.", "X")).toBe("Ne rugăm pentru X.");
-    expect(prayerMessageError("")).toBeNull();
-    expect(prayerMessageError("Fără variabilă")).toContain("{familia}");
-    expect(prayerMessageError("{familia} la {telefon}")).toContain("Singura variabilă");
-    expect(prayerMessageError("x".repeat(501) + "{familia}")).toContain("500");
   });
 
   it("reads only well-formed unit keys", () => {

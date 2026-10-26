@@ -1,5 +1,6 @@
 "use client";
 
+import { PRAYER_CHILDREN_HELP, PRAYER_CHILDREN_LABEL } from "@/lib/prayer";
 import { useState } from "react";
 import { AddressFields } from "@/components/ui/address-fields";
 import { FormMessage } from "@/components/ui/form-bits";
@@ -297,8 +298,9 @@ export function UpdateForm({
           </label>
           <label className="check">
             <input type="checkbox" name="rugaciuneCopii" defaultChecked={prayer.includeChildren} />
-            Pot fi pomeniți și copiii noștri
+            {PRAYER_CHILDREN_LABEL}
           </label>
+          <p className="hint !mt-0 ml-8">{PRAYER_CHILDREN_HELP}</p>
         </fieldset>
       ) : null}
 

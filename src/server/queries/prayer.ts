@@ -1,6 +1,7 @@
 import "server-only";
 import { fromDbDate, todayIso, toDbDate } from "@/lib/dates";
 import { prayerKey, prayerLabel, prayerRotation, weekStartOf, type PrayerUnit } from "@/lib/prayer";
+import { prayerMessageFor } from "@/lib/prayer-message";
 import type { Ctx } from "../session";
 
 /**
@@ -8,15 +9,15 @@ import type { Ctx } from "../session";
  * birth date only to tell adults from minors (never shown), the relation to the family. No contact
  * data, notes, roles or anything else (prayer.test.ts checks these selects).
  */
-export const PRAYER_MEMBER_SELECT = { id: true, nume: true, prenume: true, statut: true, dataNasterii: true, dataIesire: true, rudenie: true } as const;
+export const PRAYER_MEMBER_SELECT = { id: true, nume: true, prenume: true, statut: true, dataNasterii: true, dataIesire: true, rudenie: true, gen: true } as const;
 export const PRAYER_FAMILY_SELECT = { id: true, headId: true, prayerOptOut: true, prayerIncludeChildren: true, members: { select: PRAYER_MEMBER_SELECT } } as const;
 export const PRAYER_PERSON_SELECT = { ...PRAYER_MEMBER_SELECT, prayerOptOut: true, prayerIncludeChildren: true } as const;
 
-type Member = { id: string; nume: string; prenume: string; statut: string; dataNasterii: Date | null; dataIesire: Date | null; rudenie: string };
+type Member = { id: string; nume: string; prenume: string; statut: string; dataNasterii: Date | null; dataIesire: Date | null; rudenie: string; gen: string | null };
 const member = (p: Member) => ({ ...p, dataNasterii: fromDbDate(p.dataNasterii), dataIesire: fromDbDate(p.dataIesire) });
 
 /** Every family and every person without a family, with the Monday of its last announcement. */
-async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
+export async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
   const [families, singles, weeks] = await Promise.all([
     ctx.db.family.findMany({ select: PRAYER_FAMILY_SELECT }),
     ctx.db.person.findMany({ where: { familyId: null }, select: PRAYER_PERSON_SELECT }),
@@ -57,6 +58,10 @@ export interface PrayerPageData {
   total: number;
   /** The last 12 weeks: date and name only. */
   history: { week: string; label: string }[];
+  /**
+   * The message for the shown family, built here (src/lib/prayer-message.ts): without the parents'
+   * consent the children's names are not in it, and nothing else about them reaches the page.
+   */
   message: string;
 }
 
@@ -70,7 +75,7 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
   const [units, recent, church] = await Promise.all([
     loadUnits(ctx),
     ctx.db.prayerWeek.findMany({ select: { weekStart: true, familyId: true, personId: true }, orderBy: { weekStart: "desc" }, take: 12 }),
-    ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { prayerMessage: true } }),
+    ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { prayerMessage: true, prayerMessagePerson: true } }),
   ]);
   const byKey = new Map(units.map((u) => [u.key, u]));
   const shown = (familyId: string | null, personId: string | null) => {
@@ -80,13 +85,17 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
   };
   const rotation = prayerRotation(units, today);
   const current = recent.find((w) => fromDbDate(w.weekStart) === week);
+  const shownKey = current ? (current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? "")) : rotation.length ? rotation[skip % rotation.length].key : null;
+  const shownUnit = shownKey ? byKey.get(shownKey) : undefined;
+  // A family that objected since (or left the register) gets no message.
+  const message = shownUnit && !shownUnit.optOut ? prayerMessageFor(shownUnit, today, { family: church.prayerMessage, person: church.prayerMessagePerson }) : "";
   return {
     week,
     marked: current ? { key: current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? ""), label: shown(current.familyId, current.personId) } : null,
     next: current || !rotation.length ? null : rotation[skip % rotation.length],
     total: rotation.length,
     history: recent.map((w) => ({ week: fromDbDate(w.weekStart)!, label: shown(w.familyId, w.personId) })),
-    message: church.prayerMessage,
+    message,
   };
 }
 
@@ -98,3 +107,20 @@ export async function prayerUnitLabel(ctx: Ctx, key: string): Promise<string | n
 }
 
 export const thisWeek = () => toDbDate(weekStartOf(todayIso()))!;
+
+/**
+ * Setări's previews (administrators): a family of the rotation, preferably one with minor children,
+ * and a person without a family. Only the fields the message uses.
+ */
+export async function prayerSamples(ctx: Ctx): Promise<{ family: PrayerUnit | null; person: PrayerUnit | null }> {
+  const today = todayIso();
+  const units = await loadUnits(ctx);
+  const keys = new Set(prayerRotation(units, today).map((r) => r.key));
+  const inRotation = units.filter((u) => keys.has(u.key));
+  const minor = (u: PrayerUnit) => u.members.some((m) => m.dataNasterii && m.dataNasterii > `${Number(today.slice(0, 4)) - 18}${today.slice(4)}`);
+  const families = inRotation.filter((u) => u.key.startsWith("f:"));
+  return {
+    family: families.find(minor) ?? families[0] ?? null,
+    person: inRotation.find((u) => u.key.startsWith("p:")) ?? null,
+  };
+}

@@ -46,6 +46,7 @@ export interface ChurchSettings extends ChurchInfo {
   privacyVersion: string;
   /** The weekly prayer message ("" = the default text). */
   prayerMessage: string;
+  prayerMessagePerson: string;
   privacyAdoptedAt: string | null;
   /** The Comunitate the church belongs to. */
   comunitate: string;
@@ -91,6 +92,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     privacyText: c.privacyText,
     privacyVersion: c.privacyVersion,
     prayerMessage: c.prayerMessage,
+    prayerMessagePerson: c.prayerMessagePerson,
     privacyAdoptedAt: c.privacyAdoptedAt ? c.privacyAdoptedAt.toISOString().slice(0, 10) : null,
     comunitate: c.comunitate,
     pvLayout: storedLayout(c.pvLayout),

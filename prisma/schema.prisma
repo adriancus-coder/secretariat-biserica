@@ -74,8 +74,10 @@ model Church {
   pushWeeklyAt            DateTime?
   /// The Monday whose "Familia săptămânii este pregătită" notification was sent (claimed before sending).
   pushPrayerWeek          DateTime? @db.Date
-  /// The weekly prayer message ("Copiază mesajul"), {familia} its only variable; "" = the default text.
+  /// The weekly prayer messages (src/lib/prayer-message.ts): for families ({parinti}, {copii}, {familia})
+  /// and for a person without a family ({persoana}, {pe}, {ii}); "" = the default text.
   prayerMessage           String    @default("")
+  prayerMessagePerson     String    @default("")
   /// "Semnătura se desenează de fiecare dată": "" = off, "TOATE" = every document, "TIPURI" = the types below.
   semnaturaUnica          String    @default("")
   semnaturaUnicaTipuri    String[]  @default([])

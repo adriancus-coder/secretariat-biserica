@@ -95,7 +95,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
         titlu: "Rugăciunea săptămânală pentru familii",
         campuri: [
           ["Nu dorește să fie pomenită", prayer.prayerOptOut ? "da" : "nu"],
-          ["Pot fi pomeniți și copiii", prayer.prayerIncludeChildren ? "da" : "nu"],
+          ["Copiii pot fi pomeniți cu numele", prayer.prayerIncludeChildren ? "da" : "nu"],
           ["Ultima modificare", prayerChangeText(prayer.prayerChangedAt, prayer.prayerSource) ?? ""],
           ["Săptămânile în care a fost anunțată", prayerWeeks.join(", ")],
         ],

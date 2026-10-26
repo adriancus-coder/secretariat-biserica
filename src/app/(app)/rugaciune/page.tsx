@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PageHead } from "@/components/ui/page-head";
 import { fmt } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
-import { prayerMessage } from "@/lib/prayer";
 import { loadPrayerPage } from "@/server/queries/prayer";
 import { requireCtx } from "@/server/session";
 import { PrayerWeekCard } from "./prayer-week-card";
@@ -33,7 +32,7 @@ export default async function PrayerPage({ searchParams }: PageProps<"/rugaciune
         nextKey={d.next?.key ?? null}
         marked={Boolean(d.marked)}
         skipHref={d.total > 1 ? `/rugaciune?sari=${skip + 1}` : null}
-        message={label ? prayerMessage(d.message, label) : ""}
+        message={d.message}
       />
       <section className="card">
         <h3>Ultimele săptămâni</h3>

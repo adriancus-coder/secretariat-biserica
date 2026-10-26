@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { FormState } from "@/lib/form-state";
-import { parsePrayerKey, prayerMessageError, PRAYER_SOURCE_LABEL, type PrayerSourceKey } from "@/lib/prayer";
+import { parsePrayerKey, PRAYER_SOURCE_LABEL, type PrayerSourceKey } from "@/lib/prayer";
+import { templateError } from "@/lib/prayer-message";
 import { idSchema } from "@/lib/validation";
 import { fromDbDate } from "@/lib/dates";
 import { fmt, memberName } from "@/lib/format";
@@ -70,27 +71,35 @@ export async function prayerSharedAction(channel: PrayerShareChannel): Promise<F
   });
 }
 
-/** Setări → the message ("Copiază mesajul"), {familia} its only variable. Administrators, audited. */
+/**
+ * Setări → the two messages (src/lib/prayer-message.ts): for families ({parinti} or {familia}) and for
+ * a person without a family ({persoana}); "" = the default. Administrators, checked here, audited.
+ */
 export async function savePrayerMessageAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(formData, async () => {
     const ctx = await actionCtx("admin");
-    const text = String(formData.get("prayerMessage") ?? "").trim();
-    const error = prayerMessageError(text);
-    if (error) throw new ValidationError({ prayerMessage: error }, error);
-    const before = await ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { nume: true, prayerMessage: true } });
+    const family = String(formData.get("prayerMessage") ?? "").trim();
+    const person = String(formData.get("prayerMessagePerson") ?? "").trim();
+    const errors: Record<string, string> = {};
+    const fe = templateError(family, "family");
+    const pe = templateError(person, "person");
+    if (fe) errors.prayerMessage = fe;
+    if (pe) errors.prayerMessagePerson = pe;
+    if (fe || pe) throw new ValidationError(errors);
+    const before = await ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { nume: true, prayerMessage: true, prayerMessagePerson: true } });
     await ctx.db.$transaction(async (tx) => {
-      await tx.church.update({ where: { id: ctx.user.churchId }, data: { prayerMessage: text } });
+      await tx.church.update({ where: { id: ctx.user.churchId }, data: { prayerMessage: family, prayerMessagePerson: person } });
       await writeAudit(tx, ctx.user, {
         entity: "SETTINGS",
         entityId: ctx.user.churchId,
         entityLabel: before.nume,
         action: "UPDATE",
-        fields: ["mesajRugaciune"],
-        before: { mesajRugaciune: before.prayerMessage },
-        after: { mesajRugaciune: text },
+        fields: ["mesajRugaciune", "mesajRugaciunePersoana"],
+        before: { mesajRugaciune: before.prayerMessage, mesajRugaciunePersoana: before.prayerMessagePerson },
+        after: { mesajRugaciune: family, mesajRugaciunePersoana: person },
       });
     });
-    return { ok: true, message: "Mesajul a fost salvat." };
+    return { ok: true, message: "Mesajele au fost salvate." };
   });
   revalidatePath("/setari");
   return state;
@@ -101,7 +110,7 @@ const yesNo = (b: boolean) => (b ? "da" : "nu");
 
 /**
  * The family card (or, for a person without a family, the person page): "Nu doresc să fie pomenită la
- * rugăciunea săptămânală" (objection) and "Pot fi pomeniți și copiii" (consent), with the source.
+ * rugăciunea săptămânală" (objection) and "Copiii pot fi pomeniți cu numele" (consent), with the source.
  * Write roles; audited on the family / person.
  */
 export async function setPrayerPrefsAction(target: { familyId?: string; personId?: string }, _prev: FormState, formData: FormData): Promise<FormState> {

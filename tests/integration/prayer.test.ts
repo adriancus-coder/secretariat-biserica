@@ -43,7 +43,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
       ["Maria", { rudenie: "Soție", dataNasterii: new Date("1982-01-01") }],
       ["Ana", { rudenie: "Fiică", dataNasterii: new Date("2016-01-01"), statut: "APARTINATOR" }],
     ]);
-    await family(ca.id, "barbu", "Barbu", [["Vasile", { rudenie: "Cap de familie" }], ["Ioana", { rudenie: "Soție" }], ["Matei", { rudenie: "Fiu", dataNasterii: new Date("2018-01-01"), statut: "APARTINATOR" }]], { prayerIncludeChildren: true });
+    await family(ca.id, "barbu", "Barbu", [["Vasile", { rudenie: "Cap de familie" }], ["Ioana", { rudenie: "Soție" }], ["Matei", { rudenie: "Fiu", gen: "M", dataNasterii: new Date("2018-01-01"), statut: "APARTINATOR" }]], { prayerIncludeChildren: true });
     await family(ca.id, "nu", "Ciobanu", [["Petru", { rudenie: "Cap de familie" }]], { prayerOptOut: true });
     await family(ca.id, "fost", "Dobre", [["Dan", { rudenie: "Cap de familie", statut: "FOST_MEMBRU", dataIesire: new Date("2024-01-01") }]]);
     await family(cb.id, "altabiserica", "Enache", [["Eva", { rudenie: "Cap de familie" }]]);
@@ -56,7 +56,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
 
   it("reads only names, status, exit, birth date and relation: no contact data, notes or roles", () => {
     const keys = (o: object) => Object.keys(o).sort();
-    expect(keys(PRAYER_MEMBER_SELECT)).toEqual(["dataIesire", "dataNasterii", "id", "nume", "prenume", "rudenie", "statut"]);
+    expect(keys(PRAYER_MEMBER_SELECT)).toEqual(["dataIesire", "dataNasterii", "gen", "id", "nume", "prenume", "rudenie", "statut"]);
     expect(keys(PRAYER_PERSON_SELECT)).toEqual([...keys(PRAYER_MEMBER_SELECT), "prayerIncludeChildren", "prayerOptOut"].sort());
     expect(keys(PRAYER_FAMILY_SELECT)).toEqual(["headId", "id", "members", "prayerIncludeChildren", "prayerOptOut"]);
     const all = JSON.stringify([PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT, PRAYER_FAMILY_SELECT]);
@@ -67,7 +67,15 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     const d = await loadPrayerPage(ctx, 0);
     expect(d.total).toBe(2);
     expect(d.next?.label).toBe("Familia Barbu: Vasile și Ioana, cu copilul Matei");
-    expect((await loadPrayerPage(ctx, 1)).next?.label).toBe("Familia Popescu: Ion și Maria");
+    const popescu = await loadPrayerPage(ctx, 1);
+    expect(popescu.next?.label).toBe("Familia Popescu: Ion și Maria");
+    // No consent for the children: the message names none, and Ana's name is nowhere in the page data.
+    expect(popescu.message).toBe(
+      "Pace, frați și surori! Săptămâna aceasta ne vom ruga pentru familia Popescu Ion și Maria și pentru copilul lor, ca Domnul să-i binecuvânteze cu sănătate și cu dragoste de Domnul și să le dea înțelepciune în toate. Amin.",
+    );
+    expect(JSON.stringify(popescu)).not.toMatch(/Ana|2016/);
+    // With consent (Barbu), the little boy is named.
+    expect(d.message).toContain("familia Barbu Vasile și Ioana și pentru micuțul Matei, ca Domnul");
     const text = JSON.stringify(d);
     for (const hidden of ["Ciobanu", "Dobre", "Enache", "900", "@x.no", "Strada", "2016", "2018"]) expect(text).not.toContain(hidden);
     // The page data is the label and the key, nothing more.

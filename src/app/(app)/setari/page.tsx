@@ -22,6 +22,7 @@ import { adoptPrivacyModelAction } from "@/server/actions/settings";
 import { StatutesCard } from "./statutes-card";
 import { CommitteeCard } from "./committee-card";
 import { PrayerMessageCard } from "./prayer-message-card";
+import { prayerSamples } from "@/server/queries/prayer";
 import { ExcerptsCard } from "./excerpts-card";
 import { isDefaultExcerpts } from "@/lib/statute-excerpts";
 import { mandateEnd, mandateNotice } from "@/lib/committee";
@@ -107,7 +108,13 @@ export default async function SettingsPage() {
         notice={mandateNotice(todayIso(), church.comitetAlesLa, church.comitetPrelungit)}
         readOnly={!permissions.admin(role)}
       />
-      <PrayerMessageCard message={church.prayerMessage} readOnly={!permissions.admin(role)} />
+      <PrayerMessageCard
+        family={church.prayerMessage}
+        person={church.prayerMessagePerson}
+        readOnly={!permissions.admin(role)}
+        samples={permissions.admin(role) ? await prayerSamples(ctx) : { family: null, person: null }}
+        today={todayIso()}
+      />
       <StatutesCard
         slug={church.slug}
         readOnly={!permissions.admin(role)}

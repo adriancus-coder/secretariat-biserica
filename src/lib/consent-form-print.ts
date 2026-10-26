@@ -1,13 +1,14 @@
 import type { Block, PrintSpec } from "@/domain/print";
 import type { ChurchInfo } from "@/domain/types";
 import { CONSENT_QUESTION, OPTIONAL_CONSENTS } from "./labels";
+import { PRAYER_CHILDREN_HELP, PRAYER_CHILDREN_LABEL } from "./prayer";
 
 /**
  * The paper form of the consents ("Înregistrează acord pe hârtie" records what was ticked on it):
  * the notice confirmation, the four optional consents (Da / Nu) and the weekly prayer for families,
  * the same two rows as in the online campaign. Blank, nothing about a person is printed. Pure.
  */
-export const PRAYER_FORM_ROWS = ["Nu doresc ca familia mea să fie pomenită pe grupul bisericii", "Pot fi pomeniți și copiii noștri"] as const;
+export const PRAYER_FORM_ROWS = ["Nu doresc ca familia mea să fie pomenită pe grupul bisericii", `${PRAYER_CHILDREN_LABEL} (${PRAYER_CHILDREN_HELP})`] as const;
 
 const BOX = "[   ]";
 const para = (text: string, bold = false): Block => ({ type: "para", runs: [{ text, bold }] });

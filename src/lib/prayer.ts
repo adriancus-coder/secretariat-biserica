@@ -13,9 +13,6 @@ export const PRAYER_STATUSES = ["MEMBRU", "APARTINATOR", "BOTEZAT_FARA_TRANSFER"
 /** Who counts as a parent in the family's line: the head and the spouse. */
 export const PRAYER_PARENT_RELATIONS = ["Cap de familie", "Soț", "Soție"];
 
-export const DEFAULT_PRAYER_MESSAGE = "Săptămâna aceasta ne rugăm pentru {familia}. Să-i purtăm în rugăciune!";
-export const PRAYER_VARIABLE = "{familia}";
-export const PRAYER_MESSAGE_MAX = 500;
 /** The week's message as edited on /rugaciune before sending (never stored on the server). */
 export const PRAYER_SHARE_MAX = 1000;
 export const PRAYER_SHARE_HINT = "Nu scrieți probleme de sănătate sau alte detalii personale fără acordul familiei.";
@@ -24,6 +21,10 @@ export const PRAYER_SHARE_HINT = "Nu scrieți probleme de sănătate sau alte de
 export function whatsappUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
+
+/** The children's consent, the same words on the family card, in the campaign and on the paper form. */
+export const PRAYER_CHILDREN_LABEL = "Copiii pot fi pomeniți cu numele";
+export const PRAYER_CHILDREN_HELP = "Altfel, mesajul spune doar „și pentru copiii lor”.";
 
 export const PRAYER_SOURCE_LABEL = { CAMPANIE: "campania de actualizare a datelor", HARTIE: "formular pe hârtie", SECRETARIAT: "secretariat" } as const;
 export type PrayerSourceKey = keyof typeof PRAYER_SOURCE_LABEL;
@@ -37,6 +38,8 @@ export interface PrayerMember {
   dataNasterii: string | null;
   dataIesire: string | null;
   rudenie: string;
+  /** "M" / "F" / null: only for the message's wording ("micuțul / micuța", "fratele / sora"). */
+  gen?: string | null;
 }
 
 /** A family, or a person without a family ("p:<id>"), with its prayer settings and last announcement. */
@@ -64,7 +67,7 @@ function joinNames(names: string[]): string {
 }
 
 /** The parents (head and spouse, else the active adults) and the other active members. */
-function split(u: PrayerUnit, today: string) {
+export function prayerParts(u: PrayerUnit, today: string): { parents: PrayerMember[]; children: PrayerMember[] } {
   const live = u.members.filter(active);
   const isParent = (m: PrayerMember) => adult(m, today) && (m.id === u.headId || PRAYER_PARENT_RELATIONS.includes(m.rudenie));
   let parents = live.filter(isParent);
@@ -79,7 +82,7 @@ function split(u: PrayerUnit, today: string) {
  * else: no ages, dates, status, roles or contact data.
  */
 export function prayerLabel(u: PrayerUnit, today: string): string {
-  const { parents, children } = split(u, today);
+  const { parents, children } = prayerParts(u, today);
   const surname = (parents[0] ?? u.members[0])?.nume.trim() ?? "";
   const first = (ms: PrayerMember[]) => joinNames(ms.map((m) => m.prenume.trim()).filter(Boolean));
   const kids = u.includeChildren && children.length ? `, cu ${children.length === 1 ? "copilul" : "copiii"} ${first(children)}` : "";
@@ -100,21 +103,6 @@ export function prayerRotation(units: PrayerUnit[], today: string): { key: strin
 export function weekStartOf(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
   return addDays(iso, -((d + 6) % 7));
-}
-
-/** The message with the family's name; an empty template is the default text. */
-export function prayerMessage(template: string, label: string): string {
-  return (template.trim() || DEFAULT_PRAYER_MESSAGE).split(PRAYER_VARIABLE).join(label);
-}
-
-/** Why a message template is refused: {familia} must appear, and no other {…} variable. */
-export function prayerMessageError(template: string): string | null {
-  const t = template.trim();
-  if (!t) return null;
-  if (t.length > PRAYER_MESSAGE_MAX) return `Mesajul poate avea cel mult ${PRAYER_MESSAGE_MAX} de caractere.`;
-  if (!t.includes(PRAYER_VARIABLE)) return "Mesajul trebuie să conțină {familia}, locul numelui familiei.";
-  if (/\{(?!familia\})[^}]*\}/.test(t)) return "Singura variabilă permisă este {familia}.";
-  return null;
 }
 
 /** The unit key of a family or a person: "f:<id>" / "p:<id>". */
@@ -156,5 +144,5 @@ export function restrictivePrayer(answers: Partial<PrayerAnswer>[]): Partial<Pra
 
 export const PRAYER_FIELD_LABEL = {
   optOut: "Rugăciunea săptămânală: nu doresc ca familia să fie pomenită",
-  includeChildren: "Rugăciunea săptămânală: pot fi pomeniți și copiii",
+  includeChildren: "Rugăciunea săptămânală: copiii pot fi pomeniți cu numele",
 } as const;

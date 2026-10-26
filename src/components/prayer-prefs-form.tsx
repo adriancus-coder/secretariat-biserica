@@ -3,6 +3,7 @@
 import { Icon } from "@/components/shell/icons";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
+import { PRAYER_CHILDREN_HELP, PRAYER_CHILDREN_LABEL } from "@/lib/prayer";
 import { setPrayerPrefsAction } from "@/server/actions/prayer";
 
 /**
@@ -38,7 +39,10 @@ export function PrayerPrefsForm({
       </label>
       <label className="switch-row">
         <input type="checkbox" role="switch" name="prayerIncludeChildren" defaultChecked={v ? v.prayerIncludeChildren === "on" : includeChildren} />
-        <span className="font-medium">Pot fi pomeniți și copiii</span>
+        <span>
+          <span className="block font-medium">{PRAYER_CHILDREN_LABEL}</span>
+          <span className="hint block !mt-0">{PRAYER_CHILDREN_HELP}</span>
+        </span>
       </label>
       <div className="field">
         <label htmlFor={`prayer-source-${target.familyId ?? target.personId}`}>Sursa răspunsului</label>
