@@ -44,9 +44,9 @@ function Bar({ label, n, width, warn, href }: { label: string; n: number; width:
 }
 
 /** A figure; with `href` it opens the exact list of persons it counts. */
-function Stat({ value, label, href }: { value: React.ReactNode; label: React.ReactNode; href?: string }) {
+function Stat({ value, label, href, warn }: { value: React.ReactNode; label: React.ReactNode; href?: string; warn?: boolean }) {
   return href ? (
-    <Link href={href} className="stat stat-link">
+    <Link href={href} className={`stat stat-link${warn ? " stat-warn" : ""}`}>
       <b>{value}</b>
       <span>{label}</span>
     </Link>
@@ -309,21 +309,27 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <Stat value={s.apartB.length} label="aparținători b) nebotezați hotărâți" href={cat("apartinatori-b")} />
         <Stat value={s.botezatiFara.length} label="botezați fără calitate de membru" href={cat("botezati-fara-calitate")} />
       </div>
-      <div className="stats mb-4">
+      <div className="stats">
         <Stat value={s.copii.length} label="copii minori" href={cat("copii-minori")} />
         <Stat value={s.copiiMembri.length} label="copii ai membrilor" href={cat("copii-membri")} />
         <div className="stat">
-          <b>
+          <b className="stat-pair">
             <Link href={cat("barbati")} className="stat-link" aria-label={`${s.gen.M} bărbați — vezi lista`}>
               {s.gen.M}
-            </Link>
-            /
+            </Link>{" "}
+            /{" "}
             <Link href={cat("femei")} className="stat-link" aria-label={`${s.gen.F} femei — vezi lista`}>
               {s.gen.F}
             </Link>
           </b>
           <span>bărbați / femei</span>
         </div>
+      </div>
+      {/* Marital status of the adults in the record: the three add up to the adults. */}
+      <div className="stats mb-4">
+        <Stat value={s.casatoriti.length} label="căsătoriți" href={cat("casatoriti")} />
+        <Stat value={s.necasatoriti.length} label="necăsătoriți" href={cat("necasatoriti")} />
+        <Stat value={s.stareCivilaNecompletata.length} label="stare civilă necompletată" href={cat("stare-civila-necompletata")} warn={s.stareCivilaNecompletata.length > 0} />
       </div>
 
       <div className="two">

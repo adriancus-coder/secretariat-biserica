@@ -107,8 +107,13 @@ export function statisticsTableDefs(d: StatisticsReport): StatTableDef[] {
     {
       id: "statut",
       name: "Statut și gen",
-      columns: [col("statut", "Statut", "text"), col("barbati", "Bărbați"), col("femei", "Femei"), col("total", "Total")],
-      rows: st.byStatus.map((r) => plain(r.key, [r.label, r.M, r.F, r.total])),
+      columns: [col("statut", "Statut", "text"), col("barbati", "Bărbați"), col("femei", "Femei"), col("total", "Total"), col("casatoriti", "Căsătoriți"), col("necasatoriti", "Necăsătoriți")],
+      // Minors have no marital status category: "—" (sorted last), as on the screen.
+      rows: st.byStatus.map((r) =>
+        r.key === "copii-minori"
+          ? { key: r.key, values: [r.label, r.M, r.F, r.total, "—", "—"], sort: [r.label, r.M, r.F, r.total, null, null] }
+          : plain(r.key, [r.label, r.M, r.F, r.total, r.casatoriti, r.necasatoriti]),
+      ),
     },
     {
       id: "familii",
@@ -120,6 +125,10 @@ export function statisticsTableDefs(d: StatisticsReport): StatTableDef[] {
         ["Familii cu copii minori", st.families.withMinors, st.families.withMinors],
         ["Persoane singure în familie", st.families.alone, st.families.alone],
         ["Persoane fără familie", st.families.withoutFamily, st.families.withoutFamily],
+        ["Adulți în evidență", st.marital.adulti, st.marital.adulti],
+        ["Adulți căsătoriți", st.marital.casatoriti, st.marital.casatoriti],
+        ["Adulți necăsătoriți", st.marital.necasatoriti, st.marital.necasatoriti],
+        ["Adulți cu starea civilă necompletată", st.marital.necompletat, st.marital.necompletat],
         ["Vârsta medie a membrilor", dec(st.ageAvg), st.ageAvg],
         ["Vârsta mediană a membrilor", dec(st.ageMedian), st.ageMedian],
         ["Persoane fără dată de naștere (neincluse la vârste)", st.withoutBirthDate, st.withoutBirthDate],

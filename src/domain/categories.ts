@@ -10,7 +10,7 @@ import type { EventRecord, PersonRecord } from "./types";
  * changed here), so a list always has exactly as many rows as the number next to it. Pure.
  */
 
-export const CATEGORY_GROUPS = ["Statut", "Copii", "Botez și intrare", "Vârstă", "Slujire", "Familie", "Ieșiri", "Acorduri"] as const;
+export const CATEGORY_GROUPS = ["Statut", "Copii", "Stare civilă", "Botez și intrare", "Vârstă", "Slujire", "Familie", "Ieșiri", "Acorduri"] as const;
 export type CategoryGroup = (typeof CATEGORY_GROUPS)[number];
 
 export interface CategoryDef {
@@ -53,6 +53,10 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "copii-membri", label: "Copii ai membrilor", group: "Copii" },
   { key: "copii-apartinatori", label: "Copii ai aparținătorilor", group: "Copii" },
   { key: "copii-fara-familie", label: "Copii fără familie", group: "Copii" },
+  { key: "adulti", label: "Adulți (18+)", group: "Stare civilă" },
+  { key: "casatoriti", label: "Căsătoriți", group: "Stare civilă" },
+  { key: "necasatoriti", label: "Necăsătoriți", group: "Stare civilă" },
+  { key: "stare-civila-necompletata", label: "Stare civilă necompletată", group: "Stare civilă" },
   { key: "botezati", label: "Botezați", group: "Botez și intrare" },
   { key: "nebotezati", label: "Nebotezați", group: "Botez și intrare" },
   { key: "intrati-botez", label: "Botezați în anul ales", group: "Botez și intrare", yearly: true },
@@ -163,6 +167,14 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return ids(s.copii.filter((p) => p.familyId && apartFams.has(p.familyId)));
         case "copii-fara-familie":
           return ids(s.copii.filter((p) => !p.familyId));
+        case "adulti":
+          return ids(s.adulti);
+        case "casatoriti":
+          return ids(s.casatoriti);
+        case "necasatoriti":
+          return ids(s.necasatoriti);
+        case "stare-civila-necompletata":
+          return ids(s.stareCivilaNecompletata);
         case "botezati":
           return ids(s.botezati);
         case "nebotezati":

@@ -5,12 +5,12 @@ import { event, person } from "./test-helpers";
 
 describe("darea de seamă anuală", () => {
   const persons = [
-    person({ nume: "Popescu", prenume: "Ion", familyId: "Popescu", rudenie: "Cap de familie", dataNasterii: "1975-04-02", dataMembru: "2001-06-10", dataBotez: "2001-06-10" }),
-    person({ nume: "Popescu", prenume: "Maria", familyId: "Popescu", dataNasterii: "1978-11-20", dataMembru: "2003-05-01", dataBotez: "1996-07-07" }),
+    person({ nume: "Popescu", prenume: "Ion", familyId: "Popescu", rudenie: "Cap de familie", dataNasterii: "1975-04-02", dataMembru: "2001-06-10", dataBotez: "2001-06-10", dataCasatoriei: "2000-08-12" }),
+    person({ nume: "Popescu", prenume: "Maria", familyId: "Popescu", dataNasterii: "1978-11-20", dataMembru: "2003-05-01", dataBotez: "1996-07-07", dataCasatoriei: "2000-08-12" }),
     person({ nume: "Popescu", prenume: "Andrei", statut: "APARTINATOR", familyId: "Popescu", dataNasterii: "2020-03-15", dataBinecuvantare: "2025-09-02" }),
     person({ nume: "Munteanu", prenume: "Daniel", familyId: "Munteanu", dataNasterii: "2000-12-12", dataMembru: "2025-04-20", modIntrare: "BOTEZ", dataBotez: "2025-04-20" }),
     person({ nume: "Stan", prenume: "Ioana", dataNasterii: "1999-01-01", dataMembru: "2025-06-01", modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj" }),
-    person({ nume: "Barbu", prenume: "Petru", statut: "PRIETEN", dataNasterii: "1960-02-29", createdAt: "2021-03-01" }),
+    person({ nume: "Barbu", prenume: "Petru", statut: "PRIETEN", dataNasterii: "1960-02-29", createdAt: "2021-03-01", necasatorit: true }),
     person({ nume: "Ionescu", prenume: "Elena", statut: "BOTEZAT_FARA_TRANSFER", familyId: "Ionescu", dataNasterii: "1990-01-01", dataMembru: "2018-01-01", dataBotez: "2010-08-15" }),
     person({ nume: "Lungu", prenume: "Mihai", statut: "FOST_MEMBRU", dataNasterii: "1985-05-05", dataMembru: "2010-01-01", dataBotez: "2010-01-01", dataIesire: "2025-02-01", modIesire: "TRANSFER", bisericaDestinatie: "Biserica Betel Oslo" }),
   ];
@@ -36,6 +36,8 @@ describe("darea de seamă anuală", () => {
         "- Botezați fără calitate de membru: 1",
         "- Prieteni ai casei Domnului (nebotezați): 1",
         "- Copii minori: 1 (din care copii ai membrilor: 1)",
+        // Not in the prototype: the adults' marital status (the three add up to the adults).
+        "- Adulți: 6 (căsătoriți 2, necăsătoriți 1, necompletat 3)",
         "- 3 familii",
         "Total persoane în evidență: 7",
         "",

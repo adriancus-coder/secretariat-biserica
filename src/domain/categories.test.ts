@@ -122,3 +122,39 @@ describe("consent categories", () => {
     expect(ctx.ids("acord-birthday-neexprimat")).toEqual(["a", "b", "c", "d"]);
   });
 });
+
+describe("marital status (adults in the record)", () => {
+  const persons = [
+    person({ id: "m1", nume: "Test", statut: "MEMBRU", dataNasterii: "1980-01-01", dataCasatoriei: "2005-06-01" }),
+    person({ id: "m2", nume: "Test", statut: "APARTINATOR", dataNasterii: "1985-01-01", dataCasatoriei: "2026-08-01" }),
+    person({ id: "u1", nume: "Test", statut: "PRIETEN", dataNasterii: "1999-01-01", necasatorit: true }),
+    person({ id: "e1", nume: "Test", statut: "BOTEZAT_FARA_TRANSFER", dataNasterii: "1970-01-01" }),
+    person({ id: "e2", nume: "Test", statut: "MEMBRU" }), // no birth date: an adult, nothing filled in
+    person({ id: "k1", nume: "Test", statut: "APARTINATOR", dataNasterii: "2012-01-01" }), // a minor: in no category
+    person({ id: "f1", nume: "Test", statut: "FOST_MEMBRU", dataNasterii: "1950-01-01", dataCasatoriei: "1975-01-01", dataIesire: "2024-01-01", modIesire: "TRANSFER" }),
+    person({ id: "d1", nume: "Test", statut: "MEMBRU", dataNasterii: "1940-01-01", necasatorit: true, dataIesire: "2026-02-01", modIesire: "DECES" }),
+  ];
+  const ctxFor = (year?: number) => categoryContext({ persons, events: [], today: TODAY, year, committee: new Set(), heads: new Set(), holders: new Map() });
+
+  it("married + unmarried + not filled in = the adults in the record, today", () => {
+    const ctx = ctxFor();
+    const of = (k: string) => ctx.ids(k)!.sort();
+    expect(of("adulti")).toEqual(["e1", "e2", "m1", "m2", "u1"]);
+    expect(of("casatoriti")).toEqual(["m1", "m2"]);
+    expect(of("necasatoriti")).toEqual(["u1"]);
+    expect(of("stare-civila-necompletata")).toEqual(["e1", "e2"]);
+    expect(of("casatoriti").length + of("necasatoriti").length + of("stare-civila-necompletata").length).toBe(of("adulti").length);
+    // A minor, a former member and a deceased person are in none of them.
+    for (const k of ["adulti", "casatoriti", "necasatoriti", "stare-civila-necompletata"]) for (const id of ["k1", "f1", "d1"]) expect(of(k)).not.toContain(id);
+  });
+
+  it("at the end of a past year: a marriage after it counts as unmarried then; the sums still add up", () => {
+    const ctx = ctxFor(2025);
+    const of = (k: string) => ctx.ids(k)!.sort();
+    expect(of("casatoriti")).toEqual(["m1"]);
+    expect(of("necasatoriti")).toEqual(["d1", "m2", "u1"]); // d1 was still alive at 31.12.2025
+    expect(of("casatoriti").length + of("necasatoriti").length + of("stare-civila-necompletata").length).toBe(of("adulti").length);
+    const s = computeStats(persons, [], { year: 2025, today: TODAY });
+    expect(s.adulti.length).toBe(of("adulti").length);
+  });
+});

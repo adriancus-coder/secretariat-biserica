@@ -1338,6 +1338,14 @@
     font-size: 0.75rem;
     color: var(--ink-3);
   }
+  /* A figure that needs attention (e.g. "stare civilă necompletată" above 0). */
+  .stat.stat-warn {
+    background: var(--warn-soft);
+  }
+  .stat.stat-warn b,
+  .stat.stat-warn span {
+    color: var(--warn);
+  }
 
   /* Liste */
   .list {
@@ -2178,10 +2186,22 @@
     min-height: 44px;
     margin: -12px 0;
   }
+  /* A number inside a figure ("36 / 40"): a 44 px tap area that does not grow the line, so the
+     label under it stays level with the other cards (1em = the figure's own line). */
   b .stat-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 32px;
     min-height: 44px;
+    margin-block: calc((1em - 44px) / 2);
+  }
+  /* "36 / 40": two numbers on one line exactly as tall as a single figure. */
+  .stat b.stat-pair {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    height: 1em;
   }
   .stat-links {
     display: flex;

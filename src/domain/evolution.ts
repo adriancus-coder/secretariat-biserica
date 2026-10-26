@@ -95,8 +95,10 @@ export interface Structure {
   ageAvg: number | null;
   ageMedian: number | null;
   bands: { min: number; max: number; n: number }[];
-  /** Membri / aparținători / prieteni / copii by gender. */
-  byStatus: { key: string; label: string; M: number; F: number; total: number }[];
+  /** Membri / aparținători / prieteni / copii by gender, and the married / unmarried adults of each. */
+  byStatus: { key: string; label: string; M: number; F: number; total: number; casatoriti: number; necasatoriti: number }[];
+  /** The adults in the record by marital status (the three add up to `adulti`). */
+  marital: { adulti: number; casatoriti: number; necasatoriti: number; necompletat: number };
   families: { count: number; avgSize: number | null; withMinors: number; alone: number; withoutFamily: number };
 }
 
@@ -115,9 +117,12 @@ export function structure(input: CategoryInput): Structure {
         : (memberAges[memberAges.length / 2 - 1] + memberAges[memberAges.length / 2]) / 2;
   const men = new Set(ctx.ids("barbati"));
   const women = new Set(ctx.ids("femei"));
+  const married = new Set(ctx.ids("casatoriti"));
+  const unmarried = new Set(ctx.ids("necasatoriti"));
   const byGender = (key: string, label: string) => {
     const list = ctx.ids(key)!;
-    return { key, label, M: list.filter((id) => men.has(id)).length, F: list.filter((id) => women.has(id)).length, total: list.length };
+    const count = (set: Set<string>) => list.filter((id) => set.has(id)).length;
+    return { key, label, M: count(men), F: count(women), total: list.length, casatoriti: count(married), necasatoriti: count(unmarried) };
   };
   const famMembers = new Map<string, PersonRecord[]>();
   for (const p of s.ev) if (p.familyId) famMembers.set(p.familyId, [...(famMembers.get(p.familyId) ?? []), p]);
@@ -143,6 +148,7 @@ export function structure(input: CategoryInput): Structure {
       byGender("prieteni", "Prieteni ai casei Domnului"),
       byGender("copii-minori", "Copii minori"),
     ],
+    marital: { adulti: s.adulti.length, casatoriti: s.casatoriti.length, necasatoriti: s.necasatoriti.length, necompletat: s.stareCivilaNecompletata.length },
     families: {
       count: famMembers.size,
       avgSize: famMembers.size ? Math.round(([...famMembers.values()].reduce((a, l) => a + l.length, 0) / famMembers.size) * 10) / 10 : null,

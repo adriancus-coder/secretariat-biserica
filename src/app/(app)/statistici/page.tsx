@@ -192,9 +192,34 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
               <N key="m" n={r.M} href={both(r.key, "barbati", d.an)} />,
               <N key="f" n={r.F} href={both(r.key, "femei", d.an)} />,
               <N key="t" n={r.total} href={cat(r.key, d.an)} />,
+              // Minors are never in a marital status category: their row shows "—".
+              r.key === "copii-minori" ? "—" : <N key="c" n={r.casatoriti} href={both(r.key, "casatoriti", d.an)} />,
+              r.key === "copii-minori" ? "—" : <N key="n" n={r.necasatoriti} href={both(r.key, "necasatoriti", d.an)} />,
             ],
           }))}
         />
+      </section>
+
+      <section className="card">
+        <h3>Starea civilă a adulților</h3>
+        <div className="stats">
+          <Link href={cat("casatoriti", d.an)} className="stat stat-link">
+            <b>{st.marital.casatoriti}</b>
+            <span>căsătoriți</span>
+          </Link>
+          <Link href={cat("necasatoriti", d.an)} className="stat stat-link">
+            <b>{st.marital.necasatoriti}</b>
+            <span>necăsătoriți</span>
+          </Link>
+          <Link href={cat("stare-civila-necompletata", d.an)} className={`stat stat-link${st.marital.necompletat > 0 ? " stat-warn" : ""}`}>
+            <b>{st.marital.necompletat}</b>
+            <span>stare civilă necompletată</span>
+          </Link>
+        </div>
+        <p className="hint">
+          Din cei <Link href={cat("adulti", d.an)}>{st.marital.adulti} adulți în evidență</Link> (18 ani împliniți; fără dată de naștere, persoana este
+          numărată ca adult). Necompletată: nici data căsătoriei, nici „Necăsătorit(ă)” pe fișa persoanei.
+        </p>
       </section>
 
       <section className="card">

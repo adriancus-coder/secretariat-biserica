@@ -26,7 +26,8 @@ const report: StatisticsReport = {
     ageAvg: 41.5,
     ageMedian: 40,
     bands: [{ min: 0, max: 13, n: 5 }, { min: 65, max: 200, n: 1 }],
-    byStatus: [{ key: "membri", label: "Membri", M: 20, F: 21, total: 41 }],
+    byStatus: [{ key: "membri", label: "Membri", M: 20, F: 21, total: 41, casatoriti: 30, necasatoriti: 5 }],
+    marital: { adulti: 50, casatoriti: 30, necasatoriti: 8, necompletat: 12 },
     families: { count: 10, avgSize: 3.2, withMinors: 4, alone: 2, withoutFamily: 5 },
   },
 };
@@ -64,4 +65,13 @@ describe("statistics report", () => {
       "Evoluția pe 2 ani\nAn | Membri | Intrări | Ieșiri | Binecuvântări | Creștere netă\n2024 | 40 | 3 | 2 | 3 | +1\n2025 | 41 | 3 | 2 | 3 | +1",
     );
   });
+
+  it("the status table has the married / unmarried columns and the families table the adults by marital status", () => {
+    const [, , , status, families] = statisticsTables(report);
+    expect(status.columns).toEqual(["Statut", "Bărbați", "Femei", "Total", "Căsătoriți", "Necăsătoriți"]);
+    expect(status.rows[0]).toEqual(["Membri", 20, 21, 41, 30, 5]);
+    const row = (label: string) => families.rows.find((r) => r[0] === label)?.[1];
+    expect([row("Adulți în evidență"), row("Adulți căsătoriți"), row("Adulți necăsătoriți"), row("Adulți cu starea civilă necompletată")]).toEqual([50, 30, 8, 12]);
+  });
 });
+

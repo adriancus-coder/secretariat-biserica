@@ -43,6 +43,8 @@ export function buildReportText(year: number, s: Stats, activity: YearActivity, 
   L.push(`- Botezați fără calitate de membru: ${s.botezatiFara.length}`);
   L.push(`- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`);
   L.push(`- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`);
+  // Not in the prototype: the adults' marital status (documented with the persons block in the parity test).
+  L.push(`- Adulți: ${s.adulti.length} (căsătoriți ${s.casatoriti.length}, necăsătoriți ${s.necasatoriti.length}, necompletat ${s.stareCivilaNecompletata.length})`);
   L.push(`- ${s.fams} familii`);
   L.push(`Total persoane în evidență: ${s.ev.length}`);
   L.push("");

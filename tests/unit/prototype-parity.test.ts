@@ -69,7 +69,9 @@ describe("paritate cu prototipul: statistici", () => {
  * Documented deviation (Statut art. 28, README "Diferențe față de prototip"): the persons block of the
  * report. The prototype's "Copii ai membrilor sub 18 ani", "- N copii minori", "- N botezați, din care
  * M aparținători" and "- N prieteni …" lines become the aparținători a / b, the baptised non-members,
- * the prieteni and the minors with the members' children. Everything else must match exactly.
+ * the prieteni and the minors with the members' children, followed by the adults' marital status
+ * ("- Adulți: N (căsătoriți X, necăsătoriți Y, necompletat Z)", not in the prototype). Everything else
+ * must match exactly.
  */
 function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): string {
   const lines = protoText.split("\n");
@@ -86,6 +88,7 @@ function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): st
     `- Botezați fără calitate de membru: ${s.botezatiFara.length}`,
     `- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`,
     `- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`,
+    `- Adulți: ${s.adulti.length} (căsătoriți ${s.casatoriti.length}, necăsătoriți ${s.necasatoriti.length}, necompletat ${s.stareCivilaNecompletata.length})`,
   );
   return lines.join("\n");
 }

@@ -64,6 +64,16 @@ export interface Stats {
   bands: [label: string, count: number][];
   /** Number of distinct families (family records) among the persons in the record. */
   fams: number;
+  /**
+   * Marital status (not in the prototype): the adults in the record (18+ at endDate, no birth date =
+   * adult; Fost membru only while still a member then), split into married (a marriage date up to
+   * endDate), unmarried (the "Necăsătorit(ă)" flag, or a marriage only after endDate) and not filled
+   * in. The three always add up to `adulti`.
+   */
+  adulti: PersonRecord[];
+  casatoriti: PersonRecord[];
+  necasatoriti: PersonRecord[];
+  stareCivilaNecompletata: PersonRecord[];
 }
 
 export function statsEndDate(today: string, year?: number): string {
@@ -133,6 +143,13 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   ]);
   const fams = new Set(ev.map((p) => p.familyId).filter(Boolean)).size;
 
+  const adulti = ev.filter((p) => !minor(p) && (p.statut !== "FOST_MEMBRU" || (p.dataIesire !== null && p.dataIesire > endDate)));
+  const casatoriti = adulti.filter((p) => p.dataCasatoriei && p.dataCasatoriei <= endDate);
+  const married = new Set(casatoriti.map((p) => p.id));
+  const necasatoriti = adulti.filter((p) => !married.has(p.id) && (p.necasatorit || Boolean(p.dataCasatoriei)));
+  const unmarried = new Set(necasatoriti.map((p) => p.id));
+  const stareCivilaNecompletata = adulti.filter((p) => !married.has(p.id) && !unmarried.has(p.id));
+
   return {
     y,
     endDate,
@@ -156,6 +173,10 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
     gen,
     bands,
     fams,
+    adulti,
+    casatoriti,
+    necasatoriti,
+    stareCivilaNecompletata,
   };
 }
 

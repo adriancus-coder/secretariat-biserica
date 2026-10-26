@@ -28,6 +28,8 @@ export const personRecordSelect = {
   bisericaDestinatie: true,
   createdAt: true,
   plecatDin: true,
+  dataCasatoriei: true,
+  necasatorit: true,
   numeTata: true,
   numeMama: true,
 } satisfies Prisma.PersonSelect;
@@ -59,6 +61,8 @@ export function toPersonRecord(p: PersonRecordRow): PersonRecord {
     bisericaDestinatie: p.bisericaDestinatie,
     createdAt: p.createdAt.toISOString().slice(0, 10),
     plecatDin: fromDbDate(p.plecatDin),
+    dataCasatoriei: fromDbDate(p.dataCasatoriei),
+    necasatorit: p.necasatorit,
   };
 }
 

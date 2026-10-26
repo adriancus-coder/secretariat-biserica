@@ -33,6 +33,9 @@ export interface PersonRecord {
   createdAt: string | null;
   /** Temporarily away since (Statut art. 23 alin. 4–5; not in the prototype). */
   plecatDin?: string | null;
+  /** Marital status (not in the prototype): the marriage date, or the "Necăsătorit(ă)" flag; neither = not filled in. */
+  dataCasatoriei?: string | null;
+  necasatorit?: boolean;
 }
 
 export interface EventRecord {

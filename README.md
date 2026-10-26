@@ -395,6 +395,12 @@ corecții deliberate:
     o măsură aplicată este menționată în scrisoare (alin. 9) și scrisoarea poate fi emisă doar de
     administrator; în timpul cercetării recomandarea se emite doar cu excepția schimbării domiciliului
     (alin. 6), menționată în text.
+21. **Starea civilă a adulților:** statistica numără adulții din evidență (18+ la data situației; fără
+    dată de naștere, persoana este numărată ca adult; fără foști membri și fără decedați) împărțiți în
+    căsătoriți (data căsătoriei până la data situației), necăsătoriți (bifa „Necăsătorit(ă)” sau o
+    căsătorie de după data situației) și cu starea civilă necompletată; cele trei adunate dau numărul de
+    adulți. Darea de seamă are, după rândul copiilor minori, „Adulți: N (căsătoriți X, necăsătoriți Y,
+    necompletat Z)”.
 
 ## Limitări și pași următori
 
