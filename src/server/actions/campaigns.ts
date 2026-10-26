@@ -105,31 +105,45 @@ export async function addMissingLinksAction(campaignId: string): Promise<void> {
   redirect(`/setari/actualizare-date/${campaignId}?salvat=1`);
 }
 
-async function updateLink(linkId: string, data: (link: { id: string }) => object, note: string) {
+/**
+ * A change on one personal link, audited on the campaign by the person's name only (never the link or
+ * the phone). No redirect: the row stays where it is and the page refreshes in place.
+ */
+async function updateLink(linkId: string, data: ((link: { id: string; sentAt: Date | null }) => object) | null, note: string): Promise<FormState> {
   let campaignId = "";
-  await runFormAction(null, async () => {
+  const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("write");
     parseOrThrow(idSchema, linkId);
     await ctx.db.$transaction(async (tx) => {
-      const link = await tx.dataUpdateLink.findUnique({ where: { id: linkId }, include: { person: { select: { nume: true, prenume: true } }, campaign: { select: { nume: true } } } });
+      const link = await tx.dataUpdateLink.findUnique({ where: { id: linkId }, include: { person: { select: { nume: true, prenume: true } }, campaign: { select: { nume: true, status: true } } } });
       if (!link) throw new ActionError("Linkul nu mai există.");
-      await tx.dataUpdateLink.update({ where: { id: linkId }, data: data(link) });
-      // Audited by the person's name only (never the link).
+      if (link.campaign.status !== "ACTIVE") throw new ActionError("Campania este închisă.");
+      if (data) await tx.dataUpdateLink.update({ where: { id: linkId }, data: data(link) });
       await writeAudit(tx, ctx.user, { entity: "CAMPAIGN", entityId: link.campaignId, entityLabel: link.campaign.nume, action: "UPDATE", fields: [], extra: { persoana: memberName(link.person), observatie: note } });
       campaignId = link.campaignId;
     });
+    return { ok: true };
   });
-  if (!campaignId) return;
-  revalidatePath(`/setari/actualizare-date/${campaignId}`);
-  redirect(`/setari/actualizare-date/${campaignId}?salvat=1`);
+  if (campaignId && data) revalidatePath(`/setari/actualizare-date/${campaignId}`);
+  return state;
 }
 
-/** "Marchează ca trimis". */
-export async function markLinkSentAction(linkId: string): Promise<void> {
-  await updateLink(linkId, () => ({ sentAt: new Date() }), "link trimis");
+/** "Marchează ca trimis" (also "Ați trimis? Marchează ca trimis" after WhatsApp). */
+export async function markLinkSentAction(linkId: string): Promise<FormState> {
+  return updateLink(linkId, () => ({ sentAt: new Date() }), "link trimis");
+}
+
+/** "Anulează marcarea": back to Netrimis. */
+export async function unmarkLinkSentAction(linkId: string): Promise<FormState> {
+  return updateLink(linkId, () => ({ sentAt: null }), "marcare ca trimis anulată");
+}
+
+/** "Trimite pe WhatsApp" was opened for this person: audited only, nothing is marked. */
+export async function linkWhatsappAction(linkId: string): Promise<FormState> {
+  return updateLink(linkId, null, "link trimis pe WhatsApp");
 }
 
 /** "Deblochează / generează link nou": the old link stops working, the counters start again. */
-export async function renewLinkAction(linkId: string): Promise<void> {
-  await updateLink(linkId, (l) => ({ ...linkSecret(l.id), failedChecks: 0, lockedAt: null, sentAt: null, openedAt: null, verifiedAt: null, revokedAt: null }), "link nou generat");
+export async function renewLinkAction(linkId: string): Promise<FormState> {
+  return updateLink(linkId, (l) => ({ ...linkSecret(l.id), failedChecks: 0, lockedAt: null, sentAt: null, openedAt: null, verifiedAt: null, revokedAt: null }), "link nou generat");
 }

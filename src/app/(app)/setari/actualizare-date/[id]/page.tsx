@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import { CopyButton } from "@/components/ui/copy-button";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { BackLink, PageHead } from "@/components/ui/page-head";
-import { ShareButton } from "@/components/ui/share-button";
 import { campaignMessage, LINK_STATUS_LABEL, LINK_STATUSES, type LinkStatus } from "@/lib/campaign";
 import { fmt, memberName } from "@/lib/format";
 import { DataTable } from "@/components/ui/data-table";
 import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
-import { addMissingLinksAction, closeCampaignAction, markLinkSentAction, renewLinkAction, toggleGeneralLinkAction } from "@/server/actions/campaigns";
+import { addMissingLinksAction, closeCampaignAction, toggleGeneralLinkAction } from "@/server/actions/campaigns";
+import { LinkRow } from "./link-row";
 import { applicationQrPng, applicationQrSvg } from "@/server/application-link";
 import { getCampaign } from "@/server/queries/campaigns";
 import { getChurch } from "@/server/queries/church";
@@ -184,39 +184,14 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
       </div>
 
       <ul className="list campaign-list">
-        {shown.map((l) => {
-          const message = campaignMessage(l.prenume, church.nume, c.deadline, l.url);
-          return (
-            <li key={l.id} className="item campaign-row">
-              <div className="grow min-w-0">
-                <Link href={`/persoane/${l.personId}`}>
-                  <b>{memberName(l)}</b>
-                </Link>{" "}
-                <span className={l.status === "BLOCAT" ? "tag tag-warn" : ANSWERED.includes(l.status) ? "tag tag-ok" : "tag"}>{LINK_STATUS_LABEL[l.status]}</span>
-                {!l.telefon.trim() ? (
-                  <span className="hint block">fără telefon — nu poate trece verificarea; folosiți hârtia sau completați telefonul</span>
-                ) : null}
-              </div>
-              {c.open ? (
-                <div className="flex flex-wrap gap-2">
-                  <CopyButton text={l.url} label="Copiază linkul" />
-                  <ShareButton title="Actualizarea datelor" text={message} />
-                  <CopyButton text={message} label="Copiază mesajul" />
-                  <form action={markLinkSentAction.bind(null, l.id)}>
-                    <button type="submit" className="btn btn-sm">
-                      Marchează ca trimis
-                    </button>
-                  </form>
-                  <form action={renewLinkAction.bind(null, l.id)}>
-                    <button type="submit" className="btn btn-sm">
-                      {l.status === "BLOCAT" ? "Deblochează / generează link nou" : "Generează link nou"}
-                    </button>
-                  </form>
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
+        {shown.map((l) => (
+          <LinkRow
+            key={l.id}
+            row={{ id: l.id, personId: l.personId, name: memberName(l), telefon: l.telefon, status: l.status, sentOn: l.sentOn, submissionId: l.submissionId }}
+            message={campaignMessage(l.prenume, church.nume, c.deadline, l.url)}
+            open={c.open}
+          />
+        ))}
       </ul>
     </>
   );

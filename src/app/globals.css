@@ -1835,9 +1835,66 @@
     content: "✓";
   }
   /* Data-update campaign: one adult per row, the link actions wrap under the name on phones. */
-  .campaign-row {
-    flex-wrap: wrap;
+  .list .item.campaign-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
     gap: 8px;
+  }
+  .campaign-who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* The main action fills the line on phones, "⋯" keeps its square beside it. */
+  .campaign-actions {
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+  }
+  .campaign-actions > .btn-primary {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+  }
+  .campaign-more {
+    flex: none;
+    min-width: 2.75rem;
+    padding-inline: 0;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+  .campaign-menu,
+  .campaign-ask,
+  .campaign-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .campaign-menu,
+  .campaign-ask,
+  .campaign-error {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .campaign-confirm {
+    width: 100%;
+    margin: 0;
+  }
+  @media (min-width: 1024px) {
+    .list .item.campaign-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .campaign-actions > .btn-primary {
+      flex: none;
+      min-width: 13rem;
+    }
   }
   /* Application link: QR code next to the actions, stacked on phones. */
   .qr-row {

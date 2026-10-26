@@ -23,6 +23,10 @@ export interface CampaignLinkRow {
   status: LinkStatus;
   url: string;
   failedChecks: number;
+  /** ISO date of "Marchează ca trimis", or null. */
+  sentOn: string | null;
+  /** The person's latest answer in this campaign ("Vezi răspunsul"), or null. */
+  submissionId: string | null;
 }
 
 /** A campaign with its personal links (write roles only: the page shows the links). */
@@ -36,8 +40,13 @@ export async function getCampaign(ctx: Ctx, id: string) {
   const approved = new Set(
     (await ctx.db.dataUpdateSubmission.findMany({ where: { campaignId: id, status: { in: ["ACCEPTED", "PARTIAL"] }, personId: { not: null } }, select: { personId: true } })).map((s) => s.personId!),
   );
+  const answers = new Map(
+    (await ctx.db.dataUpdateSubmission.findMany({ where: { campaignId: id, linkId: { not: null } }, orderBy: { createdAt: "asc" }, select: { id: true, linkId: true } })).map((s) => [s.linkId!, s.id]),
+  );
+  // Not sent yet first, then alphabetically.
+  const unsent = (l: (typeof c.links)[number]) => (linkStatus({ ...l, approved: approved.has(l.personId) }) === "NETRIMIS" ? 0 : 1);
   const links: CampaignLinkRow[] = c.links
-    .sort((a, b) => a.person.sortKey.localeCompare(b.person.sortKey))
+    .sort((a, b) => unsent(a) - unsent(b) || a.person.sortKey.localeCompare(b.person.sortKey))
     .map((l) => ({
       id: l.id,
       personId: l.personId,
@@ -47,6 +56,8 @@ export async function getCampaign(ctx: Ctx, id: string) {
       status: linkStatus({ ...l, approved: approved.has(l.personId) }),
       url: appUrl(`/actualizare/${linkToken(l.id, l.nonce)}`, origin),
       failedChecks: l.failedChecks,
+      sentOn: l.sentAt ? todayIso(undefined, l.sentAt) : null,
+      submissionId: answers.get(l.id) ?? null,
     }));
   const deadline = fromDbDate(c.deadline)!;
   return {
