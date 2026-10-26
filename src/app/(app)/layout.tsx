@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppNav } from "@/components/shell/app-nav";
+import { navItemsFor } from "@/components/shell/nav-items";
 import { Icon } from "@/components/shell/icons";
 import { TextSizeControl } from "@/components/text-size-control";
 import { Flash } from "@/components/ui/flash";
@@ -14,8 +15,9 @@ import { requireUser } from "@/server/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const canWrite = permissions.write(user.role);
-  const badges = await pendingBadges(user);
+  const items = navItemsFor((p) => permissions[p](user));
+  // The "Rugăciune" role gets no register counts at all.
+  const badges = permissions.read(user) ? await pendingBadges(user) : {};
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <div className="shell">
@@ -29,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {user.isPastor ? "Pastor" : ROLE_LABEL[user.role]}
           </Link>
         </header>
-        <AppNav badges={badges} canWrite={canWrite} />
+        <AppNav items={items} badges={badges} />
         <div className="shell-user desk-only">
           <TextSizeControl current={textSize} tone="dark" />
           <Link href="/cont" className="who">

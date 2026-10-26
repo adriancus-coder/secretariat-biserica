@@ -66,7 +66,7 @@ export async function requireUser(): Promise<CurrentUser> {
 }
 
 /** Pentru pagini: afișează pagina 403 dacă utilizatorul nu are permisiunea. */
-export async function requirePermission(permission: Permission): Promise<CurrentUser> {
+export async function requirePermission(permission: Permission = "read"): Promise<CurrentUser> {
   const user = await requireUser();
   if (!permissions[permission](user)) forbidden();
   return user;
@@ -77,9 +77,13 @@ export interface Ctx {
   db: TenantClient;
 }
 
-/** Contextul pentru stratul de date: utilizatorul + clientul limitat la biserica lui. */
-export async function requireCtx(permission?: Permission): Promise<Ctx> {
-  const user = permission ? await requirePermission(permission) : await requireUser();
+/**
+ * Contextul pentru stratul de date: utilizatorul + clientul limitat la biserica lui. Without a
+ * permission it asks for "read" (every role except "Rugăciune"); the user's own account asks for
+ * "account", the weekly prayer page for "rugaciune".
+ */
+export async function requireCtx(permission: Permission = "read"): Promise<Ctx> {
+  const user = await requirePermission(permission);
   return { user, db: tenantDb(user.churchId) };
 }
 
@@ -89,10 +93,10 @@ export class ActionError extends Error {}
  * Pentru acțiuni de server: nu redirecționează, ci aruncă `ActionError`, pe care formularele
  * îl afișează ca mesaj (vezi src/server/actions/run.ts).
  */
-export async function actionCtx(permission?: Permission): Promise<Ctx> {
+export async function actionCtx(permission: Permission = "read"): Promise<Ctx> {
   const user = await getCurrentUser();
   if (!user) throw new ActionError("Sesiunea a expirat. Autentificați-vă din nou.");
-  if (permission && !permissions[permission](user)) {
+  if (!permissions[permission](user)) {
     throw new ActionError("Nu aveți drepturi pentru această operațiune.");
   }
   return { user, db: tenantDb(user.churchId) };

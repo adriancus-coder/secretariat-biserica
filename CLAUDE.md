@@ -3,7 +3,7 @@
 Church secretariat web app. It covers the person register, meeting minutes (procese-verbale), a calendar with agapă, the outgoing document register, the annual report (dare de seamă), groups, notes (mențiuni) and settings.
 
 - Multi-church with full data isolation.
-- Roles: Administrator / Secretar / Vizualizare.
+- Roles: Administrator / Secretar / Vizualizare / Rugăciune (only the weekly prayer page and its own account).
 - User interface in Romanian, mobile-first.
 - First production church: Maranata Stavanger (Norway).
 
@@ -37,7 +37,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | `npm test` | Vitest, unit and integration. Integration tests need `TEST_DATABASE_URL`, and that database is truncated on every run. |
 | `npm run db:deploy` | Apply the existing migrations |
 | `npm run db:migrate -- --name <name>` | Create a migration after a schema change (development only) |
-| `npm run db:seed` | Load the demo church: `admin@demo.ro`, `secretar@demo.ro`, `vizualizare@demo.ro`, password `demo1234` |
+| `npm run db:seed` | Load the demo church: `admin@demo.ro`, `secretar@demo.ro`, `vizualizare@demo.ro`, `rugaciune@demo.ro`, password `demo1234` |
 
 Never run `prisma migrate reset` / `npm run db:reset` or any other destructive database command unless the owner explicitly asks. Prisma itself refuses resets started by an AI agent without the user's consent; do not bypass that.
 
@@ -114,7 +114,9 @@ tests/                  unit/, integration/, prototype/ (parity harness), stubs/
 
 - Pages and route handlers call `const ctx = await requireCtx(permission?)`. Without a session it redirects to the login page; without the permission it calls `forbidden()`.
 - Server actions call `const ctx = await actionCtx(permission?)`. It throws `ActionError`, and the form shows the message.
-- The permissions (`write`, `admin`, `export`, `audit`) are defined in `src/lib/permissions.ts`.
+- The permissions (`read`, `account`, `write`, `admin`, `export`, `audit`, `rugaciune`, …) are defined in `src/lib/permissions.ts`.
+  - `requireCtx()` / `actionCtx()` without an argument ask for `read`: every role except RUGACIUNE. The "Rugăciune" role has only `account` (Cont: password, two-step, passkeys, notifications; `requireUser()` / `actionCtx("account")`) and `rugaciune` (`/rugaciune`, also Secretar and Admin; not Vizualizare); it is never a pastor (`setPastorAction` refuses, a role change to it drops the flag), gets no badges, no saved signature, and `/` sends it to `/rugaciune`. The navigation is filtered per permission (`navItemsFor`, `NavItem.permission`).
+  - `tests/unit/prayer-role-access.test.ts` reads every page, route handler and server action and fails when one does not refuse that role; a new public or account route/action goes on its allowlist on purpose.
   - The UI also uses them to hide controls. Hiding a control is not protection: always check on the server.
 - `getCurrentUser()` reloads the user from the database on every request: active flag, role, `sessionVersion`. To end all sessions of a user, increment `sessionVersion` ("Deconectează-te de pe toate dispozitivele" in Cont; per user for the admin in Setări → Utilizatori).
 - Sessions: JWT, 24 hours, sliding (renewed at most once an hour while in use).

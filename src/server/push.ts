@@ -1,3 +1,4 @@
+import type { RoleKey } from "@/lib/labels";
 import "server-only";
 import webpush from "web-push";
 import { pushPayload, PushCoalescer, pushTypesFor, type PushType } from "@/lib/push";
@@ -25,7 +26,7 @@ function setup() {
 
 const coalescer = new PushCoalescer();
 
-type Recipient = { id: string; churchId: string; name: string; role: "ADMIN" | "SECRETAR" | "VIZUALIZARE"; isPastor: boolean; active: boolean; pushOff: string[] };
+type Recipient = { id: string; churchId: string; name: string; role: RoleKey; isPastor: boolean; active: boolean; pushOff: string[] };
 
 /** Sends one notification to every subscription of the user; "sent" when at least one got it. */
 async function sendToUser(user: Recipient, type: PushType | "TEST"): Promise<"sent" | "none" | "limited" | "failed"> {

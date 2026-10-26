@@ -111,6 +111,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M7 19a2.6 2.6 0 0 1 5 0M12 19a2.6 2.6 0 0 1 5 0" />
     </>
   ),
+  rugaciune: (
+    <>
+      <path d="M12 20s-7-4.4-7-9.5A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 2.5C19 15.6 12 20 12 20z" />
+      <path d="M12 11.5v4M10 13.5h4" />
+    </>
+  ),
   cereri: (
     <>
       <path d="M6 3h9l4 4v14H6z" />

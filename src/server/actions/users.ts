@@ -121,16 +121,18 @@ export async function changeRoleAction(userId: string, _prev: FormState, formDat
     if (user.role === "ADMIN" && user.active && (await otherActiveAdmins(ctx.user.churchId, userId)) === 0) {
       throw new ActionError("Biserica trebuie să aibă cel puțin un administrator activ.");
     }
+    // "Rugăciune" sees only the family of the week: it cannot keep the pastor flag (Statut art. 38–39).
+    const dropPastor = role === "RUGACIUNE" && user.isPastor;
     await ctx.db.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: userId }, data: { role } });
+      await tx.user.update({ where: { id: userId }, data: { role, ...(dropPastor ? { isPastor: false, pastorTitlu: "" } : {}) } });
       await writeAudit(tx, ctx.user, {
         entity: "USER",
         entityId: userId,
         entityLabel: `${user.name} <${user.email}>`,
         action: "UPDATE",
-        fields: ["role"],
-        before: { role: user.role },
-        after: { role },
+        fields: dropPastor ? ["role", "pastor"] : ["role"],
+        before: { role: user.role, pastor: user.isPastor ? "da" : "nu" },
+        after: { role, pastor: dropPastor ? "nu" : user.isPastor ? "da" : "nu" },
       });
     });
     return { ok: true, message: `Rol schimbat în „${ROLE_LABEL[role]}”.` };
@@ -258,6 +260,7 @@ export async function setPastorAction(userId: string, _prev: FormState, formData
     const user = await ctx.db.user.findUnique({ where: { id: userId } });
     if (!user) throw new ActionError("Utilizatorul nu există.");
     if (user.isPastor === isPastor && user.pastorTitlu === pastorTitlu) return { ok: true };
+    if (isPastor && user.role === "RUGACIUNE") throw new ActionError("Un utilizator cu rolul „Rugăciune” nu poate fi marcat ca pastor. Schimbați întâi rolul.");
     await ctx.db.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { isPastor, pastorTitlu } });
       await writeAudit(tx, ctx.user, {
