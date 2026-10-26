@@ -26,6 +26,10 @@ export interface AssetRow {
   nrInventar: number;
   denumire: string;
   categorie: string;
+  /** PATRIMONY-SUBCATEGORIES: the subcategory's name ("" = none), its id and its place in the category. */
+  subcategorie: string;
+  subcategoryId: string | null;
+  subcategoryOrder: number | null;
   cantitate: number;
   valoare: number | null;
   dataIntrarii: string | null;
@@ -39,7 +43,12 @@ export interface AssetRow {
   photoId?: string | null;
 }
 
-export function filterAssets(rows: AssetRow[], filter: AssetFilter, categorie: string, q: string): AssetRow[] {
+/** The subcategory filter's value for the goods without a subcategory. */
+export const NO_SUBCATEGORY = "fara";
+export const NO_SUBCATEGORY_LABEL = "Fără subcategorie";
+
+/** `sub` = a subcategory's id, NO_SUBCATEGORY, or "" (all). */
+export function filterAssets(rows: AssetRow[], filter: AssetFilter, categorie: string, q: string, sub = ""): AssetRow[] {
   const terms = normalizeSearch(q).split(/\s+/).filter(Boolean);
   return rows.filter((a) => {
     if (filter === "in-uz" && a.stare === "SCOS_DIN_UZ") return false;
@@ -47,7 +56,8 @@ export function filterAssets(rows: AssetRow[], filter: AssetFilter, categorie: s
     if (filter === "reparatii" && a.stare !== "NECESITA_REPARATII") return false;
     if (filter === "scoase" && a.stare !== "SCOS_DIN_UZ") return false;
     if (categorie && a.categorie !== categorie) return false;
-    const hay = normalizeSearch([a.nrInventar, a.denumire, a.categorie, a.loc, a.responsabil].join(" "));
+    if (sub === NO_SUBCATEGORY ? a.subcategoryId !== null : sub && a.subcategoryId !== sub) return false;
+    const hay = normalizeSearch([a.nrInventar, a.denumire, a.categorie, a.subcategorie, a.loc, a.responsabil].join(" "));
     return terms.every((t) => hay.includes(t));
   });
 }
@@ -60,6 +70,7 @@ export const ASSET_COLUMNS: SortColumn[] = [
   { key: "nr", label: "Nr. inv.", type: "number" },
   { key: "denumire", label: "Denumire", type: "text" },
   { key: "categorie", label: "Categorie", type: "text" },
+  { key: "subcategorie", label: "Subcategorie", type: "text" },
   { key: "cantitate", label: "Cantitate", type: "number" },
   { key: "valoare", label: "Valoare (NOK)", type: "number" },
   { key: "loc", label: "Loc", type: "text" },
@@ -67,8 +78,8 @@ export const ASSET_COLUMNS: SortColumn[] = [
   { key: "intrare", label: "Data intrării", type: "date" },
 ];
 export const ASSET_DEFAULT_SORT: SortState = { col: "nr", dir: "asc" };
-export const assetSort = (a: AssetRow) => [a.nrInventar, a.denumire, a.categorie, a.cantitate, a.valoare, a.loc, ASSET_STATE_LABEL[a.stare], a.dataIntrarii];
-export const assetCells = (a: AssetRow) => [String(a.nrInventar), a.denumire, a.categorie, String(a.cantitate), a.valoare === null ? "—" : String(a.valoare), a.loc, ASSET_STATE_LABEL[a.stare], a.dataIntrarii ? fmt(a.dataIntrarii) : ""];
+export const assetSort = (a: AssetRow) => [a.nrInventar, a.denumire, a.categorie, a.subcategorie, a.cantitate, a.valoare, a.loc, ASSET_STATE_LABEL[a.stare], a.dataIntrarii];
+export const assetCells = (a: AssetRow) => [String(a.nrInventar), a.denumire, a.categorie, a.subcategorie, String(a.cantitate), a.valoare === null ? "—" : String(a.valoare), a.loc, ASSET_STATE_LABEL[a.stare], a.dataIntrarii ? fmt(a.dataIntrarii) : ""];
 
 export function sortedAssets(rows: AssetRow[], params: SortParams = {}) {
   return orderRows(
@@ -79,37 +90,122 @@ export function sortedAssets(rows: AssetRow[], params: SortParams = {}) {
   );
 }
 
-/** Totals per category: lines, pieces, value (lines without a value counted apart). */
-export interface CategoryTotal {
-  categorie: string;
+/** Totals per category (and per subcategory): lines, pieces, value (lines without a value counted apart). */
+export interface AssetTotal {
   pozitii: number;
   bucati: number;
   valoare: number;
   faraValoare: number;
 }
-export function categoryTotals(rows: AssetRow[]): CategoryTotal[] {
-  const m = new Map<string, CategoryTotal>();
-  for (const a of rows) {
-    const t = m.get(a.categorie) ?? { categorie: a.categorie, pozitii: 0, bucati: 0, valoare: 0, faraValoare: 0 };
-    t.pozitii++;
-    t.bucati += a.cantitate;
-    if (a.valoare === null) t.faraValoare++;
-    else t.valoare += a.valoare;
-    m.set(a.categorie, t);
-  }
-  return [...m.values()].sort((x, y) => compareRo(x.categorie, y.categorie));
+export interface SubcategoryTotal extends AssetTotal {
+  /** "" = the goods without a subcategory. */
+  subcategorie: string;
+  subcategoryId: string | null;
 }
+export interface CategoryTotal extends AssetTotal {
+  categorie: string;
+  /** The subtotals, in the subcategories' order (the goods without one last); empty when no good of the category has one. */
+  sub: SubcategoryTotal[];
+}
+
+const emptyTotal = (): AssetTotal => ({ pozitii: 0, bucati: 0, valoare: 0, faraValoare: 0 });
+function add(t: AssetTotal, a: AssetRow) {
+  t.pozitii++;
+  t.bucati += a.cantitate;
+  if (a.valoare === null) t.faraValoare++;
+  else t.valoare += a.valoare;
+}
+
+/** The goods grouped category → subcategory (categories alphabetically, subcategories in their order, none last). */
+export function groupAssets<T extends AssetRow>(rows: T[]): { categorie: string; subs: { subcategorie: string; subcategoryId: string | null; order: number | null; rows: T[] }[] }[] {
+  const cats = new Map<string, Map<string, { subcategorie: string; subcategoryId: string | null; order: number | null; rows: T[] }>>();
+  for (const a of rows) {
+    const subs = cats.get(a.categorie) ?? new Map();
+    const key = a.subcategoryId ?? "";
+    const g = subs.get(key) ?? { subcategorie: a.subcategorie, subcategoryId: a.subcategoryId, order: a.subcategoryOrder, rows: [] };
+    g.rows.push(a);
+    subs.set(key, g);
+    cats.set(a.categorie, subs);
+  }
+  const subOrder = (x: { subcategoryId: string | null; order: number | null; subcategorie: string }, y: typeof x) =>
+    Number(x.subcategoryId === null) - Number(y.subcategoryId === null) || (x.order ?? 0) - (y.order ?? 0) || compareRo(x.subcategorie, y.subcategorie);
+  return [...cats.entries()].sort(([x], [y]) => compareRo(x, y)).map(([categorie, subs]) => ({ categorie, subs: [...subs.values()].sort(subOrder) }));
+}
+
+export function categoryTotals(rows: AssetRow[]): CategoryTotal[] {
+  return groupAssets(rows).map(({ categorie, subs }) => {
+    const t: CategoryTotal = { categorie, ...emptyTotal(), sub: [] };
+    for (const g of subs) {
+      const st: SubcategoryTotal = { subcategorie: g.subcategorie, subcategoryId: g.subcategoryId, ...emptyTotal() };
+      for (const a of g.rows) {
+        add(t, a);
+        add(st, a);
+      }
+      t.sub.push(st);
+    }
+    if (!subs.some((g) => g.subcategoryId !== null)) t.sub = [];
+    return t;
+  });
+}
+
+export const subcategoryLabel = (name: string) => name || NO_SUBCATEGORY_LABEL;
 
 export const inventoryTitle = (date: string) => `Inventarul bunurilor la ${fmt(date)}`;
 
-/** „Inventarul bunurilor la <data>”: the goods in use, totals per category, the pastor's and the secretary's signatures. */
+/** The grouped PDF's columns: the category and the subcategory are the groups' headings. */
+const PRINT_COLUMNS = ASSET_COLUMNS.filter((c) => c.key !== "categorie" && c.key !== "subcategorie");
+const printCells = (a: AssetRow) => {
+  const cells = assetCells(a);
+  return [cells[0], cells[1], ...cells.slice(4)];
+};
+/** A heading / subtotal row of the grouped table: the label under „Denumire”, pieces and value in their columns. */
+function groupRow(label: string, t?: AssetTotal): string[] {
+  const row = PRINT_COLUMNS.map(() => "");
+  row[1] = label;
+  if (t) {
+    row[PRINT_COLUMNS.findIndex((c) => c.key === "cantitate")] = String(t.bucati);
+    row[PRINT_COLUMNS.findIndex((c) => c.key === "valoare")] = String(t.valoare);
+  }
+  return row;
+}
+
+/**
+ * „Inventarul bunurilor la <data>”: the goods in use grouped category → subcategory with subtotals (the
+ * page's sort inside each group), totals per category and subcategory, the pastor's and the secretary's
+ * signatures.
+ */
 export function inventoryPrint(rows: AssetRow[], date: string, church: ChurchInfo, params: SortParams = {}, photos?: ReadonlyMap<string, Uint8Array>): PrintSpec {
   const totals = categoryTotals(rows);
-  const sorted = sortedAssets(rows, params);
-  // „Cu poze”: the main photo's thumbnail in a first column.
-  const goods: Block = photos
-    ? { type: "table", columns: ["Poză", ...ASSET_COLUMNS.map((c) => c.label)], rows: sorted.map((a) => ["", ...assetCells(a)]), images: sorted.map((a) => (a.photoId ? (photos.get(a.photoId) ?? null) : null)) }
-    : { type: "table", columns: ASSET_COLUMNS.map((c) => c.label), rows: sorted.map(assetCells) };
+  const groups = groupAssets(sortedAssets(rows, params));
+  const body: string[][] = [];
+  const bold: boolean[] = [];
+  const images: (Uint8Array | null | undefined)[] = [];
+  const push = (cells: string[], isBold: boolean, image?: Uint8Array | null) => {
+    body.push(photos ? ["", ...cells] : cells);
+    bold.push(isBold);
+    images.push(image);
+  };
+  for (const [i, g] of groups.entries()) {
+    const total = totals[i];
+    push(groupRow(g.categorie), true);
+    const withSubs = g.subs.some((x) => x.subcategoryId !== null);
+    for (const sg of g.subs) {
+      if (withSubs) push(groupRow(subcategoryLabel(sg.subcategorie)), true);
+      for (const a of sg.rows) push(printCells(a), false, photos ? (a.photoId ? (photos.get(a.photoId) ?? null) : null) : undefined);
+      if (withSubs) {
+        const st = total.sub.find((x) => x.subcategoryId === sg.subcategoryId)!;
+        push(groupRow(`Subtotal ${subcategoryLabel(sg.subcategorie)}`, st), true);
+      }
+    }
+    push(groupRow(`Total ${g.categorie}`, total), true);
+  }
+  const goods: Block = {
+    type: "table",
+    columns: [...(photos ? ["Poză"] : []), ...PRINT_COLUMNS.map((c) => c.label)],
+    rows: body,
+    bold,
+    ...(photos ? { images: images.map((x) => x ?? null), imageRows: images.map((x) => x !== undefined) } : {}),
+  };
   return {
     title: inventoryTitle(date),
     church,
@@ -117,14 +213,18 @@ export function inventoryPrint(rows: AssetRow[], date: string, church: ChurchInf
     blocks: [
       { type: "title", text: inventoryTitle(date) },
       goods,
-      { type: "para", runs: [{ text: "Totaluri pe categorii", bold: true }] },
+      { type: "para", runs: [{ text: "Totaluri pe categorii și subcategorii", bold: true }] },
       {
         type: "table",
-        columns: ["Categorie", "Poziții", "Bucăți", "Valoare (NOK)"],
+        columns: ["Categorie / subcategorie", "Poziții", "Bucăți", "Valoare (NOK)"],
         rows: [
-          ...totals.map((t) => [t.categorie, String(t.pozitii), String(t.bucati), String(t.valoare)]),
+          ...totals.flatMap((t) => [
+            [t.categorie, String(t.pozitii), String(t.bucati), String(t.valoare)],
+            ...t.sub.map((x) => [`— ${subcategoryLabel(x.subcategorie)}`, String(x.pozitii), String(x.bucati), String(x.valoare)]),
+          ]),
           ["Total", String(rows.length), String(rows.reduce((s, a) => s + a.cantitate, 0)), String(rows.reduce((s, a) => s + (a.valoare ?? 0), 0))],
         ],
+        bold: [...totals.flatMap((t) => [true, ...t.sub.map(() => false)]), true],
       },
       { type: "para", runs: [{ text: `Statut art. 43 alin. 7 și art. 54 alin. 2. Întocmit la ${fmt(date)}.` }] },
       pastorSecretarySignatures(church),

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { getAsset } from "@/server/queries/assets";
+import { listSubcategories } from "@/server/queries/asset-subcategories";
 import { getChurch } from "@/server/queries/church";
 import { personOptions } from "@/server/queries/persons";
 import { requireCtx } from "@/server/session";
@@ -15,7 +16,7 @@ export default async function EditAssetPage({ params }: PageProps<"/patrimoniu/[
   const a = await getAsset(ctx, id);
   if (!a) notFound();
   if (a.stare === "SCOS_DIN_UZ") redirect(`/patrimoniu/${id}`);
-  const [church, people] = await Promise.all([getChurch(ctx), personOptions(ctx)]);
+  const [church, people, subcategories] = await Promise.all([getChurch(ctx), personOptions(ctx), listSubcategories(ctx.db)]);
   return (
     <>
       <BackLink href={`/patrimoniu/${id}`}>Bunul</BackLink>
@@ -27,6 +28,7 @@ export default async function EditAssetPage({ params }: PageProps<"/patrimoniu/[
             nrInventar: String(a.nrInventar),
             denumire: a.denumire,
             categorie: a.categorie,
+            subcategoryId: a.subcategoryId ?? "",
             cantitate: String(a.cantitate),
             valoare: a.valoare === null ? "" : String(a.valoare),
             dataIntrarii: a.dataIntrarii ?? "",
@@ -38,6 +40,7 @@ export default async function EditAssetPage({ params }: PageProps<"/patrimoniu/[
             responsabilId: a.responsabilId ?? "",
           }}
           nextNr={String(a.nrInventar)}
+          subcategories={subcategories}
           categories={church.nomen.categoriiPatrimoniu}
           people={people.filter((p) => !p.exited || p.id === a.responsabilId).map((p) => ({ id: p.id, name: p.name }))}
           cancelHref={`/patrimoniu/${id}`}

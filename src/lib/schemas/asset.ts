@@ -2,7 +2,7 @@ import { z } from "zod";
 import { optionalDate, optionalId, optionalInt, requiredDate, requiredText, text } from "../validation";
 
 /** Fields tracked by the audit log (entity ASSET). */
-export const ASSET_FIELDS = ["nrInventar", "denumire", "categorie", "cantitate", "valoare", "dataIntrarii", "provenienta", "loc", "stare", "dataIesirii", "motivIesirii", "observatii", "responsabil"] as const;
+export const ASSET_FIELDS = ["nrInventar", "denumire", "categorie", "subcategorie", "cantitate", "valoare", "dataIntrarii", "provenienta", "loc", "stare", "dataIesirii", "motivIesirii", "observatii", "responsabil"] as const;
 
 /** A good of the inventory (PATRIMONY). Leaving use goes through `retireSchema`, never through this form. */
 export const assetSchema = z.object({
@@ -10,6 +10,8 @@ export const assetSchema = z.object({
   nrInventar: optionalInt(1, 9999999),
   denumire: requiredText(200, "Denumirea lipsește.", "Denumirea"),
   categorie: requiredText(80, "Alegeți categoria.", "Categoria"),
+  /** PATRIMONY-SUBCATEGORIES: optional, one of the category's subcategories (checked on the server). */
+  subcategoryId: optionalId,
   cantitate: optionalInt(1, 1000000),
   valoare: optionalInt(0, 1000000000),
   dataIntrarii: optionalDate,

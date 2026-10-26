@@ -361,7 +361,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.y = y + h;
         };
         drawRow(block.columns, "Serif-Bold", 0.8);
-        block.rows.forEach((r, i) => drawRow(r, "Serif", 0.3, imgs ? (imgs[i] ?? null) : undefined));
+        block.rows.forEach((r, i) => drawRow(r, block.bold?.[i] ? "Serif-Bold" : "Serif", 0.3, imgs && block.imageRows?.[i] !== false ? (imgs[i] ?? null) : undefined));
         doc.x = left;
         doc.y += 10;
         break;

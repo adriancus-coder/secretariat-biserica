@@ -294,6 +294,19 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await prisma.assetPhoto.findUnique({ where: { id: p.id } })).toBeNull();
   });
 
+  it("asset subcategories are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const s = await a.assetSubcategory.create({ data: { categorie: "Mobilier", nume: "Mese" } as never });
+    expect(s.churchId).toBe(churchA);
+    expect(await b.assetSubcategory.findUnique({ where: { id: s.id } })).toBeNull();
+    expect(await b.assetSubcategory.findMany({ where: { categorie: "Mobilier" } })).toHaveLength(0);
+    expect(await b.assetSubcategory.count()).toBe(0);
+    expect((await b.assetSubcategory.updateMany({ data: { nume: "X" } })).count).toBe(0);
+    await expect(b.assetSubcategory.delete({ where: { id: s.id } })).rejects.toMatchObject({ code: "P2025" });
+    await a.assetSubcategory.delete({ where: { id: s.id } });
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

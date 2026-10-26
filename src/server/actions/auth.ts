@@ -15,6 +15,8 @@ import {
 } from "@/lib/schemas/auth";
 import { formValues } from "@/lib/validation";
 import { defaultRoleGroupsData } from "@/lib/roles";
+import { defaultSubcategoriesData } from "@/lib/asset-subcategories";
+import { NOMEN_DEFAULTS } from "@/lib/labels";
 import { uniqueChurchSlug } from "../church-slug";
 import { prisma } from "../db";
 import { hashPassword, verifyPassword } from "../password";
@@ -118,6 +120,7 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
       const defaults = defaultRoleGroupsData(church.id, () => randomUUID());
       await tx.roleGroup.createMany({ data: defaults.groups });
       await tx.churchRole.createMany({ data: defaults.roles });
+      await tx.assetSubcategory.createMany({ data: defaultSubcategoriesData(church.id, NOMEN_DEFAULTS.categoriiPatrimoniu) });
       await tx.user.create({
         data: { churchId: church.id, email: data.email, name: data.name, passwordHash, role: "ADMIN" },
       });

@@ -12,6 +12,7 @@ export const TENANT_MODELS = new Set([
   "Correspondence",
   "Asset",
   "AssetPhoto",
+  "AssetSubcategory",
   "Group",
   "Note",
   "AuditLog",

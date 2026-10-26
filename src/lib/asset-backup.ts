@@ -18,10 +18,39 @@ export interface BAsset {
   observatii: string;
   responsabil: string;
   membru: string | null;
+  /** PATRIMONY-SUBCATEGORIES: the subcategory's name ("" = none); absent in older files (the good keeps its subcategory). */
+  subcategorie?: string;
 }
 
-export function assetsToJson(rows: readonly (Omit<BAsset, "membru"> & { responsabilId: string | null })[]): BAsset[] {
+export function assetsToJson(rows: readonly (Omit<BAsset, "membru" | "subcategorie"> & { responsabilId: string | null; subcategorie: string })[]): BAsset[] {
   return rows.map(({ responsabilId, ...a }) => ({ ...a, membru: responsabilId }));
+}
+
+/** PATRIMONY-SUBCATEGORIES: `subcategoriiPatrimoniu`, by name under the category's name (no ids to remap). */
+export interface BAssetSubcategory {
+  categorie: string;
+  nume: string;
+  ordine: number;
+}
+
+export function assetSubcategoriesToJson(rows: readonly BAssetSubcategory[]): BAssetSubcategory[] {
+  return rows.map(({ categorie, nume, ordine }) => ({ categorie, nume, ordine }));
+}
+
+/** null when the file has no `subcategoriiPatrimoniu` (older files: the church's subcategories stay as they are). */
+export function parseAssetSubcategoriesJson(root: unknown): BAssetSubcategory[] | null {
+  const raw = typeof root === "object" && root !== null ? (root as Record<string, unknown>).subcategoriiPatrimoniu : undefined;
+  if (!Array.isArray(raw)) return null;
+  const out: BAssetSubcategory[] = [];
+  for (const x of raw) {
+    if (typeof x !== "object" || x === null) continue;
+    const r = x as Record<string, unknown>;
+    const categorie = str(r.categorie, 80);
+    const nume = str(r.nume, 80);
+    const ordine = Number(r.ordine);
+    if (categorie && nume) out.push({ categorie, nume, ordine: Number.isInteger(ordine) && ordine >= 0 ? ordine : out.length });
+  }
+  return out;
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -60,6 +89,7 @@ export function parseAssetsJson(root: unknown): BAsset[] | null {
       observatii: str(r.observatii, 2000),
       responsabil: str(r.responsabil, 120),
       membru: typeof r.membru === "string" && r.membru ? r.membru.slice(0, 64) : null,
+      ...(typeof r.subcategorie === "string" ? { subcategorie: str(r.subcategorie, 80) } : {}),
     });
   }
   return out;

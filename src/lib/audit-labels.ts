@@ -118,6 +118,8 @@ export const FIELD_LABELS: Record<string, string> = {
   grup: "Grup",
   activ: "Activă",
   pozitie: "Poziția în listă",
+  categorie: "Categorie",
+  subcategorie: "Subcategorie",
 };
 
 const DATE_FIELDS = new Set(["dataNasterii", "dataMembru", "dataBotez", "dataBinecuvantare", "dataIesire", "data", "dataCerereRetragere", "dataCasatoriei", "plecatDin"]);

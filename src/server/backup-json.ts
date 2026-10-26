@@ -1,7 +1,7 @@
 import "server-only";
 import { parsePrototypeJson, toPrototypeJson, type Backup } from "@/domain/backup";
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
-import { assetPhotosToJson, assetsToJson, parseAssetPhotosJson, parseAssetsJson } from "@/lib/asset-backup";
+import { assetPhotosToJson, assetsToJson, assetSubcategoriesToJson, parseAssetPhotosJson, parseAssetsJson, parseAssetSubcategoriesJson } from "@/lib/asset-backup";
 import { correspondenceToJson, parseCorrespondenceJson } from "@/lib/correspondence-backup";
 import { externalParentsToJson, kinshipToJson, parseExternalParentsJson, parseKinshipJson } from "@/lib/kinship-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
@@ -89,6 +89,7 @@ export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {})
       rudenii: kinshipToJson(kinship.links),
       parintiExterni: externalParentsToJson(kinship.externals),
       corespondenta: correspondenceToJson(await loadCorrespondence(ctx)),
+      subcategoriiPatrimoniu: assetSubcategoriesToJson(await ctx.db.assetSubcategory.findMany({ orderBy: [{ categorie: "asc" }, { ordine: "asc" }] })),
       patrimoniu: assetsToJson(await loadAssetsForBackup(ctx)),
       // PATRIMONY-PHOTOS: only when asked ("Include pozele patrimoniului"): the file grows by about 4/3 of them.
       ...(opts.photos
@@ -140,6 +141,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       correspondence: parseCorrespondenceJson(raw),
       assets: parseAssetsJson(raw),
       assetPhotos: parseAssetPhotosJson(raw),
+      assetSubcategories: parseAssetSubcategoriesJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],
   };

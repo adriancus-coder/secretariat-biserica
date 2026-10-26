@@ -1,6 +1,6 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
-import type { BAsset, BAssetPhoto } from "@/lib/asset-backup";
+import type { BAsset, BAssetPhoto, BAssetSubcategory } from "@/lib/asset-backup";
 import { mb, PHOTOS_CHURCH_QUOTA, PHOTOS_PER_ASSET } from "@/lib/asset-photos";
 import { processAssetPhoto } from "./asset-photo";
 import type { BCorrespondence } from "@/lib/correspondence-backup";
@@ -484,6 +484,8 @@ export interface ImportExtras {
   assets?: BAsset[] | null;
   /** The photos of the goods, only in an export that asked for them; null = not in the file. */
   assetPhotos?: BAssetPhoto[] | null;
+  /** The subcategories of the goods (PATRIMONY-SUBCATEGORIES); null = not in the file. */
+  assetSubcategories?: BAssetSubcategory[] | null;
 }
 
 export interface ImportSummary {
@@ -565,6 +567,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (applications) await tx.application.deleteMany({});
         if (extras.correspondence) await tx.correspondence.deleteMany({});
         if (extras.assets) await tx.asset.deleteMany({});
+        if (extras.assetSubcategories) await tx.assetSubcategory.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
         if (rolesIn?.groups) await tx.roleGroup.deleteMany({ where: { roles: { none: {} } } });
         await tx.family.deleteMany({});
@@ -1231,6 +1234,21 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       }
 
       // The inventory (PATRIMONY): a number already used by another good gets the next free one (with a warning).
+      // PATRIMONY-SUBCATEGORIES: matched by category and name (case and diacritics ignored), the missing ones created.
+      const subKey = (categorie: string, nume: string) => `${categorie}\u0000${roleKey(nume)}`;
+      const subIds = new Map<string, string>();
+      const ensureSub = async (categorie: string, nume: string, ordine?: number) => {
+        const key = subKey(categorie, nume);
+        if (!subIds.has(key)) {
+          const created = await tx.assetSubcategory.create({ data: { churchId, categorie, nume, ordine: ordine ?? (await tx.assetSubcategory.count({ where: { categorie } })) } });
+          subIds.set(key, created.id);
+        }
+        return subIds.get(key)!;
+      };
+      if (extras.assetSubcategories || extras.assets?.some((a) => a.subcategorie)) {
+        for (const s of await tx.assetSubcategory.findMany({ select: { id: true, categorie: true, nume: true } })) subIds.set(subKey(s.categorie, s.nume), s.id);
+        for (const s of extras.assetSubcategories ?? []) await ensureSub(s.categorie, s.nume, s.ordine);
+      }
       if (extras.assets?.length) {
         const plan = await planIds(tx, TABLES.assets, extras.assets.map((a) => a.id), churchId);
         let renumbered = 0;
@@ -1257,6 +1275,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             observatii: a.observatii,
             responsabil: responsabilId ? "" : a.responsabil,
             responsabilId,
+            // An older file has no `subcategorie`: the good keeps the one it has.
+            ...(a.subcategorie !== undefined ? { subcategoryId: a.subcategorie ? await ensureSub(a.categorie, a.subcategorie) : null } : {}),
           };
           if (plan.existing.has(a.id)) await tx.asset.update({ where: { id }, data });
           else await tx.asset.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
@@ -1356,6 +1376,6 @@ export async function loadCorrespondence(ctx: Ctx) {
 
 /** The inventory for `patrimoniu` (PATRIMONY). */
 export async function loadAssetsForBackup(ctx: Ctx) {
-  const rows = await ctx.db.asset.findMany({ orderBy: { nrInventar: "asc" } });
-  return rows.map((a) => ({ ...a, dataIntrarii: fromDbDate(a.dataIntrarii), dataIesirii: fromDbDate(a.dataIesirii) }));
+  const rows = await ctx.db.asset.findMany({ orderBy: { nrInventar: "asc" }, include: { subcategory: { select: { nume: true } } } });
+  return rows.map(({ subcategory, ...a }) => ({ ...a, subcategorie: subcategory?.nume ?? "", dataIntrarii: fromDbDate(a.dataIntrarii), dataIesirii: fromDbDate(a.dataIesirii) }));
 }

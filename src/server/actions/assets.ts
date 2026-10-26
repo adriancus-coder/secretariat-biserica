@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/lib/form-state";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { subcategoryError } from "@/lib/asset-subcategories";
 import { ASSET_ORIGIN_LABEL, ASSET_STATE_LABEL } from "@/lib/patrimony";
 import { ASSET_FIELDS, assetSchema, retireSchema } from "@/lib/schemas/asset";
 import { idSchema } from "@/lib/validation";
@@ -16,12 +17,13 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 /** The audit view of a good: labels and names instead of keys and ids. */
 async function view(tx: Tx, id: string) {
-  const a = await tx.asset.findUnique({ where: { id }, include: { responsabilP: { select: { nume: true, prenume: true } } } });
+  const a = await tx.asset.findUnique({ where: { id }, include: { responsabilP: { select: { nume: true, prenume: true } }, subcategory: { select: { nume: true } } } });
   if (!a) return null;
   return {
     nrInventar: a.nrInventar,
     denumire: a.denumire,
     categorie: a.categorie,
+    subcategorie: a.subcategory?.nume ?? "",
     cantitate: a.cantitate,
     valoare: a.valoare,
     dataIntrarii: fromDbDate(a.dataIntrarii),
@@ -47,10 +49,15 @@ export async function saveAssetAction(id: string | null, _prev: FormState, formD
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
     const input = parseOrThrow(assetSchema, Object.fromEntries(formData));
+    // PATRIMONY-SUBCATEGORIES: the subcategory belongs to the chosen category (found through ctx.db: the same church).
+    const sub = input.subcategoryId ? await ctx.db.assetSubcategory.findUnique({ where: { id: input.subcategoryId }, select: { categorie: true } }) : null;
+    const subError = subcategoryError(sub, input.categorie, Boolean(input.subcategoryId));
+    if (subError) throw new ValidationError({ subcategoryId: subError });
     if (input.responsabilId && !(await ctx.db.person.findUnique({ where: { id: input.responsabilId }, select: { id: true } }))) throw new ValidationError({ responsabilId: "Persoana nu mai există în registru." });
     const data = {
       denumire: input.denumire,
       categorie: input.categorie,
+      subcategoryId: input.subcategoryId,
       cantitate: input.cantitate ?? 1,
       valoare: input.valoare,
       dataIntrarii: toDbDate(input.dataIntrarii),

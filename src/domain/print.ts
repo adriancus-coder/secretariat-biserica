@@ -44,7 +44,11 @@ export type Block =
    * rows) puts a picture (JPEG / PNG) in the first column, e.g. the inventory „Cu poze”; only the PDF
    * draws it, Word and printToText keep the text.
    */
-  | { type: "table"; columns: string[]; rows: string[][]; images?: (Uint8Array | null)[] }
+  /**
+   * `bold`: rows printed bold (group headings, subtotals). `images`: one per row, drawn in the first column
+   * (pdfkit only); `imageRows` false for a row without the photo's place (a heading in a table with photos).
+   */
+  | { type: "table"; columns: string[]; rows: string[][]; images?: (Uint8Array | null)[]; imageRows?: boolean[]; bold?: boolean[] }
   /**
    * A vector chart (Statistici): a line per series, stacked bars, or the age pyramid (series[0] men to
    * the left, series[1] women to the right). Word and printToText show it as a table.

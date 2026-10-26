@@ -215,6 +215,9 @@ export function SettingsForm({
         {nom("gradeRudenie", "Grade de rudenie", nomen.rudenie)}
         {nom("categoriiPatrimoniu", "Categorii de bunuri (patrimoniu)", nomen.categoriiPatrimoniu)}
         <p className="hint mb-2.5">
+          Subcategoriile fiecărei categorii (ex. Sonorizare și video → Microfoane): <Link href="/setari/patrimoniu">Categorii de patrimoniu</Link>.
+        </p>
+        <p className="hint mb-2.5">
           Funcțiile și slujirile (pastor, diacon, cor, media …) au pagina lor: <Link href="/setari/functii">Funcții și slujiri</Link>.
         </p>
         <div className="hint">

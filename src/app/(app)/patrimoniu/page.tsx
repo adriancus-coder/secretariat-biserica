@@ -17,10 +17,14 @@ import {
   assetSort,
   categoryTotals,
   filterAssets,
+  NO_SUBCATEGORY,
+  NO_SUBCATEGORY_LABEL,
   nok,
+  subcategoryLabel,
   type AssetFilter,
 } from "@/lib/patrimony";
 import { permissions } from "@/lib/permissions";
+import { listSubcategories } from "@/server/queries/asset-subcategories";
 import { loadAssets } from "@/server/queries/assets";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
@@ -38,11 +42,15 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
   const filter: AssetFilter = (ASSET_FILTERS as readonly string[]).includes(raw) ? (raw as AssetFilter) : "in-uz";
   const categorie = stringParam(sp.categorie).slice(0, 80);
   const q = stringParam(sp.q).slice(0, 100);
-  const [all, church] = await Promise.all([loadAssets(ctx), getChurch(ctx)]);
-  const rows = filterAssets(all, filter, categorie, q);
+  const [all, church, subcategories] = await Promise.all([loadAssets(ctx), getChurch(ctx), listSubcategories(ctx.db)]);
+  // PATRIMONY-SUBCATEGORIES: the second filter (a subcategory's id, or „fără subcategorie”); kept only when it fits the category.
+  const subRaw = stringParam(sp.sub).slice(0, 40);
+  const subOptions = subcategories.filter((x) => !categorie || x.categorie === categorie);
+  const sub = subRaw === NO_SUBCATEGORY || subOptions.some((x) => x.id === subRaw) ? subRaw : "";
+  const rows = filterAssets(all, filter, categorie, q, sub);
   const totals = categoryTotals(rows);
   const canWrite = permissions.write(ctx.user.role);
-  const params = { filtru: filter === "in-uz" ? undefined : filter, categorie: categorie || undefined, q: q || undefined };
+  const params = { filtru: filter === "in-uz" ? undefined : filter, categorie: categorie || undefined, sub: sub || undefined, q: q || undefined };
   const categories = [...new Set([...church.nomen.categoriiPatrimoniu, ...all.map((a) => a.categorie)])];
   return (
     <>
@@ -74,7 +82,21 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
               </option>
             ))}
           </AutoSubmitSelect>
+          <label htmlFor="sub" className="sr-only">
+            Subcategoria
+          </label>
+          {/* A new category resets the subcategory: the server keeps `sub` only when it belongs to the category. */}
+          <AutoSubmitSelect id="sub" name="sub" defaultValue={sub} className="!w-auto" key={categorie}>
+            <option value="">Toate subcategoriile</option>
+            {subOptions.map((x) => (
+              <option key={x.id} value={x.id}>
+                {categorie ? x.nume : `${x.categorie} → ${x.nume}`}
+              </option>
+            ))}
+            <option value={NO_SUBCATEGORY}>{NO_SUBCATEGORY_LABEL}</option>
+          </AutoSubmitSelect>
           {params.filtru ? <input type="hidden" name="filtru" value={params.filtru} /> : null}
+          {params.q ? <input type="hidden" name="q" value={params.q} /> : null}
           <noscript>
             <button type="submit" className="btn btn-sm">
               Arată
@@ -117,6 +139,7 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
                     <Link href={`/patrimoniu/${a.id}`}>{a.denumire}</Link>
                   </span>,
                   a.categorie,
+                  a.subcategorie,
                   a.cantitate,
                   nok(a.valoare),
                   a.loc,
@@ -127,7 +150,7 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
             />
           </section>
           <section className="card">
-            <h3>Totaluri pe categorii</h3>
+            <h3>Totaluri pe categorii și subcategorii</h3>
             <DataTable
               id="patrimoniu-totaluri"
               caption="Totaluri pe categorii"
@@ -137,7 +160,30 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
                 { key: "bucati", label: "Bucăți", type: "number" },
                 { key: "valoare", label: "Valoare", type: "number" },
               ]}
-              rows={totals.map((t) => ({ key: t.categorie, sort: [t.categorie, t.pozitii, t.bucati, t.valoare], cells: [t.categorie, t.pozitii, t.bucati, `${nok(t.valoare)}${t.faraValoare ? ` (${t.faraValoare} fără valoare)` : ""}`] }))}
+              rows={totals.map((t) => ({
+                key: t.categorie,
+                sort: [t.categorie, t.pozitii, t.bucati, t.valoare],
+                cells: [
+                  t.sub.length ? (
+                    // The subtotals per subcategory, folded under the category (open it on a phone).
+                    <details key="c" className="asset-subtotals">
+                      <summary>{t.categorie}</summary>
+                      <ul>
+                        {t.sub.map((x) => (
+                          <li key={x.subcategoryId ?? "-"}>
+                            {subcategoryLabel(x.subcategorie)}: {x.pozitii} {x.pozitii === 1 ? "poziție" : "poziții"}, {x.bucati} buc., {nok(x.valoare)}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : (
+                    t.categorie
+                  ),
+                  t.pozitii,
+                  t.bucati,
+                  `${nok(t.valoare)}${t.faraValoare ? ` (${t.faraValoare} fără valoare)` : ""}`,
+                ],
+              }))}
               footer={[
                 {
                   key: "total",
@@ -149,7 +195,7 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
           </section>
         </>
       ) : (
-        <EmptyState title={q || categorie ? "Niciun rezultat" : "Niciun bun în această listă"}>{canWrite ? "Adăugați bunurile bisericii cu „+ Bun nou”." : ""}</EmptyState>
+        <EmptyState title={q || categorie || sub ? "Niciun rezultat" : "Niciun bun în această listă"}>{canWrite ? "Adăugați bunurile bisericii cu „+ Bun nou”." : ""}</EmptyState>
       )}
     </>
   );

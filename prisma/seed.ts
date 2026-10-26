@@ -26,7 +26,9 @@ import { noteSearchText, personDerived } from "../src/lib/person-derived";
 import { defaultFamilyName, pickHead } from "../src/lib/families";
 import { splitDecisions } from "../src/lib/minutes";
 import { defaultRoleGroupsData } from "../src/lib/roles";
+import { defaultSubcategoriesData } from "../src/lib/asset-subcategories";
 import { slugVariant } from "../src/lib/slug";
+import { NOMEN_DEFAULTS } from "../src/lib/labels";
 import { hashPassword } from "../src/server/password";
 import { seedRefusal } from "../src/lib/seed-guard";
 import { addressFromInput } from "../src/lib/address";
@@ -247,6 +249,8 @@ async function main() {
   const defaults = defaultRoleGroupsData(churchId, () => randomUUID());
   await prisma.roleGroup.createMany({ data: defaults.groups });
   await prisma.churchRole.createMany({ data: defaults.roles });
+  // PATRIMONY-SUBCATEGORIES: the default subcategories, as for a new church.
+  await prisma.assetSubcategory.createMany({ data: defaultSubcategoriesData(churchId, NOMEN_DEFAULTS.categoriiPatrimoniu) });
   const roleIds = new Map(
     (await prisma.churchRole.findMany({ where: { churchId }, select: { id: true, nume: true } })).map((r) => [r.nume, r.id]),
   );

@@ -893,6 +893,16 @@
     grid-column: 1 / -1;
     margin: 0;
   }
+  /* Setări → Categorii de patrimoniu: the subcategories indented under their category */
+  .subcat-list {
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 2px solid var(--line);
+  }
+  .subcat-delete {
+    display: grid;
+    gap: 8px;
+  }
   @media (min-width: 820px) {
     .item.role-item {
       grid-template-columns: auto minmax(0, 32rem);
@@ -1147,6 +1157,19 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+  /* Patrimoniu → totals: the subtotals per subcategory folded under the category */
+  .asset-subtotals summary {
+    cursor: pointer;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+  .asset-subtotals ul {
+    margin: 0 0 4px;
+    padding-left: 1rem;
+    font-size: 0.875rem;
+    color: var(--ink-2);
   }
   .asset-row-thumb {
     flex: 0 0 auto;

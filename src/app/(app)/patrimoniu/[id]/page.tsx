@@ -36,7 +36,7 @@ export default async function AssetPage({ params }: PageProps<"/patrimoniu/[id]"
         <dt>Nr. de inventar</dt>
         <dd>{a.nrInventar}</dd>
         <dt>Categorie</dt>
-        <dd>{a.categorie}</dd>
+        <dd>{a.categorie}{a.subcategorie ? ` → ${a.subcategorie}` : ""}</dd>
         <dt>Cantitate · valoare</dt>
         <dd>
           {a.cantitate} · {nok(a.valoare)}

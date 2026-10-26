@@ -130,6 +130,7 @@ model Church {
   correspondence        Correspondence[]
   assets                Asset[]
   assetPhotos           AssetPhoto[]
+  assetSubcategories    AssetSubcategory[]
 
   @@map("churches")
 }
@@ -1166,6 +1167,9 @@ model Asset {
   responsabil   String      @default("")
   responsabilId String?
   responsabilP  Person?     @relation(fields: [responsabilId], references: [id], onDelete: SetNull)
+  /// PATRIMONY-SUBCATEGORIES: optional, always one of the category's subcategories (checked on save).
+  subcategoryId String?
+  subcategory   AssetSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   createdById   String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -1174,7 +1178,26 @@ model Asset {
   @@unique([churchId, nrInventar])
   @@index([churchId, categorie])
   @@index([responsabilId])
+  @@index([subcategoryId])
   @@map("assets")
+}
+
+/// PATRIMONY-SUBCATEGORIES: one level under a category of Church.categoriiPatrimoniu, keyed by the
+/// category's name (the categories are a nomenclature, not a table). Edited in Setări → Categorii de
+/// patrimoniu (admin); a subcategory used by goods is not deleted.
+model AssetSubcategory {
+  id        String   @id @default(cuid())
+  churchId  String
+  church    Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  categorie String
+  nume      String
+  ordine    Int      @default(0)
+  createdAt DateTime @default(now())
+  assets    Asset[]
+
+  @@unique([churchId, categorie, nume])
+  @@index([churchId, categorie])
+  @@map("asset_subcategories")
 }
 
 /// PATRIMONY-PHOTOS: photos of a good, kept in PostgreSQL like the signatures and statutes (no file

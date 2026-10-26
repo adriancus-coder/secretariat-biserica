@@ -185,14 +185,14 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
     case "table": {
       const line = { style: BorderStyle.SINGLE, size: 4, color: "999999" } as const;
       const borders = { top: line, bottom: line, left: line, right: line };
-      const row = (cells: string[], bold: boolean) =>
+      const row = (cells: string[], bold: boolean, header = false) =>
         new TableRow({
-          tableHeader: bold,
+          tableHeader: header,
           cantSplit: true,
           children: block.columns.map((_, i) => new TableCell({ borders, children: [new Paragraph({ children: [t(cells[i] ?? "", { bold, size: 9 })] })] })),
         });
       return [
-        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [row(block.columns, true), ...block.rows.map((r) => row(r, false))] }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [row(block.columns, true, true), ...block.rows.map((r, i) => row(r, block.bold?.[i] ?? false))] }),
         new Paragraph({ spacing: { after: 120 }, children: [] }),
       ];
     }

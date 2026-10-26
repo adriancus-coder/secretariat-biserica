@@ -8,6 +8,8 @@ const SELECT = {
   nrInventar: true,
   denumire: true,
   categorie: true,
+  subcategoryId: true,
+  subcategory: { select: { nume: true, ordine: true } },
   cantitate: true,
   valoare: true,
   dataIntrarii: true,
@@ -22,11 +24,14 @@ const SELECT = {
   photos: { orderBy: { ordine: "asc" }, take: 1, select: { id: true } },
 } as const;
 
-type Row = { dataIntrarii: Date | null; dataIesirii: Date | null; responsabil: string; responsabilP: { nume: string; prenume: string } | null; photos: { id: string }[] };
-function toRow<T extends Row>(row: T): Omit<T, "responsabilP" | "photos" | "dataIntrarii" | "dataIesirii"> & { dataIntrarii: string | null; dataIesirii: string | null; responsabil: string; photoId: string | null } {
-  const { responsabilP, photos, ...a } = row;
+type Row = { subcategory: { nume: string; ordine: number } | null; dataIntrarii: Date | null; dataIesirii: Date | null; responsabil: string; responsabilP: { nume: string; prenume: string } | null; photos: { id: string }[] };
+type Dropped = "responsabilP" | "photos" | "dataIntrarii" | "dataIesirii" | "subcategory";
+function toRow<T extends Row>(row: T): Omit<T, Dropped> & { dataIntrarii: string | null; dataIesirii: string | null; responsabil: string; photoId: string | null; subcategorie: string; subcategoryOrder: number | null } {
+  const { responsabilP, photos, subcategory, ...a } = row;
   return {
-    ...(a as Omit<T, "responsabilP" | "photos" | "dataIntrarii" | "dataIesirii">),
+    ...(a as Omit<T, Dropped>),
+    subcategorie: subcategory?.nume ?? "",
+    subcategoryOrder: subcategory?.ordine ?? null,
     photoId: photos[0]?.id ?? null,
     dataIntrarii: fromDbDate(a.dataIntrarii),
     dataIesirii: fromDbDate(a.dataIesirii),
