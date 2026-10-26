@@ -2,7 +2,9 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { memberName } from "@/lib/format";
 import { PERSON_PROPOSAL_LABEL } from "@/lib/labels";
+import { after } from "next/server";
 import { writeAudit } from "./audit";
+import { notifyChurch } from "./push";
 import { ActionError, type Ctx } from "./session";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
@@ -32,6 +34,8 @@ export async function proposeApplication(ctx: Ctx, applicationId: string, entrie
       ...(app.status === "PROPUSA" ? { extra: { observatie: "propunere actualizată" } } : {}),
     });
   });
+  const churchId = ctx.user.churchId;
+  after(() => notifyChurch(churchId, "PROPOSAL"));
 }
 
 const proposalAuditTarget = (personId: string | null, proposalId: string) =>
@@ -57,6 +61,8 @@ export async function proposeForPastor(ctx: Ctx, p: { kind: ProposalKind; person
       after: { propunerePastor: `${PERSON_PROPOSAL_LABEL[p.kind]} — trimisă pastorului` },
     });
   });
+  const churchId = ctx.user.churchId;
+  after(() => notifyChurch(churchId, "PROPOSAL"));
 }
 
 /** A plain save of the person while a proposal waits: the proposal is withdrawn (audited). */

@@ -10,11 +10,13 @@ const source = readFileSync(join(process.cwd(), "public/sw.js"), "utf8");
 function loadWorker() {
   const listeners: Record<string, ((e: unknown) => void)[]> = {};
   const puts: string[] = [];
+  const shown: { title: string; opts: unknown }[] = [];
   const cache = { match: async () => undefined, put: async (req: { url: string }) => void puts.push(req.url), addAll: async (urls: string[]) => void puts.push(...urls.map((u) => ORIGIN + u)) };
   const self: Record<string, unknown> = {
     location: { href: `${ORIGIN}/sw.js?v=abc123`, origin: ORIGIN },
     addEventListener: (type: string, fn: (e: unknown) => void) => (listeners[type] ??= []).push(fn),
     clients: { claim: async () => undefined },
+    registration: { showNotification: async (title: string, opts: unknown) => void shown.push({ title, opts }) },
     skipWaiting: () => undefined,
   };
   const sandbox = {
@@ -32,7 +34,7 @@ function loadWorker() {
     await Promise.all(waits);
     return waits.length > 0;
   }
-  return { route, request, puts, listeners };
+  return { route, request, puts, listeners, shown };
 }
 
 const NEVER_CACHED = [
@@ -95,5 +97,21 @@ describe("service worker routing table", () => {
     expect(html).toContain("Nu există conexiune. Datele bisericii nu sunt păstrate pe acest dispozitiv; reîncercați când sunteți online.");
     expect(html).toContain("Reîncearcă");
     expect(html).not.toMatch(/<script/i);
+  });
+});
+
+describe("service worker push", () => {
+  it("shows only the generic title and opens an address inside the app", async () => {
+    const w = loadWorker();
+    const push = async (data: unknown) => {
+      const waits: Promise<unknown>[] = [];
+      for (const fn of w.listeners.push ?? []) fn({ data: { json: () => data }, waitUntil: (p: Promise<unknown>) => waits.push(p) });
+      await Promise.all(waits);
+    };
+    await push({ title: "Un document așteaptă semnătura dumneavoastră", url: "/documente/de-semnat", tag: "DOCUMENT_SIGN", badge: 2 });
+    await push({ title: "x", url: "https://evil.example/" });
+    await push({ title: "y", url: "//evil.example/" });
+    expect(w.shown[0]).toEqual({ title: "Un document așteaptă semnătura dumneavoastră", opts: { tag: "DOCUMENT_SIGN", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: "/documente/de-semnat" } } });
+    expect(w.shown.slice(1).map((s) => (s.opts as { data: { url: string } }).data.url)).toEqual(["/", "/"]);
   });
 });

@@ -473,6 +473,19 @@
     }
   }
 
+  /* A checkbox row with a 44 px target (Cont → Notificări). */
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .check-row input {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
   /* "Instalează aplicația" on iPhone / iPad: numbered steps with Safari's icons. */
   .install-steps {
     margin: 0;

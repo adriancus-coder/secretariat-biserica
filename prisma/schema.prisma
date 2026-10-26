@@ -67,6 +67,9 @@ model Church {
   /// "Pastorii și administratorii intră cu parolă + Face ID / amprentă": for pastors and administrators the
   /// second factor must be a passkey (codes remain as audited recovery) and passkey-only sign-in is refused.
   passkeyPolicy    Boolean  @default(false)
+  /// Last daily (campaign answers) and weekly (assembly / committee) notification digests.
+  pushDailyAt      DateTime?
+  pushWeeklyAt     DateTime?
   /// "Semnătura se desenează de fiecare dată": "" = off, "TOATE" = every document, "TIPURI" = the types below.
   semnaturaUnica       String   @default("")
   semnaturaUnicaTipuri String[] @default([])
@@ -161,6 +164,9 @@ model User {
   meetingSends        MeetingSend[]
   loginChallenges     LoginChallenge[]
   passkeys            UserPasskey[]
+  pushSubscriptions   PushSubscription[]
+  /// Notification types this user turned off (Cont → Notificări); empty = all on.
+  pushOff             String[]           @default([])
   documentSignatures  DocumentSignature[]
   documentsApproved   Document[]          @relation("DocumentApprovedBy")
   applicationsProposed Application[]      @relation("ApplicationProposedBy")
@@ -788,6 +794,24 @@ model UserPasskey {
 
   @@index([userId])
   @@map("user_passkeys")
+}
+
+/// A browser's Web Push subscription (Cont → Notificări). No churchId: reached only through the user.
+/// The payloads sent to it never contain personal data (a generic title and the address to open).
+model PushSubscription {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String    @default("")
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+  failures      Int       @default(0)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 /// A server-issued WebAuthn challenge: stored hashed, single use, 2 minutes, bound to a purpose

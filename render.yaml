@@ -60,6 +60,15 @@ services:
       # Optional model for the extraction; defaults to claude-sonnet-5-5.
       - key: EXTRACT_MODEL
         sync: false
+      # Optional: push notifications on phones and computers (hidden without all three).
+      # Generate the pair once with `npx web-push generate-vapid-keys`; VAPID_SUBJECT is
+      # "mailto:" + the church's e-mail address.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
       # Leave empty: while the database is empty the first church can register anyway.
       # "true" only to let more churches register on this server.
       - key: ALLOW_SIGNUP

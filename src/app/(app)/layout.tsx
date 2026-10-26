@@ -5,6 +5,7 @@ import { AppNav } from "@/components/shell/app-nav";
 import { Icon } from "@/components/shell/icons";
 import { TextSizeControl } from "@/components/text-size-control";
 import { Flash } from "@/components/ui/flash";
+import { AppBadge } from "@/components/pwa/app-badge";
 import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
@@ -55,6 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense>
         <Flash />
       </Suspense>
+      <AppBadge count={Object.values(badges).reduce((a, b) => a + b, 0)} />
     </div>
   );
 }

@@ -71,3 +71,35 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(fetch(req).catch(() => caches.match(OFFLINE_URL)));
   }
 });
+
+/*
+ * Push: the payload is { title, url, tag, badge } — a generic title and an address inside the app,
+ * never personal data. The badge is the number of waiting items (Badging API where supported).
+ */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = typeof data.title === "string" ? data.title.slice(0, 120) : "Secretariat";
+  const url = typeof data.url === "string" && data.url.startsWith("/") && !data.url.startsWith("//") ? data.url : "/";
+  const tasks = [self.registration.showNotification(title, { tag: typeof data.tag === "string" ? data.tag : "secretariat", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url } })];
+  if (typeof data.badge === "number" && self.navigator && "setAppBadge" in self.navigator) {
+    tasks.push(data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge());
+  }
+  event.waitUntil(Promise.all(tasks).catch(() => undefined));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const open = list.find((c) => c.url.startsWith(self.location.origin));
+      if (open) return open.navigate(target).then((c) => (c || open).focus());
+      return self.clients.openWindow(target);
+    }),
+  );
+});

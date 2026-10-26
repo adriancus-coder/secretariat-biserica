@@ -4,6 +4,9 @@ import { TextSizeControl } from "@/components/text-size-control";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
 import { InstallApp } from "@/components/pwa/install-app";
+import { NotificationsCard } from "./notifications-card";
+import { isPushConfigured, vapidPublicKey } from "@/server/push";
+import { deviceLabel, pushTypesFor, type PushType } from "@/lib/push";
 import { ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/labels";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
@@ -40,6 +43,19 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
     },
   });
   const policy = passkeyPolicyApplies(user, security.church);
+  // Notifications: only when VAPID is configured and the role receives any (hidden otherwise).
+  const pushTypes = pushTypesFor(user);
+  const push =
+    isPushConfigured() && pushTypes.length
+      ? await prisma.user
+          .findUniqueOrThrow({ where: { id: user.id }, select: { pushOff: true, pushSubscriptions: { orderBy: { createdAt: "asc" }, select: { id: true, userAgent: true, createdAt: true, lastSuccessAt: true } } } })
+          .then((u) => ({
+            publicKey: vapidPublicKey(),
+            types: pushTypes,
+            off: u.pushOff.filter((t): t is PushType => (pushTypes as string[]).includes(t)),
+            devices: u.pushSubscriptions.map((d) => ({ id: d.id, label: d.userAgent || deviceLabel(""), added: dotDateTime(d.createdAt), lastOk: d.lastSuccessAt ? dotDateTime(d.lastSuccessAt) : null })),
+          }))
+      : null;
   return (
     <>
       <PageHead title="Contul meu" sub={user.churchName} />
@@ -106,6 +122,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           <TextSizeControl current={textSize} />
         </div>
       </div>
+      {push ? <NotificationsCard {...push} /> : null}
       <InstallApp />
       <div className="actions mt-4">
         <form action="/deconectat" method="post">

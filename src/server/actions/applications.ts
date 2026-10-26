@@ -15,6 +15,7 @@ import { idSchema, text } from "@/lib/validation";
 import { writeAudit } from "../audit";
 import { prisma } from "../db";
 import { sendNewApplicationEmail } from "../email";
+import { notifyChurch } from "../push";
 import { sharedRateLimiter } from "../rate-limit";
 import { clientIp } from "../ip-limits";
 import { actionCtx, ActionError } from "../session";
@@ -93,6 +94,7 @@ export async function submitApplicationAction(slug: string, _prev: FormState, fo
       return app;
     });
 
+    after(() => notifyChurch(church.id, "APPLICATION"));
     after(async () => {
       try {
         const admins = await db.user.findMany({ where: { role: "ADMIN", active: true }, select: { email: true } });

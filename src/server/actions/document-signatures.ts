@@ -14,6 +14,8 @@ import { signatureImage, writeDocumentSignature, type SignInput, type SignatureR
 import { PasskeyError, PURPOSE, verifyUserPresence } from "../passkeys";
 import { verifyPassword } from "../password";
 import { hasActivePastor } from "../pastor-approval";
+import { notifyChurch } from "../push";
+import { after } from "next/server";
 import { actionCtx, ActionError, getCurrentUser } from "../session";
 import { normalizeSignature, SignatureImageError } from "../signature-image";
 import { runFormAction } from "./run";
@@ -131,6 +133,8 @@ export async function sendToPastorAction(documentId: string): Promise<FormState>
       });
     });
     const sent = await sendDocumentApprovalEmail({ to: pastors.map((p) => p.email), documentId: doc.id, churchName: ctx.user.churchName, kind: "trimis" });
+    const churchId = ctx.user.churchId;
+    after(() => notifyChurch(churchId, "DOCUMENT_SIGN"));
     return {
       ok: true,
       message: sent === "sent" ? "Trimis pastorului; a primit un e-mail cu linkul." : "Trimis pastorului. Documentul apare la „De semnat”.",
@@ -207,7 +211,10 @@ async function notifySecretary(ctx: Awaited<ReturnType<typeof actionCtx>>, docum
     orderBy: { createdAt: "desc" },
     select: { userId: true },
   });
-  const user = sent?.userId ? await prisma.user.findFirst({ where: { id: sent.userId, churchId: ctx.user.churchId, active: true }, select: { email: true } }) : null;
-  if (user) await sendDocumentApprovalEmail({ to: [user.email], documentId, churchName: ctx.user.churchName, kind });
+  const user = sent?.userId ? await prisma.user.findFirst({ where: { id: sent.userId, churchId: ctx.user.churchId, active: true }, select: { id: true, email: true } }) : null;
+  if (!user) return;
+  await sendDocumentApprovalEmail({ to: [user.email], documentId, churchName: ctx.user.churchName, kind });
+  const churchId = ctx.user.churchId;
+  after(() => notifyChurch(churchId, "DOCUMENT_DECIDED", { userIds: [user.id] }));
 }
 
