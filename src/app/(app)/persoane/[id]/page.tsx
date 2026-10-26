@@ -24,6 +24,12 @@ import { familyOptions } from "@/server/queries/families";
 import { getChurch } from "@/server/queries/church";
 import { returnedAction } from "@/server/actions/statute";
 import { contactRestricted } from "@/lib/contact-access";
+import { dotDateTime } from "@/lib/dates";
+import { StepUpGate } from "@/components/passkey/step-up-gate";
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { loadPastoralNotes } from "@/server/pastoral-notes";
+import { deletePastoralNoteAction, savePastoralNoteAction } from "@/server/actions/pastoral-notes";
+import { PastoralNotesCard } from "./pastoral-notes-card";
 import { consentState, CONSENT_STATE_LABEL, currentConsents } from "@/lib/consents";
 import { CONSENT_KINDS, CONSENT_LABEL, CONSENT_SOURCE_LABEL } from "@/lib/labels";
 
@@ -50,6 +56,12 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
     ? { open: await openMeasure(ctx.db, id), count: await ctx.db.disciplinaryMeasure.count({ where: { personId: id } }) }
     : null;
 
+  // Pastors only (`pastoral`), after the step-up: the notes are decrypted only then.
+  const pastoral = permissions.pastoral(ctx.user)
+    ? (await hasStepUp(ctx.user))
+      ? { notes: await loadPastoralNotes(ctx, id), gate: null }
+      : { notes: [], gate: await stepUpMethod(ctx.user.id) }
+    : null;
   // The latest reabilitare / excludere sent to the pastor, while waiting or after a refusal.
   const proposal =
     canWrite || permissions.pastor(ctx.user)
@@ -361,6 +373,20 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         </div>
       ) : null}
 
+      {pastoral?.gate ? (
+        <div className="card" id="note-pastorale">
+          <h3>Note pastorale</h3>
+          <StepUpGate method={pastoral.gate} what="Notele pastorale sunt confidențiale." compact />
+        </div>
+      ) : pastoral ? (
+        <PastoralNotesCard
+          notes={pastoral.notes.map((n) => ({ id: n.id, text: n.text, author: n.author, mine: n.mine, when: dotDateTime(n.updatedAt) }))}
+          add={savePastoralNoteAction.bind(null, id, null)}
+          edit={Object.fromEntries(pastoral.notes.filter((n) => n.mine).map((n) => [n.id, savePastoralNoteAction.bind(null, id, n.id)]))}
+          remove={Object.fromEntries(pastoral.notes.filter((n) => n.mine).map((n) => [n.id, deletePastoralNoteAction.bind(null, id, n.id)]))}
+          exportHref={`/pdf/note-pastorale?persoana=${id}`}
+        />
+      ) : null}
       {permissions.audit(ctx.user.role) ? (
         <div className="card">
           <h3>Istoric modificări</h3>

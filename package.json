@@ -22,7 +22,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
-    "audit:check": "node scripts/audit-check.mjs"
+    "audit:check": "node scripts/audit-check.mjs",
+    "secrets:reencrypt": "tsx scripts/reencrypt-secrets.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

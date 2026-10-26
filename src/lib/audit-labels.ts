@@ -154,4 +154,5 @@ export const ENTITY_LABEL = {
   SECURITY: "Securitate cont",
   DISCIPLINE: "Disciplină",
   CAMPAIGN: "Actualizare date",
+  PASTORAL: "Note pastorale",
 } as const;

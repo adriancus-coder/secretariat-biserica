@@ -15,11 +15,12 @@ const PAGE_SIZE = 50;
 export default async function AuditPage({ searchParams }: PageProps<"/setari/jurnal">) {
   const ctx = await requireCtx("audit");
   const sp = await searchParams;
-  // Disciplinary entries exist only for administrators (permission `disciplina`).
-  const discipline = permissions.disciplina(ctx.user);
-  const labels = Object.entries(ENTITY_LABEL).filter(([k]) => discipline || k !== "DISCIPLINE");
+  // Disciplinary entries only with `disciplina` (pastors, administrators); pastoral-note entries only
+  // with `pastoral` (pastors).
+  const hidden: AuditEntityKey[] = [...(permissions.disciplina(ctx.user) ? [] : ["DISCIPLINE" as const]), ...(permissions.pastoral(ctx.user) ? [] : ["PASTORAL" as const])];
+  const labels = Object.entries(ENTITY_LABEL).filter(([k]) => !hidden.includes(k as AuditEntityKey));
   const entity = (labels.map(([k]) => k) as AuditEntityKey[]).find((k) => k === stringParam(sp.tip));
-  const where = entity ? { entity } : discipline ? {} : { entity: { not: "DISCIPLINE" as const } };
+  const where = entity ? { entity } : hidden.length ? { entity: { notIn: hidden } } : {};
   const total = await ctx.db.auditLog.count({ where });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(pageParam(sp.pagina), pages);

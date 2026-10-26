@@ -102,6 +102,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.dataUpdateLink.deleteMany({ where: { personId: id } });
     // Reabilitare / excludere proposals hold a copy of the person form.
     await tx.personProposal.deleteMany({ where: { personId: id } });
+    // Pastoral notes go with the identity (Statut art. 39 alin. 3); their log entries are blanked below.
+    await tx.pastoralNote.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
     // No longer anyone's responsible person (the groups' text is scrubbed below).
     await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });
@@ -119,7 +121,7 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
       await tx.family.update({ where: { id: before.family.id }, data: { nume: "Familie (nume șters)" } });
     }
     // Earlier audit entries of the person and of its application keep when and who, not the data.
-    await tx.auditLog.updateMany({ where: { entity: "PERSON", entityId: id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
+    await tx.auditLog.updateMany({ where: { entity: { in: ["PERSON", "PASTORAL"] }, entityId: id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
     if (application) {
       await tx.auditLog.updateMany({ where: { entity: "APPLICATION", entityId: application.id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
     }

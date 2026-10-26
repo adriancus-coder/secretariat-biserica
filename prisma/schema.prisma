@@ -97,6 +97,7 @@ model Church {
   passwordResets  PasswordReset[]
   applications    Application[]
   personProposals PersonProposal[]
+  pastoralNotes   PastoralNote[]
   roles           ChurchRole[]
   roleGroups      RoleGroup[]
   families        Family[]
@@ -165,6 +166,7 @@ model User {
   applicationsProposed Application[]      @relation("ApplicationProposedBy")
   personProposalsMade  PersonProposal[]   @relation("PersonProposalProposedBy")
   personProposalsDecided PersonProposal[] @relation("PersonProposalDecidedBy")
+  pastoralNotes          PastoralNote[]
   webauthnChallenges  WebAuthnChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
@@ -330,6 +332,7 @@ model Person {
   signatures     MeetingSignature[]
   aliases        PersonAlias[]
   proposals      PersonProposal[]
+  pastoralNotes  PastoralNote[]
   /// Administrators only (permission `disciplina`).
   disciplinaryMeasures DisciplinaryMeasure[]
   dataUpdateLinks      DataUpdateLink[]
@@ -1150,6 +1153,8 @@ enum AuditEntity {
   DISCIPLINE
   /// Data-update campaigns (links, submissions, consents).
   CAMPAIGN
+  /// Pastoral notes: only that a note was added / changed / deleted, by whom, for whom. Pastors only.
+  PASTORAL
 }
 
 enum AuditAction {
@@ -1287,4 +1292,25 @@ model PersonProposal {
   @@index([churchId, status, createdAt])
   @@index([personId])
   @@map("person_proposals")
+}
+
+/// Confidential pastoral note (Statut art. 39 alin. 3). Readable and writable only by pastors
+/// (permission `pastoral`); the text is encrypted at rest (AES-256-GCM, key derived from AUTH_SECRET,
+/// src/server/pastoral-notes.ts). Never exported, searched, listed or shown in the audit log.
+model PastoralNote {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// "v1.<iv>.<tag>.<ciphertext>" (base64url).
+  textEnc  String
+
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([churchId, personId])
+  @@map("pastoral_notes")
 }

@@ -212,6 +212,19 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.personProposal.delete({ where: { id: pr.id } });
   });
 
+  it("pastoral notes are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const n = await a.pastoralNote.create({ data: { personId: personA, textEnc: "v1.x.y.z" } as never });
+    expect(n.churchId).toBe(churchA);
+    expect(await b.pastoralNote.findUnique({ where: { id: n.id } })).toBeNull();
+    expect(await b.pastoralNote.findMany({ where: { personId: personA } })).toHaveLength(0);
+    expect((await b.pastoralNote.updateMany({ data: { textEnc: "v1.a.b.c" } })).count).toBe(0);
+    expect((await b.pastoralNote.deleteMany({})).count).toBe(0);
+    expect((await prisma.pastoralNote.findUniqueOrThrow({ where: { id: n.id } })).textEnc).toBe("v1.x.y.z");
+    await a.pastoralNote.delete({ where: { id: n.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

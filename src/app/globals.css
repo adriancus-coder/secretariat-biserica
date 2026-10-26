@@ -1132,6 +1132,20 @@
     font-weight: 700;
     line-height: 1;
   }
+  /* Pastoral notes: a scrolling list inside the card. */
+  .pastoral-notes {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .pastoral-notes li {
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 12px;
+  }
   /* "Vezi diferențele": removed lines struck through, new lines highlighted. */
   .diff p {
     margin: 0 0 4px;

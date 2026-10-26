@@ -30,12 +30,23 @@ Out of scope: a compromised Render account or database host, and a compromised a
 | 2FA recovery codes | 12 random characters (~59 bits), scrypt (N=2^14, r=8, p=1), single use; older 8-character codes (sha256) stay valid until the user regenerates them |
 | E-mail codes | sha256, single use, 10 minutes, compared in constant time |
 | Authenticator (TOTP) secrets | AES-256-GCM, key derived from `AUTH_SECRET` with HKDF (`src/server/two-factor.ts`); a new secret waits in `pendingTotpSecretEnc` until its first code confirms it, so an abandoned setup never replaces the working one |
+| Pastoral notes | AES-256-GCM, key derived from `AUTH_SECRET` with HKDF (purpose `pastoral-note-v1`, `src/server/secret-box.ts`); see "Pastoral notes" |
 | Sessions | JWT signed and encrypted by Auth.js with `AUTH_SECRET` |
 | Signatures, statutes, all register data | PostgreSQL only (Render encrypts the disk at rest); nothing is written to the file system |
 | Uploaded files for extraction or .docx import | Read in memory, never stored |
 | Last-login IP | Truncated (`1.2.3.x`, `2001:db8:1::x`) |
 
-Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: users with an authenticator app then sign in with an e-mail code or a recovery code and set the app up again.
+### Rotating `AUTH_SECRET`
+
+A new `AUTH_SECRET` makes everything encrypted under it unreadable: the authenticator (TOTP) secrets and the pastoral notes. Re-encrypt them first, then change the secret:
+
+1. Generate the new value (`openssl rand -base64 32`) and keep it out of chat, e-mail and the repository.
+2. From a machine that can reach the production database (Render → PostgreSQL → External connection):
+   `OLD_AUTH_SECRET=<current> AUTH_SECRET=<new> DATABASE_URL=<external URL> npm run secrets:reencrypt` (a dry run that only counts), then the same command with `-- --apply`. It runs in one transaction; a value the current secret cannot open stops it and nothing changes. It prints counts only.
+3. Set the new `AUTH_SECRET` in Render → Environment right away and redeploy (until then, notes written in between are under the old key: run step 2 again if a pastor wrote one).
+4. Everyone is signed out (sessions, step-up and export grants are signed with the secret). Personal campaign links that were already sent keep working; "Copiază linkul" shows a new address after a rotation, so use "Generează link nou" for a link that must be sent again.
+
+Re-encrypt even when the old secret leaked: the values are then protected by the new one. Only when the old secret is lost: users with an authenticator app sign in with an e-mail code or a recovery code and set the app up again, and the pastoral notes stay unreadable (the app says so instead of showing them).
 
 ## Person-list export
 
@@ -44,6 +55,17 @@ Rotating `AUTH_SECRET` therefore also makes the stored TOTP secrets unreadable: 
 ## Disciplinary measures
 
 Measures (Statut art. 27, 271, 272) are the most sensitive records. They are readable and writable only with the `disciplina` permission (administrators), checked on the server in every page, route handler and action (`requireCtx("disciplina")` / `actionCtx("disciplina")`). Secretaries and viewers never receive them in any page, list, count, category, export, PDF, audit view (entity DISCIPLINE is filtered out of the journal) or error message. Two server-side effects exist without showing anything: a member with an applied suspension is not counted among the expected attendees of a "Toți membrii" meeting, and a recommendation for a person with an open measure can be issued only by an administrator. The measures are in the full JSON backup only when an administrator exports it, and are deleted when the person is anonymised.
+
+## Pastoral notes
+
+Confidential notes of the pastors about a person (Statut art. 39 alin. 3), on the person page.
+
+- **Who can read them:** only users marked as pastor (`pastoral` permission, checked on the server in the page, the actions and the PDF route), after the step-up (device unlock or password, valid 15 minutes). Every pastor of the church sees every note; each changes or deletes only their own. Administrators who are not pastors, secretaries and viewers never receive them: not on any page, list, count, category, search, export, JSON backup, copy of data (art. 15) or error message.
+- **At rest:** the text is encrypted with AES-256-GCM under a key derived from `AUTH_SECRET`, so a database dump or backup alone does not reveal it. What the operator can technically see: whoever holds both the database and `AUTH_SECRET` (the hosting account, the Render environment) can decrypt them; the database alone shows only which person has notes, who wrote them and when.
+- **Log:** the audit log keeps only "notă pastorală adăugată / modificată / ștearsă" and "note pastorale exportate (PDF)" with the author and the person (entity PASTORAL, shown only to pastors); never the text.
+- **Export:** "Exportă notele pastorale (PDF)" (pastors, after the step-up) — treat the file as strictly confidential. The JSON backup never contains the notes: they are lost if the database is lost, by design.
+- **Erasure:** anonymising or deleting the person deletes the notes; their log entries lose the name.
+- **Key rotation:** see "Rotating `AUTH_SECRET`" (re-encrypt first).
 
 ## Contact data after an exit
 
@@ -100,7 +122,7 @@ Act in this order. Write down what happened and when; tell the affected churches
 
 1. **Contain**: in Render, suspend the web service if the attack is ongoing. Deactivate any compromised user in Setări → Utilizatori (this ends their sessions at once).
 2. **Revoke API keys**: create new keys and delete the old ones for Resend (`RESEND_API_KEY`) and Anthropic (`ANTHROPIC_API_KEY`); update them in Render → Environment.
-3. **Rotate `AUTH_SECRET`**: set a new random value (`openssl rand -base64 32`) in Render. This signs everyone out. Authenticator apps must be set up again (see above); e-mail codes and recovery codes keep working.
+3. **Rotate `AUTH_SECRET`**: follow "Rotating `AUTH_SECRET`" above (re-encrypt the authenticator secrets and pastoral notes, then set the new value in Render). This signs everyone out.
 4. **Rotate database credentials**: in Render → PostgreSQL, rotate the password (or create a new user), update `DATABASE_URL` on the web service, then redeploy. Check Render's access logs for unknown connections.
 5. **Review**: Setări → Jurnal (audit log) for unexpected changes, exports and logins; Render logs for the period.
 6. **Restore** if data was changed or deleted: from a Render backup (point-in-time) or the latest monthly JSON export, on a copy first.

@@ -56,6 +56,7 @@ describe.skipIf(!hasTestDb)("anonymisation leaves no trace of the person", () =>
     await db.dataUpdateSubmission.create({ data: { campaignId: campaign.id, personId, via: "PERSONAL", proposed: { self: { nume: full, telefon: TELEFON } } } as never });
     await db.consent.create({ data: { personId, kind: "PHOTOS", granted: true, givenAt: new Date(), source: "ONLINE" } as never });
     await db.personProposal.create({ data: { kind: "REABILITARE", personId, nume: full, formular: { nume: full, telefon: TELEFON } } as never });
+    await db.pastoralNote.create({ data: { personId, textEnc: "v1.a.b.c" } as never });
     await db.disciplinaryMeasure.create({ data: { personId, forma: "MUSTRARE_COMITET", dataInceput: new Date("2026-03-05"), motiv: `Cercetat ${full} (${TELEFON})` } as never });
     // Audit rows of other entities that mention the person.
     const audit = (entity: string, entityId: string, entityLabel: string, changes: object) =>
@@ -98,6 +99,8 @@ describe.skipIf(!hasTestDb)("anonymisation leaves no trace of the person", () =>
     // What stays: the statistics record, the document, the other church's person.
     const p = await prisma.person.findUniqueOrThrow({ where: { id: personId } });
     expect(p.nume).toBe("Persoană ștearsă");
+    expect(await prisma.pastoralNote.count({ where: { personId } })).toBe(0);
+    expect(await prisma.personProposal.count({ where: { personId } })).toBe(0);
     expect(await prisma.meetingSignature.count({ where: { personId } })).toBe(0);
     expect(await prisma.meetingSignature.count()).toBe(1);
     expect(await prisma.meetingAttendee.count({ where: { personId } })).toBe(1);
