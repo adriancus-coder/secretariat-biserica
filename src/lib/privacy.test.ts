@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { privacyBlocks, privacyTemplate, publicPrivacyText } from "./privacy";
+import { privacyBlocks, privacyTemplate } from "./privacy";
 import { PRIVACY_NOTICE_1_1 } from "./privacy-notice";
 
 describe("privacy notice 1.1", () => {
@@ -45,15 +45,5 @@ describe("privacy notice 1.1", () => {
       { type: "p", text: "unu doi" },
       { type: "p", text: "trei" },
     ]);
-  });
-
-  it("adds the automated-reading paragraph only while extraction is on", () => {
-    const text = privacyTemplate({ nume: "Maranata", email: "s@x.no", adresa: "" });
-    expect(publicPrivacyText(text, false)).toBe(text);
-    const on = publicPrivacyText(text, true);
-    expect(on.startsWith(text)).toBe(true);
-    expect(on).toContain("Anthropic (Statele Unite ale Americii)");
-    expect(privacyBlocks(on).at(-2)).toEqual({ type: "h", text: "CITIREA AUTOMATĂ A DOCUMENTELOR" });
-    expect(publicPrivacyText("## A\ntext", true)).toContain("## Citirea automată a documentelor");
   });
 });

@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useActionState, useCallback, useState } from "react";
 import type { ChecklistOption } from "@/components/person-checklist";
 import { Icon } from "@/components/shell/icons";
-import { DocumentUploadFields } from "@/components/ui/document-upload";
 import { FormMessage } from "@/components/ui/form-bits";
 import type { AttendanceRule } from "@/lib/attendance";
 import { pickedNames, resolveImport, type ImportDraft } from "@/lib/minutes-import";
-import { extractMinutesAction, type ExtractMinutesState } from "@/server/actions/extract";
 import type { MeetingFormState } from "@/server/actions/meetings";
 import { importDocxMinutesAction, type DocxImportState } from "@/server/actions/minutes-import";
 import { MeetingForm } from "../meeting-form";
@@ -22,19 +20,16 @@ interface FormProps {
 }
 
 /**
- * Old minutes into the register: Word files (read locally, one or many) or a scan / photo (read
- * with Claude when configured). Each file is reviewed in the meeting form and saved; "Următorul"
- * moves to the next one.
+ * Old minutes into the register: Word files, read locally (one or many). Each file is reviewed in
+ * the meeting form and saved; "Următorul" moves to the next one.
  */
-export function MinutesImport({ aiConfigured, ...form }: FormProps & { aiConfigured: boolean }) {
+export function MinutesImport(form: FormProps) {
   const [docx, docxAction, docxPending] = useActionState(importDocxMinutesAction, {} as DocxImportState);
-  const [ai, aiAction, aiPending] = useActionState(extractMinutesAction, {} as ExtractMinutesState);
-  const drafts = docx.drafts ?? (ai.meeting ? [ai.meeting] : null);
+  const drafts = docx.drafts ?? null;
 
   if (drafts) return <Review drafts={drafts} skipped={docx.skipped ?? []} {...form} />;
   return (
-    <>
-      <form action={docxAction} className="card">
+    <form action={docxAction} className="card">
         <h3>Documente Word</h3>
         <p className="hint mb-3">
           Procese-verbale scrise în Word după modelul bisericii. Numărul, data, tipul, prezenții și punctele completează formularul
@@ -58,19 +53,6 @@ export function MinutesImport({ aiConfigured, ...form }: FormProps & { aiConfigu
         <FormMessage state={docx} />
         <Skipped list={docx.skipped ?? []} />
       </form>
-      <form action={aiAction} className="card">
-        <h3>Document scanat sau fotografie</h3>
-        {aiConfigured ? (
-          <>
-            <p className="hint mb-3">Un proces-verbal scanat (PDF) sau fotografiat, citit automat. Documentul nu se păstrează.</p>
-            <DocumentUploadFields pending={aiPending} hint="Numele negăsite în registru apar la „Nepotriviți”." />
-            <FormMessage state={ai} />
-          </>
-        ) : (
-          <p className="hint">Citirea automată a documentelor scanate nu este pornită (Setări → Confidențialitate).</p>
-        )}
-      </form>
-    </>
   );
 }
 

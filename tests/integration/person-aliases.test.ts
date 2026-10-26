@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { parsePrototypeJson, toPrototypeJson } from "@/domain/backup";
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
 import { pickedNames } from "@/lib/minutes-import";
-import type { MinutesDraft } from "@/lib/schemas/extract";
+import type { MinutesDraft } from "@/domain/minutes-parse";
 import { importBackup, loadAliases, loadBackup } from "@/server/backup";
 import { reviewDraft } from "@/server/minutes-import";
 import { loadAliasMap, rememberAliases } from "@/server/person-aliases";

@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   env: { NEXT_PUBLIC_SW_VERSION: swVersion() },
   // pdfkit citește fișierele AFM/ICC din propriul director la runtime; rămâne nebundle-uit.
-  serverExternalPackages: ["pdfkit", "heic-decode", "libheif-js"],
+  serverExternalPackages: ["pdfkit"],
   // Fonturile TTF folosite la generarea PDF-urilor trebuie incluse în build-ul de producție.
   outputFileTracingIncludes: {
     "/pdf/**": ["./assets/fonts/**"],
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
     // forbidden() pentru paginile interzise rolului curent.
     authInterrupts: true,
     serverActions: {
-      // Importul JSON (copie de siguranță) și documentele citite cu Claude (cel mult 20 MB, plus anvelopa formularului).
+      // Importul JSON (copie de siguranță, cel mult 20 MB) și lotul de procese-verbale .docx (cel mult 25 MB).
       bodySizeLimit: "25mb",
     },
     proxyClientMaxBodySize: "25mb",

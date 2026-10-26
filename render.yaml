@@ -54,12 +54,6 @@ services:
       # Optional sender; defaults to "Secretariat Biserică <secretariat@sanctuaryvoice.com>".
       - key: EMAIL_FROM
         sync: false
-      # Optional: reading scanned documents and photos with Claude (off without a key).
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      # Optional model for the extraction; defaults to claude-sonnet-5-5.
-      - key: EXTRACT_MODEL
-        sync: false
       # Optional: push notifications on phones and computers (hidden without all three).
       # Generate the pair once with `npx web-push generate-vapid-keys`; VAPID_SUBJECT is
       # "mailto:" + the church's e-mail address.

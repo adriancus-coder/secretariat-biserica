@@ -45,8 +45,6 @@ export interface ChurchSettings extends ChurchInfo {
   privacyAdoptedAt: string | null;
   /** The Comunitate the church belongs to. */
   comunitate: string;
-  /** Reading scans with Claude accepted by an administrator. */
-  extractEnabled: boolean;
   /** Default page layout of the printed minutes. */
   pvLayout: PageLayout;
   /** Default page layout of the registered documents. */
@@ -88,7 +86,6 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     privacyVersion: c.privacyVersion,
     privacyAdoptedAt: c.privacyAdoptedAt ? c.privacyAdoptedAt.toISOString().slice(0, 10) : null,
     comunitate: c.comunitate,
-    extractEnabled: c.extractEnabled,
     pvLayout: storedLayout(c.pvLayout),
     docLayout: storedLayout(c.docLayout),
     nomen,

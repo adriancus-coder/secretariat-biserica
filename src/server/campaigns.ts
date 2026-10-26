@@ -2,7 +2,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { isCampaignAdult } from "@/lib/campaign";
 import { fromDbDate, todayIso } from "@/lib/dates";
-import { privacyTemplate, publicPrivacyText } from "@/lib/privacy";
+import { privacyTemplate } from "@/lib/privacy";
 import { generalToken, hashToken, linkToken, newNonce } from "./campaign-tokens";
 import type { ChurchSettings } from "./queries/church";
 import type { Ctx } from "./session";
@@ -11,7 +11,7 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 /** The notice as published now, hashed: the textVersion of the consents given during the campaign. */
 export function privacyVersionOf(church: ChurchSettings): string {
-  const text = publicPrivacyText(church.privacyText.trim() || privacyTemplate(church), church.extractEnabled);
+  const text = church.privacyText.trim() || privacyTemplate(church);
   return createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
 

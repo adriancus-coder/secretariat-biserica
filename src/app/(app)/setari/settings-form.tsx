@@ -23,7 +23,6 @@ export function SettingsForm({
   readOnly,
   privacyText,
   privacyUrl,
-  extractAvailable,
   applicationLink,
 }: {
   /** The QR / share panel of the application link (outside the read-only fieldset). */
@@ -32,15 +31,12 @@ export function SettingsForm({
     applicationsOpen: boolean;
     require2fa: boolean;
     passkeyPolicy: boolean;
-    extractEnabled: boolean;
     semnaturaUnica: string;
     semnaturaUnicaTipuri: string[];
   };
   /** The notice as published (the saved text, or the template filled with the church's details). */
   privacyText: string;
   privacyUrl: string;
-  /** Reading scans with Claude is possible on this installation. */
-  extractAvailable: boolean;
   nomen: Nomenclatures;
   attendanceRules: Record<string, AttendanceRule>;
   tipuriAG: string[];
@@ -57,7 +53,6 @@ export function SettingsForm({
   const require2fa = v ? v.require2fa === "on" : church.require2fa;
   const passkeyPolicy = v ? v.passkeyPolicy === "on" : church.passkeyPolicy;
   const [freshMode, setFreshMode] = useState(v?.semnaturaUnica ?? church.semnaturaUnica);
-  const extractEnabled = v ? v.extractEnabled === "on" : church.extractEnabled;
   const nom = (name: string, label: string, list: string[]) => (
     <TextAreaField
       name={name}
@@ -176,19 +171,6 @@ export function SettingsForm({
           error={e.privacyText}
           className="[&_textarea]:!min-h-[220px]"
         />
-        <label className="switch-row">
-          <input type="checkbox" role="switch" name="extractEnabled" defaultChecked={extractEnabled} disabled={!extractAvailable && !extractEnabled} />
-          <span>
-            <span className="block font-medium">Citirea automată a documentelor scanate (Claude, Anthropic)</span>
-            <span className="hint block !mt-0">
-              Pornind-o, sunteți de acord ca fotografiile și documentele încărcate la „Adaugă din document” și „Importă” să fie trimise
-              către Anthropic, PBC (Statele Unite ale Americii), care le citește în numele bisericii. Datele trimise prin serviciul pentru
-              organizații nu sunt folosite la antrenarea modelelor; prelucrarea are loc în afara Spațiului Economic European, în baza
-              clauzelor contractuale standard din acordul de prelucrare a datelor al Anthropic. Aplicația nu păstrează fișierele.
-              {!extractAvailable ? " Citirea nu este configurată pentru această aplicație." : ""}
-            </span>
-          </span>
-        </label>
       </fieldset>
       <fieldset className="card" disabled={readOnly}>
         <h3>Nomenclatoare</h3>

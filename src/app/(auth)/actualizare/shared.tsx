@@ -2,7 +2,7 @@ import { storedExcerpts } from "@/lib/statute-excerpts";
 import { STATUTE } from "@/lib/statutes";
 import { listStatutes } from "@/server/statutes";
 import { fromDbDate } from "@/lib/dates";
-import { privacyTemplate, publicPrivacyText } from "@/lib/privacy";
+import { privacyTemplate } from "@/lib/privacy";
 import { prisma } from "@/server/db";
 
 /** The same neutral page for an unknown, revoked, expired or closed link. */
@@ -38,11 +38,10 @@ export async function churchForCampaign(churchId: string) {
       comunitate: true,
       privacyAdoptedAt: true,
       privacyText: true,
-      extractEnabled: true,
       statutExtrase: true,
     },
   });
-  const notice = publicPrivacyText(c.privacyText.trim() || privacyTemplate({ ...c, privacyAdoptedAt: fromDbDate(c.privacyAdoptedAt) }), c.extractEnabled);
+  const notice = c.privacyText.trim() || privacyTemplate({ ...c, privacyAdoptedAt: fromDbDate(c.privacyAdoptedAt) });
   // The statute excerpts, with the Cult's statute link when the church published it.
   const cult = (await listStatutes(churchId)).some((s) => s.kind === "STATUT_CULT");
   return { nume: c.nume, notice, excerpts: storedExcerpts(c.statutExtrase), statuteUrl: cult ? `/cerere/${c.slug}/statut/${STATUTE.STATUT_CULT.slug}` : null };

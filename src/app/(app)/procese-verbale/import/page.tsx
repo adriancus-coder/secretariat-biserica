@@ -4,7 +4,6 @@ import { todayIso } from "@/lib/dates";
 import { attendancePrefill } from "@/server/queries/attendance";
 import { getChurch } from "@/server/queries/church";
 import { attendeeOptions } from "@/server/queries/meetings";
-import { isExtractConfigured } from "@/server/extract";
 import { requireCtx } from "@/server/session";
 import { MinutesImport } from "./minutes-import";
 
@@ -18,7 +17,6 @@ export default async function MinutesImportPage() {
       <BackLink href="/procese-verbale">Procese-verbale</BackLink>
       <PageHead title="Importă proces-verbal" />
       <MinutesImport
-        aiConfigured={isExtractConfigured() && church.extractEnabled}
         people={people}
         tipuri={church.nomen.tipuriSedinte}
         rules={church.attendanceRules}

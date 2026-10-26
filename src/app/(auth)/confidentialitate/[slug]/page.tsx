@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { privacyTemplate, publicPrivacyText } from "@/lib/privacy";
+import { privacyTemplate } from "@/lib/privacy";
 import { isValidSlug } from "@/lib/slug";
 import { prisma } from "@/server/db";
 import { PrivacyText } from "../privacy-text";
@@ -11,13 +11,13 @@ export const metadata: Metadata = { title: "Confidențialitate" };
 export default async function ChurchPrivacyPage({ params }: PageProps<"/confidentialitate/[slug]">) {
   const { slug } = await params;
   if (!isValidSlug(slug)) notFound();
-  const church = await prisma.church.findUnique({ where: { slug }, select: { nume: true, email: true, adresa: true, orgNr: true, telefon: true, comunitate: true, privacyAdoptedAt: true, privacyText: true, extractEnabled: true } });
+  const church = await prisma.church.findUnique({ where: { slug }, select: { nume: true, email: true, adresa: true, orgNr: true, telefon: true, comunitate: true, privacyAdoptedAt: true, privacyText: true } });
   if (!church) notFound();
   return (
     <>
       <h2 className="text-2xl mb-1">Confidențialitatea datelor</h2>
       <p className="hint mb-4">Biserica {church.nume}</p>
-      <PrivacyText text={publicPrivacyText(church.privacyText.trim() || privacyTemplate({ ...church, privacyAdoptedAt: church.privacyAdoptedAt?.toISOString().slice(0, 10) ?? null }), church.extractEnabled)} />
+      <PrivacyText text={church.privacyText.trim() || privacyTemplate({ ...church, privacyAdoptedAt: church.privacyAdoptedAt?.toISOString().slice(0, 10) ?? null })} />
     </>
   );
 }

@@ -31,20 +31,6 @@ export function privacyTemplate(c: PrivacyChurch): string {
   ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_1);
 }
 
-/** The paragraph added to the public notice while reading scans with Claude is on (Church.extractEnabled). */
-export const EXTRACTION_NOTICE = [
-  `## Citirea automată a documentelor`,
-  `Pentru a completa mai repede formularele, documentele scanate sau fotografiate (de exemplu un certificat de transfer sau un proces-verbal vechi) pot fi citite de un serviciu automat al companiei Anthropic (Statele Unite ale Americii). Documentele sunt trimise doar de personalul bisericii, numai pentru a precompleta formularele, iar serviciul nu le păstrează. Transferul în afara Spațiului Economic European se face pe baza clauzelor contractuale standard.`,
-].join("\n");
-
-/** The notice as published: the church's text (or the template), plus the extraction paragraph while it is on. */
-export function publicPrivacyText(text: string, extractEnabled: boolean): string {
-  if (!extractEnabled) return text;
-  // The 1.1 model has no "## " headings: the paragraph's heading becomes a plain capitalised line.
-  const notice = text.includes("## ") ? EXTRACTION_NOTICE : EXTRACTION_NOTICE.replace(/^## (.*)$/m, (_, h: string) => h.toLocaleUpperCase("ro"));
-  return `${text.trimEnd()}\n\n${notice}`;
-}
-
 export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string } | { type: "li"; text: string };
 
 /**

@@ -83,11 +83,6 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
     <>
       <PageHead title="Persoane" sub={`${data.inRecord} în evidență`}>
         {canWrite ? (
-          <Link href="/persoane/din-document" className="btn">
-            Adaugă din document
-          </Link>
-        ) : null}
-        {canWrite ? (
           <Link href="/persoane/nou" className="btn btn-primary">
             + Adaugă
           </Link>

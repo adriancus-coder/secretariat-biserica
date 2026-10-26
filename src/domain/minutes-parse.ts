@@ -12,7 +12,20 @@
  *   Secretar, Adrian Cușniriuc,     Păstor, Dumitru Ciobanu
  */
 import { isIsoDate } from "@/lib/dates";
-import type { MinutesDraft } from "@/lib/schemas/extract";
+
+/** A minutes draft read from a Word file, before the names are matched to the register. */
+export interface MinutesDraft {
+  nr: number | null;
+  data: string | null;
+  tip: string | null;
+  prezenti: string[];
+  absenti: string[];
+  invitati: string[];
+  puncte: string[];
+  formulaIncheiere: string | null;
+  secretar: string | null;
+  pastor: string | null;
+}
 
 export interface ParsedMinutes {
   draft: MinutesDraft;

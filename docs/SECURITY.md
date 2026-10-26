@@ -47,7 +47,7 @@ Out of scope: a compromised Render account or database host, and a compromised a
 | Pastoral notes | AES-256-GCM, key derived from `AUTH_SECRET` with HKDF (purpose `pastoral-note-v1`, `src/server/secret-box.ts`); see "Pastoral notes" |
 | Sessions | JWT signed and encrypted by Auth.js with `AUTH_SECRET` |
 | Signatures, statutes, all register data | PostgreSQL only (Render encrypts the disk at rest); nothing is written to the file system |
-| Uploaded files for extraction or .docx import | Read in memory, never stored |
+| Uploaded .docx minutes | Read in memory, never stored |
 | Last-login IP | Truncated (`1.2.3.x`, `2001:db8:1::x`) |
 
 ### Rotating `AUTH_SECRET`
@@ -61,6 +61,15 @@ A new `AUTH_SECRET` makes everything encrypted under it unreadable: the authenti
 4. Everyone is signed out (sessions, step-up and export grants are signed with the secret). Personal campaign links that were already sent keep working; "Copiază linkul" shows a new address after a rotation, so use "Generează link nou" for a link that must be sent again.
 
 Re-encrypt even when the old secret leaked: the values are then protected by the new one. Only when the old secret is lost: users with an authenticator app sign in with an e-mail code or a recovery code and set the app up again, and the pastoral notes stay unreadable (the app says so instead of showing them).
+
+## Service providers
+
+Only two providers process personal data on the church's behalf:
+
+- **Render** (Render Services, Inc.): hosting of the app and the PostgreSQL database, in the EU (Frankfurt).
+- **Resend** (Resend, Inc.): sending the app's e-mails (invitations, password reset, codes, minutes, notices).
+
+Both are US companies; transfers rely on the EU–US Data Privacy Framework or standard contractual clauses. No AI service processes personal data: reading scanned documents with an AI provider was withdrawn at the church's request (2026-10), with its code, settings column (`extract_remove` migration) and dependencies. Older audit entries of that kind (`EXTRACT`) stay readable as "Citire document (funcție retrasă)"; nothing writes them any more. Push notifications go through the browser vendor's push service with no personal data (see "Aplicația instalată").
 
 ## Person-list export
 
@@ -108,7 +117,6 @@ After any exit (exit date or Fost membru), phone, e-mail and address are visible
 
 - Signatures: PNG only, at most 2 MB; images declaring more than 4 000 000 pixels are refused before decoding (`limitInputPixels`), then re-encoded at most 600×200 px and 40 KB.
 - Word files: at most 5 MB, and the uncompressed size declared by the ZIP's central directory must stay under 50 MB (`src/server/zip-size.ts`), checked before mammoth unpacks anything.
-- Scans read with Claude: the type comes from the file's first bytes (`src/lib/file-type.ts`), never from the browser; a file named as a document but holding an image (or the reverse) is refused. Phone photos (HEIC/HEIF, WebP, GIF, TIFF) are converted to JPEG in memory before sending; images declaring more than 120 million pixels are refused before decoding, photos above 4 000 px are scaled down, PDFs above 20 pages are refused. HEIC decoding uses `heic-decode` / `libheif-js` (LGPL-3.0, used unmodified as a separate package on the server; nothing is distributed to browsers).
 - Arguments that the client binds to server actions (booleans, directions) are parsed with zod like form fields.
 - Unexpected errors are logged by `logError()` (`src/server/log.ts`): a short id, the error name and code and the first line of the message with e-mail addresses masked; never the error object or request data.
 
@@ -146,7 +154,7 @@ Documents already issued in the outgoing register (certificates, letters) keep t
 Act in this order. Write down what happened and when; tell the affected churches if their data may have been read.
 
 1. **Contain**: in Render, suspend the web service if the attack is ongoing. Deactivate any compromised user in Setări → Utilizatori (this ends their sessions at once).
-2. **Revoke API keys**: create new keys and delete the old ones for Resend (`RESEND_API_KEY`) and Anthropic (`ANTHROPIC_API_KEY`); update them in Render → Environment.
+2. **Revoke API keys**: create a new key and delete the old one for Resend (`RESEND_API_KEY`); update it in Render → Environment.
 3. **Rotate `AUTH_SECRET`**: follow "Rotating `AUTH_SECRET`" above (re-encrypt the authenticator secrets and pastoral notes, then set the new value in Render). This signs everyone out.
 4. **Rotate database credentials**: in Render → PostgreSQL, rotate the password (or create a new user), update `DATABASE_URL` on the web service, then redeploy. Check Render's access logs for unknown connections.
 5. **Review**: Setări → Jurnal (audit log) for unexpected changes, exports and logins; Render logs for the period.

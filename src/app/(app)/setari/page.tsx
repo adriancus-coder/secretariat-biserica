@@ -19,7 +19,6 @@ import { SettingsForm } from "./settings-form";
 import { privacyTemplate } from "@/lib/privacy";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 import { adoptPrivacyModelAction } from "@/server/actions/settings";
-import { isExtractConfigured } from "@/server/extract";
 import { StatutesCard } from "./statutes-card";
 import { CommitteeCard } from "./committee-card";
 import { ExcerptsCard } from "./excerpts-card";
@@ -94,7 +93,6 @@ export default async function SettingsPage() {
         formUrl={formUrl}
         privacyText={church.privacyText.trim() || privacyTemplate(church)}
         privacyUrl={appUrl(`/confidentialitate/${church.slug}`, await requestOrigin())}
-        extractAvailable={isExtractConfigured()}
         readOnly={!permissions.admin(role)}
         applicationLink={linkPanel}
       />

@@ -41,8 +41,6 @@ model Church {
   privacyAdoptedAt DateTime? @db.Date
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
   comunitate       String    @default("")
-  /// Reading scans with Claude (Anthropic) is off until an administrator accepts the processing terms.
-  extractEnabled   Boolean @default(false)
   adresa           String  @default("")
   orgNr            String  @default("")
   telefon          String  @default("")
@@ -1171,6 +1169,7 @@ enum AuditEntity {
   APPLICATION
   CHURCH_ROLE
   FAMILY
+  /// Reading scanned documents, withdrawn in 2026-10; kept so older log entries still read.
   EXTRACT
   SECURITY
   /// Visible only with the `disciplina` permission (administrators).

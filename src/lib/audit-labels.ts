@@ -150,7 +150,7 @@ export const ENTITY_LABEL = {
   APPLICATION: "Cerere de membru",
   CHURCH_ROLE: "Funcție în biserică",
   FAMILY: "Familie",
-  EXTRACT: "Citire din document",
+  EXTRACT: "Citire document (funcție retrasă)",
   SECURITY: "Securitate cont",
   DISCIPLINE: "Disciplină",
   CAMPAIGN: "Actualizare date",

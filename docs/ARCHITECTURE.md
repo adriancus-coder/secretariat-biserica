@@ -14,7 +14,6 @@ A technical overview for reviewers: how the app is built, how one church's data 
 | UI | Tailwind CSS 4, server-rendered SVG charts, Tiptap 3 rich-text editor (stored as validated JSON) |
 | Documents | pdfkit (embedded Source Serif 4), `docx` (Word), `exceljs`, `mammoth` (.docx import), `sharp` (signature images) |
 | E-mail | Resend (optional) |
-| Scan reading | Anthropic Claude API (optional, off per church until an administrator enables it) |
 | Tests | Vitest 5: `unit` and `integration` projects (466 tests at the time of writing) |
 
 Everything a user sees is Romanian; code, comments and developer documents are English.
@@ -109,7 +108,7 @@ flowchart TD
 
 ## Rate limiting
 
-In memory, per instance (`src/server/ip-limits.ts`, `src/server/rate-limit.ts`): sign-in 10 / 15 min per IP, signup 5 / h, forgot password 5 / h per IP and 3 / 15 min per address, 2FA codes 10 / 15 min, passkey attempts 10 / 15 min, application form 5 / h per IP and church, campaign identity checks 20 / h per IP, minutes e-mails 20 / h per church, scan reading 60 / day per church. The client IP is trusted only behind the configured proxy (`AUTH_TRUST_HOST=true`; the last `X-Forwarded-For` entry or `cf-connecting-ip`).
+In memory, per instance (`src/server/ip-limits.ts`, `src/server/rate-limit.ts`): sign-in 10 / 15 min per IP, signup 5 / h, forgot password 5 / h per IP and 3 / 15 min per address, 2FA codes 10 / 15 min, passkey attempts 10 / 15 min, application form 5 / h per IP and church, campaign identity checks 20 / h per IP and minutes e-mails 20 / h per church. The client IP is trusted only behind the configured proxy (`AUTH_TRUST_HOST=true`; the last `X-Forwarded-For` entry or `cf-connecting-ip`).
 
 ## Browser security headers
 
@@ -137,7 +136,7 @@ The church's administrator downloads a JSON export (password and step-up again, 
 ## Deployment
 
 - Render Blueprint (`render.yaml`): one web service and one PostgreSQL database, both in the **Frankfurt (EU)** region, connected over Render's private network; the health check is `/api/health`. The service deploys every push to `dev`; migrations run with `prisma migrate deploy` as the first step of the start command.
-- Configuration through environment variables only (`DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `AUTH_URL`, optional `RESEND_API_KEY`, `ANTHROPIC_API_KEY`); `APP_URL` must be the real public address (links in e-mails, the passkey relying party).
+- Configuration through environment variables only (`DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `AUTH_URL`, optional `RESEND_API_KEY`, the `VAPID_*` keys); `APP_URL` must be the real public address (links in e-mails, the passkey relying party).
 
 ## CI gates
 
@@ -150,7 +149,7 @@ GitHub Actions on `dev`, `main` and pull requests: `npm ci`, `npm run audit:chec
 - Whoever holds both the database and `AUTH_SECRET` (the hosting account) can decrypt TOTP secrets and pastoral notes; encryption protects against a leaked dump or backup, not against the operator.
 - The pastoral notes are not in any backup, by design: a lost database loses them.
 - The Word version of an unapproved document carries the "CIORNĂ — neaprobat" mark in the page header, not as a diagonal watermark.
-- Reading scans sends the file to the Anthropic API (outside the EEA); it is off until an administrator enables it after reading the processing terms.
+- No AI service: reading scanned documents was withdrawn at the church's request (2026-10). Old minutes are imported only from Word files, read on the server.
 
 ## Roadmap
 

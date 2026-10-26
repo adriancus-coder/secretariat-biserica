@@ -51,7 +51,6 @@ export const SETTINGS_FIELDS = [
   "semnaturaUnicaTipuri",
   "privacyText",
   "comunitate",
-  "extractEnabled",
   "regulaPrezenta",
   "tipuriAG",
   "tipuriCvorum",
@@ -78,7 +77,6 @@ export const churchSettingsSchema = z.object({
   passkeyPolicy: checkbox,
   semnaturaUnica: z.enum(["", "TOATE", "TIPURI"]).catch(""),
   privacyText: longText(20000, "Nota de confidențialitate"),
-  extractEnabled: checkbox,
 });
 
 /**

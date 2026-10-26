@@ -13,6 +13,7 @@ export type AuditEntityKey =
   | "APPLICATION"
   | "CHURCH_ROLE"
   | "FAMILY"
+  /** Withdrawn feature (reading scanned documents): only older log entries. */
   | "EXTRACT"
   | "SECURITY"
   | "DISCIPLINE"
