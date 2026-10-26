@@ -32,9 +32,21 @@ const report: StatisticsReport = {
 };
 
 describe("statistics report", () => {
+  it("the exports follow the screen's sort for that table only", () => {
+    const [evo, , ages] = statisticsTables(report, { sort: "evolutie.membri", dir: "asc" });
+    expect(evo.rows.map((r) => r[1])).toEqual([40, 41]);
+    expect(ages.rows.map((r) => r[0])).toEqual(["0–13", "65+"]);
+    const [, , ages2] = statisticsTables(report, { sort: "varste.total", dir: "desc" });
+    expect(ages2.rows.map((r) => r[3])).toEqual([5, 1]);
+    const spec = printToText(statisticsPrint(report, { nume: "B", adresa: "", orgNr: "", telefon: "", email: "", pastor: "", secretar: "" }, { sort: "evolutie.an", dir: "asc" }));
+    expect(spec.indexOf("2024 | 40")).toBeLessThan(spec.indexOf("2025 | 41"));
+  });
+
   it("builds the tables with the same numbers as the page", () => {
     const [evo, months, ages, , fam] = statisticsTables(report);
-    expect(evo.rows[1].slice(0, 3)).toEqual([2025, 41, 2]);
+    // Year tables: newest first by default.
+    expect(evo.rows.map((r) => r[0])).toEqual([2025, 2024]);
+    expect(evo.rows[0].slice(0, 3)).toEqual([2025, 41, 2]);
     expect(months.rows[2]).toEqual(["martie", 3, 0]);
     expect(ages.rows).toEqual([["0–13", 2, 3, 5], ["65+", 1, 0, 1]]);
     expect(fam.rows[1]).toEqual(["Persoane pe familie, în medie", "3,2"]);

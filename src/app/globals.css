@@ -2037,23 +2037,101 @@
     overflow-x: auto;
     margin: 8px 0;
   }
-  .stats-table {
-    border-collapse: collapse;
+  /* DataTable (src/components/ui/data-table.tsx): scrolls inside its card on narrow screens, the
+     header and the first column stay in view (a shadow marks the first column once scrolled). */
+  .data-table-block {
+    margin: 8px 0;
+  }
+  .data-table-hint {
+    margin: 0 0 4px;
+  }
+  .data-table-wrap {
+    overflow: auto;
+    max-height: min(70vh, 42rem);
+    overscroll-behavior-x: contain;
+    border-radius: 8px;
+  }
+  .data-table {
+    border-collapse: separate;
+    border-spacing: 0;
     width: 100%;
     font-size: 0.875rem;
+    background: var(--panel);
   }
-  .stats-table th,
-  .stats-table td {
-    padding: 2px 6px;
+  .data-table th,
+  .data-table td {
+    padding: 0 6px;
     text-align: right;
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
+    background: var(--panel);
   }
-  .stats-table th:first-child {
+  .data-table td.text,
+  .data-table th.text,
+  .data-table tbody th,
+  .data-table tfoot th {
     text-align: left;
   }
-  .stats-table .neg {
+  .data-table tbody th,
+  .data-table tfoot th {
+    font-weight: 500;
+    white-space: normal;
+    min-width: 4.5rem;
+  }
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 0;
+    font-weight: 600;
+  }
+  .data-table tr > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  .data-table thead tr > :first-child {
+    z-index: 3;
+  }
+  .data-table-wrap.scrolled tr > :first-child {
+    box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.35);
+  }
+  .data-table .neg {
     color: var(--warn);
+  }
+  .data-table tfoot th,
+  .data-table tfoot td {
+    font-weight: 600;
+    border-top: 2px solid var(--line);
+  }
+  .sort-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 6px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .data-table thead th.text .sort-btn,
+  .data-table thead tr > :first-child .sort-btn {
+    justify-content: flex-start;
+  }
+  .sort-btn:hover {
+    color: var(--link);
+  }
+  .sort-icon {
+    flex: none;
+  }
+  th[aria-sort="ascending"] .sort-btn,
+  th[aria-sort="descending"] .sort-btn {
+    color: var(--accent);
   }
   .num-link {
     display: inline-flex;

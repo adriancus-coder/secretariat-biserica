@@ -8,7 +8,8 @@ import { EVOLUTION_KEYS } from "@/domain/evolution";
 import { categoryHref } from "@/lib/category-params";
 import { MONTHS_L } from "@/lib/format";
 import { requestedYear } from "@/lib/statistics-params";
-import { bandLabel, statisticsWhen } from "@/lib/statistics-report";
+import { bandLabel, statisticsTableDefs, statisticsWhen } from "@/lib/statistics-report";
+import { DataTable, SortAwareLink } from "@/components/ui/data-table";
 import { loadStatistics } from "@/server/queries/statistics";
 import { requireCtx } from "@/server/session";
 
@@ -33,7 +34,9 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
   const st = d.structure;
   const cat = (key: string, an: number | undefined, extra?: Record<string, string>) => categoryHref(key, an, extra);
   const both = (a: string, b: string, an: number | undefined) => categoryHref([a, b], an, { mod: "toate" });
+  // Charts stay chronological (left = oldest) whatever the tables' sort.
   const labels = d.rows.map((r) => String(r.year));
+  const [evo, , ages, status] = statisticsTableDefs(d);
   const missing = (
     <p className="hint">
       <Link href={cat("fara-data-nasterii", d.an)}>{st.withoutBirthDate} persoane fără dată de naștere</Link> nu sunt incluse
@@ -44,12 +47,13 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
   return (
     <>
       <PageHead title="Statistici" sub={statisticsWhen(d)}>
-        <a href={`/pdf/statistici${d.an ? `?an=${d.an}` : ""}`} target="_blank" rel="noopener" className="btn">
+        {/* The exports follow the table sort chosen on the page. */}
+        <SortAwareLink href="/pdf/statistici" params={{ an: d.an ? String(d.an) : undefined }} target="_blank" rel="noopener" className="btn">
           Descarcă PDF
-        </a>
-        <a href={`/api/statistici/excel${d.an ? `?an=${d.an}` : ""}`} className="btn" download>
+        </SortAwareLink>
+        <SortAwareLink href="/api/statistici/excel" params={{ an: d.an ? String(d.an) : undefined }} className="btn" download>
           Exportă tabelele (Excel)
-        </a>
+        </SortAwareLink>
       </PageHead>
       <form method="get" className="toolbar items-center">
         <label htmlFor="an" className="sr-only">
@@ -90,47 +94,32 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
           ]}
         />
         </div>
-        <div className="table-scroll" data-scroll>
-          <table className="stats-table">
-            <caption className="sr-only">Evoluția pe ani: membri, intrări, ieșiri, binecuvântări, creștere netă</caption>
-            <thead>
-              <tr>
-                <th>An</th>
-                <th>Membri</th>
-                <th>Botez</th>
-                <th>Transfer</th>
-                <th>Cerere</th>
-                <th>Reabilitare</th>
-                <th>Ieșiri</th>
-                <th>Transfer</th>
-                <th>Retragere</th>
-                <th>Deces</th>
-                <th>Excludere</th>
-                <th>Binecuv.</th>
-                <th>Creștere</th>
-              </tr>
-            </thead>
-            <tbody>
-              {d.rows.map((r) => (
-                <tr key={r.year}>
-                  <th scope="row">{r.year}</th>
-                  <td><N n={r.membri} href={cat("membri", r.an)} /></td>
-                  <td><N n={r.intrari.botez} href={cat(EVOLUTION_KEYS.botez, r.an)} /></td>
-                  <td><N n={r.intrari.transfer} href={cat(EVOLUTION_KEYS.transfer, r.an)} /></td>
-                  <td><N n={r.intrari.cerere} href={cat(EVOLUTION_KEYS.cerere, r.an)} /></td>
-                  <td><N n={r.intrari.reprimire} href={cat(EVOLUTION_KEYS.reprimire, r.an)} /></td>
-                  <td><N n={r.iesiri.total} href={cat(EVOLUTION_KEYS.iesiri, r.an)} /></td>
-                  <td><N n={r.iesiri.transfer} href={cat(EVOLUTION_KEYS.iesiriTransfer, r.an)} /></td>
-                  <td><N n={r.iesiri.retragere} href={cat(EVOLUTION_KEYS.retragere, r.an)} /></td>
-                  <td><N n={r.iesiri.deces} href={cat(EVOLUTION_KEYS.deces, r.an)} /></td>
-                  <td><N n={r.iesiri.excludere} href={cat(EVOLUTION_KEYS.excludere, r.an)} /></td>
-                  <td><N n={r.binecuvantari} href={cat(EVOLUTION_KEYS.binecuvantari, r.an)} /></td>
-                  <td className={r.crestere < 0 ? "neg" : undefined}>{r.crestere > 0 ? `+${r.crestere}` : r.crestere}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          id={evo.id}
+          caption="Evoluția pe ani: membri, intrări, ieșiri, binecuvântări, creștere netă"
+          columns={evo.columns}
+          defaultSort={evo.defaultSort}
+          rows={d.rows.map((r, i) => ({
+            key: String(r.year),
+            sort: evo.rows[i].sort,
+            classes: [undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, r.crestere < 0 ? "neg" : undefined],
+            cells: [
+              r.year,
+              <N key="m" n={r.membri} href={cat("membri", r.an)} />,
+              <N key="b" n={r.intrari.botez} href={cat(EVOLUTION_KEYS.botez, r.an)} />,
+              <N key="t" n={r.intrari.transfer} href={cat(EVOLUTION_KEYS.transfer, r.an)} />,
+              <N key="c" n={r.intrari.cerere} href={cat(EVOLUTION_KEYS.cerere, r.an)} />,
+              <N key="r" n={r.intrari.reprimire} href={cat(EVOLUTION_KEYS.reprimire, r.an)} />,
+              <N key="i" n={r.iesiri.total} href={cat(EVOLUTION_KEYS.iesiri, r.an)} />,
+              <N key="it" n={r.iesiri.transfer} href={cat(EVOLUTION_KEYS.iesiriTransfer, r.an)} />,
+              <N key="re" n={r.iesiri.retragere} href={cat(EVOLUTION_KEYS.retragere, r.an)} />,
+              <N key="d" n={r.iesiri.deces} href={cat(EVOLUTION_KEYS.deces, r.an)} />,
+              <N key="e" n={r.iesiri.excludere} href={cat(EVOLUTION_KEYS.excludere, r.an)} />,
+              <N key="bc" n={r.binecuvantari} href={cat(EVOLUTION_KEYS.binecuvantari, r.an)} />,
+              r.crestere > 0 ? `+${r.crestere}` : r.crestere,
+            ],
+          }))}
+        />
         <p className="hint">Membri la 31 decembrie (anul curent: la zi). Intrările prin botez numără botezurile anului, ca în darea de seamă.</p>
       </section>
 
@@ -176,50 +165,36 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
             <span>vârsta mediană a membrilor</span>
           </div>
         </div>
-        <div className="table-scroll" data-scroll>
-          <table className="stats-table">
-            <caption className="sr-only">Persoane pe grupe de vârstă</caption>
-            <thead>
-              <tr>
-                {st.bands.map((b) => (
-                  <th key={b.min}>{bandLabel(b.min, b.max)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {st.bands.map((b) => (
-                  <td key={b.min}>
-                    <N n={b.n} href={cat(ageKey(b.min, b.max), d.an)} />
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="table-scroll" data-scroll>
-          <table className="stats-table">
-            <caption className="sr-only">Statut și gen</caption>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Bărbați</th>
-                <th>Femei</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {st.byStatus.map((r) => (
-                <tr key={r.key}>
-                  <th scope="row">{r.label}</th>
-                  <td><N n={r.M} href={both(r.key, "barbati", d.an)} /></td>
-                  <td><N n={r.F} href={both(r.key, "femei", d.an)} /></td>
-                  <td><N n={r.total} href={cat(r.key, d.an)} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          id={ages.id}
+          caption="Persoane pe grupe de vârstă și gen"
+          columns={ages.columns}
+          rows={st.pyramid.map((r, i) => ({
+            key: String(r.min),
+            sort: ages.rows[i].sort,
+            cells: [
+              bandLabel(r.min, r.max),
+              <N key="m" n={r.M} href={both("barbati", ageKey(r.min, r.max), d.an)} />,
+              <N key="f" n={r.F} href={both("femei", ageKey(r.min, r.max), d.an)} />,
+              <N key="t" n={st.bands[i].n} href={cat(ageKey(st.bands[i].min, st.bands[i].max), d.an)} />,
+            ],
+          }))}
+        />
+        <DataTable
+          id={status.id}
+          caption="Statut și gen"
+          columns={status.columns}
+          rows={st.byStatus.map((r, i) => ({
+            key: r.key,
+            sort: status.rows[i].sort,
+            cells: [
+              r.label,
+              <N key="m" n={r.M} href={both(r.key, "barbati", d.an)} />,
+              <N key="f" n={r.F} href={both(r.key, "femei", d.an)} />,
+              <N key="t" n={r.total} href={cat(r.key, d.an)} />,
+            ],
+          }))}
+        />
       </section>
 
       <section className="card">

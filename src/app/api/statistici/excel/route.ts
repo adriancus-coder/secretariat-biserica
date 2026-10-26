@@ -11,10 +11,12 @@ import { requireCtx } from "@/server/session";
  */
 export async function GET(req: Request) {
   const ctx = await requireCtx();
-  const [d, church] = await Promise.all([loadStatistics(ctx, requestedYear(new URL(req.url).searchParams.get("an"))), getChurch(ctx)]);
+  const sp = new URL(req.url).searchParams;
+  const [d, church] = await Promise.all([loadStatistics(ctx, requestedYear(sp.get("an"))), getChurch(ctx)]);
   const wb = new ExcelJS.Workbook();
   wb.creator = "Secretariat Biserică";
-  for (const t of statisticsTables(d)) {
+  // The rows in the order the page shows them (?sort=<table>.<column>&dir=).
+  for (const t of statisticsTables(d, { sort: sp.get("sort"), dir: sp.get("dir") })) {
     const ws = wb.addWorksheet(t.name.slice(0, 31), { views: [{ state: "frozen", ySplit: 2 }] });
     ws.addRow([`Biserica ${church.nume} — ${t.name} — ${statisticsWhen(d)}`]).font = { bold: true, size: 12 };
     ws.addRow(t.columns).font = { bold: true };

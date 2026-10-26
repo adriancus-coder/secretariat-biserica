@@ -3,6 +3,7 @@ import Link from "next/link";
 import { forbidden, notFound } from "next/navigation";
 import { formatDateTime } from "@/components/audit-trail";
 import { ApproveButton } from "@/components/approve-button";
+import { DataTable } from "@/components/ui/data-table";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fromDbDate } from "@/lib/dates";
 import { fmt } from "@/lib/format";
@@ -95,28 +96,21 @@ export default async function PersonProposalPage({ params }: PageProps<"/cereri/
       </dl>
       <div className="card">
         <h3>Ce se schimbă în registru</h3>
-        <div className="table-scroll" data-scroll>
-          <table className="stats-table">
-            <thead>
-              <tr>
-                <th scope="col">Câmp</th>
-                {current ? <th scope="col">Acum</th> : null}
-                <th scope="col">Propus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {changes.map((c) => (
-                <tr key={c.field}>
-                  <th scope="row">{FIELD_LABEL[c.field] ?? c.field}</th>
-                  {current ? <td>{show(c.field, c.before)}</td> : null}
-                  <td>
-                    <b>{show(c.field, c.after)}</b>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          id="schimbari"
+          caption="Ce se schimbă în registru"
+          columns={[
+            { key: "camp", label: "Câmp", type: "text" },
+            ...(current ? [{ key: "acum", label: "Acum", type: "text" as const }] : []),
+            { key: "propus", label: "Propus", type: "text" },
+          ]}
+          rows={changes.map((c) => ({
+            key: c.field,
+            sort: [FIELD_LABEL[c.field] ?? c.field, ...(current ? [show(c.field, c.before)] : []), show(c.field, c.after)],
+            classes: [undefined, "text", "text"],
+            cells: [FIELD_LABEL[c.field] ?? c.field, ...(current ? [show(c.field, c.before)] : []), <b key="p">{show(c.field, c.after)}</b>],
+          }))}
+        />
         {others ? <p className="hint">Încă {others === 1 ? "un câmp modificat" : `${others} câmpuri modificate`} în fișă (se salvează împreună).</p> : null}
       </div>
       {isPastor && pr.status === "PROPUSA" ? (

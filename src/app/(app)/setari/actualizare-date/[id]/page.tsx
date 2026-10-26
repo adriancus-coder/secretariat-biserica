@@ -7,6 +7,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ShareButton } from "@/components/ui/share-button";
 import { campaignMessage, LINK_STATUS_LABEL, LINK_STATUSES, type LinkStatus } from "@/lib/campaign";
 import { fmt, memberName } from "@/lib/format";
+import { DataTable } from "@/components/ui/data-table";
 import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
 import { addMissingLinksAction, closeCampaignAction, markLinkSentAction, renewLinkAction, toggleGeneralLinkAction } from "@/server/actions/campaigns";
@@ -100,49 +101,47 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
 
       <div className="card">
         <h3>Situația acordurilor</h3>
-        <div className="table-scroll">
-          <table className="stats-table">
-            <thead>
-              <tr>
-                <th>Acord</th>
-                <th>Da</th>
-                <th>Nu</th>
-                <th>Neexprimat</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">{CONSENT_LABEL.INFO_NOTE}</th>
-                <td>
-                  <Link className="num-link" href={categoryHref("nota-confirmata", undefined)}>
-                    {tally("INFO_NOTE").da}
-                  </Link>
-                </td>
-                <td>—</td>
-                <td>
-                  <Link className="num-link" href={categoryHref("nota-neconfirmata", undefined)}>
-                    {inRecord.length - tally("INFO_NOTE").da}
-                  </Link>
-                </td>
-              </tr>
-              {OPTIONAL_CONSENTS.map((k) => {
-                const t = tally(k);
-                return (
-                  <tr key={k}>
-                    <th scope="row">{CONSENT_LABEL[k]}</th>
-                    {(["da", "nu", "neexprimat"] as const).map((a) => (
-                      <td key={a}>
-                        <Link className="num-link" href={categoryHref(consentKey(k, a), undefined)}>
-                          {t[a]}
-                        </Link>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          id="acorduri"
+          caption="Situația acordurilor"
+          columns={[
+            { key: "acord", label: "Acord", type: "text" },
+            { key: "da", label: "Da", type: "number" },
+            { key: "nu", label: "Nu", type: "number" },
+            { key: "neexprimat", label: "Neexprimat", type: "number" },
+          ]}
+          rows={[
+            {
+              key: "INFO_NOTE",
+              sort: [CONSENT_LABEL.INFO_NOTE, tally("INFO_NOTE").da, null, inRecord.length - tally("INFO_NOTE").da],
+              cells: [
+                CONSENT_LABEL.INFO_NOTE,
+                <Link key="da" className="num-link" href={categoryHref("nota-confirmata", undefined)}>
+                  {tally("INFO_NOTE").da}
+                </Link>,
+                "—",
+                <Link key="ne" className="num-link" href={categoryHref("nota-neconfirmata", undefined)}>
+                  {inRecord.length - tally("INFO_NOTE").da}
+                </Link>,
+              ],
+            },
+            ...OPTIONAL_CONSENTS.map((k) => {
+              const t = tally(k);
+              return {
+                key: k,
+                sort: [CONSENT_LABEL[k], t.da, t.nu, t.neexprimat],
+                cells: [
+                  CONSENT_LABEL[k],
+                  ...(["da", "nu", "neexprimat"] as const).map((a) => (
+                    <Link key={a} className="num-link" href={categoryHref(consentKey(k, a), undefined)}>
+                      {t[a]}
+                    </Link>
+                  )),
+                ],
+              };
+            }),
+          ]}
+        />
         {permissions.export(ctx.user.role) ? (
           <Link href={exportHref} className="btn btn-sm mt-2">
             Exportă situația acordurilor
