@@ -26,6 +26,9 @@ export default async function PrayerPage({ searchParams }: PageProps<"/rugaciune
     <>
       <PageHead title="Rugăciunea săptămânală" sub={`Săptămâna din ${fmt(d.week)}`} />
       <PrayerWeekCard
+        key={`${d.week}:${d.marked?.key ?? d.next?.key ?? ""}`}
+        week={d.week}
+        unitKey={d.marked?.key ?? d.next?.key ?? null}
         label={label}
         nextKey={d.next?.key ?? null}
         marked={Boolean(d.marked)}

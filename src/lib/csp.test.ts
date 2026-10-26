@@ -16,4 +16,11 @@ describe("CSP", () => {
     expect(isPdfPath("/cerere/maranata/statut/cult")).toBe(true);
     expect(isPdfPath("/cerere/maranata")).toBe(false);
   });
+
+  it("does not restrict top-level navigation (the wa.me link of /rugaciune) and loads nothing from outside", () => {
+    const csp = contentSecurityPolicy("n", { dev: false, https: true });
+    expect(csp).not.toContain("navigate-to");
+    expect(csp).not.toMatch(/wa\.me|whatsapp|https?:\/\//);
+  });
 });
+

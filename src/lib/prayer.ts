@@ -16,6 +16,14 @@ export const PRAYER_PARENT_RELATIONS = ["Cap de familie", "Soț", "Soție"];
 export const DEFAULT_PRAYER_MESSAGE = "Săptămâna aceasta ne rugăm pentru {familia}. Să-i purtăm în rugăciune!";
 export const PRAYER_VARIABLE = "{familia}";
 export const PRAYER_MESSAGE_MAX = 500;
+/** The week's message as edited on /rugaciune before sending (never stored on the server). */
+export const PRAYER_SHARE_MAX = 1000;
+export const PRAYER_SHARE_HINT = "Nu scrieți probleme de sănătate sau alte detalii personale fără acordul familiei.";
+
+/** "Trimite pe WhatsApp": no phone number, so the user picks the group. */
+export function whatsappUrl(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
 
 export const PRAYER_SOURCE_LABEL = { CAMPANIE: "campania de actualizare a datelor", HARTIE: "formular pe hârtie", SECRETARIAT: "secretariat" } as const;
 export type PrayerSourceKey = keyof typeof PRAYER_SOURCE_LABEL;

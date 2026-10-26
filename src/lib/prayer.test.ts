@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerMessage, prayerMessageError, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
+import { whatsappUrl, answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerMessage, prayerMessageError, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
 
 const TODAY = "2026-10-28";
 const m = (id: string, prenume: string, over: Partial<PrayerMember> = {}): PrayerMember => ({
@@ -93,4 +93,16 @@ describe("weekly prayer", () => {
     expect(restrictivePrayer([{ includeChildren: true }, { includeChildren: true }])).toEqual({ includeChildren: true });
     expect(restrictivePrayer([{ optOut: false }, {}])).toEqual({ optOut: false });
   });
+
+  it("the WhatsApp link carries the edited text encoded: diacritics, new lines, emoji, no phone number", () => {
+    const text = "Săptămâna aceasta ne rugăm pentru Familia Țurcanu: Ștefan și Ioana.\nPsalmul 23 🙏 & \"pace\"";
+    const url = whatsappUrl(text);
+    expect(url.startsWith("https://wa.me/?text=")).toBe(true);
+    expect(url).not.toMatch(/[\s"&]$|wa\.me\/\d/);
+    expect(url).toContain("%0A"); // the new line
+    expect(url).toContain("%F0%9F%99%8F"); // the emoji
+    expect(url).toContain("%C8%9A"); // Ț
+    expect(decodeURIComponent(url.slice("https://wa.me/?text=".length))).toBe(text);
+  });
 });
+

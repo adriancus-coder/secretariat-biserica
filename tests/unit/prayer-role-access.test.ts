@@ -95,7 +95,7 @@ describe("the Rugăciune role reaches no register data", () => {
     "src/server/actions/push.ts": ["*"],
     "src/server/actions/data-update.ts": ["*"],
     "src/server/actions/applications.ts": ["submitApplicationAction"],
-    "src/server/actions/prayer.ts": ["markPrayerWeekAction", "cancelPrayerWeekAction", "prayerCopiedAction"],
+    "src/server/actions/prayer.ts": ["markPrayerWeekAction", "cancelPrayerWeekAction", "prayerSharedAction"],
   };
 
   const actionFiles = files(join(ROOT, "src/server/actions"), (f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && !f.endsWith("run.ts")).map(rel);

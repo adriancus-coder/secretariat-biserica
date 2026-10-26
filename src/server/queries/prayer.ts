@@ -49,8 +49,8 @@ async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
 
 export interface PrayerPageData {
   week: string;
-  /** This week's announced family, when it was marked. */
-  marked: { label: string } | null;
+  /** This week's announced family, when it was marked (its key keeps the edited message apart per family). */
+  marked: { key: string; label: string } | null;
   /** The next in the rotation (after `skip` skipped ones), when the week is not marked yet. */
   next: { key: string; label: string } | null;
   /** How many units are in the rotation. */
@@ -82,7 +82,7 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
   const current = recent.find((w) => fromDbDate(w.weekStart) === week);
   return {
     week,
-    marked: current ? { label: shown(current.familyId, current.personId) } : null,
+    marked: current ? { key: current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? ""), label: shown(current.familyId, current.personId) } : null,
     next: current || !rotation.length ? null : rotation[skip % rotation.length],
     total: rotation.length,
     history: recent.map((w) => ({ week: fromDbDate(w.weekStart)!, label: shown(w.familyId, w.personId) })),

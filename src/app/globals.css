@@ -1696,6 +1696,40 @@
     line-height: 1.35;
     overflow-wrap: anywhere;
   }
+  .prayer-preview {
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .prayer-message-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-top: 4px;
+  }
+  /* The three ways to send: one under the other on phones, on a row from 600 px. */
+  .prayer-share {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  @media (min-width: 600px) {
+    .prayer-share {
+      display: flex;
+      flex-wrap: wrap;
+    }
+  }
+  .prayer-ask {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .list-plain {
     list-style: none;
     padding: 0;

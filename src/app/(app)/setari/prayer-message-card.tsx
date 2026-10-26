@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Icon } from "@/components/shell/icons";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
-import { DEFAULT_PRAYER_MESSAGE, PRAYER_MESSAGE_MAX } from "@/lib/prayer";
+import { DEFAULT_PRAYER_MESSAGE, PRAYER_MESSAGE_MAX, prayerMessage, prayerMessageError } from "@/lib/prayer";
 import { savePrayerMessageAction } from "@/server/actions/prayer";
 
 /** Setări → "Rugăciunea săptămânală": the message copied on /rugaciune, {familia} its only variable. */
 export function PrayerMessageCard({ message, readOnly }: { message: string; readOnly: boolean }) {
   const { state, pending, onSubmit } = useActionForm(savePrayerMessageAction);
+  const [draft, setDraft] = useState(message);
+  // The same check as on the server, shown while typing; the preview uses an example family.
+  const problem = prayerMessageError(draft);
   return (
     <form onSubmit={onSubmit} noValidate className="card mt-7" id="rugaciune">
       <h3>Rugăciunea săptămânală</h3>
@@ -27,15 +31,20 @@ export function PrayerMessageCard({ message, readOnly }: { message: string; read
             rows={3}
             maxLength={PRAYER_MESSAGE_MAX}
             placeholder={DEFAULT_PRAYER_MESSAGE}
-            defaultValue={state.values?.prayerMessage ?? message}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
             aria-describedby={state.errors?.prayerMessage ? "prayerMessage-err" : undefined}
           />
           {state.errors?.prayerMessage ? (
             <div className="field-error" id="prayerMessage-err" role="alert">
               {state.errors.prayerMessage}
             </div>
+          ) : problem ? (
+            <div className="hint">{problem}</div>
           ) : null}
         </div>
+        <p className="hint mb-1">Previzualizare:</p>
+        <p className="prayer-preview">{prayerMessage(draft, "Familia Popescu: Ion și Maria")}</p>
         {!readOnly ? (
           <div className="actions">
             <button type="submit" className="btn btn-primary" disabled={pending}>

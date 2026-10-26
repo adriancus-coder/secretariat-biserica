@@ -13,7 +13,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 const { loadPrayerPage, PRAYER_FAMILY_SELECT, PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT } = await import("@/server/queries/prayer");
 const { applyDecision } = await import("@/server/review");
-const { cancelPrayerWeekAction, markPrayerWeekAction, prayerCopiedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
+const { cancelPrayerWeekAction, markPrayerWeekAction, prayerSharedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
 
 /** The weekly prayer: who is in the rotation, what is shown, and nothing else from the register. */
 describe.skipIf(!hasTestDb)("weekly prayer", () => {
@@ -82,10 +82,12 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     let d = await loadPrayerPage(ctx, 0);
     expect(d.marked?.label).toBe(next.label);
     expect(d.history.map((h) => h.label)).toEqual([next.label]);
-    await prayerCopiedAction();
+    await prayerSharedAction("whatsapp");
     const log = await prisma.auditLog.findMany({ where: { entity: "PRAYER" } });
     expect(log).toHaveLength(2);
     expect(JSON.stringify(log)).not.toMatch(/Barbu|Vasile|Ioana|Matei/);
+    // Sharing records the channel only.
+    expect(log.map((l) => (l.changes as { observatie?: string }).observatie)).toContain("PRAYER shared: whatsapp");
     expect((await cancelPrayerWeekAction()).ok).toBe(true);
     d = await loadPrayerPage(ctx, 0);
     expect(d.marked).toBeNull();

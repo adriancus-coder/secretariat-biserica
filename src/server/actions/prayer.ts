@@ -53,12 +53,20 @@ export async function cancelPrayerWeekAction(): Promise<FormState> {
   return state;
 }
 
-/** "Copiază mesajul": only that it was copied (no name, no text). */
-export async function prayerCopiedAction(): Promise<FormState> {
+const SHARE_CHANNELS = ["whatsapp", "share", "copy"] as const;
+export type PrayerShareChannel = (typeof SHARE_CHANNELS)[number];
+
+/**
+ * "Trimite pe WhatsApp" / "Partajează" / "Copiază mesajul": only the channel is audited ("PRAYER
+ * shared: whatsapp"); the text (which the user may have edited) and the family's name never reach
+ * the server.
+ */
+export async function prayerSharedAction(channel: PrayerShareChannel): Promise<FormState> {
   return runFormAction(null, async () => {
     const ctx = await actionCtx("rugaciune");
+    if (!(SHARE_CHANNELS as readonly string[]).includes(String(channel))) throw new ActionError("Canal necunoscut.");
     const week = thisWeek();
-    await writeAudit(ctx.db, ctx.user, { entity: "PRAYER", entityId: fromDbDate(week)!, entityLabel: weekLabel(week), action: "CREATE", fields: [], extra: { observatie: "mesaj copiat" } });
+    await writeAudit(ctx.db, ctx.user, { entity: "PRAYER", entityId: fromDbDate(week)!, entityLabel: weekLabel(week), action: "CREATE", fields: [], extra: { observatie: `PRAYER shared: ${channel}` } });
   });
 }
 
