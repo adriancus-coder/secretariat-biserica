@@ -411,6 +411,12 @@ corecții deliberate:
     căsătorie de după data situației) și cu starea civilă necompletată; cele trei adunate dau numărul de
     adulți. Darea de seamă are, după rândul copiilor minori, „Adulți: N (căsătoriți X, necăsătoriți Y,
     necompletat Z)”.
+23. **Eticheta statutului „Prieten”:** statutul PRIETEN (inexistent în prototip) se afișează „Prieten al
+    casei Domnului (nebotezat)” (pe rândurile listelor „Prieten (nebotezat)”), pereche pentru
+    „Botezat, fără calitate de membru”; numărat, „prieteni ai casei Domnului (nebotezați)”. Copia de
+    siguranță JSON păstrează cuvântul prototipului, „Prieten” (ca „Reprimire”); importul acceptă și
+    „Prieten al casei Domnului” și eticheta nouă. Exportul persoanelor (Excel / CSV / PDF) are eticheta nouă.
+    Rândul din darea de seamă rămâne „Prieteni ai casei Domnului (nebotezați): N” (diferența 18).
 
 ## Atribuiri
 

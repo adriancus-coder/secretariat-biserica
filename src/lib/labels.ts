@@ -11,16 +11,30 @@ export type PersonStatusKey = (typeof PERSON_STATUSES)[number];
 export const STATUS_LABEL: Record<PersonStatusKey, string> = {
   MEMBRU: "Membru",
   APARTINATOR: "Aparținător",
-  PRIETEN: "Prieten",
+  PRIETEN: "Prieten al casei Domnului (nebotezat)",
   BOTEZAT_FARA_TRANSFER: "Botezat, fără calitate de membru",
   FOST_MEMBRU: "Fost membru",
 };
+/** The short form where the long one does not fit (tags on list rows and member rows). */
+export const STATUS_LABEL_SHORT: Record<PersonStatusKey, string> = { ...STATUS_LABEL, PRIETEN: "Prieten (nebotezat)" };
+/** Counted (cards, statistics): "12 prieteni ai casei Domnului (nebotezați)". */
+export const PRIETENI_LABEL = "prieteni ai casei Domnului (nebotezați)";
+/** The same, at the start of a line or a table row. */
+export const PRIETENI_TITLE = "Prieteni ai casei Domnului (nebotezați)";
+/** The JSON backup keeps the prototype's word (like "Reprimire"), so older files and the prototype stay compatible. */
+export const PROTOTYPE_STATUS_LABEL: Record<PersonStatusKey, string> = { ...STATUS_LABEL, PRIETEN: "Prieten" };
+/** Older labels still accepted by the import (JSON backup), all → PRIETEN. */
+const STATUS_ALIASES: Record<string, PersonStatusKey> = { prieten: "PRIETEN", "prieten al casei domnului": "PRIETEN", "prieten (nebotezat)": "PRIETEN" };
+/** The status for a label of a file: the current label, an older one, or the key itself. */
+export function statusForLabel(value: string): PersonStatusKey | undefined {
+  return keyForLabel(STATUS_LABEL, value) ?? STATUS_ALIASES[value.trim().toLowerCase().replace(/\s+/g, " ")];
+}
 /** One line per status on the person form (Statut art. 20, 22, 24, 28). */
 export const STATUS_HINT: Record<PersonStatusKey, string> = {
   MEMBRU: "Botezat în apă și primit în biserică (prin botez, transfer sau reabilitare spirituală).",
   APARTINATOR:
     "Nebotezat: minor dintr-o familie de credincioși sau persoană care frecventează și s-a hotărât să-L urmeze pe Hristos (art. 28).",
-  PRIETEN: "Prieten al casei Domnului: nebotezat, frecventează biserica, încă nu este aparținător.",
+  PRIETEN: "Nebotezat, frecventează biserica, dar încă nu și-a exprimat hotărârea de a-L urma pe Hristos; când o face, devine aparținător (art. 28 lit. b).",
   BOTEZAT_FARA_TRANSFER: "Botezat (de exemplu în altă biserică), dar fără calitate de membru aici: nu a cerut transferul.",
   FOST_MEMBRU: "A ieșit din evidența membrilor (retragere, transfer, excludere).",
 };

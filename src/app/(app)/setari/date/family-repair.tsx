@@ -40,7 +40,7 @@ export function FamilyRepair({ families }: { families: AutoFamily[] }) {
         <button type="submit" className="btn" disabled={recalculating || autoCount === 0}>
           {recalculating ? "Se recalculează…" : "Recalculează capii de familie"}
         </button>
-        <p className="hint mt-1">Capul familiei: niciodată un copil sau cineva sub 18 ani; întâi membrii, apoi aparținătorii, apoi prietenii.</p>
+        <p className="hint mt-1">Capul familiei: niciodată un copil sau cineva sub 18 ani; întâi membrii, apoi aparținătorii, apoi prietenii casei Domnului (nebotezați).</p>
         <FormMessage state={recalcState} />
         {recalcState.changes?.length ? (
           <ul className="list-disc pl-5 text-sm mt-2">

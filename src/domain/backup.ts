@@ -16,10 +16,11 @@ import { isIsoDate } from "@/lib/dates";
 import {
   DOCUMENT_TYPES,
   PROTOTYPE_ENTRY_LABEL,
+  PROTOTYPE_STATUS_LABEL,
   ENTRY_LABEL,
   EXIT_LABEL,
   keyForLabel,
-  STATUS_LABEL,
+  statusForLabel,
   BELIEVER_RELATIONS,
   type DocumentTypeKey,
   type EntryModeKey,
@@ -166,7 +167,7 @@ export function toPrototypeJson(b: Backup): Record<string, unknown> {
     members: byId(b.members, (p) => ({
       nume: p.nume,
       prenume: p.prenume,
-      statut: STATUS_LABEL[p.statut],
+      statut: PROTOTYPE_STATUS_LABEL[p.statut],
       familie: p.familie,
       rudenie: p.rudenie,
       dataNasterii: d(p.dataNasterii),
@@ -331,7 +332,7 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
     if (!nume) err(`${who}: numele lipsește.`);
     const statutRaw = str.parse(m.statut);
     const isLegacyChild = statutRaw.toLowerCase() === "copil";
-    const statut = isLegacyChild ? "PRIETEN" : statutRaw ? keyForLabel(STATUS_LABEL, statutRaw) : "MEMBRU";
+    const statut = isLegacyChild ? "PRIETEN" : statutRaw ? statusForLabel(statutRaw) : "MEMBRU";
     if (!statut) err(`${who}: statut necunoscut „${statutRaw}”.`);
     const baptisedRaw = Boolean(str.parse(m.dataBotez) || str.parse(m.botezAn));
     if (isLegacyChild) legacy.set(id, { old: "COPIL", baptised: baptisedRaw });

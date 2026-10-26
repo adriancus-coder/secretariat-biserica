@@ -1,6 +1,6 @@
 import { memberName } from "@/lib/format";
 import { normalizeSearch } from "@/lib/text";
-import { EXIT_LABEL } from "@/lib/labels";
+import { EXIT_LABEL, PRIETENI_TITLE } from "@/lib/labels";
 import type { Stats } from "./stats";
 
 export interface YearActivity {
@@ -41,7 +41,7 @@ export function buildReportText(year: number, s: Stats, activity: YearActivity, 
     `- Aparținători: ${s.apart.length} (din care a) minori nebotezați din familii de credincioși: ${s.apartA.length}; b) persoane nebotezate hotărâte: ${s.apartB.length})`,
   );
   L.push(`- Botezați fără calitate de membru: ${s.botezatiFara.length}`);
-  L.push(`- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`);
+  L.push(`- ${PRIETENI_TITLE}: ${s.prieteni.length}`);
   L.push(`- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`);
   // Not in the prototype: the adults' marital status (documented with the persons block in the parity test).
   L.push(`- Adulți: ${s.adulti.length} (căsătoriți ${s.casatoriti.length}, necăsătoriți ${s.necasatoriti.length}, necompletat ${s.stareCivilaNecompletata.length})`);

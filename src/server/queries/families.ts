@@ -3,7 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { formatAddress } from "@/lib/address";
 import { ageAt, fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
-import { STATUS_LABEL } from "@/lib/labels";
+import { STATUS_LABEL_SHORT } from "@/lib/labels";
 import { compareRo, searchTerms } from "@/lib/text";
 import type { Ctx } from "../session";
 
@@ -97,6 +97,6 @@ export async function personsWithoutFamily(ctx: Ctx, today: string): Promise<Fam
   });
   return rows.map((p) => {
     const dn = fromDbDate(p.dataNasterii);
-    return { id: p.id, name: memberName(p), note: [dn ? `${ageAt(dn, today)} ani` : "", STATUS_LABEL[p.statut]].filter(Boolean).join(" · ") };
+    return { id: p.id, name: memberName(p), note: [dn ? `${ageAt(dn, today)} ani` : "", STATUS_LABEL_SHORT[p.statut]].filter(Boolean).join(" · ") };
   });
 }

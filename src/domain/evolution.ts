@@ -1,6 +1,7 @@
 import { ageAt, inYear } from "@/lib/dates";
 import { CATEGORY_AGE_BANDS, categoryContext, type CategoryInput } from "./categories";
 import type { PersonRecord } from "./types";
+import { PRIETENI_TITLE } from "@/lib/labels";
 
 /**
  * The "Statistici" page: the evolution over the years and the structure of the church, from the
@@ -145,7 +146,7 @@ export function structure(input: CategoryInput): Structure {
       byGender("apartinatori-a", "– a) minori din familii de credincioși"),
       byGender("apartinatori-b", "– b) nebotezați hotărâți"),
       byGender("botezati-fara-calitate", "Botezați fără calitate de membru"),
-      byGender("prieteni", "Prieteni ai casei Domnului"),
+      byGender("prieteni", PRIETENI_TITLE),
       byGender("copii-minori", "Copii minori"),
     ],
     marital: { adulti: s.adulti.length, casatoriti: s.casatoriti.length, necasatoriti: s.necasatoriti.length, necompletat: s.stareCivilaNecompletata.length },

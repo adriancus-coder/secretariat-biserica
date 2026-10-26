@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ageAt } from "@/lib/dates";
 import { initial, memberName } from "@/lib/format";
-import { STATUS_LABEL } from "@/lib/labels";
+import { STATUS_LABEL_SHORT } from "@/lib/labels";
 import { withDin } from "@/lib/person-nav";
 import type { PersonListItem } from "@/server/queries/persons";
 
@@ -27,7 +27,7 @@ export function PersonRow({ p, byFamily, today, din }: { p: PersonListItem; byFa
         <div className="t">{memberName(p)}</div>
         <div className="m">{meta}</div>
       </div>
-      <span className={statusTagClass(p.statut)}>{STATUS_LABEL[p.statut]}</span>
+      <span className={statusTagClass(p.statut)}>{STATUS_LABEL_SHORT[p.statut]}</span>
     </Link>
   );
 }

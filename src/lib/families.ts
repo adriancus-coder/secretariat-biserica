@@ -25,7 +25,7 @@ const STATUS_RANK: Partial<Record<PersonStatusKey, number>> = { MEMBRU: 0, APART
 
 /**
  * The head of a family, among the persons who can be heads (canBeHead): Membru before Aparținător
- * before Prieten (then others), then rudenie "Cap de familie", then men, then the oldest known birth
+ * before PRIETEN (then others), then rudenie "Cap de familie", then men, then the oldest known birth
  * date, then the first registered. null when nobody can be head (only children).
  */
 export function pickHead<T extends HeadCandidate>(members: readonly T[], today: string): T | null {

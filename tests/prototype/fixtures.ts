@@ -7,7 +7,7 @@ import {
   EXIT_MODES,
   NOMEN_DEFAULTS,
   PERSON_STATUSES,
-  STATUS_LABEL,
+  PROTOTYPE_STATUS_LABEL,
   type ExitModeKey,
 } from "@/lib/labels";
 
@@ -113,7 +113,8 @@ export function toPrototypeMember(p: FixturePerson): Record<string, unknown> {
     id: p.id,
     nume: p.nume,
     prenume: p.prenume,
-    statut: STATUS_LABEL[p.statut],
+    // The prototype names the status "Prieten" (STATUS-LABEL-PRIETEN changed only our label; README "Diferențe" 23).
+    statut: PROTOTYPE_STATUS_LABEL[p.statut],
     familie: p.familie,
     rudenie: p.rudenie,
     dataNasterii: p.dataNasterii ?? "",

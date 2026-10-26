@@ -6,7 +6,7 @@ import { AuditTrail } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ageAt, fromDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
-import { STATUS_LABEL } from "@/lib/labels";
+import { STATUS_LABEL_SHORT } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
@@ -103,7 +103,7 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
                   {[isHead ? "" : m.rudenie, dn ? `${ageAt(dn, today)} ani` : "", m.dataIesire ? "ieșit din evidență" : ""].filter(Boolean).join(" · ")}
                 </div>
               </div>
-              <span className={statusTagClass(m.statut)}>{STATUS_LABEL[m.statut]}</span>
+              <span className={statusTagClass(m.statut)}>{STATUS_LABEL_SHORT[m.statut]}</span>
               {canWrite && !(isHead && f.members.length > 1) ? (
                 <div className="item-actions !pl-0">
                   <MoveMemberForm personId={m.id} name={memberName(m)} families={others} />

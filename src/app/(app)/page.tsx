@@ -23,6 +23,7 @@ import { deleteExpiredContactsAction } from "@/server/actions/statute";
 import { expiredContactWhere } from "@/server/retention";
 import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
+import { PRIETENI_LABEL } from "@/lib/labels";
 
 /** A bar whose number opens the list of persons behind it. */
 function Bar({ label, n, width, warn, href }: { label: string; n: number; width: number; warn?: boolean; href?: string }) {
@@ -302,7 +303,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <div className="stats">
         <Stat value={s.botezati.length} label="botezați" href={cat("botezati")} />
         <Stat value={s.apart.length} label="aparținători" href={cat("apartinatori")} />
-        <Stat value={s.prieteni.length} label="prieteni ai casei Domnului" href={cat("prieteni")} />
+        <Stat value={s.prieteni.length} label={PRIETENI_LABEL} href={cat("prieteni")} />
       </div>
       <div className="stats">
         <Stat value={s.apartA.length} label="aparținători a) minori din familii de credincioși" href={cat("apartinatori-a")} />

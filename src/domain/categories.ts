@@ -1,5 +1,5 @@
 import { ageAt, inYear, monthsBefore } from "@/lib/dates";
-import { OPTIONAL_CONSENTS, PARENT_RELATIONS, type ConsentKindKey } from "@/lib/labels";
+import { OPTIONAL_CONSENTS, PARENT_RELATIONS, PRIETENI_TITLE, type ConsentKindKey } from "@/lib/labels";
 import type { ConsentState } from "@/lib/consents";
 import { computeStats, type Stats } from "./stats";
 import type { EventRecord, PersonRecord } from "./types";
@@ -46,7 +46,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "apartinatori-a", label: "Aparținători a) minori nebotezați din familii de credincioși", group: "Statut" },
   { key: "apartinatori-b", label: "Aparținători b) nebotezați hotărâți", group: "Statut" },
   { key: "botezati-fara-calitate", label: "Botezați fără calitate de membru", group: "Statut" },
-  { key: "prieteni", label: "Prieteni ai casei Domnului (nebotezați)", group: "Statut" },
+  { key: "prieteni", label: PRIETENI_TITLE, group: "Statut" },
   { key: "barbati", label: "Bărbați", group: "Statut" },
   { key: "femei", label: "Femei", group: "Statut" },
   { key: "copii-minori", label: "Copii minori", group: "Copii" },

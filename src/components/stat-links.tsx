@@ -1,12 +1,13 @@
 import Link from "next/link";
 import type { CategoryContext } from "@/domain/categories";
 import { categoryHref } from "@/lib/category-params";
+import { PRIETENI_LABEL } from "@/lib/labels";
 
 const FIGURES: [key: string, label: string][] = [
   ["toti", "în evidență"],
   ["membri", "membri"],
   ["apartinatori", "aparținători"],
-  ["prieteni", "prieteni"],
+  ["prieteni", PRIETENI_LABEL],
   ["copii-minori", "copii minori"],
   ["copii-membri", "copii ai membrilor"],
   ["casatoriti", "căsătoriți"],

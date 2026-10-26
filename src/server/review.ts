@@ -250,7 +250,7 @@ export async function applyDecision(
         });
       }
     } else {
-      // "Creează persoană nouă" (general link): everything the person wrote, as a Prieten.
+      // "Creează persoană nouă" (general link): everything the person wrote, with the status PRIETEN.
       adult = await tx.person.create({
         data: {
           ...selfData(null, p.self, new Set()),
