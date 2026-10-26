@@ -52,3 +52,25 @@ export function isMoreActive(pathname: string, items: NavItem[] = NAV_ITEMS): bo
     items.some((i) => !i.primary && isActive(pathname, i.href))
   );
 }
+
+/**
+ * The sidebar (820 px and up): every allowed entry, grouped; "Setări" sits apart at the bottom with
+ * "Contul meu" and "Ieșire". Only the order changes, never which entries a role sees.
+ */
+export const SIDE_GROUPS: { title: string; hrefs: string[] }[] = [
+  { title: "Principal", hrefs: ["/", "/persoane", "/familii", "/calendar", "/procese-verbale"] },
+  { title: "Evidență", hrefs: ["/cereri", "/de-verificat", "/documente", "/mentiuni", "/grupuri"] },
+  { title: "Rapoarte", hrefs: ["/statistici"] },
+  { title: "Comunitate", hrefs: ["/rugaciune"] },
+];
+export const SIDE_BOTTOM = ["/setari"];
+
+/** The sidebar's groups for these entries (a group without any allowed entry is left out), and the bottom ones. */
+export function sideNav(items: NavItem[]): { groups: { title: string; items: NavItem[] }[]; bottom: NavItem[] } {
+  const byHref = new Map(items.map((i) => [i.href, i]));
+  const pick = (hrefs: string[]) => hrefs.map((h) => byHref.get(h)).filter((i): i is NavItem => Boolean(i));
+  return {
+    groups: SIDE_GROUPS.map((g) => ({ title: g.title, items: pick(g.hrefs) })).filter((g) => g.items.length),
+    bottom: pick(SIDE_BOTTOM),
+  };
+}

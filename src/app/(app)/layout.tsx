@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppNav } from "@/components/shell/app-nav";
+import { SideNav } from "@/components/shell/side-nav";
 import { navItemsFor } from "@/components/shell/nav-items";
 import { Icon } from "@/components/shell/icons";
 import { TextSizeControl } from "@/components/text-size-control";
@@ -32,25 +33,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
         </header>
         <AppNav items={items} badges={badges} />
-        <div className="shell-user desk-only">
-          <TextSizeControl current={textSize} tone="dark" />
-          <Link href="/cont" className="who">
-            <Icon name="cont" className="size-[18px]" />
-            <span className="min-w-0">
-              <span className="block break-words">{user.name}</span>
-              <span className="block text-[0.7188rem] opacity-70">
-                {ROLE_LABEL[user.role]}
-                {user.isPastor ? <span className="pastor-badge">Pastor</span> : null}
-              </span>
-            </span>
-          </Link>
-          <form action="/deconectat" method="post">
-            <button type="submit" className="logout" title="Ieșire din cont">
-              <Icon name="iesire" className="size-[18px]" />
-              Ieșire
-            </button>
-          </form>
-        </div>
+        <SideNav items={items} badges={badges}>
+          <div className="shell-user">
+            <TextSizeControl current={textSize} tone="dark" />
+            <div className="side-account">
+              <Link href="/cont" className="who" title="Contul meu" aria-label={`Contul meu: ${user.name}`}>
+                <Icon name="cont" className="size-[18px]" />
+                <span className="side-label min-w-0">
+                  <span className="block break-words">{user.name}</span>
+                  <span className="block text-[0.7188rem] opacity-70">
+                    {ROLE_LABEL[user.role]}
+                    {user.isPastor ? <span className="pastor-badge">Pastor</span> : null}
+                  </span>
+                </span>
+              </Link>
+              <form action="/deconectat" method="post">
+                <button type="submit" className="logout" title="Ieșire din cont" aria-label="Ieșire din cont">
+                  <Icon name="iesire" className="size-[18px]" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </SideNav>
       </div>
       <main className="shell-main" id="continut">
         {children}

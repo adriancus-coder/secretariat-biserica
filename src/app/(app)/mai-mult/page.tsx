@@ -9,6 +9,7 @@ import { InstallApp } from "@/components/pwa/install-app";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { requirePermission } from "@/server/session";
+import { WideRedirect } from "./wide-redirect";
 import { pendingBadges } from "@/server/queries/badges";
 
 export const metadata: Metadata = { title: "Mai mult" };
@@ -19,6 +20,7 @@ export default async function MorePage() {
   const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <>
+      <WideRedirect />
       <PageHead title="Mai mult" />
       <div className="moremenu">
         {navItemsFor((p) => permissions[p](user)).filter((i) => !i.primary).map((i) => (

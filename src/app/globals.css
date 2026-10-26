@@ -292,7 +292,8 @@
     margin: 0 auto;
     min-width: 0;
   }
-  .desk-only {
+  .desk-only,
+  .side-panel {
     display: none !important;
   }
   .shell-user {
@@ -336,39 +337,114 @@
       position: sticky;
       top: 0;
       height: 100dvh;
-      overflow-y: auto;
+      overflow: hidden;
     }
     .shell-top {
       flex-direction: column;
       align-items: stretch;
       justify-content: flex-start;
-      padding: 26px 20px 6px;
+      padding: 18px 20px 4px;
     }
-    .shell-nav {
-      position: static;
+    /* From 820 px the sidebar (SideNav) replaces the bottom bar and "Mai mult". */
+    .shell-nav,
+    .mobile-only {
+      display: none !important;
+    }
+    .desk-only {
+      display: flex !important;
+    }
+    .side-panel {
+      display: flex !important;
       flex-direction: column;
-      background: transparent;
-      border: 0;
-      padding: 16px 12px;
-      gap: 4px;
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0;
     }
-    .shell-nav a {
-      flex: 0 0 auto;
-      flex-direction: row;
-      justify-content: flex-start;
+    /* The entries scroll inside the bar; Setări and the account block stay visible below. */
+    .side-nav {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .side-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .side-group-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #c9cdd9;
+      padding: 6px 10px 2px;
+    }
+    .side-nav a,
+    .side-foot > a,
+    .side-toggle {
+      position: relative;
+      display: flex;
+      align-items: center;
       gap: 10px;
+      min-height: 2.75rem;
+      padding: 8px 10px;
+      border-radius: 10px;
       font-size: 0.875rem;
       color: #c9cdd9;
-      padding: 9px 10px;
+      text-decoration: none;
+      background: none;
+      border: 0;
+      width: 100%;
+      text-align: left;
     }
-    .shell-nav a:hover {
+    .side-nav a:hover,
+    .side-foot > a:hover,
+    .side-toggle:hover {
       background: rgba(255, 255, 255, 0.06);
       color: #fff;
     }
-    .shell-nav a[aria-current="page"] {
+    .side-nav a[aria-current="page"],
+    .side-foot > a[aria-current="page"] {
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
+      font-weight: 600;
+    }
+    .side-nav svg,
+    .side-foot svg,
+    .side-toggle svg {
+      flex: none;
+    }
+    .side-foot {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 12px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .side-foot .shell-user {
+      padding: 0 0 10px;
+    }
+    /* "Contul meu" and "Ieșire" (icon, with tooltip and accessible name) share one row. */
+    .side-account {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .side-account .who {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .side-account .logout {
+      width: 2.75rem;
+      justify-content: center;
+      padding-inline: 0;
+    }
+    .side-toggle {
+      display: none;
     }
     .shell-main {
       padding: 32px 36px 60px;
@@ -376,16 +452,60 @@
       margin: 0;
     }
   }
-  /* Tablets with the sidebar (820–1023 px): less side padding, so forms keep two 260 px columns. */
+  /* Tablets with the sidebar (820–1023 px): less side padding, so forms keep two 260 px columns.
+     The bar starts narrow (icons; the label is the tooltip and the accessible name) until "Extinde
+     meniul" (remembered in localStorage, html[data-nav-lata]). */
   @media (min-width: 820px) and (max-width: 1023px) {
     .shell-main {
       padding: 24px 16px 48px;
     }
-    .desk-only {
-      display: flex !important;
+    .side-toggle {
+      display: flex;
+      margin: 8px 12px 0;
+      width: auto;
     }
-    .mobile-only {
-      display: none !important;
+    html:not([data-nav-lata]) .shell-side {
+      width: 76px;
+      flex-basis: 76px;
+    }
+    html:not([data-nav-lata]) .shell-top,
+    html:not([data-nav-lata]) .side-group-title,
+    html:not([data-nav-lata]) .side-foot .text-size {
+      display: none;
+    }
+    html:not([data-nav-lata]) .side-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    html:not([data-nav-lata]) .side-nav a,
+    html:not([data-nav-lata]) .side-foot > a,
+    html:not([data-nav-lata]) .side-foot .who,
+    html:not([data-nav-lata]) .side-foot .logout,
+    html:not([data-nav-lata]) .side-toggle {
+      justify-content: center;
+      padding-inline: 0;
+    }
+    html:not([data-nav-lata]) .side-nav,
+    html:not([data-nav-lata]) .side-foot {
+      padding-inline: 8px;
+    }
+    html:not([data-nav-lata]) .side-account {
+      flex-direction: column;
+    }
+    html:not([data-nav-lata]) .side-group + .side-group {
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      padding-top: 6px;
+    }
+    html:not([data-nav-lata]) .side-nav .badge,
+    html:not([data-nav-lata]) .side-foot .badge {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      margin: 0;
     }
   }
 
