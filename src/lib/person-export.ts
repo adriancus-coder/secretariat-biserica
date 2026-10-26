@@ -2,6 +2,7 @@ import { categoryDef, type CombineMode } from "@/domain/categories";
 import { unmarriedLabel } from "./marital";
 import { ageAt } from "./dates";
 import { fmtDot } from "@/domain/print";
+import { formatAddress } from "./address";
 import { ENTRY_LABEL, GENDER_LABEL, STATUS_LABEL, type ConsentKindKey, type EntryModeKey, type GenderKey, type PersonStatusKey } from "./labels";
 import { CONSENT_STATE_LABEL, type ConsentState } from "./consents";
 
@@ -20,6 +21,8 @@ export interface ExportPerson {
   telefon: string;
   email: string;
   adresa: string;
+  codPostal: string;
+  localitate: string;
   dataMembru: string | null;
   modIntrare: EntryModeKey | null;
   dataBotez: string | null;
@@ -46,6 +49,9 @@ export const EXPORT_COLUMNS = [
   ["telefon", "Telefon"],
   ["email", "E-mail"],
   ["adresa", "Adresă"],
+  ["codPostal", "Cod poștal"],
+  ["localitate", "Localitate"],
+  ["adresaCompleta", "Adresa completă"],
   ["dataMembru", "Data intrării"],
   ["modIntrare", "Mod intrare"],
   ["botez", "Data botezului / anul"],
@@ -98,6 +104,12 @@ export function cell(p: ExportPerson, c: ExportColumn, refDate: string): string 
       return p.email;
     case "adresa":
       return p.adresa;
+    case "codPostal":
+      return p.codPostal;
+    case "localitate":
+      return p.localitate;
+    case "adresaCompleta":
+      return formatAddress(p);
     case "dataMembru":
       return p.dataMembru ? fmtDot(p.dataMembru) : "";
     case "modIntrare":

@@ -33,6 +33,8 @@ export async function churchForCampaign(churchId: string) {
       slug: true,
       email: true,
       adresa: true,
+      codPostal: true,
+      localitate: true,
       orgNr: true,
       telefon: true,
       comunitate: true,

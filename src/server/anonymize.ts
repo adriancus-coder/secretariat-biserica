@@ -77,7 +77,7 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     const application = await tx.application.findFirst({ where: { personId: id } });
     const needles = anonymisationNeedles(before);
     if (application) needles.push(...anonymisationNeedles(application).filter((n) => !needles.includes(n)));
-    const blank = { nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", note: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "", numeTata: "", numeMama: "", plecatUnde: "" };
+    const blank = { nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", codPostal: "", localitate: "", note: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "", numeTata: "", numeMama: "", plecatUnde: "" };
     await tx.person.update({
       where: { id },
       data: {
@@ -115,7 +115,7 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     if (application) {
       await tx.application.update({
         where: { id: application.id },
-        data: { personId: null, nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", mesaj: "", familie: "", rudenie: "", bisericaProvenienta: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "", propunere: Prisma.DbNull },
+        data: { personId: null, nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", codPostal: "", localitate: "", mesaj: "", familie: "", rudenie: "", bisericaProvenienta: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "", propunere: Prisma.DbNull },
       });
     }
     // A family named after the person loses that name.

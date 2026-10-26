@@ -30,6 +30,8 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       telefon: true,
       email: true,
       adresa: true,
+      codPostal: true,
+      localitate: true,
       dataMembru: true,
       modIntrare: true,
       dataBotez: true,
@@ -61,7 +63,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       familyId: p.familyId,
       rudenie: p.rudenie,
       // Contact data of a person who left: administrators only (Statut art. 14; privacy notice point 6).
-      ...(contactRestricted(p, ctx.user.role) ? { telefon: "", email: "", adresa: "" } : { telefon: p.telefon, email: p.email, adresa: p.adresa }),
+      ...(contactRestricted(p, ctx.user.role) ? { telefon: "", email: "", adresa: "", codPostal: "", localitate: "" } : { telefon: p.telefon, email: p.email, adresa: p.adresa, codPostal: p.codPostal, localitate: p.localitate }),
       dataMembru: fromDbDate(p.dataMembru),
       modIntrare: p.modIntrare,
       dataBotez: fromDbDate(p.dataBotez),

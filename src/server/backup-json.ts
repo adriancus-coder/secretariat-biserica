@@ -67,7 +67,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
   // Contact data of persons who left reach only an administrator's export.
   if (!permissions.admin(ctx.user.role)) {
     for (const m of Object.values(data.members as Coll)) {
-      if (m.dataIesire || m.statut === "Fost membru") Object.assign(m, { telefon: "", email: "", adresa: "" });
+      if (m.dataIesire || m.statut === "Fost membru") Object.assign(m, { telefon: "", email: "", adresa: "", codPostal: "", localitate: "" });
     }
   }
   addMemberCommittee(data.members as Coll, roles.committee);

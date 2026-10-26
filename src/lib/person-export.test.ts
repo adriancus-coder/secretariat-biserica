@@ -14,6 +14,8 @@ const p = (o: Partial<ExportPerson>): ExportPerson => ({
   telefon: "",
   email: "",
   adresa: "",
+  codPostal: "",
+  localitate: "",
   dataMembru: null,
   modIntrare: null,
   dataBotez: null,
@@ -28,6 +30,14 @@ const p = (o: Partial<ExportPerson>): ExportPerson => ({
 });
 
 describe("person export", () => {
+  it("address: three separate columns and the formatted full address", () => {
+    const x = p({ adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" });
+    expect(exportRows([x], ["adresa", "codPostal", "localitate", "adresaCompleta"], "2026-10-25")).toEqual([
+      ["Ulveveien 20", "4323", "Sandnes", "Ulveveien 20, 4323 Sandnes"],
+    ]);
+    expect(cell(p({ adresa: "Ulveveien 20" }), "adresaCompleta", "2026-10-25")).toBe("Ulveveien 20");
+  });
+
   it("formats the cells (dates dd.mm.yyyy, age at the reference date, labels)", () => {
     const x = p({ botezAn: 2024, inComitet: true, modIntrare: "CERERE_MEMBRALITATE" });
     expect(exportRows([x], ["nume", "gen", "dataNasterii", "varsta", "statut", "botez", "comitet", "modIntrare"], "2026-10-25")).toEqual([

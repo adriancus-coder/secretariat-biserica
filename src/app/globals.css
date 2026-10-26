@@ -619,6 +619,15 @@
       grid-template-columns: minmax(0, 1fr);
     }
   }
+  /* Postal code (narrow) and locality (wide) always share one row, also at 360 px. */
+  .addr-row {
+    display: grid;
+    grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+    column-gap: 12px;
+  }
+  .addr-row > * {
+    min-width: 0;
+  }
   /* Labels wrap on their own line instead of running into the neighbour's label. */
   .row2 label {
     overflow-wrap: anywhere;

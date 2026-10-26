@@ -3,7 +3,7 @@ import { todayIso } from "../dates";
 import { ENTRY_MODES, EXIT_MODES, GENDERS, PERSON_STATUSES } from "../labels";
 import { NEW_FAMILY } from "../families";
 import { normalizeUnmarried, UNMARRIED_AND_DATE_ERROR } from "../marital";
-import { baptismYearOf, idSchema, optionalId, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { baptismYearOf, idSchema, optionalId, longText, optionalDate, optionalPastYear, optionalEmail, postalCode, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const PERSON_FIELDS = [
   "nume",
@@ -15,6 +15,8 @@ export const PERSON_FIELDS = [
   "telefon",
   "email",
   "adresa",
+  "codPostal",
+  "localitate",
   "dataMembru",
   "modIntrare",
   "bisericaProvenienta",
@@ -49,6 +51,8 @@ const personFields = z.object({
   telefon: text(50, "Telefonul"),
   email: optionalEmail,
   adresa: text(200, "Adresa"),
+  codPostal: postalCode,
+  localitate: text(100, "Localitatea"),
   dataMembru: optionalDate,
   modIntrare: optionalEnum(ENTRY_MODES),
   bisericaProvenienta: text(160, "Biserica de proveniență"),

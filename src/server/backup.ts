@@ -140,6 +140,8 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
       telefon: p.telefon,
       email: p.email,
       adresa: p.adresa,
+      codPostal: p.codPostal,
+      localitate: p.localitate,
       dataMembru: fromDbDate(p.dataMembru),
       modIntrare: p.modIntrare,
       bisericaProvenienta: p.bisericaProvenienta,
@@ -222,6 +224,8 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
     settings: {
       nume: church.nume,
       adresa: church.adresa,
+      codPostal: church.codPostal,
+      localitate: church.localitate,
       orgnr: church.orgNr,
       telefon: church.telefon,
       email: church.email,
@@ -251,6 +255,8 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
     telefon: a.telefon,
     email: a.email,
     adresa: a.adresa,
+    codPostal: a.codPostal,
+    localitate: a.localitate,
     familie: a.familie,
     rudenie: a.rudenie,
     bisericaProvenienta: a.bisericaProvenienta,
@@ -411,7 +417,7 @@ export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; fam
   const rows = await ctx.db.family.findMany({ orderBy: [{ nume: "asc" }, { id: "asc" }], include: { members: { select: { id: true } } } });
   const familyOf = new Map<string, string>();
   for (const f of rows) for (const m of f.members) familyOf.set(m.id, f.id);
-  return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, note: f.note, automata: f.autoCreated })), familyOf };
+  return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, codPostal: f.codPostal, localitate: f.localitate, note: f.note, automata: f.autoCreated })), familyOf };
 }
 
 /** Other forms of persons' names, for the `aliases` collection. */
@@ -550,6 +556,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         telefon: m.telefon,
         email: m.email,
         adresa: m.adresa,
+        codPostal: m.codPostal,
+        localitate: m.localitate,
         dataMembru: toDbDate(m.dataMembru),
         modIntrare: m.modIntrare,
         bisericaProvenienta: m.bisericaProvenienta,
@@ -581,7 +589,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         fams = await planIds(tx, TABLES.families, famIn.families.map((f) => f.id), churchId);
         for (const f of famIn.families) {
           const id = fams.map.get(f.id)!;
-          const data = { nume: f.nume, adresa: f.adresa, note: f.note, autoCreated: f.automata };
+          const data = { nume: f.nume, adresa: f.adresa, codPostal: f.codPostal, localitate: f.localitate, note: f.note, autoCreated: f.automata };
           if (fams.existing.has(f.id)) await tx.family.update({ where: { id }, data });
           else await tx.family.create({ data: { ...data, id, churchId } });
           touchedFamilies.add(id);
@@ -636,6 +644,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
                   nume: head ? defaultFamilyName(head) : `Fam. ${list[0].familie.trim()}`.slice(0, 120),
                   headId: head?.id ?? null,
                   adresa: head?.adresa ?? "",
+                  codPostal: head?.codPostal ?? "",
+                  localitate: head?.localitate ?? "",
                   autoCreated: true,
                 },
               })
@@ -1059,6 +1069,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             telefon: a.telefon,
             email: a.email,
             adresa: a.adresa,
+            codPostal: a.codPostal,
+            localitate: a.localitate,
             familie: a.familie,
             rudenie: a.rudenie,
             bisericaProvenienta: a.bisericaProvenienta,
@@ -1090,6 +1102,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           data: {
             ...(s.nume ? { nume: s.nume } : {}),
             adresa: s.adresa,
+            codPostal: s.codPostal,
+            localitate: s.localitate,
             orgNr: s.orgnr,
             telefon: s.telefon,
             email: s.email,

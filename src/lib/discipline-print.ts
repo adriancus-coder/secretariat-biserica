@@ -1,5 +1,6 @@
 import { para, pastorSecretarySignatures, pre, type PrintSpec } from "@/domain/print";
 import type { ChurchInfo } from "@/domain/types";
+import { formatAddress } from "./address";
 import { addDays } from "./dates";
 import { fmtL, memberName } from "./format";
 
@@ -57,7 +58,6 @@ export interface HearingConvocation {
   ora: string;
   loc: string;
   today: string;
-  adresa: string;
 }
 
 /**
@@ -73,7 +73,7 @@ export function hearingConvocationPrint(x: HearingConvocation, church: ChurchInf
       { type: "title", text: "Convocare la audiere" },
       para(`${g.title} ${memberName(x.person)},`),
       para(
-        `Comitetul Bisericii ${church.nume} vă convoacă la audiere în data de ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}, la ${x.loc || `sediul bisericii${x.adresa ? `, ${x.adresa}` : ""}`}, în cadrul procedurii de cercetare prevăzute de Statutul Cultului Creștin Penticostal (art. 272 lit. a). Veți avea posibilitatea să vă prezentați punctul de vedere în fața comitetului.`,
+        `Comitetul Bisericii ${church.nume} vă convoacă la audiere în data de ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}, la ${x.loc || `sediul bisericii${formatAddress(church) ? `, ${formatAddress(church)}` : ""}`}, în cadrul procedurii de cercetare prevăzute de Statutul Cultului Creștin Penticostal (art. 272 lit. a). Veți avea posibilitatea să vă prezentați punctul de vedere în fața comitetului.`,
       ),
       para(`Potrivit art. 272 lit. b, neprezentarea nu împiedică desfășurarea procedurii.`),
       para(`Data: ${fmtL(x.today)}`),

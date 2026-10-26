@@ -44,6 +44,8 @@ model Church {
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
   comunitate       String    @default("")
   adresa           String    @default("")
+  codPostal String @default("")
+  localitate String @default("")
   orgNr            String    @default("")
   telefon          String    @default("")
   email            String    @default("")
@@ -283,6 +285,8 @@ model Person {
   telefon       String       @default("")
   email         String       @default("")
   adresa        String       @default("")
+  codPostal String @default("")
+  localitate String @default("")
 
   // Intrare în biserică
   dataMembru          DateTime?  @db.Date
@@ -623,6 +627,8 @@ model Family {
   headId                String?       @unique
   head                  Person?       @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
   adresa                String        @default("")
+  codPostal String @default("")
+  localitate String @default("")
   note                  String        @default("")
   /// Created automatically (migration or import from family text), still with its default name and
   /// never edited; "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
@@ -1267,6 +1273,8 @@ model Application {
   telefon             String    @default("")
   email               String    @default("")
   adresa              String    @default("")
+  codPostal String @default("")
+  localitate String @default("")
   familie             String    @default("")
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")

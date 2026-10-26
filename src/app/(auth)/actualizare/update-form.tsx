@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AddressFields } from "@/components/ui/address-fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import type { FormState } from "@/lib/form-state";
@@ -22,6 +23,7 @@ export interface ChildState {
   consents: Partial<Record<OptionalConsentKey, boolean>>;
 }
 
+const ADDRESS_FIELDS: readonly SelfField[] = ["adresa", "codPostal", "localitate"];
 const TYPES: Partial<Record<SelfField, string>> = {
   dataNasterii: "date",
   dataCasatoriei: "date",
@@ -103,7 +105,7 @@ export function UpdateForm({
         <h3>Datele dumneavoastră</h3>
         {register ? <p className="hint mb-3">Câmpurile pe care le modificați sunt evidențiate.</p> : null}
         <div className="row2 stack-sm">
-          {SELF_FIELDS.map((f) => {
+          {SELF_FIELDS.filter((f) => !ADDRESS_FIELDS.includes(f)).map((f) => {
             const base = str(register?.[f]);
             const id = `f-${f}`;
             return (
@@ -185,6 +187,12 @@ export function UpdateForm({
             );
           })}
         </div>
+        <AddressFields
+          values={self}
+          errors={e}
+          highlight={(n) => changed.has(n)}
+          onValue={(n, v) => register && mark(n, v, str(register[n]))}
+        />
         <p className="hint">Numele părinților doar dacă părinții nu sunt în evidența bisericii. Pentru botez: data sau doar anul.</p>
       </fieldset>
 

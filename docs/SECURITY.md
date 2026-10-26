@@ -71,6 +71,10 @@ Only two providers process personal data on the church's behalf:
 
 Both are US companies; transfers rely on the EU–US Data Privacy Framework or standard contractual clauses. No AI service processes personal data: reading scanned documents with an AI provider was withdrawn at the church's request (2026-10), with its code, settings column (`extract_remove` migration) and dependencies. Older audit entries of that kind (`EXTRACT`) stay readable as "Citire document (funcție retrasă)"; nothing writes them any more. Push notifications go through the browser vendor's push service with no personal data (see "Aplicația instalată").
 
+## Third-party data
+
+- `src/lib/postal-codes-no.json` (Norwegian postal codes and localities, used by `formatAddress` and the address forms): Postnummerregister © Posten Bring AS, licență NLOD (Norsk lisens for offentlige data). Bundled with the app; no request leaves the server for it.
+
 ## Person-list export
 
 `POST /api/persoane/export` (Administrator and Secretar) asks for the password again, then trusts a signed, httpOnly 10-minute grant cookie for the same user (`src/server/export-grant.ts`). Each export writes a SECURITY audit entry with the categories, the row count and the format — never the names.

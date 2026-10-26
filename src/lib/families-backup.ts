@@ -1,3 +1,4 @@
+import { addressFromInput } from "./address";
 import { FAMILY_NAME_MAX } from "./families";
 
 /**
@@ -11,6 +12,8 @@ export interface BFamily {
   /** Member id (as in the file) of the head, or null. */
   capId: string | null;
   adresa: string;
+  codPostal: string;
+  localitate: string;
   note: string;
   /** Created automatically and never edited (see Family.autoCreated); false in older files. */
   automata: boolean;
@@ -62,7 +65,7 @@ export function parseFamiliesJson(root: unknown): ParsedFamilies {
     }
     const capId = typeof f.capId === "string" && ID_RE.test(f.capId) ? f.capId : null;
     ids.add(id);
-    out.families.push({ id, nume, capId, adresa: str(f.adresa, 200), note: str(f.note, 2000), automata: f.automata === true });
+    out.families.push({ id, nume, capId, ...addressFromInput({ adresa: str(f.adresa, 200), codPostal: str(f.codPostal, 10), localitate: str(f.localitate, 100) }), note: str(f.note, 2000), automata: f.automata === true });
   }
   for (const [key, m] of entries(r.members)) {
     const familyId = typeof m.familyId === "string" ? m.familyId : null;

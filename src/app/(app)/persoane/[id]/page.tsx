@@ -1,3 +1,4 @@
+import { formatAddress } from "@/lib/address";
 import type { Metadata } from "next";
 import { baptismSentence } from "@/lib/baptism";
 import Link from "next/link";
@@ -97,11 +98,11 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
       ["Familie", x.family ? x.family.nume + (x.family.headId === x.id ? " — capul familiei" : x.rudenie ? ` — ${x.rudenie}` : "") : ""],
       ["Data nașterii", dn ? `${fmt(dn)} (${ageAt(dn, today)} ani)` : ""],
       ...((restricted
-        ? [["Date de contact", x.telefon || x.email || x.adresa ? "restricționate după ieșirea din evidență (doar administratorii)" : ""]]
+        ? [["Date de contact", x.telefon || x.email || formatAddress(x) ? "restricționate după ieșirea din evidență (doar administratorii)" : ""]]
         : [
             ["Telefon", x.telefon],
             ["E-mail", x.email],
-            ["Adresă", x.adresa],
+            ["Adresă", formatAddress(x)],
           ]) as [string, React.ReactNode][]),
       ["Data căsătoriei", dcas ? fmt(dcas) : x.necasatorit && !isMinorByBirth(dn, today) ? unmarriedLabel(x.gen) : ""],
       ["Părinți", parents],

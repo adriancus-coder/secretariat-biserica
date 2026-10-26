@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { todayIso } from "../dates";
 import { APPLICATION_KINDS, GENDERS } from "../labels";
-import { baptismYearOf, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
+import { baptismYearOf, longText, optionalDate, optionalPastYear, optionalEmail, postalCode, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const APPLICATION_MESSAGE_MAX = 2000;
 
@@ -19,6 +19,8 @@ const applicationFields = z.object({
   telefon: text(50, "Telefonul"),
   email: optionalEmail,
   adresa: text(200, "Adresa"),
+  codPostal: postalCode,
+  localitate: text(100, "Localitatea"),
   familie: text(100, "Familia"),
   rudenie: text(60, "Gradul de rudenie"),
   bisericaProvenienta: text(160, "Biserica de proveniență"),

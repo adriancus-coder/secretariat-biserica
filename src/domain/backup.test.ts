@@ -16,6 +16,8 @@ const sample: Backup = {
       telefon: "+47 1",
       email: "ion@example.org",
       adresa: "Str. 1",
+      codPostal: "",
+      localitate: "",
       dataMembru: "2006-03-02",
       modIntrare: "NASCUT_IN_BISERICA",
       bisericaProvenienta: "",
@@ -84,6 +86,8 @@ const sample: Backup = {
   settings: {
     nume: "Maranata",
     adresa: "A",
+    codPostal: "",
+    localitate: "",
     orgnr: "1",
     telefon: "2",
     email: "e@x.ro",
@@ -116,6 +120,24 @@ describe("copia de siguranță (format prototip)", () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
     expect(r.backup).toEqual(sample);
+  });
+
+  it("address: separate fields are kept; an old single line is split on import", () => {
+    const m = { ...sample.members[0], adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" };
+    const json = toPrototypeJson({ ...sample, members: [m], settings: { ...sample.settings!, adresa: "Storgata 5", codPostal: "4005", localitate: "Stavanger" } });
+    const member = Object.values(json.members as Record<string, Record<string, string>>)[0];
+    expect([member.adresa, member.codPostal, member.localitate]).toEqual(["Ulveveien 20", "4323", "Sandnes"]);
+    const again = parsePrototypeJson(JSON.parse(JSON.stringify(json)));
+    expect(again.backup?.members[0]).toMatchObject({ adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" });
+    expect(again.backup?.settings).toMatchObject({ adresa: "Storgata 5", codPostal: "4005", localitate: "Stavanger" });
+
+    const old = JSON.parse(JSON.stringify(json));
+    const key = Object.keys(old.members)[0];
+    old.members[key] = { ...old.members[key], adresa: "ulveveien 20  4323 sandnes", codPostal: undefined, localitate: undefined };
+    old.settings = { ...old.settings, adresa: "Storgata 5, 4005 Stavanger", codPostal: undefined, localitate: undefined };
+    const r = parsePrototypeJson(old);
+    expect(r.backup?.members[0]).toMatchObject({ adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" });
+    expect(r.backup?.settings).toMatchObject({ adresa: "Storgata 5", codPostal: "4005", localitate: "Stavanger" });
   });
 
   it("„Cerere de membralitate” is exported and imported by its label", () => {

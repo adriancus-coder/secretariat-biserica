@@ -1,3 +1,4 @@
+import { formatAddress } from "@/lib/address";
 import type { Metadata } from "next";
 import { baptismSentence } from "@/lib/baptism";
 import Link from "next/link";
@@ -48,7 +49,7 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
       ["Data nașterii", dn ? fmt(dn) : ""],
       ["Telefon", a.telefon],
       ["E-mail", a.email],
-      ["Adresă", a.adresa],
+      ["Adresă", formatAddress(a)],
       ["Familie", a.familie ? a.familie + (a.rudenie ? ` — ${a.rudenie}` : "") : a.rudenie],
       ["Biserica de proveniență", a.bisericaProvenienta],
       ["Botez în apă", baptismSentence({ ...a, data: db ? fmt(db) : "" })],

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Icon } from "@/components/shell/icons";
+import { AddressFields } from "@/components/ui/address-fields";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
@@ -17,7 +18,7 @@ export function FamilyForm({
   members,
 }: {
   id: string;
-  initial: { nume: string; adresa: string; note: string; headId: string };
+  initial: { nume: string; adresa: string; codPostal: string; localitate: string; note: string; headId: string };
   members: { id: string; name: string }[];
 }) {
   const { state, pending, onSubmit } = useActionForm(saveFamilyAction.bind(null, id));
@@ -35,7 +36,7 @@ export function FamilyForm({
         options={members.map((m) => ({ value: m.id, label: m.name }))}
         hint="Doar adulții (nu copiii, nu cei sub 18 ani) pot fi cap de familie. Ceilalți membri se mută cu „Mută”."
       />
-      <TextField name="adresa" label="Adresă" defaultValue={v.adresa ?? ""} error={e.adresa} />
+      <AddressFields values={v} errors={e} />
       <TextAreaField name="note" label="Note" defaultValue={v.note ?? ""} error={e.note} />
       <FormMessage state={state} />
       <button type="submit" className="btn btn-primary" disabled={pending}>

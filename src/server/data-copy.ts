@@ -1,3 +1,4 @@
+import { formatAddress } from "@/lib/address";
 import "server-only";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
@@ -73,7 +74,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
           ["Data decesului", p.modIesire === "DECES" ? d(p.dataIesire) : ""],
         ],
       },
-      { titlu: "Date de contact", campuri: [["Telefon", p.telefon], ["E-mail", p.email], ["Adresă", p.adresa]] },
+      { titlu: "Date de contact", campuri: [["Telefon", p.telefon], ["E-mail", p.email], ["Adresă", formatAddress(p)]] },
       {
         titlu: "Viața bisericii",
         campuri: [

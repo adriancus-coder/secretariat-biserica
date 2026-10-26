@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, PageHead } from "@/components/ui/page-head";
+import { formatAddress } from "@/lib/address";
 import { dotDateTime } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { NameRow } from "@/components/ui/name-row";
 import type { DataUpdateProposal } from "@/lib/schemas/data-update";
+import { ADDRESS_REVIEW_REASON, addressReviewWhere } from "@/server/queries/address-review";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "De verificat" };
@@ -17,6 +19,11 @@ export default async function ReviewQueuePage() {
     orderBy: { updatedAt: "asc" },
     include: { campaign: { select: { nume: true } }, person: { select: { nume: true, prenume: true } } },
   });
+  const ADDRESS_LIMIT = 200;
+  const [addressTotal, addresses] = await Promise.all([
+    ctx.db.person.count({ where: addressReviewWhere }),
+    ctx.db.person.findMany({ where: addressReviewWhere, orderBy: { sortKey: "asc" }, take: ADDRESS_LIMIT, select: { id: true, nume: true, prenume: true, adresa: true, localitate: true } }),
+  ]);
   return (
     <>
       <PageHead title="De verificat" sub="Datele trimise prin campania de actualizare ajung în evidență doar după aprobare" />
@@ -40,8 +47,29 @@ export default async function ReviewQueuePage() {
           })}
         </ul>
       ) : (
-        <EmptyState title="Nimic de verificat" />
+        addresses.length ? null : <EmptyState title="Nimic de verificat" />
       )}
+      {addresses.length ? (
+        <section className="mt-6" aria-labelledby="adrese-de-verificat">
+          <h2 id="adrese-de-verificat" className="text-base font-semibold mb-1">
+            Adrese de verificat ({addressTotal})
+          </h2>
+          <p className="hint mb-3">{ADDRESS_REVIEW_REASON}. Adăugați codul poștal în fișa persoanei; localitatea se completează singură.</p>
+          <ul className="list">
+            {addresses.map((p) => (
+              <li key={p.id}>
+                <Link href={`/persoane/${p.id}/editare`} className="item">
+                  <span className="grow min-w-0">
+                    <NameRow name={<b>{memberName(p)}</b>} detail={`${ADDRESS_REVIEW_REASON} · ${formatAddress(p)}`} />
+                  </span>
+                  <span className="tag tag-warn">Adresă</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {addressTotal > addresses.length ? <p className="hint mt-2">Primele {addresses.length} din {addressTotal}.</p> : null}
+        </section>
+      ) : null}
     </>
   );
 }

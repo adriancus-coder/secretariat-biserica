@@ -94,6 +94,8 @@ function selfData(
     telefon: pick("telefon"),
     email: pick("email"),
     adresa: pick("adresa"),
+    codPostal: pick("codPostal"),
+    localitate: pick("localitate"),
     botezBiserica: pick("botezBiserica"),
     botezLocalitate: pick("botezLocalitate"),
     botezOficiant: pick("botezOficiant"),

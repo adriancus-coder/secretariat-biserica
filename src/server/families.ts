@@ -10,7 +10,7 @@ import type { Ctx, CurrentUser } from "./session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 /** Fields of a family tracked by the audit log. */
-export const FAMILY_FIELDS = ["nume", "cap", "adresa", "note", "membri"] as const;
+export const FAMILY_FIELDS = ["nume", "cap", "adresa", "codPostal", "localitate", "note", "membri"] as const;
 
 /** Comparable audit view of a family: names instead of ids. */
 export async function familyView(tx: Tx, id: string) {
@@ -25,15 +25,17 @@ export async function familyView(tx: Tx, id: string) {
     headId: f.headId,
     cap: f.head ? memberName(f.head) : "",
     adresa: f.adresa,
+    codPostal: f.codPostal,
+    localitate: f.localitate,
     note: f.note,
     membri: f.members.map(memberName).sort(compareRo),
   };
 }
 
 /** Creates a family headed by the person (default name and the person's address). */
-export async function createFamilyFor(tx: Tx, user: CurrentUser, person: { id: string; nume: string; prenume: string; adresa: string }) {
+export async function createFamilyFor(tx: Tx, user: CurrentUser, person: { id: string; nume: string; prenume: string; adresa: string; codPostal: string; localitate: string }) {
   const family = await tx.family.create({
-    data: { churchId: user.churchId, nume: defaultFamilyName(person), headId: person.id, adresa: person.adresa },
+    data: { churchId: user.churchId, nume: defaultFamilyName(person), headId: person.id, adresa: person.adresa, codPostal: person.codPostal, localitate: person.localitate },
   });
   await tx.person.update({ where: { id: person.id }, data: { familyId: family.id } });
   await writeAudit(tx, user, {

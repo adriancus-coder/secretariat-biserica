@@ -3,7 +3,7 @@ import { todayIso } from "../dates";
 import { GENDERS, OPTIONAL_CONSENTS, type OptionalConsentKey } from "../labels";
 import { normalizeUnmarried, UNMARRIED_AND_DATE_ERROR } from "../marital";
 import type { PrayerAnswer } from "../prayer";
-import { idSchema, optionalDate, optionalEmail, optionalEnum, optionalPastYear, requiredText, text } from "../validation";
+import { idSchema, optionalDate, optionalEmail, optionalEnum, optionalPastYear, postalCode, requiredText, text } from "../validation";
 
 /**
  * A data-update submission: the person's own fields and their minor children's (only these; never
@@ -19,6 +19,8 @@ export const SELF_FIELDS = [
   "telefon",
   "email",
   "adresa",
+  "codPostal",
+  "localitate",
   "dataBotez",
   "botezAn",
   "botezBiserica",
@@ -40,6 +42,8 @@ export const SELF_LABEL: Record<SelfField, string> = {
   telefon: "Telefon",
   email: "E-mail",
   adresa: "Adresă",
+  codPostal: "Cod poștal",
+  localitate: "Localitate",
   dataBotez: "Data botezului",
   botezAn: "Anul botezului",
   botezBiserica: "Biserica botezului",
@@ -74,6 +78,8 @@ const selfFields = z.object({
   telefon: text(50, "Telefonul"),
   email: optionalEmail,
   adresa: text(200, "Adresa"),
+  codPostal: postalCode,
+  localitate: text(100, "Localitatea"),
   dataBotez: optionalDate.refine(notFuture, "Data botezului nu poate fi în viitor."),
   botezAn: optionalPastYear,
   botezBiserica: text(160, "Biserica botezului"),
