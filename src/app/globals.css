@@ -1132,6 +1132,44 @@
     font-weight: 700;
     line-height: 1;
   }
+  /* Acasă for pastors: a grid of cards, each a link to its list. */
+  .pastor-dash {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+    gap: 10px;
+  }
+  .dash-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 44px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--panel);
+    border-left: 4px solid var(--line);
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .dash-card:hover,
+  .dash-card:focus-visible {
+    box-shadow: var(--shadow);
+  }
+  .dash-card.dash-alert {
+    border-left-color: var(--gold);
+  }
+  .dash-title {
+    font-size: 0.8125rem;
+    color: var(--ink-2);
+  }
+  .dash-value {
+    font-family: var(--font-serif, serif);
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+  .dash-detail {
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+  }
   /* Pastoral notes: a scrolling list inside the card. */
   .pastoral-notes {
     list-style: none;

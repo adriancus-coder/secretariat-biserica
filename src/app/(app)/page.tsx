@@ -10,6 +10,8 @@ import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assemb
 import { permissions } from "@/lib/permissions";
 import { APPEAL_DAYS, appealDeadline } from "@/lib/discipline-print";
 import { mandateNotice } from "@/lib/committee";
+import { assemblyCard, birthdaysCard, mandateCard, type DashCard } from "@/lib/pastor-dashboard";
+import { PastorDashboard } from "@/components/pastor-dashboard";
 import { committeeAbsences } from "@/server/queries/committee";
 import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
@@ -135,7 +137,50 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       })
     : [];
   // The pastor's queue (Statut art. 39): documents waiting for approval and signature.
-  const toSign = permissions.pastor(ctx.user) ? await ctx.db.document.count({ where: { stare: "DE_SEMNAT" } }) : 0;
+  const isPastor = permissions.pastor(ctx.user);
+  const toSign = isPastor ? await ctx.db.document.count({ where: { stare: "DE_SEMNAT" } }) : 0;
+  // The pastor's cards (they replace the separate notices for pastors).
+  let pastorCards: DashCard[] = [];
+  if (isPastor) {
+    const y = today.slice(0, 4);
+    const [proposedApps, proposedPersons, openMeasures, assemblies] = await Promise.all([
+      ctx.db.application.count({ where: { status: "PROPUSA" } }),
+      ctx.db.personProposal.count({ where: { status: "PROPUSA" } }),
+      ctx.db.disciplinaryMeasure.count({ where: { stare: { in: ["CERCETARE", "APLICATA"] } } }),
+      ctx.db.meeting.findMany({
+        // Held this year: up to today (a meeting entered ahead is not held yet).
+        where: { data: { gte: toDbDate(`${y}-01-01`)!, lte: toDbDate(today)! }, OR: [{ tipAG: null }, { tipAG: "ORDINARA" }] },
+        select: { tip: true, data: true },
+      }),
+    ]);
+    const toApprove = proposedApps + proposedPersons;
+    const nextAppeal = appeals.find((a) => !a.contestatieLa);
+    pastorCards = [
+      { title: "Documente de semnat", value: String(toSign), detail: toSign ? "trimise de secretariat" : "nimic de semnat", href: "/documente/de-semnat", alert: toSign > 0 },
+      {
+        title: "Cereri de aprobat",
+        value: String(toApprove),
+        detail: toApprove ? [proposedApps ? `${proposedApps} de membru` : "", proposedPersons ? `${proposedPersons} reabilitări / excluderi` : ""].filter(Boolean).join(", ") : "nimic în așteptare",
+        href: "/cereri?stare=propuse",
+        alert: toApprove > 0,
+      },
+      {
+        title: "Măsuri disciplinare deschise",
+        value: String(openMeasures),
+        detail: nextAppeal ? `contestare: ${memberName(nextAppeal.person)} până la ${fmt(nextAppeal.deadline)}` : appeals.length ? `${appeals.length} contestații fără rezultat` : "niciun termen de contestare",
+        href: "/disciplina",
+        alert: appeals.length > 0,
+      },
+      { title: "Plecați de peste 3 luni", value: String(away3), detail: away6 ? `${away6} de peste 6 luni (transferul)` : "niciunul de peste 6 luni", href: categoryHref(away6 ? "plecati-6-luni" : "plecati-3-luni", undefined), alert: away6 > 0 },
+      { title: `Aniversări în ${MONTHS_L[Number(month) - 1]}`, ...birthdaysCard(today, allBirthdays.filter((p) => agreed(p.id)).map((p) => ({ name: memberName(p), dataNasterii: p.dataNasterii! }))), href: "#aniversari" },
+      { title: "Mandatul comitetului", ...mandateCard(today, church.comitetAlesLa, church.comitetPrelungit), href: categoryHref("comitet", undefined) },
+      {
+        title: `Adunarea Generală ${y}`,
+        ...assemblyCard(today, assemblies.filter((m) => isGeneralAssembly(m.tip, church.tipuriAG)).map((m) => fromDbDate(m.data)!)),
+        href: "/procese-verbale",
+      },
+    ];
+  }
   const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
@@ -145,7 +190,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         sub={year && s.endDate !== today ? `Situația la ${fmt(s.endDate)} (retroactiv)` : `Situația la ${fmt(today)}`}
       />
 
-      {toSign ? (
+      {pastorCards.length ? <PastorDashboard cards={pastorCards} /> : null}
+      {toSign && !isPastor ? (
         <div className="alert mb-4" role="status">
           <Link href="/documente/de-semnat">
             {toSign === 1 ? "Un document așteaptă" : `${toSign} documente așteaptă`} aprobarea și semnătura dumneavoastră
@@ -162,7 +208,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           ))}
         </div>
       ) : null}
-      {appeals.length ? (
+      {appeals.length && !isPastor ? (
         <div className="alert mb-4" role="status">
           <p className="m-0">Termene de contestare la Comunitate (Statut art. 27 alin. 11):</p>
           <ul className="m-0 mt-1 pl-5 list-disc">
@@ -175,7 +221,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </ul>
         </div>
       ) : null}
-      {mandate ? (
+      {mandate && !isPastor ? (
         <div className="alert mb-4" role="status">
           {mandate} <Link href="/setari">Setări</Link>
         </div>
@@ -198,13 +244,13 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </ul>
         </div>
       ) : null}
-      {agMissing ? (
+      {agMissing && !isPastor ? (
         <div className="alert mb-4" role="status">
           Adunarea Generală ordinară nu a avut loc în {today.slice(0, 4)} (Statut art. 46 alin. 3).{" "}
           <Link href="/procese-verbale/nou">Ședință nouă</Link>
         </div>
       ) : null}
-      {away3 ? (
+      {away3 && !isPastor ? (
         <div className="alert mb-4" role="status">
           <Link href={categoryHref("plecati-3-luni", undefined)}>{away3} plecați de peste 3 luni</Link>
           {away6 ? (
@@ -354,7 +400,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           )}
         </div>
 
-        <div className="card">
+        <div className="card" id="aniversari">
           <h3>Aniversări în {MONTHS_L[Number(month) - 1]}</h3>
           <p className="hint mb-2">
             {showAllBirthdays ? "Toate persoanele; cele fără acord sunt marcate." : "Doar persoanele care au fost de acord să li se anunțe ziua de naștere."}{" "}

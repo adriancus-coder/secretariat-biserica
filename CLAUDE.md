@@ -230,6 +230,10 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Person page card "Note pastorale" (`pastoral-notes-card.tsx`; behind `StepUpGate` until confirmed): every pastor sees all notes; each changes / deletes only their own (`src/server/actions/pastoral-notes.ts`). Audit entity PASTORAL with only `observatie` ("notă pastorală adăugată / modificată / ștearsă"), entityId = the person; `/setari/jurnal` hides PASTORAL from non-pastors.
 - `/pdf/note-pastorale[?persoana=]` (`pastoral`, step-up, `pastoralNotesPrint`): audited with the count only. Anonymising deletes the notes and blanks their log entries; deleting the person cascades.
 
+### Acasă for pastors
+
+- `PastorDashboard` (`src/components/pastor-dashboard.tsx`) at the top of Acasă for `permissions.pastor`: Documente de semnat, Cereri de aprobat (PROPUSA applications + proposals), Măsuri disciplinare deschise (with the next appeal deadline; opens `/disciplina`, `disciplina` + step-up), Plecați de peste 3 / 6 luni, Aniversări (BIRTHDAY consent only; `#aniversari`), Mandatul comitetului, Adunarea Generală of the year. Texts in `src/lib/pastor-dashboard.ts` (pure, tested). For pastors the cards replace the separate Acasă notices on the same subjects.
+
 ### Discipline (Statut art. 27, 271, 272)
 
 - `DisciplinaryMeasure` (tenant model): forma (art. 27 alin. 3), stare CERCETARE / APLICATA / INCHEIATA, dates, minutes, motiv, forum. Permission `disciplina` = ADMIN or a pastor (`User.isPastor`), on the server for every read and write; other users never see measures, counts, categories, exports, audit entries (entity DISCIPLINE is filtered out of `/setari/jurnal`) or any hint. Never add discipline to a category, list, export or a non-admin page.
