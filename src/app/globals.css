@@ -143,11 +143,20 @@
   select,
   textarea {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     background: var(--field);
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 9px 12px;
     color: var(--ink);
+  }
+  /* Text, date, time and select fields: the same height (at least 44 px) and alignment everywhere. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+  select {
+    min-height: 2.75rem;
+    line-height: 1.45;
   }
   input[aria-invalid="true"],
   select[aria-invalid="true"],
@@ -580,22 +589,25 @@
     color: var(--warn);
     margin-top: 4px;
   }
+  /* Two fields side by side only when each gets at least 260 px (never below 600 px); otherwise
+     stacked. Grid items may shrink (min-width: 0), so a date or select never overlaps its neighbour. */
   .row2 {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    column-gap: 12px;
+    row-gap: 0;
   }
-  /* Date and time inputs have an intrinsic width (mobile Safari / Chrome): let them shrink to the column. */
-  .row2 input[type="date"],
-  .row2 input[type="time"] {
+  .row2 > * {
     min-width: 0;
-    width: 100%;
   }
-  @media (max-width: 480px) {
-    .row2.stack-sm {
-      grid-template-columns: 1fr;
-      gap: 0;
+  @media (max-width: 599px) {
+    .row2 {
+      grid-template-columns: minmax(0, 1fr);
     }
+  }
+  /* Labels wrap on their own line instead of running into the neighbour's label. */
+  .row2 label {
+    overflow-wrap: anywhere;
   }
   .check {
     display: flex;
@@ -2217,7 +2229,7 @@ textarea {
   min-width: 0;
 }
 select {
-  min-height: 44px;
+  min-height: 2.75rem;
 }
 input[type="file"] {
   max-width: 100%;
@@ -2234,4 +2246,45 @@ html[data-text-size] .btn {
 }
 html[data-text-size] .btn-sm {
   min-height: 44px;
+}
+
+/*
+ * iPhone / iPad Safari (-webkit-touch-callout exists only there): native date and time inputs keep
+ * an intrinsic width and height of their own, centre their value and show nothing when empty. Make
+ * them behave like the other fields; an empty one shows "zz.ll.aaaa" (data-empty is set by
+ * src/components/ui/empty-date-marker.tsx).
+ */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-height: 2.75rem;
+    text-align: left;
+  }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.45em;
+    margin: 0;
+  }
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="time"]::-webkit-datetime-edit {
+    padding: 0;
+  }
+  input[type="date"][data-empty="true"]::before {
+    content: "zz.ll.aaaa";
+    color: var(--ink-3);
+  }
+  input[type="time"][data-empty="true"]::before {
+    content: "oo:mm";
+    color: var(--ink-3);
+  }
+  input[type="date"][data-empty="true"]:focus::before,
+  input[type="time"][data-empty="true"]:focus::before {
+    content: none;
+  }
 }

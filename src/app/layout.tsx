@@ -14,6 +14,7 @@ import "./globals.css";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { PwaRegister } from "@/components/pwa/pwa-register";
+import { EmptyDateMarker } from "@/components/ui/empty-date-marker";
 
 export const metadata: Metadata = {
   title: { default: "Secretariat", template: "%s · Secretariat" },
@@ -41,6 +42,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         {children}
         <PwaRegister />
+        <EmptyDateMarker />
       </body>
     </html>
   );

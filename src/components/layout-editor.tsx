@@ -108,7 +108,7 @@ export function LayoutEditor({
 
         <fieldset className="mb-1">
           <legend className="font-medium mb-1">Margini (mm)</legend>
-          <div className="grid grid-cols-2 gap-x-3 sm:grid-cols-4">
+          <div className="row2">
             {MARGINS.map(([k, label]) => (
               <Field key={k} label={label} htmlFor={`f-${k}`} error={e[k]}>
                 <input
