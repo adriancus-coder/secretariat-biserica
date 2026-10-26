@@ -9,7 +9,6 @@ import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { pendingBadges } from "@/server/queries/badges";
-import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -42,7 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </span>
             </span>
           </Link>
-          <form action={logoutAction}>
+          <form action="/deconectat" method="post">
             <button type="submit" className="logout" title="Ieșire din cont">
               <Icon name="iesire" className="size-[18px]" />
               Ieșire

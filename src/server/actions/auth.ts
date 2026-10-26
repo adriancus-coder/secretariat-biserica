@@ -74,10 +74,6 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   return (await signInOrMessage(email, password, safeCallbackUrl(formData.get("callbackUrl")))) ?? {};
 }
 
-export async function logoutAction() {
-  await signOut({ redirectTo: "/autentificare" });
-}
-
 /** "Deconectează-te de pe toate dispozitivele": every session of the user ends, this one too. */
 export async function logoutEverywhereAction() {
   const me = await getCurrentUser();

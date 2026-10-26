@@ -13,11 +13,16 @@ import "@fontsource/source-serif-4/latin-ext-600.css";
 import "./globals.css";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 
 export const metadata: Metadata = {
   title: { default: "Secretariat", template: "%s · Secretariat" },
   description: "Secretariatul bisericii: registrul de persoane, procese-verbale, calendar, documente și dare de seamă.",
   robots: { index: false, follow: false },
+  applicationName: "Secretariat Biserică",
+  // Installed on an iPhone / iPad home screen: full screen, the app's name, status bar over the navy header.
+  appleWebApp: { capable: true, title: "Secretariat", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -33,7 +38,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   return (
     <html lang="ro" data-theme={theme === "auto" ? undefined : theme} data-text-size={textSize === "100" ? undefined : textSize}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <PwaRegister />
+      </body>
     </html>
   );
 }

@@ -40,6 +40,7 @@ export default auth((req) => {
 export const config = {
   matcher: [
     // Prefetch requests included: they get the same CSP and the same login redirect.
-    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|svg|ico|jpg|jpeg|webp|woff2?|ttf|webmanifest)$).*)",
+    // The service worker and the offline page are public static files (no session, no CSP nonce).
+    "/((?!api/|_next/static|_next/image|favicon.ico|sw\\.js$|offline\\.html$|.*\\.(?:png|svg|ico|jpg|jpeg|webp|woff2?|ttf|webmanifest)$).*)",
   ],
 };

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1B2843"/>
+  <!-- small cross -->
+  <rect x="244" y="92" width="24" height="96" rx="6" fill="#D4AA4F"/>
+  <rect x="216" y="118" width="80" height="22" rx="6" fill="#D4AA4F"/>
+  <!-- open book -->
+  <path d="M256 236c-38-26-88-34-140-28v176c52-6 102 2 140 28z" fill="#FBFAF6"/>
+  <path d="M256 236c38-26 88-34 140-28v176c-52-6-102 2-140 28z" fill="#EDE8DA"/>
+  <path d="M256 236v176" stroke="#1B2843" stroke-width="6"/>
+</svg>

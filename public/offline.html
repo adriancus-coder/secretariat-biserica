@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1B2843" />
+    <title>Fără conexiune · Secretariat</title>
+    <style>
+      :root {
+        --paper: #fbfaf6;
+        --ink: #1e2436;
+        --ink-2: #4c5468;
+        --navy: #243458;
+        --on-navy: #fbfaf6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #171a24;
+          --ink: #e8e9ee;
+          --ink-2: #b5b9c6;
+          --navy: #d4aa4f;
+          --on-navy: #171a24;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--paper);
+        color: var(--ink);
+        font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+        box-sizing: border-box;
+      }
+      main {
+        max-width: 26rem;
+        text-align: center;
+      }
+      img {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+      }
+      h1 {
+        font-size: 1.375rem;
+        margin: 16px 0 8px;
+      }
+      p {
+        color: var(--ink-2);
+        margin: 0 0 20px;
+      }
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 22px;
+        border-radius: 10px;
+        background: var(--navy);
+        color: var(--on-navy);
+        font-weight: 600;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>Nu există conexiune</h1>
+      <p>Nu există conexiune. Datele bisericii nu sunt păstrate pe acest dispozitiv; reîncercați când sunteți online.</p>
+      <!-- An empty href reloads the address the user tried to open; no script needed (CSP). -->
+      <a href="">Reîncearcă</a>
+    </main>
+  </body>
+</html>

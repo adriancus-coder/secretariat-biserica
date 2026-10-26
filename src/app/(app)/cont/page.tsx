@@ -3,10 +3,11 @@ import { cookies } from "next/headers";
 import { TextSizeControl } from "@/components/text-size-control";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
+import { InstallApp } from "@/components/pwa/install-app";
 import { ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/labels";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
-import { logoutAction, logoutEverywhereAction } from "@/server/actions/auth";
+import { logoutEverywhereAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { ChangePasswordForm } from "./change-password-form";
 import { SecurityCard } from "./security-card";
@@ -105,8 +106,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           <TextSizeControl current={textSize} />
         </div>
       </div>
+      <InstallApp />
       <div className="actions mt-4">
-        <form action={logoutAction}>
+        <form action="/deconectat" method="post">
           <button type="submit" className="btn btn-danger">
             Ieșire din cont
           </button>

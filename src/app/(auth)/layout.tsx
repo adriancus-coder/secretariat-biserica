@@ -1,6 +1,10 @@
+import { ClearPrivateCaches } from "@/components/pwa/pwa-register";
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh flex flex-col">
+      {/* Signed out (or the session expired): nothing but the static app files stays cached. */}
+      <ClearPrivateCaches />
       <header className="bg-navy-2 text-[#F4F1E8] px-5 pt-6 pb-5 pt-[calc(24px+env(safe-area-inset-top,0px))]">
         <div className="mx-auto max-w-md">
           <div className="text-[0.8125rem] opacity-80">Biserica</div>

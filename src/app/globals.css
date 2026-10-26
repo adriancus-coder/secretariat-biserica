@@ -473,6 +473,37 @@
     }
   }
 
+  /* "Instalează aplicația" on iPhone / iPad: numbered steps with Safari's icons. */
+  .install-steps {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: decimal;
+    display: grid;
+    gap: 10px;
+  }
+  .install-steps .install-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 6px;
+    vertical-align: middle;
+    border-radius: 8px;
+    background: var(--field);
+    border: 1px solid var(--line);
+    color: var(--link);
+  }
+  /* "O versiune nouă este disponibilă — Actualizează" */
+  .toast-update {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 8px 8px 16px;
+  }
+  .toast-update .btn {
+    flex: none;
+  }
   /* Butoane */
   .btn {
     border: 1px solid var(--line);

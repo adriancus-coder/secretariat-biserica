@@ -234,6 +234,12 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 
 - `PastorDashboard` (`src/components/pastor-dashboard.tsx`) at the top of Acasă for `permissions.pastor`: Documente de semnat, Cereri de aprobat (PROPUSA applications + proposals), Măsuri disciplinare deschise (with the next appeal deadline; opens `/disciplina`, `disciplina` + step-up), Plecați de peste 3 / 6 luni, Aniversări (BIRTHDAY consent only; `#aniversari`), Mandatul comitetului, Adunarea Generală of the year. Texts in `src/lib/pastor-dashboard.ts` (pure, tested). For pastors the cards replace the separate Acasă notices on the same subjects.
 
+### Installed app (PWA)
+
+- `src/app/manifest.ts` (standalone, navy / paper, shortcuts Persoane, Ședință nouă, De semnat), icons in `public/icons/` (PNG committed; regenerate from `icon.svg` with `node scripts/build-icons.mjs`), Apple meta in the root layout (`appleWebApp`).
+- `public/sw.js` (plain JS, registered by `PwaRegister` in production only, as `/sw.js?v=<NEXT_PUBLIC_SW_VERSION>` = commit): only `/_next/static/**`, `/icons/**` and `/offline.html` are cached (cache-first, cache `static-<version>`, older ones deleted on activate); everything else is network only, a failed navigation shows `public/offline.html`. Never add a route to the cache: `tests/unit/service-worker.test.ts` replays pages, PDFs, API routes, server actions and public forms and asserts nothing is stored. `sw.js` and `offline.html` are excluded from the proxy matcher.
+- "Ieșire din cont" is a plain form POST to `/deconectat` (route handler: signOut, 303, `Clear-Site-Data: "cache"`); the `(auth)` layout posts `clear-private` to the worker. Update: "O versiune nouă este disponibilă — Actualizează" (skip-waiting, reload only after that click). `InstallApp` (Mai mult, Cont): `beforeinstallprompt` (captured early in `pwa-store.ts`) or the iPhone steps; hidden when standalone.
+
 ### Discipline (Statut art. 27, 271, 272)
 
 - `DisciplinaryMeasure` (tenant model): forma (art. 27 alin. 3), stare CERCETARE / APLICATA / INCHEIATA, dates, minutes, motiv, forum. Permission `disciplina` = ADMIN or a pastor (`User.isPastor`), on the server for every read and write; other users never see measures, counts, categories, exports, audit entries (entity DISCIPLINE is filtered out of `/setari/jurnal`) or any hint. Never add discipline to a category, list, export or a non-admin page.

@@ -5,9 +5,9 @@ import { Icon } from "@/components/shell/icons";
 import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { TextSizeControl } from "@/components/text-size-control";
 import { PageHead } from "@/components/ui/page-head";
+import { InstallApp } from "@/components/pwa/install-app";
 import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
-import { logoutAction } from "@/server/actions/auth";
 import { requireUser } from "@/server/session";
 import { pendingBadges } from "@/server/queries/badges";
 
@@ -33,13 +33,14 @@ export default async function MorePage() {
           <Icon name="cont" />
           Contul meu
         </Link>
-        <form action={logoutAction}>
+        <form action="/deconectat" method="post">
           <button type="submit">
             <Icon name="iesire" />
             Ieșire din cont
           </button>
         </form>
       </div>
+      <InstallApp className="card mt-4" />
       <div className="card mt-4 flex flex-wrap items-center justify-between gap-3">
         <span className="font-medium">Mărimea textului</span>
         <TextSizeControl current={textSize} />
