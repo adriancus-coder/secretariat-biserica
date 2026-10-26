@@ -1,6 +1,7 @@
 import { addDays, ageAt, dotDateTime } from "./dates";
 import { ANONYMOUS_NAME } from "./anonymous";
 import { compareRo } from "./text";
+import { CHILD_RELATIONS, familyParents, SPOUSE_RELATIONS } from "./kinship";
 
 /**
  * The weekly prayer for families: who is in the rotation, in what order, and the only text shown
@@ -12,10 +13,10 @@ import { compareRo } from "./text";
 export const PRAYER_STATUSES = ["MEMBRU", "APARTINATOR", "BOTEZAT_FARA_TRANSFER", "PRIETEN"] as const;
 /** Who counts as a parent in the family's line: the head and the spouse. */
 export const PRAYER_PARENT_RELATIONS = ["Cap de familie", "Soț", "Soție"];
-/** A spouse is always a parent in the message (whatever the birth date says). */
-export const PRAYER_SPOUSE_RELATIONS = ["Soț", "Soție"];
+/** A spouse is always a parent in the message (whatever the birth date says); the rule is shared with KINSHIP. */
+export const PRAYER_SPOUSE_RELATIONS = SPOUSE_RELATIONS;
 /** Only these relations can make a member a child of the family (and only while a minor or without a birth date). */
-export const PRAYER_CHILD_RELATIONS = ["Fiu", "Fiică", "Copil", "Nepot", "Nepoată"];
+export const PRAYER_CHILD_RELATIONS = CHILD_RELATIONS;
 
 /** The week's message as edited on /rugaciune before sending (never stored on the server). */
 export const PRAYER_SHARE_MAX = 1000;
@@ -63,8 +64,6 @@ const active = (m: PrayerMember) => (PRAYER_STATUSES as readonly string[]).inclu
 const adult = (m: PrayerMember, today: string) => !m.dataNasterii || ageAt(m.dataNasterii, today) >= 18;
 const isSpouse = (m: PrayerMember) => PRAYER_SPOUSE_RELATIONS.includes(m.rudenie.trim());
 const hasChildRelation = (m: PrayerMember) => PRAYER_CHILD_RELATIONS.includes(m.rudenie.trim());
-/** Relations that never make a member the head's spouse (the head's own parents). */
-const NOT_SPOUSE = ["Părinte"];
 
 /** A child of the family: a child's relation AND a minor by the birth date (or no birth date). */
 export function isPrayerChild(m: PrayerMember, today: string): boolean {
@@ -92,14 +91,7 @@ function joinNames(names: string[]): string {
  */
 export function prayerParts(u: PrayerUnit, today: string): { parents: PrayerMember[]; children: PrayerMember[] } {
   const live = u.members.filter(active);
-  const head = live.find((m) => m.id === u.headId);
-  const spouses = live.filter((m) => m !== head && isSpouse(m));
-  let parents = head ? [head, ...spouses] : spouses;
-  const rest = live.filter((m) => !parents.includes(m));
-  if (head?.dataCasatoriei && !spouses.length) {
-    const candidates = rest.filter((m) => adult(m, today) && !hasChildRelation(m) && !NOT_SPOUSE.includes(m.rudenie.trim()));
-    if (candidates.length === 1) parents = [...parents, candidates[0]];
-  }
+  let parents = familyParents(live, u.headId, today);
   // A person without a family, or a family whose head left: the active adults who are not children.
   if (!parents.length) parents = live.filter((m) => adult(m, today) && !hasChildRelation(m));
   return { parents, children: live.filter((m) => !parents.includes(m) && isPrayerChild(m, today)) };

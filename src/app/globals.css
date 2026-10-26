@@ -1818,6 +1818,37 @@
     color: var(--ok);
   }
 
+  /* KINSHIP: a neam as an indented tree (each level a generation), narrow enough for 360 px. */
+  .kin-tree,
+  .kin-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .kin-tree ul {
+    margin-left: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 2px solid var(--line);
+  }
+  .kin-node {
+    padding: 6px 0;
+    overflow-wrap: anywhere;
+  }
+  /* "Rude în biserică" on the person page. */
+  .kin-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+  }
+  .kin-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    overflow-wrap: anywhere;
+  }
   /* /rugaciune "Toate familiile": a list on phones, the sortable table from 600 px. */
   .prayer-overview-table {
     display: none;

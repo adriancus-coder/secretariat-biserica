@@ -21,6 +21,7 @@ export function PersonPicker({
   value,
   onChange,
   label,
+  emptyText = "Niciun responsabil ales.",
 }: {
   name: string;
   people: { id: string; name: string; note?: string }[];
@@ -28,6 +29,8 @@ export function PersonPicker({
   value: string;
   onChange: (id: string) => void;
   label: string;
+  /** Shown while nobody is chosen. */
+  emptyText?: string;
 }) {
   const [q, setQ] = useState("");
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -63,7 +66,7 @@ export function PersonPicker({
     <div className="picker">
       <input type="hidden" name={name} value={value} />
       <p className="picker-current" aria-live="polite">
-        {chosen ? <>Ales: <strong>{chosen.name}</strong></> : "Niciun responsabil ales."}
+        {chosen ? <>Ales: <strong>{chosen.name}</strong></> : emptyText}
       </p>
       <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Caută după nume…" aria-label={`Caută: ${label}`} />
       <div className="picker-list" role="listbox" aria-label={label}>

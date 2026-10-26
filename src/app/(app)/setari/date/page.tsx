@@ -10,6 +10,7 @@ import Link from "next/link";
 import { dismissStatusAdjustmentsAction } from "@/server/actions/statute";
 import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
+import { FamilyLinks } from "./family-links";
 
 export const metadata: Metadata = { title: "Copie de siguranță" };
 
@@ -117,6 +118,12 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
         <div className="card">
           <h3>Familii create automat</h3>
           <FamilyRepair families={autoFamilies} />
+        </div>
+      ) : null}
+      {permissions.admin(user.role) ? (
+        <div className="card">
+          <h3>Legături de rudenie</h3>
+          <FamilyLinks />
         </div>
       ) : null}
     </>

@@ -18,6 +18,8 @@ import { listHref, withDin } from "@/lib/person-nav";
 import { PrayerPrefsForm } from "@/components/prayer-prefs-form";
 import { prayerChangeText } from "@/lib/prayer";
 import { requireCtx } from "@/server/session";
+import { personKinship } from "@/server/kinship";
+import { KinshipCard } from "./kinship-card";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
 import { PersonRemoval } from "./person-removal";
@@ -54,6 +56,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const nav = await personNeighbors(ctx, id, parseListSpec(din), (await getChurch(ctx)).nomen.rudenie);
   const { person: x, family, groups, responsibleFor, roles, notes, notesCount, documents, audit, aliases } = detail;
   const canWrite = permissions.write(ctx.user.role);
+  const kinship = await personKinship(ctx, id, canWrite);
   const today = todayIso();
   // Administrators only (`disciplina`): the query never runs for other roles.
   const discipline = permissions.disciplina(ctx.user)
@@ -209,6 +212,8 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
           </div>
         ))}
       </dl>
+
+      {kinship ? <KinshipCard personId={x.id} groups={kinship.groups} neam={kinship.neam} people={kinship.people} canWrite={canWrite} /> : null}
 
       <div className="two">
         {!x.family ? (

@@ -36,7 +36,7 @@ tests/                  integration (tenant isolation, numbering, anonymisation,
 
 ## Data model
 
-Every church-owned table has a `churchId` column (34 models in total). The main relations:
+Every church-owned table has a `churchId` column (35 models in total). The main relations:
 
 ```mermaid
 erDiagram
@@ -64,12 +64,18 @@ erDiagram
     Person ||--o{ PastoralNote : "pastoral notes"
     Person ||--o{ PersonProposal : "waits for the pastor"
     Person ||--o{ Consent : consents
+    Person ||--o{ PersonParent : "parent of"
+    Person ||--o{ PersonParent : "child of"
     Application ||--o| Person : "accepted as"
     DataCampaign ||--o{ DataUpdateLink : "personal links"
     DataCampaign ||--o{ DataUpdateSubmission : answers
     User ||--o{ UserPasskey : passkeys
     User ||--o{ PastoralNote : writes
 ```
+
+### Kinship
+
+`PersonParent` (tenant model; `parentId`, `childId`, `source` FAMILIE | MANUAL | CAMPANIE, unique per pair) is the only stored kinship: parent and child, both persons of the register. Spouses come from the families (the head and Soț / Soție, `familyParents()`, the same rule as the weekly prayer). The server refuses oneself, a duplicate, a third parent and a cycle (`parentLinkError()`), and finds both persons through the church's scoped client. Everything else is computed in `src/lib/kinship.ts` (pure, tested) from the links and the couples: siblings (a parent in common), grandparents, grandchildren, uncles and aunts, cousins, parents-in-law and children-in-law (`relatives()`, gendered names by `relativeName()`), and the neamuri — the connected groups over parent-child and marriage, named after the oldest known ancestor with the most descendants (`neamuri()`, `neamTree()`). `src/server/kinship.ts` loads the church's graph for the person page, the family page and Statistici → Neamuri.
 
 Dates of the domain (birth, baptism, meetings) are `DATE` columns handled as `YYYY-MM-DD` strings; "today" is computed in the church's time zone, never from the server clock's date.
 

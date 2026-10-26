@@ -12,6 +12,8 @@ import { bandLabel, statisticsTableDefs, statisticsWhen } from "@/lib/statistics
 import { DataTable, SortAwareLink } from "@/components/ui/data-table";
 import { loadStatistics } from "@/server/queries/statistics";
 import { requireCtx } from "@/server/session";
+import { loadKinship } from "@/server/kinship";
+import { listedNeamuri } from "@/lib/kinship-report";
 
 export const metadata: Metadata = { title: "Statistici" };
 
@@ -31,6 +33,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
   const ctx = await requireCtx();
   const sp = await searchParams;
   const d = await loadStatistics(ctx, requestedYear(sp.an));
+  const neamCount = listedNeamuri((await loadKinship(ctx.db)).neamuri).length;
   const st = d.structure;
   const cat = (key: string, an: number | undefined, extra?: Record<string, string>) => categoryHref(key, an, extra);
   const both = (a: string, b: string, an: number | undefined) => categoryHref([a, b], an, { mod: "toate" });
@@ -246,6 +249,10 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
           <Link href={cat("fara-familie", d.an)} className="stat stat-link">
             <b>{st.families.withoutFamily}</b>
             <span>persoane fără familie</span>
+          </Link>
+          <Link href="/statistici/neamuri" className="stat stat-link">
+            <b>{neamCount}</b>
+            <span>neamuri (cel puțin două familii)</span>
           </Link>
         </div>
       </section>

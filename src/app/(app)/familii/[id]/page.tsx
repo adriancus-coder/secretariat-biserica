@@ -15,6 +15,8 @@ import { canBeHead } from "@/lib/families";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { dissolveFamilyAction } from "@/server/actions/families";
 import { requireCtx } from "@/server/session";
+import { loadKinship } from "@/server/kinship";
+import { neamOf } from "@/lib/kinship";
 import { PrayerPrefsForm } from "@/components/prayer-prefs-form";
 import { prayerChangeText } from "@/lib/prayer";
 import { statusTagClass } from "../../persoane/person-row";
@@ -39,6 +41,9 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
       : Promise.resolve([]),
   ]);
   const head = f.members.find((m) => m.id === f.headId);
+  // The neam the family belongs to (through any of its members).
+  const kin = await loadKinship(ctx.db);
+  const neam = f.members.map((m) => neamOf(kin.neamuri, m.id)).find(Boolean) ?? null;
   const prayer = canWrite
     ? await ctx.db.family.findUniqueOrThrow({ where: { id }, select: { prayerOptOut: true, prayerIncludeChildren: true, prayerChangedAt: true, prayerSource: true } })
     : null;
@@ -53,6 +58,16 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
           </Link>
         ) : null}
       </PageHead>
+
+      {neam ? (
+        <p className="mb-3">
+          Familia face parte din{" "}
+          <Link href={`/statistici/neamuri/${neam.id}`} className="underline">
+            {neam.name.replace(/^Neamul/, "neamul")}
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {formatAddress(f) || f.note ? (
         <dl className="detail mb-4">

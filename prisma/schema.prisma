@@ -44,8 +44,8 @@ model Church {
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
   comunitate       String    @default("")
   adresa           String    @default("")
-  codPostal String @default("")
-  localitate String @default("")
+  codPostal        String    @default("")
+  localitate       String    @default("")
   orgNr            String    @default("")
   telefon          String    @default("")
   email            String    @default("")
@@ -110,6 +110,7 @@ model Church {
   personProposals       PersonProposal[]
   pastoralNotes         PastoralNote[]
   prayerWeeks           PrayerWeek[]
+  personParents         PersonParent[]
   roles                 ChurchRole[]
   roleGroups            RoleGroup[]
   families              Family[]
@@ -183,6 +184,7 @@ model User {
   personProposalsDecided PersonProposal[]       @relation("PersonProposalDecidedBy")
   pastoralNotes          PastoralNote[]
   prayerWeeks            PrayerWeek[]
+  personParentsCreated   PersonParent[]
   webauthnChallenges     WebAuthnChallenge[]
   churchDocuments        ChurchDocument[]
   personAliases          PersonAlias[]
@@ -287,8 +289,8 @@ model Person {
   telefon       String       @default("")
   email         String       @default("")
   adresa        String       @default("")
-  codPostal String @default("")
-  localitate String @default("")
+  codPostal     String       @default("")
+  localitate    String       @default("")
 
   // Intrare în biserică
   dataMembru          DateTime?  @db.Date
@@ -354,6 +356,9 @@ model Person {
   proposals             PersonProposal[]
   pastoralNotes         PastoralNote[]
   prayerWeeks           PrayerWeek[]
+  /// Kinship in the register: the links where this person is the parent, and where it is the child.
+  childLinks            PersonParent[]         @relation("KinParent")
+  parentLinks           PersonParent[]         @relation("KinChild")
   /// Weekly prayer, for a person without a family (a family's own fields apply to its members).
   prayerOptOut          Boolean                @default(false)
   prayerIncludeChildren Boolean                @default(false)
@@ -629,8 +634,8 @@ model Family {
   headId                String?       @unique
   head                  Person?       @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
   adresa                String        @default("")
-  codPostal String @default("")
-  localitate String @default("")
+  codPostal             String        @default("")
+  localitate            String        @default("")
   note                  String        @default("")
   /// Created automatically (migration or import from family text), still with its default name and
   /// never edited; "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
@@ -1275,8 +1280,8 @@ model Application {
   telefon             String    @default("")
   email               String    @default("")
   adresa              String    @default("")
-  codPostal String @default("")
-  localitate String @default("")
+  codPostal           String    @default("")
+  localitate          String    @default("")
   familie             String    @default("")
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")
@@ -1398,4 +1403,32 @@ model PrayerWeek {
   @@index([churchId, familyId])
   @@index([churchId, personId])
   @@map("prayer_weeks")
+}
+
+enum KinshipSource {
+  FAMILIE
+  MANUAL
+  CAMPANIE
+}
+
+/// A parent-child link between two persons of the register (KINSHIP): at most two parents per person,
+/// no cycles, never oneself, both in the same church (checked by `parentLinkError`). Spouses stay
+/// defined by the family (Soț / Soție). Every other relation is deduced (src/lib/kinship.ts).
+model PersonParent {
+  id          String        @id @default(cuid())
+  churchId    String
+  church      Church        @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  parentId    String
+  parent      Person        @relation("KinParent", fields: [parentId], references: [id], onDelete: Cascade)
+  childId     String
+  child       Person        @relation("KinChild", fields: [childId], references: [id], onDelete: Cascade)
+  source      KinshipSource @default(MANUAL)
+  createdAt   DateTime      @default(now())
+  createdById String?
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([parentId, childId])
+  @@index([churchId])
+  @@index([childId])
+  @@map("person_parents")
 }

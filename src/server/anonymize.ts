@@ -106,6 +106,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.pastoralNote.deleteMany({ where: { personId: id } });
     // The weekly prayer: the weeks this person (without a family) was announced.
     await tx.prayerWeek.deleteMany({ where: { personId: id } });
+    // KINSHIP: the person's parent-child links go (the relatives keep their other links).
+    await tx.personParent.deleteMany({ where: { OR: [{ parentId: id }, { childId: id }] } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
     // No longer anyone's responsible person (the groups' text is scrubbed below).
     await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });

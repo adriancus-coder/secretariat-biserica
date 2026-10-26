@@ -18,6 +18,8 @@ describe("privacy notice 1.0", () => {
     expect(t).toContain("e) Rugăciunea săptămânală pentru familii: o persoană desemnată de comitet anunță pe grupul bisericii familia");
     expect(t).toContain("Orice familie poate cere oricând să nu fie pomenită, fără nicio explicație.");
     expect(t).toContain("- Persoana desemnată pentru anunțul de rugăciune vede doar numele familiilor.");
+    // KINSHIP: parent-child links between persons of the register only.
+    expect(t).toContain("e) Legăturile de rudenie (părinte–copil) dintre persoane aflate în registrul Bisericii, pentru evidența familiilor și statistici interne; nu păstrăm date despre rude care nu sunt în registru.");
   });
 
   it("fills the church's details; an empty setting keeps its placeholder", () => {

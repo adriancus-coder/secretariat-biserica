@@ -1,6 +1,7 @@
 import "server-only";
 import { parsePrototypeJson, toPrototypeJson, type Backup } from "@/domain/backup";
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
+import { kinshipToJson, parseKinshipJson } from "@/lib/kinship-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
 import { addMemberBaptism, parseMemberBaptism } from "@/lib/baptism-backup";
 import { addMemberRegister, parseMemberRegister } from "@/lib/register-backup";
@@ -18,6 +19,7 @@ import {
   loadAliases,
   loadApplications,
   loadBackup,
+  loadKinshipLinks,
   loadBaptism,
   loadRegister,
   loadDiscipline,
@@ -55,6 +57,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
     loadRegister(ctx),
     loadCampaignsAndConsents(ctx),
   ]);
+  const kinship = await loadKinshipLinks(ctx);
   const data = toPrototypeJson(backup);
   type Coll = Record<string, Record<string, unknown>>;
   addMemberFamilies(data.members as Coll, families.familyOf);
@@ -79,6 +82,7 @@ export async function buildExportJson(ctx: Ctx): Promise<{ data: Record<string, 
       roles: rolesToJson(roles.roles),
       families: familiesToJson(families.families),
       aliases: aliasesToJson(aliases),
+      rudenii: kinshipToJson(kinship),
       campaigns: campaignData.campaigns,
       consents: campaignData.consents,
       ...(comitet ? { comitet } : {}),
@@ -119,6 +123,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       campaigns: parseCampaignsJson(raw),
       consents: parseConsentsJson(raw),
       aliases: parseAliasesJson(raw),
+      kinship: parseKinshipJson(raw),
       committee: parseCommitteeJson(raw),
     },
     warnings: [...parsed.warnings, ...apps.warnings, ...roles.warnings],

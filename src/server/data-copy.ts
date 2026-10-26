@@ -5,6 +5,7 @@ import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { unmarriedLabel } from "@/lib/marital";
 import { prayerChangeText } from "@/lib/prayer";
+import { relativeName } from "@/lib/kinship";
 import { fmtDot } from "@/domain/print";
 import { memberName } from "@/lib/format";
 import {
@@ -41,6 +42,8 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       roles: { include: { role: { select: { nume: true } } } },
       groups: { include: { group: { select: { nume: true } } } },
       aliases: { select: { alias: true } },
+      parentLinks: { select: { parent: { select: { nume: true, prenume: true, gen: true } } } },
+      childLinks: { select: { child: { select: { nume: true, prenume: true, gen: true } } } },
       application: { select: { createdAt: true, status: true, kind: true } },
       documents: { select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       meetings: { where: { status: "PRESENT" }, select: { meeting: { select: { tip: true, data: true, nr: true, anRegistru: true } } } },
@@ -99,6 +102,16 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
           ["Ultima modificare", prayerChangeText(prayer.prayerChangedAt, prayer.prayerSource) ?? ""],
           ["Săptămânile în care a fost anunțată", prayerWeeks.join(", ")],
         ],
+      },
+      {
+        titlu: "Părinți și copii din registru",
+        tabel: {
+          coloane: ["Legătura", "Persoana"],
+          randuri: [
+            ...p.parentLinks.map((l) => [relativeName("parinti", l.parent.gen), memberName(l.parent)]),
+            ...p.childLinks.map((l) => [relativeName("copii", l.child.gen), memberName(l.child)]),
+          ],
+        },
       },
       {
         titlu: "Prezență la ședințe",

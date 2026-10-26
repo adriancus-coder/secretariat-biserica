@@ -243,6 +243,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await b.prayerWeek.delete({ where: { id: wb.id } });
   });
 
+  it("kinship links are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const child = await a.person.create({ data: { nume: "Copil", prenume: "A" } as never });
+    const l = await a.personParent.create({ data: { parentId: personA, childId: child.id } as never });
+    expect(l.churchId).toBe(churchA);
+    expect(await b.personParent.findUnique({ where: { id: l.id } })).toBeNull();
+    expect(await b.personParent.findMany({ where: { parentId: personA } })).toHaveLength(0);
+    expect(await b.personParent.count()).toBe(0);
+    expect((await b.personParent.updateMany({ data: { source: "FAMILIE" } })).count).toBe(0);
+    expect((await b.personParent.deleteMany({})).count).toBe(0);
+    await expect(b.personParent.delete({ where: { id: l.id } })).rejects.toMatchObject({ code: "P2025" });
+    expect((await prisma.personParent.findUniqueOrThrow({ where: { id: l.id } })).source).toBe("MANUAL");
+    await a.personParent.delete({ where: { id: l.id } });
+    await a.person.delete({ where: { id: child.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

@@ -3,6 +3,8 @@ import type { RegisterFields } from "@/lib/register-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BCampaign, BConsent } from "@/lib/consents-backup";
 import type { BAlias } from "@/lib/aliases-backup";
+import type { BKinship } from "@/lib/kinship-backup";
+import { parentLinkError } from "@/lib/kinship";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
 import { randomUUID } from "node:crypto";
@@ -420,6 +422,11 @@ export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; fam
   return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, codPostal: f.codPostal, localitate: f.localitate, note: f.note, automata: f.autoCreated })), familyOf };
 }
 
+/** Parent-child links of the register, for the `rudenii` collection (KINSHIP). */
+export async function loadKinshipLinks(ctx: Ctx): Promise<{ parentId: string; childId: string; source: string }[]> {
+  return ctx.db.personParent.findMany({ orderBy: { createdAt: "asc" }, select: { parentId: true, childId: true, source: true } });
+}
+
 /** Other forms of persons' names, for the `aliases` collection. */
 export async function loadAliases(ctx: Ctx): Promise<{ personId: string; alias: string }[]> {
   return ctx.db.personAlias.findMany({ orderBy: { alias: "asc" }, select: { personId: true, alias: true } });
@@ -449,6 +456,8 @@ export interface ImportExtras {
   register?: ReadonlyMap<string, RegisterFields>;
   /** Other forms of persons' names (see parseAliasesJson); null = not in the file. */
   aliases?: BAlias[] | null;
+  /** Parent-child links (see parseKinshipJson); null = not in the file. */
+  kinship?: BKinship[] | null;
   /** Disciplinary measures (administrators' files only, see parseDisciplineJson); null = not in the file. */
   discipline?: BDiscipline[] | null;
   /** Data-update campaigns and consents (see src/lib/consents-backup.ts); null = not in the file. */
@@ -1124,6 +1133,26 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         const existing = await tx.personAlias.findFirst({ where: { alias: a.alias } });
         if (existing) await tx.personAlias.update({ where: { id: existing.id }, data: { personId } });
         else await tx.personAlias.create({ data: { alias: a.alias, personId, createdById: ctx.user.id } as never });
+      }
+
+      // Parent-child links between the imported persons, under the same rules as in the app (a link
+      // that would make a third parent or a cycle is skipped with a warning).
+      if (extras.kinship) {
+        const links = await tx.personParent.findMany({ select: { parentId: true, childId: true } });
+        let skipped = 0;
+        for (const k of extras.kinship) {
+          const parentId = pid(k.parinte);
+          const childId = pid(k.copil);
+          if (!parentId || !childId) continue;
+          if (links.some((l) => l.parentId === parentId && l.childId === childId)) continue;
+          if (parentLinkError(links, parentId, childId)) {
+            skipped++;
+            continue;
+          }
+          await tx.personParent.create({ data: { parentId, childId, source: k.sursa, createdById: ctx.user.id } as never });
+          links.push({ parentId, childId });
+        }
+        if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (ar fi depășit doi părinți sau ar fi format un cerc).`);
       }
 
       const remapped = [people, meet, evs, docs, grs, nts, apps, ...(fams ? [fams] : [])].reduce(
