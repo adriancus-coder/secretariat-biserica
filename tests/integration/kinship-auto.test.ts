@@ -13,10 +13,13 @@ vi.mock("@/server/db", async () => ({ prisma: (await import("./helpers")).testPr
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<object>()), redirect: () => {} }));
 
+const { addSiblingAction, removeSiblingLinkAction } = await import("@/server/actions/kinship");
 const { moveToFamilyAction } = await import("@/server/actions/families");
+const { loadKinship, personKinship } = await import("@/server/kinship");
 const { runFirstKinshipCheck } = await import("@/server/kinship-sync");
+const { relatives, neamuri } = await import("@/lib/kinship");
 
-/** KINSHIP-AUTO on the database. */
+/** KINSHIP-AUTO and KINSHIP-CARD-SIBLINGS on the database. */
 describe.skipIf(!hasTestDb)("kinship: automatic check and siblings", () => {
   const prisma = hasTestDb ? testPrisma() : (undefined as never);
   let ctx: Ctx;
@@ -96,5 +99,63 @@ describe.skipIf(!hasTestDb)("kinship: automatic check and siblings", () => {
     form.set("tinta", id.fD);
     await moveToFamilyAction(id.Thea, {}, form);
     expect(await parentsOf(id.Thea)).toEqual(["Dumitru/FAMILIE", "Iulia/FAMILIE"]);
+  });
+
+  it("a) already siblings → „Sunt deja frați.”; b) the one without parents joins the other's parents", async () => {
+    current = ctx;
+    expect((await addSiblingAction(id.Felix, id.Thea, false)).message).toBe("Sunt deja frați.");
+    const plan = await addSiblingAction(id.Felix, id.Mihai, false);
+    expect(plan.plan).toEqual({ kind: "adopt", text: "Leagă pe Popa Mihai ca fiu a lui Ciobanu Dumitru și Ciobanu Iulia?" });
+    expect(await parentsOf(id.Mihai)).toEqual([]); // nothing before „Confirmă”
+    expect((await addSiblingAction(id.Felix, id.Mihai, true)).message).toBe("Ciobanu Felix și Popa Mihai sunt acum frați.");
+    expect(await parentsOf(id.Mihai)).toEqual(["Dumitru/MANUAL", "Iulia/MANUAL"]);
+    // „Șterge legătura de frate” on Felix's page, Mihai's row: Mihai's manual links go, Felix keeps his.
+    const card = await personKinship(ctx, id.Felix, true);
+    expect(card!.groups.find((g) => g.key === "frati")!.entries.find((e) => e.id === id.Mihai)?.siblingRemovable).toBe(true);
+    expect(card!.groups.find((g) => g.key === "frati")!.entries.find((e) => e.id === id.Thea)?.siblingRemovable).toBe(false);
+    expect((await removeSiblingLinkAction(id.Felix, id.Mihai)).ok).toBe(true);
+    expect(await parentsOf(id.Mihai)).toEqual([]);
+    expect(await parentsOf(id.Felix)).toEqual(["Dumitru/FAMILIE", "Iulia/FAMILIE"]);
+    expect((await removeSiblingLinkAction(id.Felix, id.Thea)).message).toBe("Legătura de frați vine din familie; se schimbă din pagina familiei.");
+  });
+
+  it("c) without names: the dialog's names are written on both files (audited), then brothers, cousins, a new neam", async () => {
+    current = ctx;
+    expect((await addSiblingAction(id.Ion, id.Vasile, false)).plan?.kind).toBe("ask");
+    const names = { tata: "Popa Gheorghe", mama: "Popa Maria" };
+    const plan = await addSiblingAction(id.Ion, id.Vasile, false, names);
+    expect(plan.plan?.text).toContain("Se completează pe fișele lui Popa Ion și Popa Vasile: Numele tatălui „Popa Gheorghe”, Numele mamei „Popa Maria”.");
+    expect((await prisma.person.findUniqueOrThrow({ where: { id: id.Ion } })).numeTata).toBe(""); // nothing before „Confirmă”
+    expect((await addSiblingAction(id.Ion, id.Vasile, true, names)).ok).toBe(true);
+    for (const p of [id.Ion, id.Vasile]) {
+      const row = await prisma.person.findUniqueOrThrow({ where: { id: p } });
+      expect([row.numeTata, row.numeMama]).toEqual(["Popa Gheorghe", "Popa Maria"]);
+      expect(row.searchText).toContain("gheorghe");
+      expect(await parentsOf(p)).toEqual(["x:Popa Gheorghe/MANUAL", "x:Popa Maria/MANUAL"]);
+      const audit = await prisma.auditLog.findMany({ where: { entityId: p }, orderBy: { createdAt: "asc" } });
+      expect(audit.some((a) => JSON.stringify(a.changes).includes("Popa Gheorghe"))).toBe(true);
+      expect(audit.some((a) => JSON.stringify(a.changes).includes("legătură de frați: "))).toBe(true);
+    }
+    const kin = await loadKinship(ctx.db);
+    expect(relatives(kin.graph, id.Ion).frati).toEqual([id.Vasile]);
+    expect(relatives(kin.graph, id.Estera).veri).toEqual([id.Lidia]);
+    expect(neamuri(kin.graph).map((n) => n.name)).toContain("Neamul Popa Gheorghe");
+  });
+
+  it("c) with the names on a file: the third brother reuses the same parents outside the register", async () => {
+    current = ctx;
+    await prisma.person.update({ where: { id: id.Mihai }, data: { numeTata: "Gheorghe Popa" } });
+    const plan = await addSiblingAction(id.Mihai, id.Ion, false);
+    expect(plan.plan?.text).toBe("Popa Mihai și Popa Ion devin frați, copii ai lui Gheorghe Popa și Popa Maria (în afara registrului). Se completează pe fișa lui Popa Mihai: Numele mamei „Popa Maria”.");
+    expect((await addSiblingAction(id.Mihai, id.Ion, true)).ok).toBe(true);
+    expect(await parentsOf(id.Mihai)).toEqual(["x:Popa Gheorghe/MANUAL", "x:Popa Maria/MANUAL"]);
+    expect(await prisma.kinExternalParent.count({ where: { churchId } })).toBe(2);
+  });
+
+  it("c) different names on the two files → refused, nothing written", async () => {
+    current = ctx;
+    expect((await addSiblingAction(id.Pavel, id.Radu, false)).message).toBe("Numele părinților diferă pe cele două fișe. Corectați-le întâi.");
+    expect((await addSiblingAction(id.Pavel, id.Radu, true)).message).toBe("Numele părinților diferă pe cele două fișe. Corectați-le întâi.");
+    expect(await parentsOf(id.Pavel)).toEqual([]);
   });
 });

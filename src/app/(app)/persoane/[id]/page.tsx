@@ -213,7 +213,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         ))}
       </dl>
 
-      {kinship ? <KinshipCard personId={x.id} groups={kinship.groups} neam={kinship.neam} pickParent={kinship.pickParent} pickChild={kinship.pickChild} canWrite={canWrite} /> : null}
+      {kinship ? <KinshipCard personId={x.id} groups={kinship.groups} neam={kinship.neam} pickParent={kinship.pickParent} pickSibling={kinship.pickSibling} canWrite={canWrite} /> : null}
 
       <div className="two">
         {!x.family ? (

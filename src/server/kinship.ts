@@ -3,6 +3,8 @@ import { ANONYMOUS_NAME } from "@/lib/anonymous";
 import { fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import {
+  ancestors,
+  descendants,
   familyLinks,
   kinGraph,
   linkParents,
@@ -22,6 +24,7 @@ import {
   type RelativeGroup,
 } from "@/lib/kinship";
 import { externalKey, nameLinkStillValid, nameProposals, type ExternalParent, type KinProposal, type NamedKin } from "@/lib/kinship-parents";
+import { ALREADY_SIBLINGS } from "@/lib/kinship-siblings";
 import { compareRo } from "@/lib/text";
 import type { Ctx } from "./session";
 
@@ -215,6 +218,23 @@ export interface KinEntry {
   linkId?: string;
   /** Where the link came from (shown to write roles), KIN_SOURCE_LABEL. */
   source?: string;
+  /** A sibling linked by hand or from the names: "Șterge legătura de frate" (write roles). */
+  siblingRemovable?: boolean;
+}
+
+/** Sources a sibling link may be removed from the person page with (the family's own links change in the family). */
+const SIBLING_REMOVABLE = ["MANUAL", "NUME_PARINTI"];
+
+/**
+ * The links "Șterge legătura de frate" removes: the person's links to the parents in common with the
+ * sibling added by hand or from the names, or else the sibling's. Empty when both come from families.
+ */
+export function siblingLinksToRemove(links: StoredLink[], personId: string, siblingId: string): StoredLink[] {
+  const parentsOf = (id: string) => links.filter((l) => l.childId === id).map((l) => l.parentId);
+  const common = new Set(parentsOf(personId).filter((p) => parentsOf(siblingId).includes(p)));
+  const own = (id: string) => links.filter((l) => l.childId === id && common.has(l.parentId) && SIBLING_REMOVABLE.includes(l.source));
+  const mine = own(personId);
+  return mine.length ? mine : own(siblingId);
 }
 
 export interface PickerPerson {
@@ -229,7 +249,8 @@ export interface PickerPerson {
  * "Rude în biserică" for one person: parents and children (editable), the deduced relatives by group,
  * the neam. Persons no longer in the register only for write roles (marked); parents outside the
  * register to everyone, by name, without a link. For write roles also the picker's lists for "+ Adaugă
- * părinte" / "+ Adaugă copil", with the persons the rules refuse disabled and the reason.
+ * părinte" / "+ Adaugă frate / soră", with the persons the rules refuse disabled and the reason
+ * (children are added through the family, KINSHIP-CARD-SIBLINGS).
  */
 export async function personKinship(ctx: Ctx, personId: string, canWrite: boolean) {
   const kin = await loadKinship(ctx.db);
@@ -253,13 +274,14 @@ export async function personKinship(ctx: Ctx, personId: string, canWrite: boolea
       external: Boolean(p.external),
       linkId: link?.id,
       source: link && canWrite ? KIN_SOURCE_LABEL[link.source] : undefined,
+      siblingRemovable: group === "frati" && canWrite ? siblingLinksToRemove(kin.links, personId, id).length > 0 : undefined,
     };
   };
   const r = relatives(graph, personId);
   const groups = RELATIVE_GROUPS.map((g) => ({ key: g, title: RELATIVE_GROUP_TITLE[g], entries: r[g].map((id) => entry(g, id)).filter((e): e is KinEntry => Boolean(e)) }));
   const neam = neamOf(kin.neamuri, personId);
   let pickParent: PickerPerson[] = [];
-  let pickChild: PickerPerson[] = [];
+  let pickSibling: PickerPerson[] = [];
   if (canWrite) {
     const born = (id: string) => graph.person.get(id)?.dataNasterii ?? null;
     const base = [...graph.person.values()]
@@ -267,9 +289,14 @@ export async function personKinship(ctx: Ctx, personId: string, canWrite: boolea
       .map((p) => ({ id: p.id, name: memberName(p), note: [p.familyId ? kin.families.get(p.familyId) : null, p.active ? null : "nu mai este în evidență"].filter(Boolean).join(" · ") || undefined }))
       .sort((a, b) => compareRo(a.name, b.name));
     pickParent = base.map((p) => ({ ...p, disabled: parentLinkError(kin.links, p.id, personId, born) ?? undefined }));
-    pickChild = base.map((p) => ({ ...p, disabled: parentLinkError(kin.links, personId, p.id, born) ?? undefined }));
+    const mine = new Set(graph.parents.get(personId) ?? []);
+    const lineage = new Set([...ancestors(kin.links, personId), ...descendants(graph, personId)]);
+    pickSibling = base.map((p) => ({
+      ...p,
+      disabled: (graph.parents.get(p.id) ?? []).some((x) => mine.has(x)) ? ALREADY_SIBLINGS : lineage.has(p.id) ? "Este părinte, copil sau strămoș al persoanei." : undefined,
+    }));
   }
-  return { groups, neam: neam ? { id: neam.id, name: neam.name } : null, pickParent, pickChild };
+  return { groups, neam: neam ? { id: neam.id, name: neam.name } : null, pickParent, pickSibling };
 }
 
 /**

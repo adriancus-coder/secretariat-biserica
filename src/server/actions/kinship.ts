@@ -6,9 +6,11 @@ import type { FormState } from "@/lib/form-state";
 import { ANONYMOUS_NAME } from "@/lib/anonymous";
 import { parentLinkError } from "@/lib/kinship";
 import { externalKey, isExternalKey } from "@/lib/kinship-parents";
+import { siblingPlan, type SiblingSide } from "@/lib/kinship-siblings";
+import { personDerived } from "@/lib/person-derived";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
-import { deleteOrphanExternals, kinName, kinProposals, loadLinkCheck, nodeName } from "../kinship";
+import { deleteOrphanExternals, kinName, kinProposals, loadLinkCheck, nodeName, siblingLinksToRemove } from "../kinship";
 import { checkWholeRegister } from "../kinship-sync";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction } from "./run";
@@ -178,5 +180,132 @@ export async function ignoreKinProposalAction(key: string): Promise<FormState> {
     return { ok: true, message: "Propunerea a fost ignorată." };
   });
   revalidatePath("/de-verificat");
+  return state;
+}
+
+const siblingNamesSchema = z.object({
+  tata: z.string().trim().max(200, "Numele este prea lung."),
+  mama: z.string().trim().max(200, "Numele este prea lung."),
+});
+
+export interface SiblingState extends FormState {
+  /** The step waiting for a confirmation: "adopt" / "names" (text to confirm), "ask" (the parents' names first). */
+  plan?: { kind: "adopt" | "names" | "ask"; text: string };
+}
+
+const SIBLING_SELECT = { id: true, nume: true, prenume: true, gen: true, numeTata: true, numeMama: true, telefon: true, email: true, botezBiserica: true, botezOficiant: true } as const;
+
+/** The plan for two persons of the church (never an anonymised one), computed from the stored links. */
+async function planSiblings(tx: Tx, personId: string, otherId: string, names?: { tata: string; mama: string }) {
+  const found = await tx.person.findMany({ where: { id: { in: [personId, otherId] }, nume: { not: ANONYMOUS_NAME } }, select: SIBLING_SELECT });
+  const a = found.find((p) => p.id === personId);
+  const b = found.find((p) => p.id === otherId);
+  if (!a || !b) throw new ActionError("Persoana nu există în registru.");
+  const c = await loadLinkCheck(tx as never);
+  const side = (p: typeof a): SiblingSide => ({ id: p.id, name: kinName(p), gen: p.gen, numeTata: p.numeTata, numeMama: p.numeMama, parents: c.links.filter((l) => l.childId === p.id).map((l) => l.parentId) });
+  const plan = siblingPlan(side(a), side(b), (k) => nodeName(c, k), c.externals, names);
+  return { a, b, c, plan };
+}
+
+/**
+ * "Rude în biserică" → "+ Adaugă frate / soră" (write roles). Without `confirm` it only answers with
+ * the plan to confirm (or why not); with `confirm` the plan is computed again here and applied:
+ * b) the person without parents is linked to the other's parents; c) parents outside the register by
+ * the names on the files (the missing names written on both files, each field audited, `names` from the
+ * dialog when neither file had them). Links MANUAL, each through parentLinkError; audited on both
+ * persons ("legătură de frați: X și Y").
+ */
+export async function addSiblingAction(personId: string, otherId: string, confirm: boolean, names?: { tata: string; mama: string }): Promise<SiblingState> {
+  let plan: SiblingState["plan"];
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx("write");
+    parseOrThrow(idSchema, personId);
+    parseOrThrow(idSchema, otherId);
+    const typed = names ? parseOrThrow(siblingNamesSchema, names) : undefined;
+    return ctx.db.$transaction(async (tx) => {
+      const { a, b, c, plan: p } = await planSiblings(tx, personId, otherId, typed);
+      if (p.kind === "already" || p.kind === "refuse") throw new ActionError(p.message);
+      if (p.kind === "ask" || !confirm) {
+        plan = { kind: p.kind, text: p.text };
+        return { ok: true };
+      }
+      const links = c.links.map((l) => ({ ...l }));
+      const link = async (parentKey: string, childId: string) => {
+        if (links.some((l) => l.parentId === parentKey && l.childId === childId)) return;
+        const error = parentLinkError(links, parentKey, childId, c.born);
+        if (error) throw new ActionError(`${nodeName(c, parentKey) || "Părintele"} → ${kinName(childId === a.id ? a : b)}: ${error}`);
+        const ext = isExternalKey(parentKey);
+        await tx.personParent.create({ data: { churchId: ctx.user.churchId, ...(ext ? { externalParentId: parentKey.slice(2) } : { parentId: parentKey }), childId, source: "MANUAL", createdById: ctx.user.id } });
+        links.push({ id: "", parentId: parentKey, childId, source: "MANUAL", external: ext });
+      };
+      if (p.kind === "adopt") {
+        for (const parent of p.parents) await link(parent, p.childId);
+      } else {
+        // The names written where they were missing (Statut art. 14), searchable like any save.
+        for (const person of [a, b]) {
+          const mine = p.fills.filter((f) => f.personId === person.id);
+          if (!mine.length) continue;
+          const after = { ...person, ...Object.fromEntries(mine.map((f) => [f.field, f.value])) };
+          await tx.person.update({ where: { id: person.id }, data: { numeTata: after.numeTata, numeMama: after.numeMama, ...personDerived(after) } });
+          await writeAudit(tx, ctx.user, {
+            entity: "PERSON",
+            entityId: person.id,
+            entityLabel: kinName(person),
+            action: "UPDATE",
+            fields: ["numeTata", "numeMama"],
+            before: { numeTata: person.numeTata, numeMama: person.numeMama },
+            after: { numeTata: after.numeTata, numeMama: after.numeMama },
+          });
+        }
+        for (const [role, nume, gen] of [
+          ["tata", p.tata, "M"],
+          ["mama", p.mama, "F"],
+        ] as const) {
+          if (!nume) continue;
+          const key = p.reuse[role] ?? externalKey((await tx.kinExternalParent.create({ data: { churchId: ctx.user.churchId, nume, gen, createdById: ctx.user.id } })).id);
+          if (!p.reuse[role]) c.externals.push({ key, nume, gen });
+          for (const person of [a, b]) await link(key, person.id);
+        }
+      }
+      for (const [x, y] of [
+        [a, b],
+        [b, a],
+      ]) {
+        await writeAudit(tx, ctx.user, { entity: "PERSON", entityId: x.id, entityLabel: kinName(x), action: "UPDATE", fields: [], extra: { rudenie: `legătură de frați: ${kinName(x)} și ${kinName(y)}` } });
+      }
+      return { ok: true, message: `${kinName(a)} și ${kinName(b)} sunt acum frați.` };
+    });
+  });
+  if (confirm && state.ok) revalidatePath("/", "layout");
+  return { ...state, plan };
+}
+
+/**
+ * "Șterge legătura de frate" on a sibling's row (write roles): removes only the links to the parents
+ * in common that were added by hand or confirmed from the names — this person's, or else the
+ * sibling's — never the names written on the files, never a link from the family. Audited on both.
+ */
+export async function removeSiblingLinkAction(personId: string, siblingId: string): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx("write");
+    parseOrThrow(idSchema, personId);
+    parseOrThrow(idSchema, siblingId);
+    await ctx.db.$transaction(async (tx) => {
+      const [x, y] = await twoPersons(tx, personId, siblingId);
+      const c = await loadLinkCheck(tx as never);
+      const removable = siblingLinksToRemove(c.links, personId, siblingId);
+      if (!removable.length) throw new ActionError("Legătura de frați vine din familie; se schimbă din pagina familiei.");
+      for (const l of removable) await tx.personParent.delete({ where: { id: l.id } });
+      await deleteOrphanExternals(tx as never);
+      for (const [p, q] of [
+        [x, y],
+        [y, x],
+      ]) {
+        await writeAudit(tx, ctx.user, { entity: "PERSON", entityId: p.id, entityLabel: kinName(p), action: "UPDATE", fields: [], extra: { rudenie: `legătură de frați ștearsă: ${kinName(p)} și ${kinName(q)}` } });
+      }
+    });
+    return { ok: true, message: "Legătura de frați a fost ștearsă." };
+  });
+  revalidatePath("/", "layout");
   return state;
 }
