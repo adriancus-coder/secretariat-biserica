@@ -90,6 +90,8 @@ Fără date demo, deschideți `/inregistrare` și creați biserica și contul de
 | `RESEND_API_KEY` | nu | Cheia [Resend](https://resend.com) pentru trimiterea invitațiilor, a linkurilor de resetare și a proceselor-verbale pe e-mail. Fără ea, butonul „Trimite” al proceselor-verbale este dezactivat, iar administratorul copiază linkurile din **Setări → Utilizatori**. |
 | `ANTHROPIC_API_KEY` | nu | Cheia API Claude pentru citirea documentelor scanate și a fotografiilor (**Persoane → Adaugă din document**, **Procese-verbale → Importă**). Fără ea, butoanele arată „Extragerea din imagini nu este configurată”. |
 | `EXTRACT_MODEL` | nu | Modelul folosit la citire; implicit `claude-sonnet-5-5`. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | nu | Perechea de chei pentru notificări (`npx web-push generate-vapid-keys`). Fără ele, secțiunea **Cont → Notificări** nu apare. |
+| `VAPID_SUBJECT` | nu | `mailto:` urmat de adresa de e-mail a bisericii (contactul pentru serviciile de notificări). |
 | `EMAIL_FROM` | nu | Expeditorul e-mailurilor (implicit `Secretariat Biserică <secretariat@sanctuaryvoice.com>`); domeniul trebuie verificat în Resend. |
 | `TEST_DATABASE_URL` | pentru teste | Baza de date (separată!) pentru testele de integrare; fără ea sunt sărite. |
 
@@ -173,6 +175,30 @@ npm run test:watch     # mod interactiv
   - [`CLAUDE.md`](CLAUDE.md): conventions, commit format (`MARKER: subject`), language rules and UI rules.
   - [`docs/ROADMAP.md`](docs/ROADMAP.md): current state, decisions and next steps.
 
+## Instalare pe telefon
+
+Aplicația se poate instala ca o aplicație obișnuită: apare cu pictograma ei pe ecranul principal și se deschide pe tot ecranul. Nu păstrează date ale bisericii pe dispozitiv: fără conexiune arată doar o pagină „Nu există conexiune”.
+
+**Android (Chrome, Edge, Samsung Internet)** — deschideți adresa aplicației și autentificați-vă, apoi **Mai mult → Instalează aplicația** (sau **Cont → Instalează aplicația**) și confirmați. Dacă butonul nu apare, folosiți meniul browserului (⋮) → **Instalează aplicația** / **Adaugă pe ecranul de pornire**.
+
+![Instalează aplicația pe Android](docs/screenshots/instalare-android-390.png)
+
+**iPhone și iPad (Safari, iOS 16.4 sau mai nou)** — în Safari: **Partajează** → **Adaugă pe ecranul principal** → **Adaugă**. Deschideți apoi aplicația de pe ecranul principal și autentificați-vă. Instrucțiunea apare și în **Mai mult** și în **Cont**.
+
+![Instalare pe iPhone](docs/screenshots/instalare-iphone-390.png)
+
+**Calculator (Chrome, Edge)** — pictograma de instalare din bara de adrese, sau **Mai mult → Instalează aplicația**.
+
+**Notificări** — **Cont → Notificări → Activează notificările pe acest dispozitiv** (browserul cere permisiunea doar la acest clic). Fiecare primește doar ce îl privește: pastorii documentele de semnat și cererile de aprobat, secretariatul răspunsurile pastorului, cererile noi și răspunsurile la actualizarea datelor (zilnic), plus un memento săptămânal pentru Adunarea Generală și mandatul comitetului. Notificarea are doar un titlu general, fără nume. Pe iPhone notificările funcționează numai din aplicația instalată pe ecranul principal. Pe server trebuie setate `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` și `VAPID_SUBJECT` (perechea de chei: `npx web-push generate-vapid-keys`); fără ele secțiunea nu apare.
+
+![Notificări în Cont](docs/screenshots/notificari-390.png)
+
+**Fără conexiune și versiuni noi** — fără internet aplicația arată pagina de mai jos; „Reîncearcă” deschide pagina dorită când revine conexiunea. După o actualizare a aplicației apare „O versiune nouă este disponibilă — Actualizează”.
+
+![Fără conexiune](docs/screenshots/offline-390.png) ![Versiune nouă](docs/screenshots/versiune-noua-390.png)
+
+**Dezinstalare** — Android: țineți apăsat pe pictogramă → **Dezinstalează**; iPhone: țineți apăsat → **Elimină aplicația**; calculator: meniul aplicației → **Dezinstalează**. Pentru a șterge și fișierele păstrate de browser: setările site-ului → **Șterge datele**.
+
 ## Producție
 
 ```bash
@@ -213,6 +239,7 @@ npm start          # sau în spatele unui reverse proxy (nginx, Caddy) cu HTTPS
    | `RESEND_API_KEY` | A Resend API key with sending access. Leave it empty to start without e-mail: invitation and password-reset links are then copied manually from Setări → Utilizatori. |
    | `ANTHROPIC_API_KEY` | Optional. A Claude API key for reading scanned documents and photos. Leave it empty to keep the feature off. |
    | `EXTRACT_MODEL` | Optional. The model for that reading; defaults to `claude-sonnet-5-5`. |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Optional. Push notifications: generate the pair once with `npx web-push generate-vapid-keys`; the subject is `mailto:` + the church's e-mail. Without all three the Notificări section is hidden. |
    | `EMAIL_FROM` | Optional. The default is `Secretariat Biserică <secretariat@sanctuaryvoice.com>`; the sender's domain must be verified in Resend. |
    | `ALLOW_SIGNUP` | Leave it empty. While the database is empty, the first church can register anyway; registration then closes by itself. Set `true` only to let more churches register. |
 

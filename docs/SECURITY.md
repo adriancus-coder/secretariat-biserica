@@ -81,6 +81,17 @@ Confidential notes of the pastors about a person (Statut art. 39 alin. 3), on th
 - **Erasure:** anonymising or deleting the person deletes the notes; their log entries lose the name.
 - **Key rotation:** see "Rotating `AUTH_SECRET`" (re-encrypt first).
 
+## Aplicația instalată (installed app)
+
+The app can be installed from the browser (Android, iPhone / iPad from iOS 16.4, computers). The rule: **nothing about the church or its people is stored on the device** by the app.
+
+- **What the device keeps:** the service worker (`public/sw.js`) caches only static files of the current version — the hashed JavaScript / CSS bundles and fonts under `/_next/static`, the icons and the offline page — in a cache named after the version; older versions' caches are deleted on update. Pages, PDFs, Word and Excel files, API answers, server actions, the application form and the data-update form are always fetched from the network and never cached (`tests/unit/service-worker.test.ts` asserts this for every such route). Without a connection the app shows "Nu există conexiune…" instead of old data.
+- **What the browser itself keeps** is the same as for the website: the session cookie (httpOnly), the theme and text-size cookies, and files the user downloads (PDF, Word, Excel) — those are the user's responsibility.
+- **Sign-out:** "Ieșire din cont" is a full request to `/deconectat`, which ends the session and answers with `Clear-Site-Data: "cache"`; the sign-in page then asks the service worker to delete every cache except the static one (also after an expired session).
+- **Push notifications:** sent with VAPID through the browser vendor's push service (Google, Apple, Mozilla, Microsoft), end-to-end encrypted with the subscription's keys. The payload is only a generic title ("Un document așteaptă semnătura dumneavoastră"), the address to open inside the app and the number of waiting items — never a name, a document, a person or any other personal data. Only users who can act on an item are notified; at most one notification per user and type every 5 minutes. The server stores per device the push endpoint and its public keys and a short device name ("Chrome pe Android"), never the full user agent; a subscription the browser drops (404 / 410) is deleted, and "Elimină" in Cont removes one.
+- **App badge:** the number of waiting items on the icon (where the system supports it); a count, nothing else.
+- **Removing the app and its data:** uninstall the app (long-press the icon → Dezinstalează / Elimină aplicația; on a computer the app menu → Dezinstalează), then in the browser's site settings choose "Clear data" for the app's address; turn notifications off in Cont → Notificări → Elimină (or in the system's notification settings). Signing out on a shared device is enough to remove every cached response that is not a static file.
+
 ## Contact data after an exit
 
 After any exit (exit date or Fost membru), phone, e-mail and address are visible only to administrators (lists, person page, edit form, groups, person export and JSON backup of other roles leave them out). Twelve months after the exit they are listed on Acasă for administrators and deleted with "Șterge acum" (one transaction, audited with the count). Register data (Statut art. 14 alin. 3 lit. a) are never deleted. A person can ask for a copy of their data (art. 15 GDPR): administrators download it as PDF or JSON from the person page; each copy is audited.
