@@ -243,6 +243,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await b.prayerWeek.delete({ where: { id: wb.id } });
   });
 
+  it("the correspondence register is isolated per church; each has its own numbers", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const c = await a.correspondence.create({ data: { nr: 1, an: 2026, data: new Date("2026-02-02"), directie: "INTRARE", dela: "Comunitatea", subiect: "Adresă", personId: personA } as never });
+    expect(c.churchId).toBe(churchA);
+    expect(await b.correspondence.findUnique({ where: { id: c.id } })).toBeNull();
+    expect(await b.correspondence.findFirst({ where: { personId: personA } })).toBeNull();
+    expect(await b.correspondence.count()).toBe(0);
+    expect((await b.correspondence.updateMany({ data: { subiect: "x" } })).count).toBe(0);
+    expect((await b.correspondence.deleteMany({})).count).toBe(0);
+    await expect(b.correspondence.delete({ where: { id: c.id } })).rejects.toMatchObject({ code: "P2025" });
+    const cb = await b.correspondence.create({ data: { nr: 1, an: 2026, data: new Date("2026-02-02"), directie: "IESIRE", catre: "X", subiect: "Y" } as never });
+    expect(cb.churchId).toBe(churchB);
+    await a.correspondence.delete({ where: { id: c.id } });
+    await b.correspondence.delete({ where: { id: cb.id } });
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

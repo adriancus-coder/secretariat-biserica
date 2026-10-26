@@ -159,4 +159,5 @@ export const ENTITY_LABEL = {
   CAMPAIGN: "Actualizare date",
   PASTORAL: "Note pastorale",
   PRAYER: "Rugăciunea săptămânală",
+  CORRESPONDENCE: "Corespondență",
 } as const;

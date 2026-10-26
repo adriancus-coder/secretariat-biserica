@@ -125,6 +125,7 @@ model Church {
   dataUpdateLinks       DataUpdateLink[]
   dataUpdateSubmissions DataUpdateSubmission[]
   consents              Consent[]
+  correspondence        Correspondence[]
 
   @@map("churches")
 }
@@ -359,6 +360,7 @@ model Person {
   groups                GroupMember[]
   mentiuni              Note[]
   documents             Document[]
+  correspondence        Correspondence[]
   application           Application?
   roles                 PersonRole[]
   headOf                Family?                @relation("FamilyHead")
@@ -1113,11 +1115,54 @@ model Document {
   aprobatLa        DateTime?
   motivRespingere  String              @default("")
   signatures       DocumentSignature[]
+  correspondence   Correspondence[]
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
   @@index([personId])
   @@map("documents")
+}
+
+enum CorrespondenceDirection {
+  INTRARE
+  IESIRE
+}
+
+/// CORRESPONDENCE-REGISTER (Statut art. 43 alin. 7: the secretary „efectuează corespondența”): the
+/// registry of incoming and outgoing letters, metadata only (no attachments, no letter text). One number
+/// sequence per church and year for entries and exits; documents issued in the app keep their own
+/// numbers (Document.nr) and appear in the register as exits ("Nr. document").
+model Correspondence {
+  id          String                  @id @default(cuid())
+  churchId    String
+  church      Church                  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nr          Int
+  an          Int
+  data        DateTime                @db.Date
+  directie    CorrespondenceDirection
+  /// The sender (entries) or the addressee (exits), as written.
+  dela        String                  @default("")
+  catre       String                  @default("")
+  subiect     String
+  /// "Răspuns cu nr. …", "Clasat", "În lucru".
+  rezolvare   String                  @default("")
+  /// An exit that is a document issued in the app.
+  documentId  String?
+  document    Document?               @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  /// The entry this exit answers.
+  raspunsLaId String?
+  raspunsLa   Correspondence?         @relation("CorrespondenceReply", fields: [raspunsLaId], references: [id], onDelete: SetNull)
+  raspunsuri  Correspondence[]        @relation("CorrespondenceReply")
+  personId    String?
+  person      Person?                 @relation(fields: [personId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([churchId, an, nr])
+  @@index([churchId, data])
+  @@index([personId])
+  @@map("correspondence")
 }
 
 // ---------------------------------------------------------------------------
@@ -1204,6 +1249,7 @@ model Note {
 // ---------------------------------------------------------------------------
 
 enum AuditEntity {
+  CORRESPONDENCE
   PERSON
   DOCUMENT
   MEETING

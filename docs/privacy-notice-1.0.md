@@ -12,6 +12,7 @@ b) Date de contact (art. 14 alin. 3 lit. b): adresa, numărul de telefon, adresa
 c) Date despre viața bisericii: statutul în biserică (membru sau aparținător), data și modul dobândirii sau încetării calității de membru (botez, transfer, reabilitare spirituală; retragere, transfer, excludere, deces), detaliile botezului (biserica, localitatea, cine l-a oficiat), binecuvântarea copiilor, funcțiile și slujirile, apartenența la grupuri și la comitet, prezența la ședințele la care sunteți convocat, măsurile disciplinare consemnate în procesele-verbale, conform Statutului.
 d) Documentele eliberate la cererea dumneavoastră, cererile de înscriere sau de transfer și acordurile dumneavoastră privind prelucrarea datelor.
 e) Legăturile de rudenie (părinte–copil și frați) dintre persoanele din registru, stabilite din familii, din numele părinților cerute de Statut (punctul a) sau la cererea dumneavoastră, pentru evidența familiilor și statistici interne. Despre părinții care nu sunt în registru păstrăm doar numele și prenumele, conform Statutului.
+f) Registrul de corespondență al bisericii (Statut art. 43 alin. 7): pentru scrisorile primite sau trimise, numele expeditorului sau al destinatarului, data și subiectul; conținutul scrisorilor nu se păstrează în aplicație.
 Aceste date dezvăluie convingerile religioase și fac parte din categoriile speciale de date prevăzute de art. 9 din Regulamentul general privind protecția datelor (GDPR).
 
 3. De ce și pe ce temei legal

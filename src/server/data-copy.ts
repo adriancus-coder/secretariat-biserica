@@ -1,5 +1,6 @@
 import { formatAddress } from "@/lib/address";
 import "server-only";
+import { DIRECTION_LABEL } from "@/lib/correspondence";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
@@ -45,6 +46,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       aliases: { select: { alias: true } },
       application: { select: { createdAt: true, status: true, kind: true } },
       documents: { select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
+      correspondence: { select: { nr: true, an: true, data: true, directie: true, subiect: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       meetings: { where: { status: "PRESENT" }, select: { meeting: { select: { tip: true, data: true, nr: true, anRegistru: true } } } },
     },
   });
@@ -131,6 +133,11 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       {
         titlu: "Documente eliberate",
         tabel: { coloane: ["Nr.", "Data", "Tip", "Titlu"], randuri: p.documents.map((x) => [`${x.nr}/${x.anRegistru}`, d(x.data), DOCUMENT_TYPE_LABEL[x.tip], x.titlu]) },
+      },
+      {
+        // CORRESPONDENCE-REGISTER: the entries and exits of the register linked to the person (no letter text is kept).
+        titlu: "Corespondență (registru de intrare-ieșire)",
+        tabel: { coloane: ["Nr.", "Data", "Intrare / ieșire", "Subiect"], randuri: p.correspondence.map((x) => [`${x.nr}/${x.an}`, d(x.data), DIRECTION_LABEL[x.directie], x.subiect]) },
       },
       ...(withDiscipline
         ? [

@@ -12,6 +12,7 @@ import { DOCUMENT_FIELDS, documentSchema, draftSchema } from "@/lib/schemas/docu
 import { storedRich } from "@/lib/schemas/rich-text";
 import { idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { registerDocumentReply } from "../correspondence";
 import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
 import { buildDocumentDraft } from "../queries/documents";
 import { recommendationDiscipline } from "../discipline";
@@ -61,6 +62,8 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
     const ctx = await actionCtx("write");
     if (id !== null) parseOrThrow(idSchema, id);
     const input = parseOrThrow(documentSchema, Object.fromEntries(formData));
+    const rawReply = formData.get("raspunsLa");
+    const replyTo = id === null && typeof rawReply === "string" && idSchema.safeParse(rawReply).success ? rawReply : null;
     const anRegistru = Number(input.data.slice(0, 4));
     const person = input.personId
       ? await ctx.db.person.findUnique({ where: { id: input.personId }, select: { id: true, nume: true, prenume: true } })
@@ -122,6 +125,18 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
           fields: DOCUMENT_FIELDS,
           after: auditView(created),
         });
+        // CORRESPONDENCE-REGISTER: written as the answer to an entry of the register ("Răspunde").
+        if (replyTo) {
+          await registerDocumentReply(tx, ctx.user, replyTo, {
+            id: created.id,
+            nr: created.nr,
+            anRegistru: created.anRegistru,
+            data: input.data,
+            catre: created.catre || created.persoana,
+            subiect: created.titlu || DOCUMENT_TYPE_LABEL[created.tip],
+            personId: created.personId,
+          });
+        }
         return created.id;
       });
     } catch (e) {

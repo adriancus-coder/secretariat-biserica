@@ -20,13 +20,19 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
   const personId = typeof sp.persoana === "string" && people.some((p) => p.id === sp.persoana) ? sp.persoana : "";
   const an = Number(sp.an);
   const sedintaId = typeof sp.sedinta === "string" && idSchema.safeParse(sp.sedinta).success ? sp.sedinta : null;
+  // "Răspunde" from the correspondence register: the letter goes to the sender of that entry.
+  const reply =
+    typeof sp.raspunsLa === "string" && idSchema.safeParse(sp.raspunsLa).success
+      ? await ctx.db.correspondence.findFirst({ where: { id: sp.raspunsLa, directie: "INTRARE" }, select: { id: true, dela: true } })
+      : null;
+  const catre = reply?.dela ?? "";
   const anRaport = tip === "raport" ? String(Number.isInteger(an) && an > 1800 && an < 2201 ? an : Number(today.slice(0, 4))) : "";
   const [draft, nextNr] = await Promise.all([
     // A recommendation the user may not issue (Statut art. 27) starts empty; saving explains why.
     buildDocumentDraft(ctx, {
       tip,
       personId: personId || null,
-      catre: "",
+      catre,
       scop: "",
       anRaport: anRaport ? Number(anRaport) : null,
       data: today,
@@ -41,11 +47,11 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
       <PageHead title={tip === "raport" ? `Dare de seamă ${anRaport}` : "Document nou"} />
       <DocumentForm
         id={null}
-        initial={{ tip, nr: "", data: today, personId, catre: "", scop: "", titlu: draft.titlu, text: draft.text, anRaport, sedintaId: sedintaId ?? "" }}
+        initial={{ tip, nr: "", data: today, personId, catre, scop: "", titlu: draft.titlu, text: draft.text, anRaport, sedintaId: sedintaId ?? "", raspunsLa: reply?.id }}
         people={people}
         nextNr={nextNr}
         canDiscipline={permissions.disciplina(ctx.user)}
-        cancelHref={personId ? `/persoane/${personId}` : "/documente"}
+        cancelHref={reply ? `/corespondenta/${reply.id}` : personId ? `/persoane/${personId}` : "/documente"}
       />
     </>
   );

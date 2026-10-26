@@ -21,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/statistici", label: "Statistici", icon: "statistici", primary: false },
   { href: "/familii", label: "Familii", icon: "familii", primary: false },
   { href: "/documente", label: "Documente", icon: "documente", primary: false },
+  { href: "/corespondenta", label: "Corespondență", icon: "email", primary: false },
   { href: "/grupuri", label: "Grupuri", icon: "grupuri", primary: false },
   { href: "/mentiuni", label: "Mențiuni", icon: "mentiuni", primary: false },
   { href: "/cereri", label: "Cereri", icon: "cereri", primary: false },
@@ -59,7 +60,7 @@ export function isMoreActive(pathname: string, items: NavItem[] = NAV_ITEMS): bo
  */
 export const SIDE_GROUPS: { title: string; hrefs: string[] }[] = [
   { title: "Principal", hrefs: ["/", "/persoane", "/familii", "/calendar", "/procese-verbale"] },
-  { title: "Evidență", hrefs: ["/cereri", "/de-verificat", "/documente", "/mentiuni", "/grupuri"] },
+  { title: "Evidență", hrefs: ["/cereri", "/de-verificat", "/documente", "/corespondenta", "/mentiuni", "/grupuri"] },
   { title: "Rapoarte", hrefs: ["/statistici"] },
   { title: "Comunitate", hrefs: ["/rugaciune"] },
 ];

@@ -1,5 +1,6 @@
 import { importedBaptism, type BaptismFields } from "@/lib/baptism-backup";
 import type { RegisterFields } from "@/lib/register-backup";
+import type { BCorrespondence } from "@/lib/correspondence-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BCampaign, BConsent } from "@/lib/consents-backup";
 import type { BAlias } from "@/lib/aliases-backup";
@@ -474,6 +475,8 @@ export interface ImportExtras {
   consents?: BConsent[] | null;
   /** The committee's mandate (see src/lib/meeting-backup.ts); null = not in the file. */
   committee?: BCommittee | null;
+  /** The correspondence register (see src/lib/correspondence-backup.ts); null = not in the file. */
+  correspondence?: BCorrespondence[] | null;
 }
 
 export interface ImportSummary {
@@ -503,6 +506,7 @@ const TABLES = {
   families: "families",
   discipline: "disciplinary_measures",
   campaigns: "data_campaigns",
+  correspondence: "correspondence",
 } as const;
 
 /**
@@ -550,6 +554,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
     async (tx) => {
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
+        if (extras.correspondence) await tx.correspondence.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
         if (rolesIn?.groups) await tx.roleGroup.deleteMany({ where: { roles: { none: {} } } });
         await tx.family.deleteMany({});
@@ -1178,6 +1183,43 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (încălcau regulile: frați, diferență de vârstă, doi părinți sau un cerc).`);
       }
 
+      // The correspondence register: ids remapped like the others; a number already used that year by
+      // another row is replaced by the next free one (with a warning); links to rows not imported are dropped.
+      if (extras.correspondence?.length) {
+        const plan = await planIds(tx, TABLES.correspondence, extras.correspondence.map((c) => c.id), churchId);
+        let renumbered = 0;
+        for (const c of extras.correspondence) {
+          const id = plan.map.get(c.id)!;
+          const taken = await tx.correspondence.findFirst({ where: { an: c.an, nr: c.nr, id: { not: id } }, select: { id: true } });
+          let nr = c.nr;
+          if (taken) {
+            nr = ((await tx.correspondence.aggregate({ where: { an: c.an }, _max: { nr: true } }))._max.nr ?? 0) + 1;
+            renumbered++;
+          }
+          const docId = c.document ? (docs.map.get(c.document) ?? null) : null;
+          const data = {
+            nr,
+            an: c.an,
+            data: toDbDate(c.data)!,
+            directie: c.directie,
+            dela: c.dela,
+            catre: c.catre,
+            subiect: c.subiect,
+            rezolvare: c.rezolvare,
+            documentId: docId && (await tx.document.findUnique({ where: { id: docId }, select: { id: true } })) ? docId : null,
+            personId: pid(c.membru),
+          };
+          if (plan.existing.has(c.id)) await tx.correspondence.update({ where: { id }, data });
+          else await tx.correspondence.create({ data: { ...data, id, churchId, createdById: ctx.user.id } });
+        }
+        // The answers, once every row exists.
+        for (const c of extras.correspondence) {
+          const target = c.raspunsLa ? plan.map.get(c.raspunsLa) : undefined;
+          if (target) await tx.correspondence.update({ where: { id: plan.map.get(c.id)! }, data: { raspunsLaId: target } });
+        }
+        if (renumbered) warnings.push(`${renumbered} înregistrări din registrul de corespondență au primit un număr nou (numărul era deja folosit).`);
+      }
+
       // KINSHIP-AUTO: the imported families give their links too (the same check as after any family change).
       await syncKinship(tx as never, ctx.user, "all", { label: "actualizare după import" });
 
@@ -1228,4 +1270,10 @@ function registerData(r: RegisterFields | undefined) {
     plecatDin: toDbDate(r?.plecatDin),
     plecatUnde: r?.plecatUnde ?? "",
   };
+}
+
+/** The correspondence register for `corespondenta` (CORRESPONDENCE-REGISTER). */
+export async function loadCorrespondence(ctx: Ctx) {
+  const rows = await ctx.db.correspondence.findMany({ orderBy: [{ an: "asc" }, { nr: "asc" }] });
+  return rows.map((r) => ({ ...r, data: fromDbDate(r.data)! }));
 }

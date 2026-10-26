@@ -36,7 +36,7 @@ tests/                  integration (tenant isolation, numbering, anonymisation,
 
 ## Data model
 
-Every church-owned table has a `churchId` column (37 models in total). The main relations:
+Every church-owned table has a `churchId` column (38 models in total). The main relations:
 
 ```mermaid
 erDiagram
@@ -45,6 +45,9 @@ erDiagram
     Church ||--o{ Family : families
     Church ||--o{ Meeting : minutes
     Church ||--o{ Document : "outgoing register"
+    Church ||--o{ Correspondence : "registru de intrare-ieșire"
+    Document ||--o{ Correspondence : "issued as an exit"
+    Correspondence ||--o{ Correspondence : "answers"
     Church ||--o{ Event : calendar
     Church ||--o{ Group : groups
     Church ||--o{ Application : applications
@@ -73,6 +76,10 @@ erDiagram
     User ||--o{ UserPasskey : passkeys
     User ||--o{ PastoralNote : writes
 ```
+
+### Correspondence register
+
+`Correspondence` (tenant model; Statut art. 43 alin. 7: the secretary „efectuează corespondența”) is the registry of entries and exits: number, year, date, direction, sender / addressee, subject, resolution, and optional links to a document issued in the app, to the entry it answers and to a person. Metadata only: no attachments, no letter text. One number sequence per church and year for entries and exits (advisory lock like the document register). The documents issued in the app keep their own numbering (`Document.nr`, never changed); the register shows them as exits with „Nr. document” (`registerRows()` in `src/lib/correspondence.ts`), and a letter written as an answer („Scrie scrisoarea de răspuns”) becomes a register exit linked to the document and to the entry.
 
 ### Kinship
 

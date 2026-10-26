@@ -26,6 +26,8 @@ export interface DocumentFormInitial {
   exceptieDomiciliu?: boolean;
   /** Convocare: the General Assembly meeting it announces. */
   sedintaId?: string;
+  /** CORRESPONDENCE-REGISTER: the register entry this letter answers ("Răspunde"). */
+  raspunsLa?: string;
 }
 
 export function DocumentForm({
@@ -111,6 +113,7 @@ export function DocumentForm({
     <form onSubmit={onSubmit} noValidate className="edit-split">
       <div className="edit-main">
       {id ? <input type="hidden" name="previewId" value={id} /> : null}
+      {initial.raspunsLa ? <input type="hidden" name="raspunsLa" value={initial.raspunsLa} /> : null}
       <div className="row2">
         <SelectField
           name="tip"

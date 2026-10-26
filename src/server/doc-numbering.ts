@@ -37,3 +37,20 @@ export async function nextFreeMeetingNumber(tx: MeetingNumberingTx, churchId: st
   const agg = await tx.meeting.aggregate({ where: { churchId, anRegistru: year }, _max: { nr: true } });
   return (agg._max.nr ?? 0) + 1;
 }
+
+type CorrespondenceNumberingTx = {
+  $executeRaw: NumberingTx["$executeRaw"];
+  correspondence: {
+    aggregate: (args: { where: Prisma.CorrespondenceWhereInput; _max: { nr: true } }) => Promise<{ _max: { nr: number | null } }>;
+  };
+};
+
+/** The correspondence register (CORRESPONDENCE-REGISTER): one sequence per (church, year) for entries and exits. */
+export async function lockCorrespondenceRegister(tx: CorrespondenceNumberingTx, churchId: string, year: number): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`corr-nr:${churchId}:${year}`}))`;
+}
+
+export async function nextFreeCorrespondenceNumber(tx: CorrespondenceNumberingTx, churchId: string, year: number): Promise<number> {
+  const agg = await tx.correspondence.aggregate({ where: { churchId, an: year }, _max: { nr: true } });
+  return (agg._max.nr ?? 0) + 1;
+}

@@ -131,6 +131,13 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     if (application) {
       await tx.auditLog.updateMany({ where: { entity: "APPLICATION", entityId: application.id }, data: { entityLabel: ANONYMOUS_NAME, changes: {} } });
     }
+    // CORRESPONDENCE-REGISTER: only the rows linked to the person lose the name in „De la / Către” and the link.
+    for (const n of needles) {
+      const r = n.includes("@") || /^[+\d\s()-]+$/.test(n) ? "" : ANONYMOUS_NAME;
+      await tx.$executeRaw`UPDATE "correspondence" SET "dela" = replace("dela", ${n}, ${r}), "catre" = replace("catre", ${n}, ${r})
+        WHERE "churchId" = ${ctx.user.churchId} AND "personId" = ${id}`;
+    }
+    await tx.correspondence.updateMany({ where: { personId: id }, data: { personId: null } });
     await scrubPersonTraces(tx, ctx.user.churchId, needles);
     // Its group memberships were deleted above; the groups of its former roles are re-synced (no-op unless they drifted).
     await syncRoleGroups(tx, ctx.user, { roleIds: heldRoles });
