@@ -529,6 +529,7 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - Secondary actions: outlined buttons (`btn`), never filled.
 - Selected state: the `--accent` colour, a check mark and bold text.
 - Long lists scroll inside their panel instead of stretching the page.
+- Names are never cut: no `truncate`, `text-ellipsis`, `line-clamp` or `whitespace-nowrap` (a unit test scans `src/`). "Name + details" rows use `NameRow` (`src/components/ui/name-row.tsx`) or a list row `.item .body` with `.t` (name) and `.m` (details): the details sit at the right when both fit and drop under the name, aligned left, otherwise; both wrap.
 - Touch targets are at least 44 px.
 - No technical jargon in the UI: no "token", "API", "server", environment variable names or error codes.
 - Mobile-first: check every change at 390 px width and on desktop, in the light and the dark theme.

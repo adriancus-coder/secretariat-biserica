@@ -3,6 +3,7 @@ import Link from "next/link";
 import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { dotDateTime } from "@/lib/dates";
 import { memberName } from "@/lib/format";
+import { NameRow } from "@/components/ui/name-row";
 import type { DataUpdateProposal } from "@/lib/schemas/data-update";
 import { requireCtx } from "@/server/session";
 
@@ -27,11 +28,10 @@ export default async function ReviewQueuePage() {
               <li key={r.id}>
                 <Link href={`/de-verificat/${r.id}`} className="item">
                   <span className="grow min-w-0">
-                    <b>{r.person ? memberName(r.person) : `${p.self.prenume} ${p.self.nume}`.trim()}</b>
-                    <span className="hint block">
-                      {r.campaign.nume} · {r.via === "PERSONAL" ? "link personal" : r.person ? "link general, potrivit" : "link general, nepotrivit"} · {dotDateTime(r.updatedAt)}
-                      {p.children.length ? ` · ${p.children.length} ${p.children.length === 1 ? "copil" : "copii"}` : ""}
-                    </span>
+                    <NameRow
+                      name={<b>{r.person ? memberName(r.person) : `${p.self.prenume} ${p.self.nume}`.trim()}</b>}
+                      detail={`${r.campaign.nume} · ${r.via === "PERSONAL" ? "link personal" : r.person ? "link general, potrivit" : "link general, nepotrivit"} · ${dotDateTime(r.updatedAt)}${p.children.length ? ` · ${p.children.length} ${p.children.length === 1 ? "copil" : "copii"}` : ""}`}
+                    />
                   </span>
                   <span className={r.via === "GENERAL" && !r.person ? "tag tag-warn" : "tag"}>{r.via === "PERSONAL" ? "Personal" : "General"}</span>
                 </Link>

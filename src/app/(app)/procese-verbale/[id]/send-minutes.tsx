@@ -110,7 +110,7 @@ function SendForm({
               </span>
               <span className="min-w-0">
                 {r.label}
-                <span className="block truncate text-xs font-normal text-ink-3">{r.email}</span>
+                <span className="block break-all text-xs font-normal text-ink-3">{r.email}</span>
               </span>
             </label>
           ))}

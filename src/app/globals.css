@@ -1364,9 +1364,19 @@
     color: var(--ink-3);
     letter-spacing: 0.02em;
   }
+  /* Name + details (CLAUDE.md UI rules): the name (.t) is never cut and may wrap; the details (.m)
+     sit at the right edge when both fit and drop under the name, aligned left, when they do not. */
   .item .body {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 12px;
+    row-gap: 2px;
+  }
+  .item .body > :not(.t):not(.m) {
+    flex-basis: 100%;
   }
   /* Row controls (Setări → Utilizatori): on phones they wrap onto their own line under the name,
      aligned with the text (avatar 40px + gap 12px), so the name keeps the full width. */
@@ -1386,16 +1396,64 @@
   }
   .item .t {
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 1 0 auto;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .item .m {
     font-size: 0.8125rem;
     color: var(--ink-3);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* A link wrapping a NameRow (Acasă lists): the whole row is the target, at least 44 px high. */
+  .name-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 6px 0;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .name-link:hover .name-row-name {
+    text-decoration: underline;
+  }
+  /* NameRow (src/components/ui/name-row.tsx): the same rule outside list rows. */
+  .name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+    width: 100%;
+  }
+  .name-row-lead {
+    flex: none;
+  }
+  .name-row-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 12px;
+    row-gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .name-row-name {
+    flex: 1 0 auto;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .name-row-detail {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+    overflow-wrap: anywhere;
   }
   .tag {
     font-size: 0.7188rem;
@@ -2164,9 +2222,7 @@ select {
 input[type="file"] {
   max-width: 100%;
 }
-html[data-text-size] main .truncate,
-html[data-text-size] .item .t,
-html[data-text-size] .item .m {
+html[data-text-size] main .truncate {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;

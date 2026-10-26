@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
+import { NameRow } from "@/components/ui/name-row";
 import { ageKey } from "@/domain/categories";
 import { AGE_BANDS, percentOf } from "@/domain/stats";
 import { categoryHref } from "@/lib/category-params";
@@ -372,9 +373,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <ul>
               {committee.map((m) => (
                 <li key={m.id}>
-                  <Link href={`/persoane/${m.id}`} className="flex gap-3 py-1.5 no-underline text-ink hover:underline">
-                    <span className="min-w-0 truncate">{m.name}</span>
-                    <span className="hint !mt-0 ml-auto shrink-0 text-right">{m.roles.join(", ")}</span>
+                  <Link href={`/persoane/${m.id}`} className="name-link">
+                    <NameRow name={m.name} detail={m.roles.join(", ")} />
                   </Link>
                 </li>
               ))}
@@ -388,9 +388,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <ul>
               {upcoming.map((e) => (
                 <li key={e.id}>
-                  <Link href={`/calendar/${e.id}`} className="flex gap-3 py-1.5 no-underline text-ink hover:underline">
-                    <b className="w-[60px] shrink-0 font-serif">{fmtShort(e.data.toISOString().slice(0, 10))}</b>
-                    <span className="min-w-0 truncate">{e.titlu}</span>
+                  <Link href={`/calendar/${e.id}`} className="name-link">
+                    <NameRow lead={<b className="inline-block w-[3.75rem] font-serif">{fmtShort(e.data.toISOString().slice(0, 10))}</b>} name={e.titlu} />
                   </Link>
                 </li>
               ))}
@@ -412,15 +411,17 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <ul>
               {birthdays.map((p) => (
                 <li key={p.id}>
-                  <Link href={`/persoane/${p.id}`} className="flex gap-3 py-1.5 no-underline text-ink hover:underline">
-                    <b className="w-[36px] shrink-0 font-serif">{Number(p.dataNasterii!.slice(8))}</b>
-                    <span className="min-w-0 truncate">
-                      {memberName(p)}
-                      {showAllBirthdays && !agreed(p.id) ? <span className="hint inline"> · fără acord</span> : null}
-                    </span>
-                    <span className="hint !mt-0 ml-auto shrink-0">
-                      {ageAt(p.dataNasterii!, `${today.slice(0, 4)}-12-31`)} ani
-                    </span>
+                  <Link href={`/persoane/${p.id}`} className="name-link">
+                    <NameRow
+                      lead={<b className="inline-block w-[2.25rem] font-serif">{Number(p.dataNasterii!.slice(8))}</b>}
+                      name={
+                        <>
+                          {memberName(p)}
+                          {showAllBirthdays && !agreed(p.id) ? <span className="hint inline"> · fără acord</span> : null}
+                        </>
+                      }
+                      detail={`${ageAt(p.dataNasterii!, `${today.slice(0, 4)}-12-31`)} ani`}
+                    />
                   </Link>
                 </li>
               ))}

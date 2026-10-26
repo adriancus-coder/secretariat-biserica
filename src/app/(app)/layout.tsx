@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="shell-side">
         <header className="shell-top">
           <div className="min-w-0">
-            <div className="church truncate">{user.churchName}</div>
+            <div className="church break-words">{user.churchName}</div>
             <div className="title">Secretariat</div>
           </div>
           <Link href="/cont" className="mode mobile-only" title="Contul meu">
@@ -35,7 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/cont" className="who">
             <Icon name="cont" className="size-[18px]" />
             <span className="min-w-0">
-              <span className="block truncate">{user.name}</span>
+              <span className="block break-words">{user.name}</span>
               <span className="block text-[0.7188rem] opacity-70">
                 {ROLE_LABEL[user.role]}
                 {user.isPastor ? <span className="pastor-badge">Pastor</span> : null}
