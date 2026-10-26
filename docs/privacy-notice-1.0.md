@@ -1,6 +1,6 @@
 NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL
 Biserica Penticostală Maranata Stavanger
-Versiunea 1.2 — în vigoare de la [data]
+Versiunea 1.0 — în vigoare de la [data]
 
 1. Cine suntem
 Operatorul datelor este Biserica Penticostală Maranata Stavanger, [adresa], organisasjonsnummer [nr.], biserică locală a Cultului Creștin Penticostal, [Comunitatea de care aparține biserica], denumită în continuare „Biserica”.

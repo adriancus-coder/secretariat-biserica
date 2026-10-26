@@ -128,7 +128,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     const f = await prisma.family.findUniqueOrThrow({ where: { id: fam.barbu }, include: { members: true } });
     const father = f.members.find((m) => m.prenume === "Vasile")!;
     const mother = f.members.find((m) => m.prenume === "Ioana")!;
-    const campaign = await ctx.db.dataCampaign.create({ data: { nume: "Toamnă", deadline: new Date("2026-12-31"), privacyTextVersion: "1.2" } as never });
+    const campaign = await ctx.db.dataCampaign.create({ data: { nume: "Toamnă", deadline: new Date("2026-12-31"), privacyTextVersion: "1.0" } as never });
     const self = (m: { nume: string; prenume: string }) => ({ nume: m.nume, prenume: m.prenume, gen: null, dataNasterii: null, dataCasatoriei: null, telefon: "+47 900 11 222", email: `${m.prenume}@x.no`, adresa: "Strada 1", dataBotez: null, botezAn: null, botezBiserica: "", botezLocalitate: "", botezOficiant: "", numeTata: "", numeMama: "" });
     const consents = { PHOTOS: true, BIRTHDAY: true, CONTACT: true, DIRECTORY: true };
     const submit = async (m: typeof father, prayer: { optOut: boolean; includeChildren: boolean }) =>

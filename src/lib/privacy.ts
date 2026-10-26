@@ -1,6 +1,18 @@
 import { formatAddress } from "./address";
 import { fmtL } from "./format";
-import { PRIVACY_NOTICE_1_2 } from "./privacy-notice";
+import { PRIVACY_NOTICE_1_0, PRIVACY_NOTICE_VERSION } from "./privacy-notice";
+
+/** The first published model notice: a church that never recorded a version is counted from it. */
+export const FIRST_PRIVACY_VERSION = "1.0";
+
+/**
+ * "Există o versiune nouă a modelului": only for a church that publishes its own text and adopted an
+ * older model (an empty text already publishes the current model). No version before 1.0 was ever
+ * published, so a church without a recorded version is on 1.0.
+ */
+export function privacyModelOutdated(c: { privacyText: string; privacyVersion: string }): boolean {
+  return c.privacyText.trim() !== "" && (c.privacyVersion || FIRST_PRIVACY_VERSION) !== PRIVACY_NOTICE_VERSION;
+}
 
 export interface PrivacyChurch {
   nume: string;
@@ -16,7 +28,7 @@ export interface PrivacyChurch {
 }
 
 /**
- * The model privacy notice (version 1.2, docs/privacy-notice-1.2.md) filled with the church's
+ * The model privacy notice (version 1.0, docs/privacy-notice-1.0.md) filled with the church's
  * settings; an empty setting leaves its bracketed placeholder visible. Pure.
  */
 export function privacyTemplate(c: PrivacyChurch): string {
@@ -31,14 +43,14 @@ export function privacyTemplate(c: PrivacyChurch): string {
     fill("[telefon]", c.telefon),
     fill("[Comunitatea de care aparține biserica]", c.comunitate),
     fill("[data]", c.privacyAdoptedAt ? fmtL(c.privacyAdoptedAt) : ""),
-  ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_2);
+  ].reduce((t, f) => f(t), PRIVACY_NOTICE_1_0);
 }
 
 export type PrivacyBlock = { type: "h"; text: string } | { type: "p"; text: string } | { type: "li"; text: string };
 
 /**
  * "## Titlu" → heading; other non-empty lines (joined until a blank line) → paragraph. A text without
- * "## " headings (the 1.1 / 1.2 models) is read line by line: "1. Cine suntem" and an all-capitals line are
+ * "## " headings (the model notice) is read line by line: "1. Cine suntem" and an all-capitals line are
  * headings, "- …" lines are list items, every other line is a paragraph.
  */
 export function privacyBlocks(text: string): PrivacyBlock[] {

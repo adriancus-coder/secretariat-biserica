@@ -18,6 +18,7 @@ import { listStatutes } from "@/server/statutes";
 import { SettingsForm } from "./settings-form";
 import { privacyTemplate } from "@/lib/privacy";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
+import { privacyModelOutdated } from "@/lib/privacy";
 import { adoptPrivacyModelAction } from "@/server/actions/settings";
 import { StatutesCard } from "./statutes-card";
 import { CommitteeCard } from "./committee-card";
@@ -75,7 +76,7 @@ export default async function SettingsPage() {
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
         <Link href="/cont">Contul meu</Link>
       </nav>
-      {permissions.admin(role) && church.privacyVersion !== PRIVACY_NOTICE_VERSION ? (
+      {permissions.admin(role) && privacyModelOutdated(church) ? (
         <div className="alert mb-4" role="status">
           Există o versiune nouă a modelului notei de informare ({PRIVACY_NOTICE_VERSION}), după Statutul Cultului.{" "}
           <Link href="/setari/nota-informare">Vezi diferențele</Link>

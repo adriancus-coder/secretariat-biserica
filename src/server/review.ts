@@ -359,7 +359,7 @@ export async function applyDecision(
     const base = {
       churchId: ctx.user.churchId,
       submissionId: id,
-      // The notice the person saw when answering; answers sent before 1.2 fall back to the campaign's.
+      // The notice the person saw when answering; answers that did not record it fall back to the campaign's.
       textVersion: p.versiuneNota ?? s.campaign.privacyTextVersion,
     };
     if (s.via === "GENERAL")

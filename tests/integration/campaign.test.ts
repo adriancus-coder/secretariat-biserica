@@ -39,8 +39,8 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
   });
 
   it("names the notice version: the model's number for the model, a hash for a church's own text", () => {
-    expect(privacyVersionOf({ privacyText: "" })).toBe("1.2");
-    expect(privacyVersionOf({ privacyText: "  " })).toBe("1.2");
+    expect(privacyVersionOf({ privacyText: "" })).toBe("1.0");
+    expect(privacyVersionOf({ privacyText: "  " })).toBe("1.0");
     expect(privacyVersionOf({ privacyText: "Nota noastră" })).toMatch(/^text-[0-9a-f]{16}$/);
   });
 
@@ -147,7 +147,7 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       expect(JSON.stringify(audit.changes)).toContain("codPostal");
     });
 
-    it("consents of an answer sent before 1.2 keep the campaign's version", async () => {
+    it("consents of an answer that did not record the notice keep the campaign's version", async () => {
       const id = await submit({ self: self(), children: [{ id: null, nume: "Vlad", prenume: "Ana", gen: "F", dataNasterii: "2020-01-01", dataBinecuvantare: null, consents: childConsents }], consents, nota: true });
       await applyDecision(ctx, id, { decizie: "toate", nota: "", chosen: new Set() });
       const versions = (await ctx.db.consent.findMany({ where: { submissionId: id } })).map((c) => c.textVersion);
@@ -175,15 +175,15 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
     it("an unmatched general submission is linked to the chosen person and its consents are written then", async () => {
       const id = (
         await ctx.db.dataUpdateSubmission.create({
-          data: { campaignId, personId: null, via: "GENERAL", proposed: { self: self({ email: "maria@x.no" }), children: [], consents, nota: true, typed: { nume: "Maria V", telefon: "1" }, versiuneNota: "1.2" } } as never,
+          data: { campaignId, personId: null, via: "GENERAL", proposed: { self: self({ email: "maria@x.no" }), children: [], consents, nota: true, typed: { nume: "Maria V", telefon: "1" }, versiuneNota: "1.0" } } as never,
         })
       ).id;
       const before = await ctx.db.consent.count({ where: { personId: mother } });
       await applyDecision(ctx, id, { decizie: "toate", nota: "", chosen: new Set(), persoana: mother });
       expect((await ctx.db.person.findUniqueOrThrow({ where: { id: mother } })).email).toBe("maria@x.no");
       expect(await ctx.db.consent.count({ where: { personId: mother } })).toBe(before + 5);
-      // The consents refer to the notice the person saw when answering (1.2), not the campaign's start.
-      expect(new Set((await ctx.db.consent.findMany({ where: { submissionId: id } })).map((c) => c.textVersion))).toEqual(new Set(["1.2"]));
+      // The consents refer to the notice the person saw when answering (1.0), not the campaign's start.
+      expect(new Set((await ctx.db.consent.findMany({ where: { submissionId: id } })).map((c) => c.textVersion))).toEqual(new Set(["1.0"]));
       expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).personId).toBe(mother);
     });
 

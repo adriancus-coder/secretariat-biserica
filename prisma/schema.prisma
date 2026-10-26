@@ -38,7 +38,7 @@ model Church {
   require2fa       Boolean   @default(false)
   /// The public privacy notice (/confidentialitate/<slug>); "" = the built-in template.
   privacyText      String    @default("")
-  /// The model notice version the church adopted ("1.2"), and when; "[data]" in the notice.
+  /// The model notice version the church adopted ("1.0"), and when; "[data]" in the notice.
   privacyVersion   String    @default("")
   privacyAdoptedAt DateTime? @db.Date
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).

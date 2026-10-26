@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { privacyBlocks, privacyTemplate } from "./privacy";
-import { PRIVACY_NOTICE_1_2 } from "./privacy-notice";
+import { privacyBlocks, privacyModelOutdated, privacyTemplate } from "./privacy";
+import { PRIVACY_NOTICE_1_0 } from "./privacy-notice";
 
-describe("privacy notice 1.2", () => {
-  it("is identical to docs/privacy-notice-1.2.md", () => {
-    const file = readFileSync(new URL("../../docs/privacy-notice-1.2.md", import.meta.url), "utf8");
-    expect(PRIVACY_NOTICE_1_2).toBe(file.replace(/\n$/, ""));
+describe("privacy notice 1.0", () => {
+  it("is identical to docs/privacy-notice-1.0.md", () => {
+    const file = readFileSync(new URL("../../docs/privacy-notice-1.0.md", import.meta.url), "utf8");
+    expect(PRIVACY_NOTICE_1_0).toBe(file.replace(/\n$/, ""));
   });
 
   it("names only Render and Resend as providers and no AI service", () => {
@@ -30,7 +30,7 @@ describe("privacy notice 1.2", () => {
       comunitate: "Comunitatea Penticostală Nord",
       privacyAdoptedAt: "2026-11-01",
     });
-    expect(t).toContain("Biserica Penticostală Betel Oslo\nVersiunea 1.2 — în vigoare de la 1 noiembrie 2026");
+    expect(t).toContain("Biserica Penticostală Betel Oslo\nVersiunea 1.0 — în vigoare de la 1 noiembrie 2026");
     expect(t).toContain("Operatorul datelor este Biserica Penticostală Betel Oslo, Storgata 1, Oslo, organisasjonsnummer 998 877 665");
     expect(t).toContain("Cultului Creștin Penticostal, Comunitatea Penticostală Nord, denumită");
     expect(t).toContain("la post@betel.no sau +47 22 00 00 00");
@@ -41,7 +41,7 @@ describe("privacy notice 1.2", () => {
     expect(empty).toContain("în vigoare de la [data]");
   });
 
-  it("reads the 1.2 model line by line: numbered headings, list items, paragraphs", () => {
+  it("reads the 1.0 model line by line: numbered headings, list items, paragraphs", () => {
     const blocks = privacyBlocks(privacyTemplate({ nume: "Maranata Stavanger", email: "", adresa: "" }));
     expect(blocks[0]).toEqual({ type: "h", text: "NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL" });
     expect(blocks).toContainEqual({ type: "h", text: "1. Cine suntem" });
@@ -56,5 +56,13 @@ describe("privacy notice 1.2", () => {
       { type: "p", text: "unu doi" },
       { type: "p", text: "trei" },
     ]);
+  });
+
+  it("announces a new model only to a church with its own text on an older version", () => {
+    expect(privacyModelOutdated({ privacyText: "", privacyVersion: "" })).toBe(false);
+    expect(privacyModelOutdated({ privacyText: "", privacyVersion: "0.9" })).toBe(false);
+    expect(privacyModelOutdated({ privacyText: "Nota noastră", privacyVersion: "" })).toBe(false);
+    expect(privacyModelOutdated({ privacyText: "Nota noastră", privacyVersion: "1.0" })).toBe(false);
+    expect(privacyModelOutdated({ privacyText: "Nota noastră", privacyVersion: "0.9" })).toBe(true);
   });
 });

@@ -12,7 +12,7 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 /**
  * The version of the notice as published now, stored with each consent (`textVersion`): the model's
- * number ("1.2") while the church publishes the model, else "text-" + a hash of its own text.
+ * number ("1.0") while the church publishes the model, else "text-" + a hash of its own text.
  * Consents keep the version they were given under; older ones hold a hash of the whole text.
  */
 export function privacyVersionOf(church: Pick<ChurchSettings, "privacyText">): string {

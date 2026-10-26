@@ -26,7 +26,7 @@ Since the original brief:
 - Families as records defined by their head (`/familii`), replacing the free-text family name.
 - Minutes numbered per year and printed in the church's format; old minutes imported from Word files.
 - Reading scanned documents and photos with an AI service: retras la cererea bisericii, 2026-10 (code, setting and dependencies removed; no personal data goes to an AI provider).
-- Privacy notice model 1.2 (`docs/privacy-notice-1.2.md`): no AI provider; Render and Resend are the only processors. Administrators of churches on 1.1 see "Există o versiune nouă"; new consents record version 1.2.
+- Privacy notice model 1.0 (`docs/privacy-notice-1.0.md`), the first published version: no AI provider; Render and Resend are the only processors; new consents record version 1.0. Versions are counted from publication on `main`; on `dev` the notice is a draft and is changed in place.
 
 Also in place:
 

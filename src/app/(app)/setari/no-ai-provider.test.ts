@@ -57,7 +57,7 @@ describe("no AI provider in the published texts", () => {
       }),
     );
     expect(html).toContain("Nota de confidențialitate");
-    expect(html).toContain("versiunea 1.2");
+    expect(html).toContain("versiunea 1.0");
     expect(html).not.toMatch(NO_AI);
   });
 });

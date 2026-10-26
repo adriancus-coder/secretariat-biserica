@@ -1,15 +1,16 @@
 /**
- * The model privacy notice, version 1.2 (Statut art. 14; GDPR art. 6, 9, 13). Identical to
- * docs/privacy-notice-1.2.md (privacy.test.ts compares them); `privacyTemplate()` fills the
- * bracketed placeholders from the church's settings. Do not edit one without the other.
- * Version 1.1 (docs/privacy-notice-1.1.md) stays in docs only, as history: 1.2 drops the
- * automated-reading provider (the feature was withdrawn) and names the two providers left.
+ * The model privacy notice, version 1.0 (Statut art. 14; GDPR art. 6, 9, 13): the first published
+ * one. Identical to docs/privacy-notice-1.0.md (privacy.test.ts compares them); `privacyTemplate()`
+ * fills the bracketed placeholders from the church's settings. Do not edit one without the other.
+ * Versions are counted from publication on `main`: while it is only on `dev` the notice is a draft
+ * and is changed in place; after that, a change is a new version (a new constant and docs file, and
+ * PRIVACY_NOTICE_VERSION raised so administrators see "Există o versiune nouă").
  */
-export const PRIVACY_NOTICE_VERSION = "1.2";
+export const PRIVACY_NOTICE_VERSION = "1.0";
 
-export const PRIVACY_NOTICE_1_2 = `NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL
+export const PRIVACY_NOTICE_1_0 = `NOTĂ DE INFORMARE PRIVIND PRELUCRAREA DATELOR CU CARACTER PERSONAL
 Biserica Penticostală Maranata Stavanger
-Versiunea 1.2 — în vigoare de la [data]
+Versiunea 1.0 — în vigoare de la [data]
 
 1. Cine suntem
 Operatorul datelor este Biserica Penticostală Maranata Stavanger, [adresa], organisasjonsnummer [nr.], biserică locală a Cultului Creștin Penticostal, [Comunitatea de care aparține biserica], denumită în continuare „Biserica”.
