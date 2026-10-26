@@ -14,6 +14,8 @@ import { canBeHead } from "@/lib/families";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { dissolveFamilyAction } from "@/server/actions/families";
 import { requireCtx } from "@/server/session";
+import { PrayerPrefsForm } from "@/components/prayer-prefs-form";
+import { prayerChangeText } from "@/lib/prayer";
 import { statusTagClass } from "../../persoane/person-row";
 import { AddMembersForm, FamilyForm, MoveMemberForm } from "./family-controls";
 
@@ -36,6 +38,9 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
       : Promise.resolve([]),
   ]);
   const head = f.members.find((m) => m.id === f.headId);
+  const prayer = canWrite
+    ? await ctx.db.family.findUniqueOrThrow({ where: { id }, select: { prayerOptOut: true, prayerIncludeChildren: true, prayerChangedAt: true, prayerSource: true } })
+    : null;
 
   return (
     <>
@@ -102,6 +107,19 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
             members={f.members
               .filter((m) => m.id === f.headId || canBeHead({ statut: m.statut, dataNasterii: fromDbDate(m.dataNasterii) }, today))
               .map((m) => ({ id: m.id, name: memberName(m) }))}
+          />
+        </div>
+      ) : null}
+
+      {prayer ? (
+        <div className="card" id="rugaciune">
+          <h3>Rugăciunea săptămânală</h3>
+          <PrayerPrefsForm
+            target={{ familyId: f.id }}
+            optOut={prayer.prayerOptOut}
+            includeChildren={prayer.prayerIncludeChildren}
+            source={prayer.prayerSource}
+            changed={prayerChangeText(prayer.prayerChangedAt, prayer.prayerSource)}
           />
         </div>
       ) : null}

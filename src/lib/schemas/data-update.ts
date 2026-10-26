@@ -2,6 +2,7 @@ import { z } from "zod";
 import { todayIso } from "../dates";
 import { GENDERS, OPTIONAL_CONSENTS, type OptionalConsentKey } from "../labels";
 import { normalizeUnmarried, UNMARRIED_AND_DATE_ERROR } from "../marital";
+import type { PrayerAnswer } from "../prayer";
 import { idSchema, optionalDate, optionalEmail, optionalEnum, optionalPastYear, requiredText, text } from "../validation";
 
 /**
@@ -111,6 +112,13 @@ export interface DataUpdateProposal {
   typed?: { nume: string; telefon: string };
   /** The notice version published when the answer was sent (the consents' textVersion); older answers have none. */
   versiuneNota?: string;
+  /**
+   * The weekly prayer (personal link, the head / a spouse / an adult without a family): both boxes
+   * unticked by default. Absent when the section was not shown.
+   */
+  prayer?: PrayerAnswer;
+  /** Set at approval: the prayer answers the secretariat applied (the other parent's decision uses them). */
+  prayerApplied?: Partial<PrayerAnswer>;
 }
 
 /** The form's fields → the proposal, with field errors (children as `copii.<i>.<field>`). */
@@ -136,5 +144,7 @@ export function parseProposal(form: Record<string, unknown>): { ok: true; value:
       else for (const issue of r.error.issues) errors[`copii.${i}.${issue.path.join(".")}`] ??= issue.path[0] === "consents" ? "Alegeți Da sau Nu." : issue.message;
     });
   if (Object.keys(errors).length || !self.success || !consents.success) return { ok: false, errors };
-  return { ok: true, value: { self: self.data, children, consents: consents.data, nota: true } };
+  // The prayer section sends "rugaciuneSectiune" when shown; an unticked box is a "no".
+  const prayer = form.rugaciuneSectiune === "1" ? { optOut: form.rugaciuneNepomenita === "on", includeChildren: form.rugaciuneCopii === "on" } : undefined;
+  return { ok: true, value: { self: self.data, children, consents: consents.data, nota: true, ...(prayer ? { prayer } : {}) } };
 }

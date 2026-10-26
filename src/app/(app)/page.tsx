@@ -17,7 +17,8 @@ import { committeeAbsences } from "@/server/queries/committee";
 import { getChurch } from "@/server/queries/church";
 import { committee as loadCommittee } from "@/server/queries/roles";
 import { loadStats } from "@/server/queries/stats";
-import { requireCtx } from "@/server/session";
+import { redirect } from "next/navigation";
+import { requireCtx, requireUser } from "@/server/session";
 import { deleteExpiredContactsAction } from "@/server/actions/statute";
 import { expiredContactWhere } from "@/server/retention";
 import { loadConsentStates } from "@/server/consents";
@@ -58,6 +59,8 @@ function Stat({ value, label, href }: { value: React.ReactNode; label: React.Rea
 }
 
 export default async function HomePage({ searchParams }: PageProps<"/">) {
+  // The "Rugăciune" role has no Acasă (register figures): its home is the family of the week.
+  if (!permissions.read(await requireUser())) redirect("/rugaciune");
   const ctx = await requireCtx();
   const sp = await searchParams;
   const church = await getChurch(ctx);

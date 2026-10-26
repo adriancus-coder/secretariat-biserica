@@ -14,6 +14,8 @@ import { permissions } from "@/lib/permissions";
 import { getPersonDetail, parseListSpec, personNeighbors } from "@/server/queries/persons";
 import { PersonNav } from "@/components/person-nav";
 import { listHref, withDin } from "@/lib/person-nav";
+import { PrayerPrefsForm } from "@/components/prayer-prefs-form";
+import { prayerChangeText } from "@/lib/prayer";
 import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
@@ -226,6 +228,22 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
                 rudenie={(await getChurch(ctx)).nomen.rudenie}
               />
             ) : null}
+          </div>
+        ) : null}
+        {!x.family && canWrite ? (
+          <div className="card" id="rugaciune">
+            <h3>Rugăciunea săptămânală</h3>
+            {await ctx.db.person
+              .findUniqueOrThrow({ where: { id: x.id }, select: { prayerOptOut: true, prayerIncludeChildren: true, prayerChangedAt: true, prayerSource: true } })
+              .then((p) => (
+                <PrayerPrefsForm
+                  target={{ personId: x.id }}
+                  optOut={p.prayerOptOut}
+                  includeChildren={p.prayerIncludeChildren}
+                  source={p.prayerSource}
+                  changed={prayerChangeText(p.prayerChangedAt, p.prayerSource)}
+                />
+              ))}
           </div>
         ) : null}
         {x.family ? (

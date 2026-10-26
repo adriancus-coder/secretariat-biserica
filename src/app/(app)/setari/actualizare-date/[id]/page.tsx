@@ -147,6 +147,9 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
             Exportă situația acordurilor
           </Link>
         ) : null}
+        <a href="/pdf/formular-acorduri" target="_blank" rel="noopener" className="btn btn-sm mt-2 ml-2">
+          Formular pe hârtie (PDF)
+        </a>
       </div>
 
       <form method="get" className="toolbar items-center">

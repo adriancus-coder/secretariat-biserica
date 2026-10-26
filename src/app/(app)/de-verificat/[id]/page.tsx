@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
-import { childChanges, displayValue, selfChanges, type FieldChange } from "@/lib/data-update-review";
+import { childChanges, displayValue, prayerChanges, selfChanges, type FieldChange } from "@/lib/data-update-review";
+import { answersForFamily } from "@/lib/prayer";
+import { currentPrayer } from "@/server/review";
 import { dotDateTime } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { CHILD_FIELDS, CHILD_LABEL, type DataUpdateProposal } from "@/lib/schemas/data-update";
@@ -54,7 +56,9 @@ export default async function ReviewPage({ params }: PageProps<"/de-verificat/[i
   const s = await ctx.db.dataUpdateSubmission.findUnique({ where: { id }, include: { campaign: { select: { nume: true } } } });
   if (!s) notFound();
   const p = s.proposed as unknown as DataUpdateProposal;
-  const person = s.personId ? await ctx.db.person.findUnique({ where: { id: s.personId } }) : null;
+  const person = s.personId ? await ctx.db.person.findUnique({ where: { id: s.personId }, include: { family: { select: { headId: true } } } }) : null;
+  // The weekly prayer answers, against the family's (or the person's) current choice.
+  const prayer = p.prayer && person && answersForFamily(person) ? prayerChanges(await currentPrayer(ctx.db, person), p.prayer) : null;
   const registerChildren = await ctx.db.person.findMany({ where: { id: { in: p.children.map((c) => c.id).filter((x): x is string => Boolean(x)) } } });
   const candidates =
     s.via === "GENERAL"
@@ -94,6 +98,13 @@ export default async function ReviewPage({ params }: PageProps<"/de-verificat/[i
           <Changes changes={selfChanges(person ? selfSnapshot(person) : null, p.self)} prefix="s:" />
           <p className="hint mt-2">Acorduri: {answers(p.consents)}{s.via === "GENERAL" ? " — se înregistrează la aprobare." : ""}</p>
         </div>
+        {prayer ? (
+          <div className="card">
+            <h3>Rugăciunea săptămânală</h3>
+            <Changes changes={prayer} prefix="r:" />
+            <p className="hint mt-2">Se aplică familiei. Dacă și celălalt părinte a răspuns, rămâne varianta mai restrictivă.</p>
+          </div>
+        ) : null}
         {p.children.length ? (
           <div className="card">
             <h3>Copii</h3>

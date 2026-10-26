@@ -22,7 +22,7 @@ const audit = (u: { id: string; churchId: string; name: string }, text: string) 
 /** "Activează notificările pe acest dispozitiv": stores the browser's subscription for this user. */
 export async function subscribePushAction(subscription: unknown, userAgent: string): Promise<FormState> {
   const state = await runFormAction(null, async () => {
-    const ctx = await actionCtx();
+    const ctx = await actionCtx("account");
     if (!isPushConfigured()) throw new ActionError("Notificările nu sunt disponibile.");
     if (!pushTypesFor(ctx.user).length) throw new ActionError("Rolul dumneavoastră nu primește notificări.");
     const sub = subscriptionSchema.safeParse(subscription);
@@ -44,7 +44,7 @@ export async function subscribePushAction(subscription: unknown, userAgent: stri
 /** "Elimină" a device (only one of the user's own). */
 export async function removePushAction(id: string): Promise<FormState> {
   const state = await runFormAction(null, async () => {
-    const ctx = await actionCtx();
+    const ctx = await actionCtx("account");
     parseOrThrow(idSchema, id);
     const sub = await prisma.pushSubscription.findFirst({ where: { id, userId: ctx.user.id }, select: { userAgent: true } });
     if (!sub) throw new ActionError("Dispozitivul nu mai este înregistrat.");
@@ -59,7 +59,7 @@ export async function removePushAction(id: string): Promise<FormState> {
 /** The per-type switches: the list of types turned off. */
 export async function setPushTypesAction(off: string[]): Promise<FormState> {
   const state = await runFormAction(null, async () => {
-    const ctx = await actionCtx();
+    const ctx = await actionCtx("account");
     const list = z.array(z.enum(PUSH_TYPES)).max(PUSH_TYPES.length).safeParse(off);
     if (!list.success) throw new ActionError("Alegere invalidă.");
     await prisma.user.update({ where: { id: ctx.user.id }, data: { pushOff: [...new Set(list.data)] } });
@@ -72,7 +72,7 @@ export async function setPushTypesAction(off: string[]): Promise<FormState> {
 /** "Trimite o notificare de test" to all of the user's devices. */
 export async function testPushAction(): Promise<FormState> {
   return runFormAction(null, async () => {
-    const ctx = await actionCtx();
+    const ctx = await actionCtx("account");
     if (!isPushConfigured()) throw new ActionError("Notificările nu sunt disponibile.");
     const r = await sendTestPush(ctx.user.id);
     if (r === "none") throw new ActionError("Niciun dispozitiv nu primește notificări. Activați-le întâi.");

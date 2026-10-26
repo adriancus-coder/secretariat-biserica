@@ -225,6 +225,24 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.pastoralNote.delete({ where: { id: n.id } });
   });
 
+  it("prayer weeks are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const w = await a.prayerWeek.create({ data: { personId: personA, weekStart: new Date("2026-10-26") } as never });
+    expect(w.churchId).toBe(churchA);
+    expect(await b.prayerWeek.findUnique({ where: { id: w.id } })).toBeNull();
+    expect(await b.prayerWeek.findFirst({ where: { personId: personA } })).toBeNull();
+    expect(await b.prayerWeek.count()).toBe(0);
+    expect((await b.prayerWeek.updateMany({ data: { personId: null } })).count).toBe(0);
+    expect((await b.prayerWeek.deleteMany({})).count).toBe(0);
+    await expect(b.prayerWeek.delete({ where: { id: w.id } })).rejects.toMatchObject({ code: "P2025" });
+    // Each church has its own week: the same Monday is free in church B.
+    const wb = await b.prayerWeek.create({ data: { weekStart: new Date("2026-10-26") } as never });
+    expect(wb.churchId).toBe(churchB);
+    await a.prayerWeek.delete({ where: { id: w.id } });
+    await b.prayerWeek.delete({ where: { id: wb.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

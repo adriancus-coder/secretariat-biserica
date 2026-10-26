@@ -64,6 +64,12 @@ export default async function ConsentsPage({ params }: PageProps<"/persoane/[id]
       </div>
       <div className="card">
         <h3>Înregistrează acord pe hârtie</h3>
+        <p className="hint mb-3">
+          <a href="/pdf/formular-acorduri" target="_blank" rel="noopener">
+            Tipărește formularul gol (PDF)
+          </a>
+          . Răspunsurile despre rugăciunea săptămânală se trec pe pagina familiei (sursa: formular pe hârtie).
+        </p>
         <PaperConsentForm personId={id} parents={parents} />
       </div>
     </>

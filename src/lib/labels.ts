@@ -118,17 +118,19 @@ export const DOCUMENT_HEADING: Record<DocumentTypeKey, string> = {
   convocare: "Convocare",
 };
 
-export const ROLES = ["ADMIN", "SECRETAR", "VIZUALIZARE"] as const;
+export const ROLES = ["ADMIN", "SECRETAR", "VIZUALIZARE", "RUGACIUNE"] as const;
 export type RoleKey = (typeof ROLES)[number];
 export const ROLE_LABEL: Record<RoleKey, string> = {
   ADMIN: "Administrator",
   SECRETAR: "Secretar",
   VIZUALIZARE: "Vizualizare",
+  RUGACIUNE: "Rugăciune",
 };
 export const ROLE_DESCRIPTION: Record<RoleKey, string> = {
   ADMIN: "Acces complet: date, setări, utilizatori, import.",
   SECRETAR: "Adaugă și modifică date, emite documente, exportă.",
   VIZUALIZARE: "Doar consultare și tipărire.",
+  RUGACIUNE: "Doar familia săptămânii pentru anunțul de rugăciune; fără acces la registru.",
 };
 
 /** Nomenclatoarele implicite (NOMEN_DEF din prototip). */

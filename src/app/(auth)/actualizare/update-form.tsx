@@ -44,6 +44,7 @@ export function UpdateForm({
   childrenInitial,
   consents,
   privacyText,
+  prayer,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   self: Partial<SelfData>;
@@ -52,6 +53,8 @@ export function UpdateForm({
   childrenInitial: ChildState[];
   consents: Partial<Record<OptionalConsentKey, boolean>>;
   privacyText: string;
+  /** The weekly prayer section (head, spouse, adult without a family): the answers so far; absent = not shown. */
+  prayer?: { optOut: boolean; includeChildren: boolean };
 }) {
   const { state, pending, onSubmit } = useActionForm(action);
   const e = state.errors ?? {};
@@ -270,6 +273,26 @@ export function UpdateForm({
           <YesNo key={k} name={`acord_${k}`} question={CONSENT_QUESTION[k]} defaultValue={consents[k]} error={e[`acord_${k}`]} />
         ))}
       </fieldset>
+
+      {prayer ? (
+        <fieldset className="card" id="rugaciune">
+          <h3>Rugăciunea săptămânală pentru familii</h3>
+          <p className="hint mb-3">
+            În fiecare săptămână biserica se roagă pentru o familie. O persoană desemnată de comitet o anunță pe grupul bisericii, doar cu
+            numele familiei și prenumele părinților. Puteți cere oricând să nu fiți pomeniți, fără nicio explicație. Prenumele copiilor apar
+            numai cu acordul dumneavoastră.
+          </p>
+          <input type="hidden" name="rugaciuneSectiune" value="1" />
+          <label className="check">
+            <input type="checkbox" name="rugaciuneNepomenita" defaultChecked={prayer.optOut} />
+            Nu doresc ca familia mea să fie pomenită pe grupul bisericii
+          </label>
+          <label className="check">
+            <input type="checkbox" name="rugaciuneCopii" defaultChecked={prayer.includeChildren} />
+            Pot fi pomeniți și copiii noștri
+          </label>
+        </fieldset>
+      ) : null}
 
       {/* Honeypot: hidden from people, filled by bots. */}
       <div aria-hidden="true" className="hidden">

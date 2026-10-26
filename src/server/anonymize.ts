@@ -104,6 +104,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.personProposal.deleteMany({ where: { personId: id } });
     // Pastoral notes go with the identity (Statut art. 39 alin. 3); their log entries are blanked below.
     await tx.pastoralNote.deleteMany({ where: { personId: id } });
+    // The weekly prayer: the weeks this person (without a family) was announced.
+    await tx.prayerWeek.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
     // No longer anyone's responsible person (the groups' text is scrubbed below).
     await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });

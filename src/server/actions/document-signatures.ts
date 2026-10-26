@@ -1,5 +1,6 @@
 "use server";
 
+import { permissions } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
@@ -28,6 +29,8 @@ import { runFormAction } from "./run";
 export async function saveMySignatureAction(input: { png: string; response?: AuthenticationResponseJSON; password?: string }): Promise<FormState> {
   const me = await getCurrentUser();
   if (!me) redirect("/autentificare");
+  // A saved signature signs documents of the register: not for the "Rugăciune" role.
+  if (!permissions.read(me)) return { message: "Nu aveți drepturi pentru această operațiune." };
   let png: Buffer;
   try {
     png = await normalizeSignature(String(input?.png ?? ""));
@@ -71,6 +74,7 @@ export async function saveMySignatureAction(input: { png: string; response?: Aut
 export async function deleteMySignatureAction(): Promise<FormState> {
   const me = await getCurrentUser();
   if (!me) redirect("/autentificare");
+  if (!permissions.read(me)) return { message: "Nu aveți drepturi pentru această operațiune." };
   await prisma.$transaction([
     prisma.user.update({ where: { id: me.id }, data: { signaturePng: null, signatureSavedAt: null } }),
     prisma.auditLog.create({
