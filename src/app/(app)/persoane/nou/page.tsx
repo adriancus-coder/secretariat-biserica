@@ -8,6 +8,9 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { idSchema } from "@/lib/validation";
+import { permissions } from "@/lib/permissions";
+import { forbidden, notFound } from "next/navigation";
+import { hasActivePastor } from "@/server/pastor-approval";
 import { getApplication } from "@/server/queries/applications";
 import { getChurch } from "@/server/queries/church";
 import { familyOptions } from "@/server/queries/families";
@@ -19,8 +22,11 @@ import { meetingChoices } from "@/server/queries/meetings";
 export const metadata: Metadata = { title: "Persoană nouă" };
 
 export default async function NewPersonPage({ searchParams }: PageProps<"/persoane/nou">) {
-  const ctx = await requireCtx("write");
+  const ctx = await requireCtx();
   const sp = await searchParams;
+  const isPastor = permissions.pastor(ctx.user);
+  // A pastor without a write role comes here only to approve an application.
+  if (!permissions.write(ctx.user) && !(isPastor && typeof sp.cerere === "string")) forbidden();
   const [church, families, roles, meetings] = await Promise.all([getChurch(ctx), familyOptions(ctx), roleChoices(ctx, null), meetingChoices(ctx)]);
   // "+ Membru de familie" from a person's page: the new person joins that family.
   const familyId = typeof sp.familie === "string" && families.some((f) => f.id === sp.familie) ? sp.familie : "";
@@ -28,7 +34,8 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
   // Accepting a membership application: the form starts from the applicant's data.
   const cerere = typeof sp.cerere === "string" && idSchema.safeParse(sp.cerere).success ? sp.cerere : null;
   const app = cerere ? await getApplication(ctx, cerere) : null;
-  if (app && app.status !== "PENDING") {
+  if (cerere && !app) notFound();
+  if (app && app.status !== "PENDING" && app.status !== "PROPUSA") {
     return (
       <>
         <BackLink href={`/cereri/${app.id}`}>Cererea</BackLink>
@@ -39,8 +46,15 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       </>
     );
   }
+  // Statut art. 23 alin. 3: with a pastor in the app, the secretary proposes and the pastor approves.
+  const approval = app ? await hasActivePastor(ctx.user.churchId) : false;
+  const proposing = approval && !isPastor;
   let initial: PersonFormValues = { statut: "MEMBRU", familyId };
-  if (app) {
+  const proposed = app?.propunere && typeof app.propunere === "object" && !Array.isArray(app.propunere) ? (app.propunere as PersonFormValues) : null;
+  if (app && proposed) {
+    // The form as the secretary proposed it.
+    initial = { ...proposed };
+  } else if (app) {
     const member = app.kind !== "ALTUL";
     initial = {
       nume: app.nume,
@@ -75,10 +89,12 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
   return (
     <>
       <BackLink href={app ? `/cereri/${app.id}` : "/persoane"}>{app ? "Cererea" : "Persoane"}</BackLink>
-      <PageHead title={app ? `Acceptă cererea: ${memberName(app)}` : "Persoană nouă"} />
+      <PageHead title={app ? `${proposing ? "Propune acceptarea" : "Acceptă cererea"}: ${memberName(app)}` : "Persoană nouă"} />
       {app ? (
         <p className="hint mb-4">
-          Verificați datele; la salvare persoana intră în registru și cererea devine acceptată.
+          {proposing
+            ? "Verificați datele și, dacă este cazul, alegeți procesul-verbal al comitetului; propunerea ajunge la pastor, care aprobă primirea (Statut art. 23 alin. 3)."
+            : "Verificați datele; la salvare persoana intră în registru și cererea devine acceptată."}
           {app.familie ? ` Familia trecută în cerere: „${app.familie}” — alegeți familia din listă sau „Familie nouă”.` : ""}
         </p>
       ) : null}
@@ -93,6 +109,7 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
         meetings={meetings}
         cancelHref={app ? `/cereri/${app.id}` : "/persoane"}
         applicationId={app?.id}
+        submitLabel={!app ? "Salvează" : proposing ? (app.status === "PROPUSA" ? "Actualizează propunerea" : "Propune acceptarea") : approval ? "Aprobă primirea" : "Salvează"}
       />
     </>
   );

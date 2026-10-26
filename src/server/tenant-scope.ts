@@ -23,6 +23,7 @@ export const TENANT_MODELS = new Set([
   "DataUpdateLink",
   "DataUpdateSubmission",
   "Consent",
+  "PersonProposal",
 ]);
 
 const WHERE_OPERATIONS = new Set([

@@ -66,13 +66,18 @@ export const APPLICATION_KIND_LABEL: Record<ApplicationKindKey, string> = {
   ALTUL: "Altul",
 };
 
-export const APPLICATION_STATUSES = ["PENDING", "ACCEPTED", "REJECTED"] as const;
+export const APPLICATION_STATUSES = ["PENDING", "PROPUSA", "ACCEPTED", "REJECTED"] as const;
 export type ApplicationStatusKey = (typeof APPLICATION_STATUSES)[number];
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatusKey, string> = {
   PENDING: "În așteptare",
+  PROPUSA: "La pastor, de aprobat",
   ACCEPTED: "Acceptată",
   REJECTED: "Respinsă",
 };
+
+/** Pastor proposals for a person (Statut art. 23 alin. 3): entry by Reabilitare spirituală, exit by Excludere. */
+export const PERSON_PROPOSAL_LABEL = { REABILITARE: "Reabilitare spirituală", EXCLUDERE: "Excludere" } as const;
+export const PROPOSAL_STATUS_LABEL = { PROPUSA: "La pastor, de confirmat", ACCEPTED: "Confirmată de pastor", REJECTED: "Respinsă de pastor" } as const;
 
 export const GENDERS = ["M", "F"] as const;
 export type GenderKey = (typeof GENDERS)[number];

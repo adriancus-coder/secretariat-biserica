@@ -4,16 +4,20 @@ import { tenantDb } from "../tenant-db";
 
 /**
  * Pending items per section, for the navigation badges: write roles see applications and data
- * updates to review; a pastor sees the documents waiting for their signature (on "/documente").
+ * updates to review; a pastor sees the documents waiting for their signature (on "/documente") and
+ * the applications, reabilitări and excluderi proposed to them (on "/cereri").
  */
 export async function pendingBadges(user: { churchId: string } & Exclude<Who, string>): Promise<Record<string, number>> {
   const db = tenantDb(user.churchId);
   const canWrite = permissions.write(user.role);
   const isPastor = permissions.pastor(user);
-  const [applications, submissions, toSign] = await Promise.all([
+  const [applications, submissions, toSign, proposed, personProposals] = await Promise.all([
     canWrite ? db.application.count({ where: { status: "PENDING" } }) : 0,
     canWrite ? db.dataUpdateSubmission.count({ where: { status: "PENDING" } }) : 0,
     isPastor ? db.document.count({ where: { stare: "DE_SEMNAT" } }) : 0,
+    isPastor ? db.application.count({ where: { status: "PROPUSA" } }) : 0,
+    isPastor ? db.personProposal.count({ where: { status: "PROPUSA" } }) : 0,
   ]);
-  return { "/cereri": applications, "/de-verificat": submissions, "/documente": toSign };
+  // "/cereri": the secretary's applications to prepare plus what waits for the pastor's decision.
+  return { "/cereri": applications + proposed + personProposals, "/de-verificat": submissions, "/documente": toSign };
 }

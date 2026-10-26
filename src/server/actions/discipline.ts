@@ -9,7 +9,9 @@ import { DISCIPLINARY_FORM_LABEL } from "@/lib/labels";
 import { closingErrors, DISCIPLINE_FIELDS, disciplineSchema, reinstateSchema } from "@/lib/schemas/discipline";
 import { PERSON_FIELDS } from "@/lib/schemas/person";
 import { idSchema } from "@/lib/validation";
+import { permissions } from "@/lib/permissions";
 import { writeAudit } from "../audit";
+import { hasActivePastor } from "../pastor-approval";
 import { disciplineView } from "../discipline";
 import { syncRoleGroups } from "../group-sync";
 import { getChurch } from "../queries/church";
@@ -33,9 +35,15 @@ export async function saveDisciplineAction(personId: string, measureId: string |
     const meeting = input.meetingId ? await ctx.db.meeting.findUnique({ where: { id: input.meetingId }, select: { id: true, tip: true } }) : null;
     if (input.meetingId && !meeting) throw new ValidationError({ meetingId: "Procesul-verbal ales nu mai există." });
     const church = await getChurch(ctx);
+    // Statut art. 23 alin. 3: an exclusion takes effect with the pastor's confirmation (while the church has one).
+    const pastorConfirms = input.forma === "EXCLUDERE" && input.stare === "APLICATA" && !permissions.pastor(ctx.user) && (await hasActivePastor(ctx.user.churchId));
     await ctx.db.$transaction(async (tx) => {
       const person = await tx.person.findUnique({ where: { id: personId } });
       if (!person) throw new ActionError("Persoana nu mai există în registru.");
+      if (pastorConfirms) {
+        const prev = measureId ? await tx.disciplinaryMeasure.findFirst({ where: { id: measureId, personId }, select: { forma: true, stare: true } }) : null;
+        if (prev?.forma !== "EXCLUDERE" || prev.stare !== "APLICATA") throw new ActionError("Excluderea se aplică de pastor: salvați măsura „În cercetare” și cereți pastorului să o marcheze „Aplicată”.");
+      }
       // Closing an investigation (art. 272 lit. c): committee minutes and the mandatory contents.
       const previous = measureId ? await tx.disciplinaryMeasure.findFirst({ where: { id: measureId, personId }, select: { stare: true } }) : null;
       if (previous?.stare === "CERCETARE" && input.stare !== "CERCETARE") {

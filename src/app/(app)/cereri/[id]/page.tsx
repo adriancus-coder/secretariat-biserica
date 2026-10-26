@@ -15,10 +15,13 @@ import { deleteApplicationAction } from "@/server/actions/applications";
 import { getApplication } from "@/server/queries/applications";
 import { requireCtx } from "@/server/session";
 import { RejectForm } from "./reject-form";
+import { ApproveButton } from "@/components/approve-button";
+import { approveApplicationAction } from "@/server/actions/pastor-proposals";
+import { hasActivePastor } from "@/server/pastor-approval";
 
 export const metadata: Metadata = { title: "Cerere de membru" };
 
-const STATUS_TAG = { PENDING: "tag tag-gold", ACCEPTED: "tag", REJECTED: "tag tag-warn" } as const;
+const STATUS_TAG = { PENDING: "tag tag-gold", PROPUSA: "tag tag-gold", ACCEPTED: "tag", REJECTED: "tag tag-warn" } as const;
 
 export default async function ApplicationPage({ params }: PageProps<"/cereri/[id]">) {
   const { id } = await params;
@@ -27,6 +30,10 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
   const a = await getApplication(ctx, id);
   if (!a) notFound();
   const canWrite = permissions.write(ctx.user.role);
+  const isPastor = permissions.pastor(ctx.user);
+  // Statut art. 23 alin. 3: with a pastor in the app the secretary proposes, the pastor decides.
+  const approval = await hasActivePastor(ctx.user.churchId);
+  const proposer = a.propusDeId ? await ctx.db.user.findFirst({ where: { id: a.propusDeId }, select: { name: true } }) : null;
   const audit = permissions.audit(ctx.user.role)
     ? await ctx.db.auditLog.findMany({ where: { entity: "APPLICATION", entityId: id }, orderBy: { createdAt: "desc" }, take: 20 })
     : [];
@@ -56,6 +63,7 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
         a.status === "ACCEPTED" ? "Acceptată" : a.status === "REJECTED" ? "Respinsă" : "",
         a.decidedAt ? `${formatDateTime(a.decidedAt)}${a.decidedBy ? ` de ${a.decidedBy.name}` : ""}` : "",
       ],
+      ["Propusă pastorului", a.propusLa && a.status !== "PENDING" ? `${formatDateTime(a.propusLa)}${proposer ? ` de ${proposer.name}` : ""}` : ""],
       ["Motivul respingerii", a.rejectReason],
     ] as [string, string][]
   ).filter(([k, v]) => k && v);
@@ -80,13 +88,29 @@ export default async function ApplicationPage({ params }: PageProps<"/cereri/[id
         ))}
       </dl>
 
-      {canWrite && a.status === "PENDING" ? (
+      {approval && isPastor && (a.status === "PENDING" || a.status === "PROPUSA") ? (
+        <div className="card">
+          <h3>Decizia pastorului</h3>
+          <p className="hint">
+            {a.status === "PROPUSA"
+              ? "Secretariatul a pregătit fișa persoanei. „Aprobă primirea” o trece în registru exact cum a fost propusă."
+              : "Cererea nu a fost încă pregătită de secretariat; o puteți accepta completând fișa."}
+          </p>
+          <div className="actions flex-wrap !justify-start">
+            {a.status === "PROPUSA" && a.propunere ? <ApproveButton action={approveApplicationAction.bind(null, a.id)} label="Aprobă primirea" /> : null}
+            <Link href={`/persoane/nou?cerere=${a.id}`} className={a.status === "PROPUSA" ? "btn" : "btn btn-primary"}>
+              {a.status === "PROPUSA" ? "Verifică și modifică" : "Acceptă"}
+            </Link>
+            <RejectForm id={a.id} />
+          </div>
+        </div>
+      ) : canWrite && (a.status === "PENDING" || (approval && a.status === "PROPUSA")) ? (
         <div className="actions flex-wrap">
           <Link href={`/persoane/nou?cerere=${a.id}`} className="btn btn-primary">
             <Icon name="bifa" className="size-[18px]" />
-            Acceptă
+            {!approval ? "Acceptă" : a.status === "PROPUSA" ? "Modifică propunerea" : "Propune acceptarea"}
           </Link>
-          <RejectForm id={a.id} />
+          {a.status === "PENDING" ? <RejectForm id={a.id} /> : <p className="hint w-full">Propunerea așteaptă decizia pastorului.</p>}
         </div>
       ) : null}
 

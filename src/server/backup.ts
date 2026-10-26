@@ -241,7 +241,7 @@ export async function loadApplications(ctx: Ctx): Promise<BApplication[]> {
   const rows = await ctx.db.application.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
   return rows.map((a) => ({
     id: a.id,
-    status: a.status,
+    status: a.status === "PROPUSA" ? "PENDING" : a.status,
     kind: a.kind,
     nume: a.nume,
     prenume: a.prenume,

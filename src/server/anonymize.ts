@@ -1,4 +1,5 @@
 import "server-only";
+import { Prisma } from "@/generated/prisma/client";
 import { ANONYMOUS_NAME } from "@/lib/anonymous";
 import { defaultFamilyName } from "@/lib/families";
 import { personDerived } from "@/lib/person-derived";
@@ -99,6 +100,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.consent.updateMany({ where: { givenByPersonId: id }, data: { givenByPersonId: null } });
     await tx.dataUpdateSubmission.deleteMany({ where: { personId: id } });
     await tx.dataUpdateLink.deleteMany({ where: { personId: id } });
+    // Reabilitare / excludere proposals hold a copy of the person form.
+    await tx.personProposal.deleteMany({ where: { personId: id } });
     await tx.groupMember.deleteMany({ where: { personId: id } });
     // No longer anyone's responsible person (the groups' text is scrubbed below).
     await tx.group.updateMany({ where: { responsabilId: id }, data: { responsabilId: null } });
@@ -108,7 +111,7 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     if (application) {
       await tx.application.update({
         where: { id: application.id },
-        data: { personId: null, nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", mesaj: "", familie: "", rudenie: "", bisericaProvenienta: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "" },
+        data: { personId: null, nume: ANONYMOUS_NAME, prenume: "", telefon: "", email: "", adresa: "", mesaj: "", familie: "", rudenie: "", bisericaProvenienta: "", botezBiserica: "", botezLocalitate: "", botezOficiant: "", propunere: Prisma.DbNull },
       });
     }
     // A family named after the person loses that name.

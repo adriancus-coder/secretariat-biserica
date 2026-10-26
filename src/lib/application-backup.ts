@@ -52,7 +52,8 @@ const day = z.unknown().optional().transform((v) => (typeof v === "string" && is
 const instant = z.unknown().optional().transform((v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null));
 
 const entry = z.object({
-  status: z.enum(APPLICATION_STATUSES),
+  // A proposal to the pastor is not exported: it comes back waiting (PENDING).
+  status: z.enum(APPLICATION_STATUSES).transform((s) => (s === "PROPUSA" ? "PENDING" : s)),
   kind: z.enum(APPLICATION_KINDS),
   nume: str(100).pipe(z.string().min(1)),
   prenume: str(100),

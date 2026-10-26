@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@/generated/prisma/client";
-import { toDbDate } from "@/lib/dates";
+import { fromDbDate, toDbDate } from "@/lib/dates";
 import type { FormState, PersonFormState } from "@/lib/form-state";
 import { memberName } from "@/lib/format";
 import { personDerived } from "@/lib/person-derived";
@@ -24,6 +24,11 @@ import { getChurch } from "../queries/church";
 import { parseListSpec, personNeighbors } from "../queries/persons";
 import { withDin } from "@/lib/person-nav";
 import { actionCtx, ActionError, type Ctx } from "../session";
+import { hasActivePastor } from "../pastor-approval";
+import { proposeApplication, proposeForPastor, settleProposal, withdrawProposals } from "../pastor-proposals";
+import { formEntries, proposalKind } from "@/lib/person-proposal";
+import { PERSON_PROPOSAL_LABEL } from "@/lib/labels";
+import { permissions } from "@/lib/permissions";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 
 /** Fields tracked by the audit log: the person's columns plus the family and the roles held (as names). */
@@ -60,15 +65,31 @@ function toPersonData(person: PersonInput) {
  * With a hidden `cerere` field (accepting a membership application), the new person and the
  * ACCEPTED application are written in one transaction; a person with the same name and birth date
  * stops the save with a warning unless `fortat=1` ("Creează oricum").
+ *
+ * Statut art. 23 alin. 3, while the church has a pastor user (`hasActivePastor`): a non-pastor's
+ * acceptance of an application is stored on it as a proposal (PROPUSA, "Propune acceptarea"), and
+ * a save making an entry Reabilitare spirituală or an exit Excludere waits as a `PersonProposal`.
+ * The pastor approves by replaying the stored form here: `cerere` / `propunere` (pastors only).
  */
 export async function savePersonAction(id: string | null, _prev: PersonFormState, formData: FormData): Promise<PersonFormState> {
   let savedId: string | undefined;
+  let proposedTo: string | undefined;
   let duplicate: PersonFormState["duplicate"];
   const applicationId = id === null ? String(formData.get("cerere") ?? "") : "";
+  const proposalId = String(formData.get("propunere") ?? "");
   const state = await runFormAction(formData, async () => {
-    const ctx = await actionCtx("write");
+    const ctx = await actionCtx();
+    const isPastor = permissions.pastor(ctx.user);
+    // A pastor decides applications and proposals whatever the role; anything else needs `write`.
+    if (!permissions.write(ctx.user) && !(isPastor && (applicationId || proposalId))) throw new ActionError("Nu aveți drepturi pentru această operațiune.");
     if (id !== null) parseOrThrow(idSchema, id);
     if (applicationId) parseOrThrow(idSchema, applicationId);
+    if (proposalId) {
+      parseOrThrow(idSchema, proposalId);
+      if (!isPastor) throw new ActionError("Doar pastorul confirmă propunerea.");
+      const pr = await ctx.db.personProposal.findUnique({ where: { id: proposalId }, select: { status: true, personId: true } });
+      if (!pr || pr.status !== "PROPUSA" || pr.personId !== id) throw new ActionError("Propunerea a fost deja procesată.");
+    }
     const input = applyExitRule(parseOrThrow(personSchema, Object.fromEntries(formData)));
     const data = toPersonData(input);
     const roles = parseOrThrow(personRolesSchema, formData.get("functii"));
@@ -90,7 +111,7 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
     if (applicationId) {
       const app = await ctx.db.application.findUnique({ where: { id: applicationId }, select: { status: true } });
       if (!app) throw new ActionError("Cererea nu mai există.");
-      if (app.status !== "PENDING") throw new ActionError("Cererea a fost deja procesată.");
+      if (app.status !== "PENDING" && app.status !== "PROPUSA") throw new ActionError("Cererea a fost deja procesată.");
       if (formData.get("fortat") !== "1") {
         const dup = await findDuplicatePerson(ctx.db, { nume: input.nume, prenume: input.prenume, dataNasterii: data.dataNasterii });
         if (dup) {
@@ -98,6 +119,34 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
           return { message: "Există deja în registru o persoană cu același nume și aceeași dată de naștere." };
         }
       }
+    }
+
+    // Statut art. 23 alin. 3: the pastor has the final word (only while the church has one in the app).
+    if (!isPastor && (await hasActivePastor(ctx.user.churchId))) {
+      const entries = formEntries(formData);
+      if (applicationId) {
+        await proposeApplication(ctx, applicationId, entries);
+        proposedTo = `/cereri/${applicationId}?salvat=1&mesaj=${encodeURIComponent("Propunerea a fost trimisă pastorului.")}`;
+        return;
+      }
+      const current = id
+        ? await ctx.db.person.findUnique({ where: { id }, select: { modIntrare: true, dataMembru: true, modIesire: true, dataIesire: true, statut: true, telefon: true, email: true, adresa: true } })
+        : null;
+      if (id && !current) throw new ActionError("Persoana nu mai există în registru.");
+      // Contact data the proposer could not see stay as stored when the pastor replays the form.
+      if (current && contactRestricted(current, ctx.user.role)) Object.assign(entries, { telefon: current.telefon, email: current.email, adresa: current.adresa });
+      const kind = proposalKind(
+        current && { ...current, dataMembru: fromDbDate(current.dataMembru), dataIesire: fromDbDate(current.dataIesire) },
+        { modIntrare: input.modIntrare || null, dataMembru: input.dataMembru || null, modIesire: input.modIesire || null, dataIesire: input.dataIesire || null },
+      );
+      if (kind) {
+        await proposeForPastor(ctx, { kind, personId: id, nume: memberName(input), entries });
+        const mesaj = encodeURIComponent(`${PERSON_PROPOSAL_LABEL[kind]}: modificarea așteaptă confirmarea pastorului.`);
+        proposedTo = id ? `/persoane/${id}?salvat=1&mesaj=${mesaj}` : `/cereri?stare=propuse&salvat=1&mesaj=${mesaj}`;
+        return;
+      }
+      // A plain save while a proposal for this person waits: the proposal is withdrawn (the form shown came from it).
+      if (id) await withdrawProposals(ctx, id);
     }
 
     savedId = await ctx.db.$transaction(async (tx) => {
@@ -141,7 +190,9 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
           fields: PERSON_AUDIT_FIELDS,
           before: { ...before, ...extrasBefore },
           after: { ...after, ...(await auditExtras(tx, id)) },
+          ...(proposalId ? { extra: { sursa: "confirmată de pastor" } } : {}),
         });
+        if (proposalId) await settleProposal(tx, ctx, proposalId, id);
         return id;
       }
       const joining = familyChoice && familyChoice !== NEW_FAMILY ? familyChoice : null;
@@ -159,11 +210,12 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         action: "CREATE",
         fields: PERSON_AUDIT_FIELDS,
         after: { ...created, ...(await auditExtras(tx, created.id)) },
-        ...(applicationId ? { extra: { sursa: "cerere de membru" } } : {}),
+        ...(applicationId ? { extra: { sursa: "cerere de membru" } } : proposalId ? { extra: { sursa: "confirmată de pastor" } } : {}),
       });
+      if (proposalId) await settleProposal(tx, ctx, proposalId, created.id);
       if (applicationId) {
         const accepted = await tx.application.updateMany({
-          where: { id: applicationId, status: "PENDING" },
+          where: { id: applicationId, status: { in: ["PENDING", "PROPUSA"] } },
           data: { status: "ACCEPTED", personId: created.id, decidedAt: new Date(), decidedById: ctx.user.id },
         });
         if (accepted.count !== 1) throw new ActionError("Cererea a fost deja procesată.");
@@ -174,13 +226,17 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
           entityLabel: memberName(app),
           action: "UPDATE",
           fields: [...APPLICATION_FIELDS, "persoana"],
-          before: { stare: "PENDING" },
+          before: { stare: app.propusLa ? "PROPUSA" : "PENDING" },
           after: { stare: "ACCEPTED", persoana: memberName(created) },
         });
       }
       return created.id;
     });
   });
+  if (proposedTo && state.ok !== false) {
+    revalidatePath("/", "layout");
+    redirect(proposedTo);
+  }
   if (!savedId) return duplicate ? { ...state, ok: false, duplicate } : state;
   revalidatePath("/", "layout");
   const din = typeof formData.get("din") === "string" ? String(formData.get("din")) : undefined;

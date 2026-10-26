@@ -12,12 +12,22 @@ export async function listApplications(ctx: Ctx, status: ApplicationStatusKey, p
   const current = Math.min(page, pages);
   const items = await ctx.db.application.findMany({
     where,
-    orderBy: status === "PENDING" ? [{ createdAt: "asc" }] : [{ decidedAt: "desc" }, { createdAt: "desc" }],
+    orderBy: status === "PENDING" || status === "PROPUSA" ? [{ createdAt: "asc" }] : [{ decidedAt: "desc" }, { createdAt: "desc" }],
     skip: (current - 1) * APPLICATIONS_PAGE_SIZE,
     take: APPLICATIONS_PAGE_SIZE,
     select: { id: true, kind: true, nume: true, prenume: true, telefon: true, createdAt: true, decidedAt: true },
   });
   return { items, total, page: current, pages };
+}
+
+/** Reabilitare / excludere proposals in a state (Statut art. 23 alin. 3), oldest first while waiting. */
+export function listPersonProposals(ctx: Ctx, status: "PROPUSA" | "ACCEPTED" | "REJECTED") {
+  return ctx.db.personProposal.findMany({
+    where: { status },
+    orderBy: status === "PROPUSA" ? [{ createdAt: "asc" }] : [{ decidedAt: "desc" }],
+    take: 50,
+    select: { id: true, kind: true, nume: true, personId: true, createdAt: true, decidedAt: true, motivRespingere: true },
+  });
 }
 
 export function pendingApplicationsCount(ctx: Ctx): Promise<number> {

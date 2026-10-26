@@ -18,6 +18,7 @@ import { sendNewApplicationEmail } from "../email";
 import { sharedRateLimiter } from "../rate-limit";
 import { clientIp } from "../ip-limits";
 import { actionCtx, ActionError } from "../session";
+import { permissions } from "@/lib/permissions";
 import { tenantDb } from "../tenant-db";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
 import { logError } from "../log";
@@ -118,17 +119,22 @@ function auditView(a: { status: string; kind: string; nume: string; prenume: str
   return { stare: a.status, tipCerere: a.kind, nume: a.nume, prenume: a.prenume, telefon: a.telefon, email: a.email, motiv: a.rejectReason };
 }
 
-/** Rejects a pending application, with an optional reason. */
+/**
+ * Rejects an application, with an optional reason: a waiting one (write roles or a pastor); one
+ * proposed to the pastor (PROPUSA) only by a pastor.
+ */
 export async function rejectApplicationAction(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const state = await runFormAction(formData, async () => {
-    const ctx = await actionCtx("write");
+    const ctx = await actionCtx();
+    const isPastor = permissions.pastor(ctx.user);
+    if (!isPastor && !permissions.write(ctx.user)) throw new ActionError("Nu aveți drepturi pentru această operațiune.");
     parseOrThrow(idSchema, id);
     const reason = parseOrThrow(text(500, "Motivul"), formData.get("motiv") ?? "");
     await ctx.db.$transaction(async (tx) => {
       const before = await tx.application.findUnique({ where: { id } });
       if (!before) throw new ActionError("Cererea nu mai există.");
       const r = await tx.application.updateMany({
-        where: { id, status: "PENDING" },
+        where: { id, status: isPastor ? { in: ["PENDING", "PROPUSA"] } : "PENDING" },
         data: { status: "REJECTED", rejectReason: reason, decidedAt: new Date(), decidedById: ctx.user.id },
       });
       if (r.count !== 1) throw new ActionError("Cererea a fost deja procesată.");

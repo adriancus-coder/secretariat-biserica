@@ -34,6 +34,7 @@ export function PersonForm({
   committeeWarnings,
   officiants = [],
   applicationId,
+  submitLabel = "Salvează",
   din,
   nav,
 }: {
@@ -54,8 +55,10 @@ export function PersonForm({
   committeeWarnings?: string[];
   /** Persons holding an ordained role, suggested for "Oficiat de" (Statut art. 30). */
   officiants?: OfficiantOption[];
-  /** Accepting this membership application: saving also marks it accepted. */
+  /** Accepting this membership application: saving also marks it accepted (or proposes it to the pastor). */
   applicationId?: string;
+  /** "Propune acceptarea" / "Aprobă primirea" for an application. */
+  submitLabel?: string;
   /** The Persoane list the person was opened from (see src/lib/person-nav.ts). */
   din?: string;
   /** Previous / next person of that list (edit form only). */
@@ -305,7 +308,7 @@ export function PersonForm({
           </button>
         ) : null}
         <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Se salvează…" : "Salvează"}
+          {pending ? "Se salvează…" : submitLabel}
         </button>
       </div>
     </form>

@@ -96,6 +96,7 @@ model Church {
   auditLogs       AuditLog[]
   passwordResets  PasswordReset[]
   applications    Application[]
+  personProposals PersonProposal[]
   roles           ChurchRole[]
   roleGroups      RoleGroup[]
   families        Family[]
@@ -161,6 +162,9 @@ model User {
   passkeys            UserPasskey[]
   documentSignatures  DocumentSignature[]
   documentsApproved   Document[]          @relation("DocumentApprovedBy")
+  applicationsProposed Application[]      @relation("ApplicationProposedBy")
+  personProposalsMade  PersonProposal[]   @relation("PersonProposalProposedBy")
+  personProposalsDecided PersonProposal[] @relation("PersonProposalDecidedBy")
   webauthnChallenges  WebAuthnChallenge[]
   churchDocuments     ChurchDocument[]
   personAliases       PersonAlias[]
@@ -325,6 +329,7 @@ model Person {
   headOf         Family?            @relation("FamilyHead")
   signatures     MeetingSignature[]
   aliases        PersonAlias[]
+  proposals      PersonProposal[]
   /// Administrators only (permission `disciplina`).
   disciplinaryMeasures DisciplinaryMeasure[]
   dataUpdateLinks      DataUpdateLink[]
@@ -1180,6 +1185,8 @@ model AuditLog {
 
 enum ApplicationStatus {
   PENDING
+  /// Prepared by the secretary, waiting for the pastor's decision (Statut art. 23 alin. 3).
+  PROPUSA
   ACCEPTED
   REJECTED
 }
@@ -1231,7 +1238,53 @@ model Application {
   personId     String?   @unique
   person       Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
   rejectReason String    @default("")
+  /// The person form prepared by the secretary ("Propune acceptarea"): field → value, replayed on approval.
+  propunere    Json?
+  propusLa     DateTime?
+  propusDeId   String?
+  propusDe     User?     @relation("ApplicationProposedBy", fields: [propusDeId], references: [id], onDelete: SetNull)
 
   @@index([churchId, status, createdAt])
   @@map("applications")
+}
+
+enum PersonProposalKind {
+  REABILITARE
+  EXCLUDERE
+}
+
+enum ProposalStatus {
+  PROPUSA
+  ACCEPTED
+  REJECTED
+}
+
+/// An entry by Reabilitare spirituală or an exit by Excludere saved by a non-pastor while the
+/// church has a pastor: the person form waits here for the pastor's confirmation.
+model PersonProposal {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  kind     PersonProposalKind
+  status   ProposalStatus     @default(PROPUSA)
+  /// The person changed; null when the form adds a new person.
+  personId String?
+  person   Person?            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  /// The name shown in the lists (from the form).
+  nume     String
+  /// The person form (field → value), replayed through savePersonAction on approval.
+  formular Json
+
+  createdAt       DateTime  @default(now())
+  propusDeId      String?
+  propusDe        User?     @relation("PersonProposalProposedBy", fields: [propusDeId], references: [id], onDelete: SetNull)
+  decidedAt       DateTime?
+  decidedById     String?
+  decidedBy       User?     @relation("PersonProposalDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  motivRespingere String    @default("")
+
+  @@index([churchId, status, createdAt])
+  @@index([personId])
+  @@map("person_proposals")
 }

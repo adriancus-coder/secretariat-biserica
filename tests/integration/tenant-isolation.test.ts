@@ -199,6 +199,19 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.consent.delete({ where: { id: k.id } });
   });
 
+  it("pastor proposals (reabilitare / excludere) are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const pr = await a.personProposal.create({ data: { kind: "EXCLUDERE", personId: personA, nume: "Popescu", formular: { nume: "Popescu" } } as never });
+    expect(pr.churchId).toBe(churchA);
+    expect(await b.personProposal.findUnique({ where: { id: pr.id } })).toBeNull();
+    expect(await b.personProposal.count()).toBe(0);
+    expect((await b.personProposal.updateMany({ data: { status: "ACCEPTED" } })).count).toBe(0);
+    expect((await b.personProposal.deleteMany({})).count).toBe(0);
+    expect((await prisma.personProposal.findUniqueOrThrow({ where: { id: pr.id } })).status).toBe("PROPUSA");
+    await a.personProposal.delete({ where: { id: pr.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

@@ -6,7 +6,7 @@ import { AuditTrail } from "@/components/audit-trail";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { ageAt, fromDbDate, todayIso } from "@/lib/dates";
 import { fmt, memberName } from "@/lib/format";
-import { DISCIPLINARY_FORM_LABEL, DISCIPLINARY_STATE_LABEL } from "@/lib/labels";
+import { DISCIPLINARY_FORM_LABEL, DISCIPLINARY_STATE_LABEL, PERSON_PROPOSAL_LABEL, PROPOSAL_STATUS_LABEL } from "@/lib/labels";
 import { openMeasure } from "@/server/discipline";
 import { APARTINATOR_KIND_LABEL, DOCUMENT_TYPE_LABEL, ENTRY_LABEL, EXIT_LABEL, GENDER_LABEL, STATUS_LABEL } from "@/lib/labels";
 import { apartinatorKind } from "@/lib/apartinator";
@@ -49,6 +49,12 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const discipline = permissions.disciplina(ctx.user)
     ? { open: await openMeasure(ctx.db, id), count: await ctx.db.disciplinaryMeasure.count({ where: { personId: id } }) }
     : null;
+
+  // The latest reabilitare / excludere sent to the pastor, while waiting or after a refusal.
+  const proposal =
+    canWrite || permissions.pastor(ctx.user)
+      ? await ctx.db.personProposal.findFirst({ where: { personId: id }, orderBy: { createdAt: "desc" }, select: { id: true, kind: true, status: true, motivRespingere: true } })
+      : null;
 
   const dn = fromDbDate(x.dataNasterii);
   const dm = fromDbDate(x.dataMembru);
@@ -138,6 +144,13 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         ) : null}
       </PageHead>
 
+      {proposal && proposal.status !== "ACCEPTED" ? (
+        <p className="alert mb-3" role="status">
+          {PERSON_PROPOSAL_LABEL[proposal.kind]}: {PROPOSAL_STATUS_LABEL[proposal.status].toLowerCase()}
+          {proposal.status === "REJECTED" && proposal.motivRespingere ? ` — ${proposal.motivRespingere}` : ""}.{" "}
+          <Link href={`/cereri/propuneri/${proposal.id}`}>Vezi propunerea</Link>
+        </p>
+      ) : null}
       {x.inComitet || roles.length ? (
         <div className="mb-3 grid gap-1.5">
           {x.inComitet ? (
