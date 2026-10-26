@@ -58,7 +58,9 @@ describe("paritate cu prototipul: statistici", () => {
           }
           expect(actual.gen, ctx).toEqual(expected.gen);
           expect(actual.bands, ctx).toEqual(expected.bands);
-          expect(actual.fams, ctx).toBe(expected.fams);
+          // Documented deviation (FAMILIES-WITH-MEMBERS, README "Diferențe" 24): only families with a member
+          // count; the prototype counted every family. Together they are the prototype's number.
+          expect(actual.fams + actual.famsFaraMembri, ctx).toBe(expected.fams);
         }
       }
     });
@@ -70,8 +72,9 @@ describe("paritate cu prototipul: statistici", () => {
  * report. The prototype's "Copii ai membrilor sub 18 ani", "- N copii minori", "- N botezați, din care
  * M aparținători" and "- N prieteni …" lines become the aparținători a / b, the baptised non-members,
  * the prieteni and the minors with the members' children, followed by the adults' marital status
- * ("- Adulți: N (căsătoriți X, necăsătoriți Y, necompletat Z)", not in the prototype). Everything else
- * must match exactly.
+ * ("- Adulți: N (căsătoriți X, necăsătoriți Y, necompletat Z)", not in the prototype); "- N familii"
+ * counts only the families with a member (FAMILIES-WITH-MEMBERS; with the others it is the prototype's
+ * number). Everything else must match exactly.
  */
 function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): string {
   const lines = protoText.split("\n");
@@ -90,6 +93,11 @@ function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): st
     `- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`,
     `- Adulți: ${s.adulti.length} (căsătoriți ${s.casatoriti.length}, necăsătoriți ${s.necasatoriti.length}, necompletat ${s.stareCivilaNecompletata.length})`,
   );
+  // FAMILIES-WITH-MEMBERS (README "Diferențe" 24): "- N familii" counts only the families with a member.
+  const fam = lines.findIndex((l) => /^- \d+ familii$/.test(l));
+  expect(fam).toBeGreaterThan(0);
+  expect(Number(lines[fam].slice(2).split(" ")[0])).toBe(s.fams + s.famsFaraMembri);
+  lines[fam] = `- ${s.fams} familii`;
   return lines.join("\n");
 }
 

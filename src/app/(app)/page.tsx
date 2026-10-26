@@ -299,6 +299,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         <Stat value={s.ev.length} label="persoane în evidență" href={cat("toti")} />
         <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} href={cat("membri")} />
         <Stat value={s.fams} label="familii" href="/familii" />
+        {s.famsFaraMembri ? <Stat value={s.famsFaraMembri} label="familii fără membri" href="/familii?filtru=fara-membri" /> : null}
       </div>
       <div className="stats">
         <Stat value={s.botezati.length} label="botezați" href={cat("botezati")} />

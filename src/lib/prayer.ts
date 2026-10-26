@@ -2,6 +2,7 @@ import { addDays, ageAt, dotDateTime } from "./dates";
 import { ANONYMOUS_NAME } from "./anonymous";
 import { compareRo } from "./text";
 import { CHILD_RELATIONS, familyParents, SPOUSE_RELATIONS } from "./kinship";
+import { isActiveMember, isChurchFamily } from "./families";
 
 /**
  * The weekly prayer for families: who is in the rotation, in what order, and the only text shown
@@ -70,9 +71,14 @@ export function isPrayerChild(m: PrayerMember, today: string): boolean {
   return hasChildRelation(m) && (!m.dataNasterii || ageAt(m.dataNasterii, today) < 18);
 }
 
-/** At least one active adult and no objection. */
+/**
+ * In the rotation: a family of the church (isChurchFamily: at least one active member,
+ * FAMILIES-WITH-MEMBERS) or a person without a family who is an active member, with at least one
+ * active adult and no objection.
+ */
 export function inRotation(u: PrayerUnit, today: string): boolean {
-  return !u.optOut && u.members.some((m) => active(m) && adult(m, today));
+  const ofChurch = u.key.startsWith("p:") ? u.members.some(isActiveMember) : isChurchFamily(u.members);
+  return !u.optOut && ofChurch && u.members.some((m) => active(m) && adult(m, today));
 }
 
 /** "Ion", "Ion și Maria", "Ana, Matei și Ioan". */

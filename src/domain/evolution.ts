@@ -100,7 +100,8 @@ export interface Structure {
   byStatus: { key: string; label: string; M: number; F: number; total: number; casatoriti: number; necasatoriti: number }[];
   /** The adults in the record by marital status (the three add up to `adulti`). */
   marital: { adulti: number; casatoriti: number; necasatoriti: number; necompletat: number };
-  families: { count: number; avgSize: number | null; withMinors: number; alone: number; withoutFamily: number };
+  /** Only the families of the church (FAMILIES-WITH-MEMBERS); `withoutMembers` = the others. */
+  families: { count: number; withoutMembers: number; avgSize: number | null; withMinors: number; alone: number; withoutFamily: number };
 }
 
 export function structure(input: CategoryInput): Structure {
@@ -128,6 +129,8 @@ export function structure(input: CategoryInput): Structure {
   const famMembers = new Map<string, PersonRecord[]>();
   for (const p of s.ev) if (p.familyId) famMembers.set(p.familyId, [...(famMembers.get(p.familyId) ?? []), p]);
   const minors = new Set(ctx.ids("copii-minori"));
+  const church = new Set(s.churchFamilies);
+  const famLists = [...famMembers].filter(([id]) => church.has(id)).map(([, l]) => l);
   return {
     pyramid: CATEGORY_AGE_BANDS.map(([min, max]) => ({
       min,
@@ -151,9 +154,10 @@ export function structure(input: CategoryInput): Structure {
     ],
     marital: { adulti: s.adulti.length, casatoriti: s.casatoriti.length, necasatoriti: s.necasatoriti.length, necompletat: s.stareCivilaNecompletata.length },
     families: {
-      count: famMembers.size,
-      avgSize: famMembers.size ? Math.round(([...famMembers.values()].reduce((a, l) => a + l.length, 0) / famMembers.size) * 10) / 10 : null,
-      withMinors: [...famMembers.values()].filter((l) => l.some((p) => minors.has(p.id))).length,
+      count: famLists.length,
+      withoutMembers: famMembers.size - famLists.length,
+      avgSize: famLists.length ? Math.round((famLists.reduce((a, l) => a + l.length, 0) / famLists.length) * 10) / 10 : null,
+      withMinors: famLists.filter((l) => l.some((p) => minors.has(p.id))).length,
       alone: ctx.ids("singuri-in-familie")!.length,
       withoutFamily: ctx.ids("fara-familie")!.length,
     },

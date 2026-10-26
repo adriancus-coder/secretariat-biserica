@@ -1,6 +1,8 @@
 import { ageAt, inYear } from "@/lib/dates";
 import { BELIEVER_RELATIONS, EVENT_TYPE_FUNERAL, EVENT_TYPE_WEDDING } from "@/lib/labels";
 import type { EventRecord, PersonRecord } from "./types";
+import { ANONYMOUS_NAME } from "@/lib/anonymous";
+import { churchFamilyIds } from "@/lib/families";
 
 /**
  * Statistica registrului — portarea funcției `stats(year)` din prototip.
@@ -62,8 +64,12 @@ export interface Stats {
   inmorm: EventRecord[];
   gen: { M: number; F: number };
   bands: [label: string, count: number][];
-  /** Number of distinct families (family records) among the persons in the record. */
+  /** The families of the church (FAMILIES-WITH-MEMBERS: at least one member at the reference date) among the persons in the record. */
   fams: number;
+  /** Their ids, for the statistics that look at the families (src/domain/evolution.ts). */
+  churchFamilies: string[];
+  /** The other families of the persons in the record (only friends, aparținători, baptised non-members). */
+  famsFaraMembri: number;
   /**
    * Marital status (not in the prototype): the adults in the record (18+ at endDate, no birth date =
    * adult; Fost membru only while still a member then), split into married (a marriage date up to
@@ -141,7 +147,11 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
       return a !== null && a >= min && a <= max;
     }).length,
   ]);
-  const fams = new Set(ev.map((p) => p.familyId).filter(Boolean)).size;
+  // FAMILIES-WITH-MEMBERS: only families with a member at the reference date count (isChurchFamily).
+  const membriIds = new Set(membri.map((p) => p.id));
+  const churchFamilies = [...churchFamilyIds(ev, (p) => membriIds.has(p.id) && p.nume !== ANONYMOUS_NAME)];
+  const fams = churchFamilies.length;
+  const famsFaraMembri = new Set(ev.map((p) => p.familyId).filter(Boolean)).size - fams;
 
   const adulti = ev.filter((p) => !minor(p) && (p.statut !== "FOST_MEMBRU" || (p.dataIesire !== null && p.dataIesire > endDate)));
   const casatoriti = adulti.filter((p) => p.dataCasatoriei && p.dataCasatoriei <= endDate);
@@ -173,6 +183,8 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
     gen,
     bands,
     fams,
+    churchFamilies,
+    famsFaraMembri,
     adulti,
     casatoriti,
     necasatoriti,

@@ -50,6 +50,15 @@ describe("weekly prayer", () => {
     expect(prayerRotation([popescu, minorsOnly, gone, objected, single], TODAY).map((r) => r.key)).toEqual(["p:solo", "f:pop"]);
   });
 
+  it("only families of the church: a member is needed; a person without a family only as an active member (FAMILIES-WITH-MEMBERS)", () => {
+    const friends = unit("f:friends", [m("f1", "Ion", { nume: "Barbu", statut: "PRIETEN" }), m("f2", "Ana", { nume: "Barbu", statut: "PRIETEN" })]);
+    const withApart = unit("f:mixed", [m("x1", "Dan", { nume: "Dinu" }), m("x2", "Eva", { nume: "Dinu", statut: "APARTINATOR" })]);
+    const memberLeft = unit("f:left", [m("l1", "Ion", { nume: "Lupu", dataIesire: "2025-01-01" }), m("l2", "Ana", { nume: "Lupu", statut: "PRIETEN" })]);
+    const soloMember = unit("p:member", [m("s1", "Elena", { nume: "Albu" })]);
+    const soloFriend = unit("p:friend", [m("s2", "Radu", { nume: "Rusu", statut: "PRIETEN" })]);
+    expect(prayerRotation([friends, withApart, memberLeft, soloMember, soloFriend], TODAY).map((r) => r.key)).toEqual(["p:member", "f:mixed"]);
+  });
+
   it("orders never announced first, then the oldest announcement, then alphabetically", () => {
     const a = unit("f:a", [m("a", "A", { nume: "Zamfir" })], { lastWeek: "2026-09-07" });
     const b = unit("f:b", [m("b", "B", { nume: "Barbu" })], { lastWeek: "2026-10-05" });

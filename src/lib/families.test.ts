@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canBeHead, defaultFamilyName, pickHead, type HeadCandidate } from "./families";
+import { ANONYMOUS_NAME } from "./anonymous";
+import { canBeHead, churchFamilyIds, defaultFamilyName, isChurchFamily, pickHead, type HeadCandidate } from "./families";
 
 const today = "2026-10-25";
 const p = (id: string, x: Partial<HeadCandidate> = {}): HeadCandidate => ({
@@ -48,5 +49,30 @@ describe("defaultFamilyName", () => {
   it("uses the head's first name and surname", () => {
     expect(defaultFamilyName({ nume: "Mureșan", prenume: "Daniel" })).toBe("Fam. Daniel Mureșan");
     expect(defaultFamilyName({ nume: "Pop", prenume: "" })).toBe("Fam. Pop");
+  });
+});
+
+describe("families of the church (FAMILIES-WITH-MEMBERS)", () => {
+  const m = (statut: string, dataIesire: string | null = null, nume = "Pop") => ({ statut, dataIesire, nume });
+  it("a member and an aparținător → a family of the church", () => {
+    expect(isChurchFamily([m("MEMBRU"), m("APARTINATOR")])).toBe(true);
+  });
+  it("only friends, aparținători or baptised non-members → not", () => {
+    expect(isChurchFamily([m("PRIETEN"), m("PRIETEN")])).toBe(false);
+    expect(isChurchFamily([m("APARTINATOR"), m("BOTEZAT_FARA_TRANSFER")])).toBe(false);
+  });
+  it("a member who left (exit date), a former member or an anonymised member → not", () => {
+    expect(isChurchFamily([m("MEMBRU", "2024-05-01"), m("PRIETEN")])).toBe(false);
+    expect(isChurchFamily([m("FOST_MEMBRU")])).toBe(false);
+    expect(isChurchFamily([m("MEMBRU", null, ANONYMOUS_NAME)])).toBe(false);
+  });
+  it("churchFamilyIds: the ids of the families with a member", () => {
+    const persons = [
+      { familyId: "a", ...m("MEMBRU") },
+      { familyId: "a", ...m("PRIETEN") },
+      { familyId: "b", ...m("PRIETEN") },
+      { familyId: null, ...m("MEMBRU") },
+    ];
+    expect([...churchFamilyIds(persons)]).toEqual(["a"]);
   });
 });

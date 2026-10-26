@@ -41,7 +41,7 @@ describe("statistics page", () => {
     const inRecord = categoryContext(input).stats.ev;
     expect(st.pyramid.reduce((a, b) => a + b.M + b.F, 0) + st.withoutGender).toBe(inRecord.filter((p) => p.dataNasterii).length);
     expect(st.withoutBirthDate).toBe(1);
-    expect(st.families).toEqual({ count: 2, avgSize: 2, withMinors: 1, alone: 1, withoutFamily: 1 });
+    expect(st.families).toEqual({ count: 2, withoutMembers: 0, avgSize: 2, withMinors: 1, alone: 1, withoutFamily: 1 });
     expect(st.ageMedian).toBe(st.ageAvg !== null ? st.ageMedian : null);
   });
 });

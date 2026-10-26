@@ -28,7 +28,7 @@ const report: StatisticsReport = {
     bands: [{ min: 0, max: 13, n: 5 }, { min: 65, max: 200, n: 1 }],
     byStatus: [{ key: "membri", label: "Membri", M: 20, F: 21, total: 41, casatoriti: 30, necasatoriti: 5 }],
     marital: { adulti: 50, casatoriti: 30, necasatoriti: 8, necompletat: 12 },
-    families: { count: 10, avgSize: 3.2, withMinors: 4, alone: 2, withoutFamily: 5 },
+    families: { count: 10, withoutMembers: 1, avgSize: 3.2, withMinors: 4, alone: 2, withoutFamily: 5 },
   },
 };
 
@@ -50,7 +50,8 @@ describe("statistics report", () => {
     expect(evo.rows[0].slice(0, 3)).toEqual([2025, 41, 2]);
     expect(months.rows[2]).toEqual(["martie", 3, 0]);
     expect(ages.rows).toEqual([["0–13", 2, 3, 5], ["65+", 1, 0, 1]]);
-    expect(fam.rows[1]).toEqual(["Persoane pe familie, în medie", "3,2"]);
+    expect(fam.rows[1]).toEqual(["Familii fără membri", 1]);
+    expect(fam.rows[2]).toEqual(["Persoane pe familie, în medie", "3,2"]);
   });
 
   it("prints the charts as tables in printToText, with the missing birth dates", () => {

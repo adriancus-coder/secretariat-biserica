@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { formatAddress } from "@/lib/address";
 import { ageAt, fromDbDate } from "@/lib/dates";
+import { isChurchFamily } from "@/lib/families";
 import { memberName } from "@/lib/format";
 import { STATUS_LABEL_SHORT } from "@/lib/labels";
 import { compareRo, searchTerms } from "@/lib/text";
@@ -9,8 +10,16 @@ import type { Ctx } from "../session";
 
 export const FAMILIES_PAGE_SIZE = 30;
 
-/** Families matching the search (family name, or the name / phone of a member), by name. */
-export async function listFamilyRecords(ctx: Ctx, { q, page }: { q: string; page: number }) {
+/** FAMILIES-WITH-MEMBERS: the Familii list shows the families of the church by default (isChurchFamily). */
+export const FAMILY_FILTERS = ["biserica", "fara-membri", "toate"] as const;
+export type FamilyFilter = (typeof FAMILY_FILTERS)[number];
+export const FAMILY_FILTER_LABEL: Record<FamilyFilter, string> = { biserica: "Familiile bisericii", "fara-membri": "Fără membri", toate: "Toate" };
+
+/**
+ * Families matching the search (family name, or the name / phone of a member) within the chosen filter,
+ * by name; `counts` gives each filter's number for the same search.
+ */
+export async function listFamilyRecords(ctx: Ctx, { q, page, filter = "biserica" }: { q: string; page: number; filter?: FamilyFilter }) {
   const terms = searchTerms(q);
   const where: Prisma.FamilyWhereInput = terms.length
     ? {
@@ -29,10 +38,14 @@ export async function listFamilyRecords(ctx: Ctx, { q, page }: { q: string; page
       localitate: true,
       head: { select: { nume: true, prenume: true, sortKey: true } },
       _count: { select: { members: true } },
+      members: { select: { statut: true, dataIesire: true, nume: true } },
     },
   });
+  const all = rows.map((f) => ({ ...f, church: isChurchFamily(f.members) }));
+  const counts: Record<FamilyFilter, number> = { biserica: all.filter((f) => f.church).length, "fara-membri": all.filter((f) => !f.church).length, toate: all.length };
+  const chosen = filter === "toate" ? all : all.filter((f) => f.church === (filter === "biserica"));
   // By the head's surname and first name (Romanian alphabet), like the persons list.
-  const sorted = rows.sort((a, b) => (a.head?.sortKey ?? "~").localeCompare(b.head?.sortKey ?? "~") || compareRo(a.nume, b.nume));
+  const sorted = chosen.sort((a, b) => (a.head?.sortKey ?? "~").localeCompare(b.head?.sortKey ?? "~") || compareRo(a.nume, b.nume));
   const total = sorted.length;
   const pages = Math.max(1, Math.ceil(total / FAMILIES_PAGE_SIZE));
   const current = Math.min(Math.max(1, page), pages);
@@ -43,7 +56,9 @@ export async function listFamilyRecords(ctx: Ctx, { q, page }: { q: string; page
       adresa: formatAddress(f),
       head: f.head ? memberName(f.head) : "",
       count: f._count.members,
+      church: f.church,
     })),
+    counts,
     total,
     page: current,
     pages,

@@ -417,6 +417,12 @@ corecții deliberate:
     siguranță JSON păstrează cuvântul prototipului, „Prieten” (ca „Reprimire”); importul acceptă și
     „Prieten al casei Domnului” și eticheta nouă. Exportul persoanelor (Excel / CSV / PDF) are eticheta nouă.
     Rândul din darea de seamă rămâne „Prieteni ai casei Domnului (nebotezați): N” (diferența 18).
+24. **Familiile bisericii:** se numără doar familiile cu cel puțin un membru (statut Membru la data
+    situației, fără ieșire, neanonimizat; `isChurchFamily`); prototipul număra toate familiile. Rândul
+    „- N familii” din darea de seamă, cardurile de pe Acasă și din Statistici și tabelul „Familii” (PDF,
+    Excel) au doar familiile bisericii; lângă ele, „familii fără membri” (când sunt). Rugăciunea
+    săptămânală ia doar familiile bisericii și persoanele fără familie care sunt membri. Lista Familii
+    arată implicit familiile bisericii („Fără membri” și „Toate” ca filtre).
 
 ## Atribuiri
 

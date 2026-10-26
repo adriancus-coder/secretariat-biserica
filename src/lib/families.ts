@@ -4,7 +4,31 @@
  * "Recalculează capii de familie" repairs for families created automatically.
  */
 import { ageAt } from "./dates";
+import { ANONYMOUS_NAME } from "./anonymous";
 import { HEAD_OF_FAMILY, type PersonStatusKey } from "./labels";
+
+/**
+ * FAMILIES-WITH-MEMBERS: a "family of the church" has at least one active member (statut MEMBRU, no
+ * exit date, not anonymised). Families of only friends, aparținători or baptised non-members stay in
+ * the register but are not counted, not prayed for and not listed by default. The one rule, used by
+ * the statistics, the weekly prayer and the Familii list.
+ */
+export interface FamilyMemberStatus {
+  statut: string;
+  dataIesire: string | Date | null;
+  nume: string;
+}
+export const isActiveMember = (m: FamilyMemberStatus): boolean => m.statut === "MEMBRU" && !m.dataIesire && m.nume !== ANONYMOUS_NAME;
+/** `active` replaces the rule for "member today" when the statistics look at another date. */
+export function isChurchFamily<T>(members: readonly T[], active: (m: T) => boolean = isActiveMember as unknown as (m: T) => boolean): boolean {
+  return members.some(active);
+}
+/** The ids of the families of the church among `persons` (each with its familyId). */
+export function churchFamilyIds<T extends { familyId: string | null }>(persons: readonly T[], active: (m: T) => boolean = isActiveMember as unknown as (m: T) => boolean): Set<string> {
+  const byFamily = new Map<string, T[]>();
+  for (const p of persons) if (p.familyId) byFamily.set(p.familyId, [...(byFamily.get(p.familyId) ?? []), p]);
+  return new Set([...byFamily].filter(([, ms]) => isChurchFamily(ms, active)).map(([id]) => id));
+}
 
 export interface HeadCandidate {
   id: string;

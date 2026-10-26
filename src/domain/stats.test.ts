@@ -87,7 +87,9 @@ describe("computeStats", () => {
     expect(names(s.prieteni)).toEqual(["Barbu Petru"]);
     expect(names(s.botezati)).toEqual(["Popescu Ion", "Popescu Maria", "Ionescu Elena", "Munteanu Daniel"]);
     expect(s.gen).toEqual({ M: 4, F: 4 });
-    expect(s.fams).toBe(3); // Popescu, Ionescu, Munteanu
+    // FAMILIES-WITH-MEMBERS: Ionescu has no member (Elena is baptised without membership, Rut an aparținător).
+    expect(s.fams).toBe(2); // Popescu, Munteanu
+    expect(s.famsFaraMembri).toBe(1); // Ionescu
     expect(s.bands).toEqual([
       ["0–17", 2],
       ["18–30", 2],

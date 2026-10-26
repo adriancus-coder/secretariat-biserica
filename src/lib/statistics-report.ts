@@ -120,7 +120,8 @@ export function statisticsTableDefs(d: StatisticsReport): StatTableDef[] {
       name: "Familii",
       columns: [col("indicator", "Indicator", "text"), col("valoare", "Valoare")],
       rows: [
-        ["Familii", st.families.count, st.families.count],
+        ["Familii ale bisericii (cu cel puțin un membru)", st.families.count, st.families.count],
+        ["Familii fără membri", st.families.withoutMembers, st.families.withoutMembers],
         ["Persoane pe familie, în medie", dec(st.families.avgSize), st.families.avgSize],
         ["Familii cu copii minori", st.families.withMinors, st.families.withMinors],
         ["Persoane singure în familie", st.families.alone, st.families.alone],

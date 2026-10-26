@@ -38,7 +38,7 @@ describe("darea de seamă anuală", () => {
         "- Copii minori: 1 (din care copii ai membrilor: 1)",
         // Not in the prototype: the adults' marital status (the three add up to the adults).
         "- Adulți: 6 (căsătoriți 2, necăsătoriți 1, necompletat 3)",
-        "- 3 familii",
+        "- 2 familii",
         "Total persoane în evidență: 7",
         "",
         "În anul 2025 au avut loc: o binecuvântare de copil (Popescu Andrei); un botez nou-testamentar (Munteanu Daniel); o nuntă (Munteanu–Stan); o înmormântare (Ana Avram).",

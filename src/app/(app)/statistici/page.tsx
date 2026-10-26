@@ -232,6 +232,12 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
             <b>{st.families.count}</b>
             <span>familii</span>
           </Link>
+          {st.families.withoutMembers ? (
+            <Link href="/familii?filtru=fara-membri" className="stat stat-link">
+              <b>{st.families.withoutMembers}</b>
+              <span>familii fără membri</span>
+            </Link>
+          ) : null}
           <div className="stat">
             <b>{num(st.families.avgSize)}</b>
             <span>persoane pe familie, în medie</span>
