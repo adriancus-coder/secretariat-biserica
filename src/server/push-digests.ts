@@ -1,6 +1,7 @@
 import "server-only";
 import { mandateNotice } from "@/lib/committee";
-import { todayIso, toDbDate } from "@/lib/dates";
+import { appTimeZone, fromDbDate, todayIso, toDbDate } from "@/lib/dates";
+import { weekStartOf } from "@/lib/prayer";
 import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assembly";
 import { prisma } from "./db";
 import { logError } from "./log";
@@ -9,10 +10,16 @@ import { tenantDb } from "./tenant-db";
 
 const DAY = 24 * 3600_000;
 
+/** The hour (0–23) in the app's time zone. */
+function localHour(now: Date): number {
+  return Number(new Intl.DateTimeFormat("en-GB", { timeZone: appTimeZone(), hour: "2-digit", hourCycle: "h23" }).format(now));
+}
+
 /**
  * The digests, run every 15 minutes by src/instrumentation.ts: once a day "new campaign answers to
  * check" to write roles (only when some arrived since the last digest), once a week the General
- * Assembly / committee mandate reminder (only when Acasă would show one). Each church's run is
+ * Assembly / committee mandate reminder (only when Acasă would show one), on Monday morning "the family
+ * of the week is ready" to the users with the `rugaciune` permission. Each church's run is
  * claimed by moving its timestamp first, so a restart or a second instance never sends it twice.
  */
 export async function runPushDigests(now = new Date()): Promise<void> {
@@ -20,11 +27,18 @@ export async function runPushDigests(now = new Date()): Promise<void> {
   try {
     const churches = await prisma.church.findMany({
       where: { users: { some: { active: true, pushSubscriptions: { some: {} } } } },
-      select: { id: true, pushDailyAt: true, pushWeeklyAt: true, comitetAlesLa: true, comitetPrelungit: true, tipuriAG: true },
+      select: { id: true, pushDailyAt: true, pushWeeklyAt: true, pushPrayerWeek: true, comitetAlesLa: true, comitetPrelungit: true, tipuriAG: true },
     });
     const today = todayIso();
+    const monday = weekStartOf(today);
+    // Monday from 08:00 (the church's time zone): "Familia săptămânii este pregătită." once per week.
+    const prayerTime = today === monday && localHour(now) >= 8;
     for (const c of churches) {
       const db = tenantDb(c.id);
+      if (prayerTime && fromDbDate(c.pushPrayerWeek) !== monday) {
+        const claim = await prisma.church.updateMany({ where: { id: c.id, pushPrayerWeek: c.pushPrayerWeek }, data: { pushPrayerWeek: toDbDate(monday) } });
+        if (claim.count === 1) await notifyChurch(c.id, "PRAYER");
+      }
       if (!c.pushDailyAt || now.getTime() - c.pushDailyAt.getTime() >= DAY) {
         const claim = await prisma.church.updateMany({ where: { id: c.id, pushDailyAt: c.pushDailyAt }, data: { pushDailyAt: now } });
         const since = c.pushDailyAt ?? new Date(now.getTime() - DAY);

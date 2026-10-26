@@ -3,16 +3,19 @@ import { deviceLabel, PUSH_MESSAGE, pushPayload, PushCoalescer, pushTypesFor } f
 
 describe("push notifications", () => {
   it("each role gets only the work it can act on", () => {
-    expect(pushTypesFor({ role: "SECRETAR", isPastor: false })).toEqual(["DOCUMENT_DECIDED", "APPLICATION", "CAMPAIGN", "REMINDER"]);
+    expect(pushTypesFor({ role: "SECRETAR", isPastor: false })).toEqual(["DOCUMENT_DECIDED", "APPLICATION", "CAMPAIGN", "REMINDER", "PRAYER"]);
     expect(pushTypesFor({ role: "VIZUALIZARE", isPastor: true })).toEqual(["DOCUMENT_SIGN", "PROPOSAL", "REMINDER"]);
     expect(pushTypesFor({ role: "VIZUALIZARE", isPastor: false })).toEqual([]);
-    expect(pushTypesFor({ role: "ADMIN", isPastor: true })).toHaveLength(6);
+    expect(pushTypesFor({ role: "ADMIN", isPastor: true })).toHaveLength(7);
+    // "Rugăciune": only the Monday notice, never register work (the pastor flag does not count for it).
+    expect(pushTypesFor({ role: "RUGACIUNE", isPastor: true })).toEqual(["PRAYER"]);
   });
 
   it("the payload is a generic title, an address inside the app and a count", () => {
     const p = JSON.parse(pushPayload("DOCUMENT_SIGN", 3));
     expect(p).toEqual({ title: "Un document așteaptă semnătura dumneavoastră", url: "/documente/de-semnat", tag: "DOCUMENT_SIGN", badge: 3 });
     for (const m of Object.values(PUSH_MESSAGE)) expect(m.url.startsWith("/")).toBe(true);
+    expect(JSON.parse(pushPayload("PRAYER"))).toEqual({ title: "Familia săptămânii este pregătită.", url: "/rugaciune", tag: "PRAYER" });
   });
 
   it("coalesces to one notification per user and type in 5 minutes", () => {
