@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AGE_GAP_ERROR, familyLinks, kinGraph, linkViolations, SAME_FAMILY_ERROR, SIBLINGS_ERROR, neamTree, neamuri, parentLinkError, relativeName, relatives, type KinLink, type KinPerson } from "./kinship";
 
-const TODAY = "2026-10-28";
 const p = (id: string, over: Partial<KinPerson> = {}): KinPerson => ({ id, nume: "Ciobanu", prenume: id, gen: null, familyId: null, dataNasterii: null, active: true, statut: "MEMBRU", ...over });
 const link = (parentId: string, childId: string): KinLink => ({ parentId, childId });
 

@@ -27,6 +27,8 @@ export const TENANT_MODELS = new Set([
   "PastoralNote",
   "PrayerWeek",
   "PersonParent",
+  "KinExternalParent",
+  "KinProposalIgnore",
 ]);
 
 const WHERE_OPERATIONS = new Set([

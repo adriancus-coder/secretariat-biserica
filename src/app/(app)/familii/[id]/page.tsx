@@ -62,7 +62,7 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
       {neam ? (
         <p className="mb-3">
           Familia face parte din{" "}
-          <Link href={`/statistici/neamuri/${neam.id}`} className="underline">
+          <Link href={`/statistici/neamuri/${encodeURIComponent(neam.id)}`} className="underline">
             {neam.name.replace(/^Neamul/, "neamul")}
           </Link>
           .

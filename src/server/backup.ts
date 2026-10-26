@@ -3,7 +3,8 @@ import type { RegisterFields } from "@/lib/register-backup";
 import type { BDiscipline } from "@/lib/discipline-backup";
 import type { BCampaign, BConsent } from "@/lib/consents-backup";
 import type { BAlias } from "@/lib/aliases-backup";
-import type { BKinship } from "@/lib/kinship-backup";
+import type { BExternalParent, BKinship } from "@/lib/kinship-backup";
+import { externalKey } from "@/lib/kinship-parents";
 import { parentLinkError } from "@/lib/kinship";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
@@ -422,9 +423,13 @@ export async function loadFamilies(ctx: Ctx): Promise<{ families: BFamily[]; fam
   return { families: rows.map((f) => ({ id: f.id, nume: f.nume, capId: f.headId, adresa: f.adresa, codPostal: f.codPostal, localitate: f.localitate, note: f.note, automata: f.autoCreated })), familyOf };
 }
 
-/** Parent-child links of the register, for the `rudenii` collection (KINSHIP). */
-export async function loadKinshipLinks(ctx: Ctx): Promise<{ parentId: string; childId: string; source: string }[]> {
-  return ctx.db.personParent.findMany({ orderBy: { createdAt: "asc" }, select: { parentId: true, childId: true, source: true } });
+/** Parent-child links of the register and the parents outside it, for `rudenii` and `parintiExterni` (KINSHIP). */
+export async function loadKinshipLinks(ctx: Ctx) {
+  const [links, externals] = await Promise.all([
+    ctx.db.personParent.findMany({ orderBy: { createdAt: "asc" }, select: { parentId: true, externalParentId: true, childId: true, source: true } }),
+    ctx.db.kinExternalParent.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, nume: true, gen: true } }),
+  ]);
+  return { links, externals };
 }
 
 /** Other forms of persons' names, for the `aliases` collection. */
@@ -458,6 +463,8 @@ export interface ImportExtras {
   aliases?: BAlias[] | null;
   /** Parent-child links (see parseKinshipJson); null = not in the file. */
   kinship?: BKinship[] | null;
+  /** Parents outside the register (see parseExternalParentsJson); null = not in the file. */
+  externalParents?: BExternalParent[] | null;
   /** Disciplinary measures (administrators' files only, see parseDisciplineJson); null = not in the file. */
   discipline?: BDiscipline[] | null;
   /** Data-update campaigns and consents (see src/lib/consents-backup.ts); null = not in the file. */
@@ -1138,21 +1145,33 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       // Parent-child links between the imported persons, under the same rules as in the app (a link
       // that would make a third parent or a cycle is skipped with a warning).
       if (extras.kinship) {
-        const links = await tx.personParent.findMany({ select: { parentId: true, childId: true } });
+        const links = (await tx.personParent.findMany({ select: { parentId: true, externalParentId: true, childId: true } })).map((l) => ({
+          parentId: l.parentId ?? externalKey(l.externalParentId!),
+          childId: l.childId,
+        }));
         const births = new Map((await tx.person.findMany({ select: { id: true, dataNasterii: true } })).map((p) => [p.id, fromDbDate(p.dataNasterii)]));
+        // Parents outside the register: always new rows (their file ids are never reused).
+        const extIds = new Map<string, string>();
+        for (const e of extras.externalParents ?? []) {
+          if (!extras.kinship.some((k) => k.parinteExtern === e.id)) continue;
+          extIds.set(e.id, (await tx.kinExternalParent.create({ data: { nume: e.nume, gen: e.gen, createdById: ctx.user.id } as never })).id);
+        }
         let skipped = 0;
         for (const k of extras.kinship) {
-          const parentId = pid(k.parinte);
+          const parentId = k.parinte ? pid(k.parinte) : null;
+          const extId = k.parinteExtern ? (extIds.get(k.parinteExtern) ?? null) : null;
           const childId = pid(k.copil);
-          if (!parentId || !childId) continue;
-          if (links.some((l) => l.parentId === parentId && l.childId === childId)) continue;
-          if (parentLinkError(links, parentId, childId, (x) => births.get(x))) {
+          const parentKey = parentId ?? (extId ? externalKey(extId) : null);
+          if (!parentKey || !childId) continue;
+          if (links.some((l) => l.parentId === parentKey && l.childId === childId)) continue;
+          if (parentLinkError(links, parentKey, childId, (x) => births.get(x))) {
             skipped++;
             continue;
           }
-          await tx.personParent.create({ data: { parentId, childId, source: k.sursa, createdById: ctx.user.id } as never });
-          links.push({ parentId, childId });
+          await tx.personParent.create({ data: { ...(parentId ? { parentId } : { externalParentId: extId }), childId, source: k.sursa, createdById: ctx.user.id } as never });
+          links.push({ parentId: parentKey, childId });
         }
+        await tx.kinExternalParent.deleteMany({ where: { children: { none: {} } } });
         if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (încălcau regulile: frați, diferență de vârstă, doi părinți sau un cerc).`);
       }
 

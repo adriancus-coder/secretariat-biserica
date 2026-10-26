@@ -178,6 +178,8 @@ export interface KinPerson {
   active: boolean;
   /** Heads a family (used to name a neam when two ancestors tie). */
   isHead?: boolean;
+  /** A parent outside the register (KINSHIP-STATUTE-PARENTS): the name as written, counted nowhere but in the tree. */
+  external?: boolean;
   statut?: string;
 }
 

@@ -3,7 +3,7 @@ import { permissions, type Who } from "@/lib/permissions";
 import { tenantDb } from "../tenant-db";
 import { addressReviewWhere } from "./address-review";
 import { familiesToReview } from "./family-review";
-import { manualLinksToReview } from "../kinship";
+import { kinProposals, manualLinksToReview } from "../kinship";
 
 /**
  * Pending items per section, for the navigation badges: write roles see applications and data
@@ -19,7 +19,7 @@ export async function pendingBadges(user: { churchId: string } & Exclude<Who, st
     canWrite ? db.dataUpdateSubmission.count({ where: { status: "PENDING" } }) : 0,
     canWrite ? db.person.count({ where: addressReviewWhere }) : 0,
     canWrite ? familiesToReview(db).then((f) => f.length) : 0,
-    canWrite ? manualLinksToReview(db).then((l) => l.length) : 0,
+    canWrite ? Promise.all([manualLinksToReview(db), kinProposals(db)]).then(([l, p]) => l.length + p.length) : 0,
     isPastor ? db.document.count({ where: { stare: "DE_SEMNAT" } }) : 0,
     isPastor ? db.application.count({ where: { status: "PROPUSA" } }) : 0,
     isPastor ? db.personProposal.count({ where: { status: "PROPUSA" } }) : 0,

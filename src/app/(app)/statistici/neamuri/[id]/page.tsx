@@ -5,6 +5,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { neamTree, type KinGraph, type TreeNode } from "@/lib/kinship";
 import { permissions } from "@/lib/permissions";
 import { idSchema } from "@/lib/validation";
+import { EXTERNAL_PREFIX } from "@/lib/kinship-parents";
 import { loadKinship } from "@/server/kinship";
 import { requireCtx } from "@/server/session";
 
@@ -13,6 +14,12 @@ export const metadata: Metadata = { title: "Neam" };
 /** One person of the tree: a link with the family; inactive persons only for write roles, marked. */
 function Who({ g, id, families, full }: { g: KinGraph; id: string; families: Map<string, string>; full: boolean }) {
   const p = g.person.get(id)!;
+  if (p.external)
+    return (
+      <span>
+        {p.nume} <span className="tag ml-1">nu e în registru</span>
+      </span>
+    );
   if (!p.active && !full) return <span className="hint">persoană care nu mai este în evidență</span>;
   return (
     <span>
@@ -49,8 +56,9 @@ function Branch({ node, g, families, full }: { node: TreeNode; g: KinGraph; fami
 /** A neam as an indented tree, generation by generation (phones first, no graphics library). */
 export default async function NeamPage({ params }: PageProps<"/statistici/neamuri/[id]">) {
   const ctx = await requireCtx();
-  const { id } = await params;
-  if (!idSchema.safeParse(id).success) notFound();
+  // The neam's id is its root: a person, or a parent outside the register ("x:<id>").
+  const id = decodeURIComponent((await params).id);
+  if (!idSchema.safeParse(id.startsWith(EXTERNAL_PREFIX) ? id.slice(EXTERNAL_PREFIX.length) : id).success) notFound();
   const kin = await loadKinship(ctx.db);
   const neam = kin.neamuri.find((n) => n.id === id);
   if (!neam) notFound();

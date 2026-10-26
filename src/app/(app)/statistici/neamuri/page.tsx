@@ -35,7 +35,7 @@ export default async function NeamuriPage() {
               key: r.key,
               sort: r.sort,
               cells: [
-                <Link key="n" href={`/statistici/neamuri/${r.neam.id}`}>
+                <Link key="n" href={`/statistici/neamuri/${encodeURIComponent(r.neam.id)}`}>
                   {r.neam.name}
                 </Link>,
                 r.neam.persons,

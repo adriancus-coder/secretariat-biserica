@@ -19,6 +19,7 @@ import { anonymizePerson } from "../anonymize";
 import { createFamilyFor, markEdited, settleFamily } from "../families";
 import { syncRoleGroups } from "../group-sync";
 import { assertPersonRoles, personRolesAudit, writePersonRoles } from "../person-roles";
+import { reconcileNameLinks } from "../kinship";
 import { findDuplicatePerson } from "../queries/applications";
 import { getChurch } from "../queries/church";
 import { parseListSpec, personNeighbors } from "../queries/persons";
@@ -182,6 +183,8 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         }
         // Groups linked to a role held before or after follow (also when the person left the register).
         await syncRoleGroups(tx, ctx.user, { roleIds: await writePersonRoles(tx, id, roles) });
+        // KINSHIP-STATUTE-PARENTS: a link confirmed from the parents' names goes when the file no longer carries that name.
+        const nameLinks = await reconcileNameLinks(tx as never, id);
         await writeAudit(tx, ctx.user, {
           entity: "PERSON",
           entityId: id,
@@ -190,7 +193,9 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
           fields: PERSON_AUDIT_FIELDS,
           before: { ...before, ...extrasBefore },
           after: { ...after, ...(await auditExtras(tx, id)) },
-          ...(proposalId ? { extra: { sursa: "confirmată de pastor" } } : {}),
+          ...(proposalId || nameLinks
+            ? { extra: { ...(proposalId ? { sursa: "confirmată de pastor" } : {}), ...(nameLinks ? { rudenie: `${nameLinks} legături după numele părinților scoase (numele s-a schimbat)` } : {}) } }
+            : {}),
         });
         if (proposalId) await settleProposal(tx, ctx, proposalId, id);
         return id;

@@ -2559,6 +2559,24 @@
   .picker-row:hover {
     background: var(--panel);
   }
+  /* A person the kinship rules refuse: shown with the reason, cannot be picked. */
+  .picker-row:disabled {
+    cursor: default;
+    color: var(--ink-3);
+  }
+  .picker-row:disabled:hover {
+    background: transparent;
+  }
+  /* De verificat → kinship rows: the buttons wrap under the text on phones. */
+  .kin-review-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .kin-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
   .picker-row .tick {
     flex: 0 0 18px;
     display: inline-flex;

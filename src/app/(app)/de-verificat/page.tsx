@@ -8,7 +8,8 @@ import { NameRow } from "@/components/ui/name-row";
 import type { DataUpdateProposal } from "@/lib/schemas/data-update";
 import { ADDRESS_REVIEW_REASON, addressReviewWhere } from "@/server/queries/address-review";
 import { FAMILY_REVIEW_TITLE, familiesToReview } from "@/server/queries/family-review";
-import { manualLinksToReview } from "@/server/kinship";
+import { kinProposals, manualLinksToReview } from "@/server/kinship";
+import { KinReview } from "./kin-review";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "De verificat" };
@@ -22,11 +23,12 @@ export default async function ReviewQueuePage() {
     include: { campaign: { select: { nume: true } }, person: { select: { nume: true, prenume: true } } },
   });
   const ADDRESS_LIMIT = 200;
-  const [addressTotal, addresses, families, kinLinks] = await Promise.all([
+  const [addressTotal, addresses, families, kinLinks, proposals] = await Promise.all([
     ctx.db.person.count({ where: addressReviewWhere }),
     ctx.db.person.findMany({ where: addressReviewWhere, orderBy: { sortKey: "asc" }, take: ADDRESS_LIMIT, select: { id: true, nume: true, prenume: true, adresa: true, localitate: true } }),
     familiesToReview(ctx.db),
     manualLinksToReview(ctx.db),
+    kinProposals(ctx.db),
   ]);
   return (
     <>
@@ -51,7 +53,7 @@ export default async function ReviewQueuePage() {
           })}
         </ul>
       ) : (
-        addresses.length || families.length || kinLinks.length ? null : <EmptyState title="Nimic de verificat" />
+        addresses.length || families.length || kinLinks.length || proposals.length ? null : <EmptyState title="Nimic de verificat" />
       )}
       {addresses.length ? (
         <section className="mt-6" aria-labelledby="adrese-de-verificat">
@@ -74,31 +76,7 @@ export default async function ReviewQueuePage() {
           {addressTotal > addresses.length ? <p className="hint mt-2">Primele {addresses.length} din {addressTotal}.</p> : null}
         </section>
       ) : null}
-      {kinLinks.length ? (
-        <section className="mt-6" aria-labelledby="rudenii-de-verificat">
-          <h2 id="rudenii-de-verificat" className="text-base font-semibold mb-1">
-            Legături de rudenie de verificat ({kinLinks.length})
-          </h2>
-          <p className="hint mb-3">Legături adăugate manual care încalcă regulile. Nu se șterg singure: verificați și ștergeți legătura greșită din fișa persoanei, la „Rude în biserică”.</p>
-          <ul className="list">
-            {kinLinks.map((l) => (
-              <li key={l.id} className="item">
-                <span className="grow min-w-0">
-                  <NameRow
-                    name={
-                      <b>
-                        <Link href={`/persoane/${l.parent.id}#rude`}>{l.parent.name}</Link> → <Link href={`/persoane/${l.child.id}#rude`}>{l.child.name}</Link>
-                      </b>
-                    }
-                    detail={`părinte → copil · ${l.reason}`}
-                  />
-                </span>
-                <span className="tag tag-warn">Rudenie</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <KinReview proposals={proposals.map((p) => ({ key: p.key, text: p.text }))} wrong={kinLinks} />
       {families.length ? (
         <section className="mt-6" aria-labelledby="familii-de-verificat">
           <h2 id="familii-de-verificat" className="text-base font-semibold mb-1">

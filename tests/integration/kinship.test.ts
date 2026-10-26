@@ -11,8 +11,8 @@ vi.mock("@/server/session", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { addKinLinkAction, checkKinLinksAction, removeKinLinkAction } = await import("@/server/actions/kinship");
-const { loadKinship, manualLinksToReview, personKinship } = await import("@/server/kinship");
+const { addKinLinkAction, checkKinLinksAction, confirmKinProposalAction, ignoreKinProposalAction, removeKinLinkAction } = await import("@/server/actions/kinship");
+const { kinProposals, loadKinship, manualLinksToReview, personKinship, reconcileNameLinks } = await import("@/server/kinship");
 const { parsePrototypeJson } = await import("@/domain/backup");
 const { importBackup } = await import("@/server/backup");
 const { buildExportJson, parseImportJson } = await import("@/server/backup-json");
@@ -62,7 +62,7 @@ describe.skipIf(!hasTestDb)("kinship", () => {
     const links = await prisma.personParent.findMany({ select: { parentId: true, childId: true, source: true } });
     const name = (x: string) => Object.entries(id).find(([, v]) => v === x)![0];
     // Ana has no relation "Soție": Iosif is linked to Felix only.
-    expect(links.map((l) => `${name(l.parentId)}>${name(l.childId)}`).sort()).toEqual(["Dumitru>Maria", "Elena>Maria", "Felix>Iosif"]);
+    expect(links.map((l) => `${name(l.parentId!)}>${name(l.childId)}`).sort()).toEqual(["Dumitru>Maria", "Elena>Maria", "Felix>Iosif"]);
     expect(links.every((l) => l.source === "FAMILIE")).toBe(true);
   });
 
@@ -128,5 +128,62 @@ describe.skipIf(!hasTestDb)("kinship", () => {
     expect(await manualLinksToReview(ctx.db)).toEqual([
       { id: expect.any(String), parent: { id: id.Felix, name: "Ciobanu Felix" }, child: { id: id.Maria, name: "Ciobanu Maria" }, reason: "Persoanele sunt frați; nu pot fi părinte și copil." },
     ]);
+  });
+
+  it("KINSHIP-STATUTE-PARENTS: the father found by numeTata is proposed, confirmed, and removed when the name changes", async () => {
+    current = ctx;
+    const vasile = await prisma.person.create({ data: { churchId: ctx.user.churchId, nume: "Lupu", prenume: "Vasile", gen: "M", dataNasterii: new Date("1950-01-01") } });
+    const ana = await prisma.person.update({ where: { id: id.Ana }, data: { numeTata: "vasile LUPU", dataNasterii: new Date("1988-01-01") } });
+    const proposals = await kinProposals(ctx.db);
+    const p = proposals.find((x) => x.kind === "parinte" && x.childId === ana.id)!;
+    expect(p.text).toBe("Lupu Vasile este tatăl lui Ciobanu Ana");
+    expect((await confirmKinProposalAction(p.key)).ok).toBe(true);
+    const link = await prisma.personParent.findFirstOrThrow({ where: { parentId: vasile.id, childId: ana.id } });
+    expect(link.source).toBe("NUME_PARINTI");
+    expect((await kinProposals(ctx.db)).some((x) => x.key === p.key)).toBe(false);
+    const k = await personKinship(ctx, ana.id, true);
+    expect(k!.groups[0].entries.map((e) => [e.name, e.source])).toEqual([["Lupu Vasile", "după numele părinților"]]);
+    // The file no longer carries the name: the link goes at the next save.
+    await prisma.person.update({ where: { id: ana.id }, data: { numeTata: "Lupu Ion" } });
+    expect(await reconcileNameLinks(ctx.db, ana.id)).toBe(1);
+    expect(await prisma.personParent.count({ where: { childId: ana.id, parentId: vasile.id } })).toBe(0);
+  });
+
+  it("two heads of family with the same parents' names outside the register: siblings, cousins, one neam; Ignoră is remembered", async () => {
+    current = ctx;
+    const mk = async (prenume: string, familyNume: string) => {
+      const f = await prisma.family.create({ data: { churchId: ctx.user.churchId, nume: familyNume } });
+      const head = await prisma.person.create({ data: { churchId: ctx.user.churchId, nume: "Rusu", prenume, gen: "M", familyId: f.id, rudenie: "Cap de familie", numeTata: "Rusu Petru", numeMama: "Rusu Elena" } });
+      const kid = await prisma.person.create({ data: { churchId: ctx.user.churchId, nume: "Rusu", prenume: `${prenume}-copil`, familyId: f.id, rudenie: "Fiu", dataNasterii: new Date("2015-01-01") } });
+      await prisma.family.update({ where: { id: f.id }, data: { headId: head.id } });
+      await prisma.personParent.create({ data: { churchId: ctx.user.churchId, parentId: head.id, childId: kid.id, source: "FAMILIE" } });
+      return { head, kid };
+    };
+    const a = await mk("Andrei", "Fam. Andrei Rusu");
+    await mk("Bogdan", "Fam. Bogdan Rusu");
+    const p = (await kinProposals(ctx.db)).find((x) => x.kind === "frati" && x.childIds.includes(a.head.id))!;
+    expect(p.text).toBe("Rusu Andrei și Rusu Bogdan sunt frați, cu părinții în afara registrului Rusu Petru și Rusu Elena");
+    expect((await confirmKinProposalAction(p.key)).message).toBe("Au fost create 4 legături.");
+    expect(await prisma.kinExternalParent.count({ where: { churchId: ctx.user.churchId } })).toBe(2);
+    const k = await personKinship(ctx, a.head.id, true);
+    const by = Object.fromEntries(k!.groups.map((g) => [g.key, g.entries.map((e) => (e.external ? `${e.name} (nu e în registru)` : e.name))]));
+    expect(by.frati).toEqual(["Rusu Bogdan"]);
+    expect(by.parinti.sort()).toEqual(["Rusu Elena (nu e în registru)", "Rusu Petru (nu e în registru)"]);
+    expect(Object.fromEntries((await personKinship(ctx, a.kid.id, true))!.groups.map((g) => [g.key, g.entries.map((e) => e.name)])).veri).toEqual(["Rusu Bogdan-copil"]);
+    const neam = (await loadKinship(ctx.db)).neamuri.find((n) => n.members.includes(a.head.id))!;
+    expect([neam.persons, neam.families, neam.generations]).toEqual([4, 2, 3]);
+    // Ignoră: a third person with the same names is proposed, ignored, and not shown again.
+    const c = await prisma.person.create({ data: { churchId: ctx.user.churchId, nume: "Rusu", prenume: "Cezar", gen: "M", numeTata: "Rusu Petru", numeMama: "Rusu Elena" } });
+    const q = (await kinProposals(ctx.db)).filter((x) => (x.kind === "extern" ? x.childId : "") === c.id);
+    expect(q).toHaveLength(2);
+    expect((await ignoreKinProposalAction(q[0].key)).ok).toBe(true);
+    expect((await kinProposals(ctx.db)).map((x) => x.key)).not.toContain(q[0].key);
+    // Removing every link of a parent outside the register deletes it.
+    for (const l of await prisma.personParent.findMany({ where: { externalParent: { nume: "Rusu Elena" } } })) await removeKinLinkAction(l.id);
+    expect(await prisma.kinExternalParent.count({ where: { nume: "Rusu Elena" } })).toBe(0);
+    // The backup keeps the parent outside the register and its links.
+    const { data } = await buildExportJson(ctx);
+    expect(data.parintiExterni).toEqual([{ id: expect.any(String), nume: "Rusu Petru", gen: "M" }]);
+    expect((data.rudenii as { parinteExtern?: string }[]).filter((r) => r.parinteExtern)).toHaveLength(2);
   });
 });

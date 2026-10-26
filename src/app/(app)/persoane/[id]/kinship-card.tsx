@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { PersonPicker } from "@/components/person-picker";
 import type { FormState } from "@/lib/form-state";
 import { addKinLinkAction, removeKinLinkAction } from "@/server/actions/kinship";
-import type { KinEntry } from "@/server/kinship";
+import type { KinEntry, PickerPerson } from "@/server/kinship";
 
 type Group = { key: string; title: string; entries: KinEntry[] };
 
@@ -14,9 +14,13 @@ type Group = { key: string; title: string; entries: KinEntry[] };
 function Row({ e, onRemove, pending }: { e: KinEntry; onRemove?: () => void; pending: boolean }) {
   return (
     <li>
-      <Link href={`/persoane/${e.id}`} className="font-semibold">
-        {e.name}
-      </Link>
+      {e.external ? (
+        <span className="font-semibold">{e.name}</span>
+      ) : (
+        <Link href={`/persoane/${e.id}`} className="font-semibold">
+          {e.name}
+        </Link>
+      )}
       <span className="hint !mt-0">
         {e.label}
         {e.family ? (
@@ -28,8 +32,9 @@ function Row({ e, onRemove, pending }: { e: KinEntry; onRemove?: () => void; pen
           </>
         ) : null}
       </span>
+      {e.external ? <span className="tag">nu e în registru</span> : null}
       {e.source ? <span className="tag">{e.source}</span> : null}
-      {!e.active ? <span className="tag">nu mai este în evidență</span> : null}
+      {!e.active && !e.external ? <span className="tag">nu mai este în evidență</span> : null}
       {onRemove ? (
         <button type="button" className="btn btn-sm" disabled={pending} onClick={onRemove} aria-label={`Șterge legătura cu ${e.name}`}>
           Șterge legătura
@@ -49,7 +54,7 @@ function AddLink({
 }: {
   personId: string;
   kind: "parinte" | "copil";
-  people: { id: string; name: string; note?: string }[];
+  people: PickerPerson[];
   pending: boolean;
   run: (f: () => Promise<FormState>, done?: () => void) => void;
 }) {
@@ -81,7 +86,21 @@ function AddLink({
  * "Rude în biserică": parents and children from the register (write roles add and remove them), then
  * the deduced relatives by group, each with a link and the family; the neam it belongs to.
  */
-export function KinshipCard({ personId, groups, neam, people, canWrite }: { personId: string; groups: Group[]; neam: { id: string; name: string } | null; people: { id: string; name: string; note?: string }[]; canWrite: boolean }) {
+export function KinshipCard({
+  personId,
+  groups,
+  neam,
+  pickParent,
+  pickChild,
+  canWrite,
+}: {
+  personId: string;
+  groups: Group[];
+  neam: { id: string; name: string } | null;
+  pickParent: PickerPerson[];
+  pickChild: PickerPerson[];
+  canWrite: boolean;
+}) {
   const [state, setState] = useState<FormState>({});
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -106,7 +125,7 @@ export function KinshipCard({ personId, groups, neam, people, canWrite }: { pers
       ) : (
         <p className="hint !mt-0">{kind === "parinte" ? "Niciun părinte în registru." : "Niciun copil în registru."}</p>
       )}
-      {canWrite ? <AddLink personId={personId} kind={kind} people={people} pending={pending} run={run} /> : null}
+      {canWrite ? <AddLink personId={personId} kind={kind} people={kind === "parinte" ? pickParent : pickChild} pending={pending} run={run} /> : null}
     </div>
   );
   const others = rest.filter((g) => g.entries.length);
@@ -116,7 +135,7 @@ export function KinshipCard({ personId, groups, neam, people, canWrite }: { pers
       {neam ? (
         <p className="hint !mt-0 mb-2">
           Face parte din{" "}
-          <Link href={`/statistici/neamuri/${neam.id}`} className="underline">
+          <Link href={`/statistici/neamuri/${encodeURIComponent(neam.id)}`} className="underline">
             {neam.name}
           </Link>
           .

@@ -179,6 +179,7 @@ export function UpdateForm({
                     aria-describedby={e[f] ? `${id}-err` : undefined}
                   />
                 )}
+                {f === "numeTata" || f === "numeMama" ? <p className="hint !mt-1">Nume și prenume, cerute de Statutul Cultului, art. 14.</p> : null}
                 {e[f] ? (
                   <p id={`${id}-err`} className="field-error">
                     {e[f]}
@@ -194,7 +195,7 @@ export function UpdateForm({
           highlight={(n) => changed.has(n)}
           onValue={(n, v) => register && mark(n, v, str(register[n]))}
         />
-        <p className="hint">Numele părinților doar dacă părinții nu sunt în evidența bisericii. Pentru botez: data sau doar anul.</p>
+        <p className="hint">Numele tatălui și al mamei sunt cerute de Statutul Cultului (art. 14). Pentru botez: data sau doar anul.</p>
       </fieldset>
 
       <fieldset className="card">

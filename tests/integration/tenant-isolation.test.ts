@@ -260,6 +260,31 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.person.delete({ where: { id: child.id } });
   });
 
+  it("parents outside the register and ignored kinship proposals are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const e = await a.kinExternalParent.create({ data: { nume: "Ciobanu Petru", gen: "M" } as never });
+    const i = await a.kinProposalIgnore.create({ data: { key: "p:x:y" } as never });
+    expect([e.churchId, i.churchId]).toEqual([churchA, churchA]);
+    expect(await b.kinExternalParent.findUnique({ where: { id: e.id } })).toBeNull();
+    expect(await b.kinExternalParent.count()).toBe(0);
+    expect(await b.kinProposalIgnore.count()).toBe(0);
+    expect((await b.kinExternalParent.updateMany({ data: { nume: "X" } })).count).toBe(0);
+    expect((await b.kinProposalIgnore.deleteMany({})).count).toBe(0);
+    // The same key is free in church B.
+    const ib = await b.kinProposalIgnore.create({ data: { key: "p:x:y" } as never });
+    await a.kinExternalParent.delete({ where: { id: e.id } });
+    await a.kinProposalIgnore.delete({ where: { id: i.id } });
+    await b.kinProposalIgnore.delete({ where: { id: ib.id } });
+  });
+
+  it("a kinship link has exactly one parent (database check)", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const child = await a.person.create({ data: { nume: "Copil", prenume: "B" } as never });
+    await expect(prisma.$executeRawUnsafe(`INSERT INTO person_parents (id, "churchId", "childId", source) VALUES ('nope', '${churchA}', '${child.id}', 'MANUAL')`)).rejects.toThrow();
+    await a.person.delete({ where: { id: child.id } });
+  });
+
   it("filtrul se păstrează în tranzacții interactive", async () => {
     const b = scopeToChurch(prisma, churchB);
     const count = await b.$transaction(async (tx) => tx.person.count());

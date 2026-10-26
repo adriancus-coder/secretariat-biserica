@@ -24,7 +24,8 @@ export function PersonPicker({
   emptyText = "Niciun responsabil ales.",
 }: {
   name: string;
-  people: { id: string; name: string; note?: string }[];
+  /** `disabled`: why this person cannot be chosen (shown short; the row cannot be picked). */
+  people: { id: string; name: string; note?: string; disabled?: string }[];
   sections: PickerSection[];
   value: string;
   onChange: (id: string) => void;
@@ -47,16 +48,26 @@ export function PersonPicker({
   }, [q, sections, people, byId]);
   const chosen = value ? byId.get(value) : undefined;
 
-  const row = (id: string, text: string, note?: string) => {
+  const row = (id: string, text: string, note?: string, disabled?: string) => {
     const on = value === id;
     return (
-      <button key={id || "none"} type="button" role="option" aria-selected={on} className="picker-row" onClick={() => onChange(id)}>
+      <button
+        key={id || "none"}
+        type="button"
+        role="option"
+        aria-selected={on}
+        aria-disabled={disabled ? true : undefined}
+        disabled={Boolean(disabled)}
+        className="picker-row"
+        onClick={() => onChange(id)}
+      >
         <span className="tick" aria-hidden="true">
           {on ? <Icon name="bifa" className="size-[14px]" /> : null}
         </span>
         <span className="min-w-0">
           {text}
           {note ? <span className="hint inline"> · {note}</span> : null}
+          {disabled ? <span className="hint block !mt-0">{disabled}</span> : null}
         </span>
       </button>
     );
@@ -74,7 +85,7 @@ export function PersonPicker({
         {groups.map((s) => (
           <div key={s.title} role="group" aria-label={s.title}>
             <div className="picker-section">{s.title}</div>
-            {s.ids.map((id) => row(id, byId.get(id)!.name, byId.get(id)!.note))}
+            {s.ids.map((id) => row(id, byId.get(id)!.name, byId.get(id)!.note, byId.get(id)!.disabled))}
           </div>
         ))}
         {q && !groups.length ? <p className="hint px-2">Nicio persoană găsită.</p> : null}

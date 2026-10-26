@@ -5,7 +5,8 @@ import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
 import { unmarriedLabel } from "@/lib/marital";
 import { prayerChangeText } from "@/lib/prayer";
-import { relativeName } from "@/lib/kinship";
+import { relativeName, relatives } from "@/lib/kinship";
+import { loadKinship } from "./kinship";
 import { fmtDot } from "@/domain/print";
 import { memberName } from "@/lib/format";
 import {
@@ -42,8 +43,6 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       roles: { include: { role: { select: { nume: true } } } },
       groups: { include: { group: { select: { nume: true } } } },
       aliases: { select: { alias: true } },
-      parentLinks: { select: { parent: { select: { nume: true, prenume: true, gen: true } } } },
-      childLinks: { select: { child: { select: { nume: true, prenume: true, gen: true } } } },
       application: { select: { createdAt: true, status: true, kind: true } },
       documents: { select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       meetings: { where: { status: "PRESENT" }, select: { meeting: { select: { tip: true, data: true, nr: true, anRegistru: true } } } },
@@ -53,6 +52,14 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
   const measures = withDiscipline
     ? await ctx.db.disciplinaryMeasure.findMany({ where: { personId }, orderBy: { dataInceput: "asc" } })
     : [];
+  // Kinship: parents (a parent outside the register by the name written on the file), siblings, children.
+  const kin = await loadKinship(ctx.db);
+  const rel = kin.graph.person.has(personId) ? relatives(kin.graph, personId) : null;
+  const kinRows = (group: "parinti" | "frati" | "copii") =>
+    (rel?.[group] ?? []).map((id) => {
+      const k = kin.graph.person.get(id)!;
+      return [relativeName(group, k.gen), k.external ? `${k.nume} (nu e în registru)` : memberName(k)];
+    });
   const baptism = baptismSentence({ ...p, data: d(p.dataBotez) });
   // The weekly prayer: the family's choice (or the person's, without a family) and the weeks announced.
   const prayer = p.family ?? p;
@@ -104,14 +111,12 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
         ],
       },
       {
-        titlu: "Părinți și copii din registru",
-        tabel: {
-          coloane: ["Legătura", "Persoana"],
-          randuri: [
-            ...p.parentLinks.map((l) => [relativeName("parinti", l.parent.gen), memberName(l.parent)]),
-            ...p.childLinks.map((l) => [relativeName("copii", l.child.gen), memberName(l.child)]),
-          ],
-        },
+        titlu: "Părinți și frați",
+        tabel: { coloane: ["Legătura", "Persoana"], randuri: [...kinRows("parinti"), ...kinRows("frati")] },
+      },
+      {
+        titlu: "Copii din registru",
+        tabel: { coloane: ["Legătura", "Persoana"], randuri: kinRows("copii") },
       },
       {
         titlu: "Prezență la ședințe",

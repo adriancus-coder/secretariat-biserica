@@ -180,10 +180,17 @@ export function PersonForm({
           label="Numele tatălui"
           defaultValue={val("numeTata")}
           error={e.numeTata}
-          hint="Doar dacă părinții nu sunt în evidență."
+          hint="Cerut de Statut (art. 14). Dacă părintele e în registru, folosiți «+ Adaugă părinte» la Rude în biserică."
           autoComplete="off"
         />
-        <TextField name="numeMama" label="Numele mamei" defaultValue={val("numeMama")} error={e.numeMama} autoComplete="off" />
+        <TextField
+          name="numeMama"
+          label="Numele mamei"
+          defaultValue={val("numeMama")}
+          error={e.numeMama}
+          hint="Dacă părintele e în registru, folosiți «+ Adaugă părinte» la Rude în biserică."
+          autoComplete="off"
+        />
       </div>
 
       <fieldset className="card">

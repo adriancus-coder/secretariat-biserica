@@ -111,6 +111,8 @@ model Church {
   pastoralNotes         PastoralNote[]
   prayerWeeks           PrayerWeek[]
   personParents         PersonParent[]
+  kinExternalParents    KinExternalParent[]
+  kinProposalIgnores    KinProposalIgnore[]
   roles                 ChurchRole[]
   roleGroups            RoleGroup[]
   families              Family[]
@@ -185,6 +187,8 @@ model User {
   pastoralNotes          PastoralNote[]
   prayerWeeks            PrayerWeek[]
   personParentsCreated   PersonParent[]
+  kinExternalsCreated    KinExternalParent[]
+  kinIgnoresCreated      KinProposalIgnore[]
   webauthnChallenges     WebAuthnChallenge[]
   churchDocuments        ChurchDocument[]
   personAliases          PersonAlias[]
@@ -1409,26 +1413,63 @@ enum KinshipSource {
   FAMILIE
   MANUAL
   CAMPANIE
+  /// Confirmed from the parents' names on the person's file (numeTata / numeMama, Statut art. 14).
+  NUME_PARINTI
 }
 
 /// A parent-child link between two persons of the register (KINSHIP): at most two parents per person,
 /// no cycles, never oneself, both in the same church (checked by `parentLinkError`). Spouses stay
 /// defined by the family (Soț / Soție). Every other relation is deduced (src/lib/kinship.ts).
 model PersonParent {
-  id          String        @id @default(cuid())
-  churchId    String
-  church      Church        @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  parentId    String
-  parent      Person        @relation("KinParent", fields: [parentId], references: [id], onDelete: Cascade)
-  childId     String
-  child       Person        @relation("KinChild", fields: [childId], references: [id], onDelete: Cascade)
-  source      KinshipSource @default(MANUAL)
-  createdAt   DateTime      @default(now())
-  createdById String?
-  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  id               String             @id @default(cuid())
+  churchId         String
+  church           Church             @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  /// Exactly one of parentId (a person of the register) and externalParentId (a parent outside it) is set (CHECK in the database).
+  parentId         String?
+  parent           Person?            @relation("KinParent", fields: [parentId], references: [id], onDelete: Cascade)
+  externalParentId String?
+  externalParent   KinExternalParent? @relation(fields: [externalParentId], references: [id], onDelete: Cascade)
+  childId          String
+  child            Person             @relation("KinChild", fields: [childId], references: [id], onDelete: Cascade)
+  source           KinshipSource      @default(MANUAL)
+  createdAt        DateTime           @default(now())
+  createdById      String?
+  createdBy        User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@unique([parentId, childId])
+  @@unique([externalParentId, childId])
   @@index([churchId])
   @@index([childId])
   @@map("person_parents")
+}
+
+/// A parent outside the register (KINSHIP-STATUTE-PARENTS): only the name as written in the children's
+/// numeTata / numeMama (Statut art. 14 alin. 3 lit. a) and the gender; deleted when it has no children left.
+model KinExternalParent {
+  id          String         @id @default(cuid())
+  churchId    String
+  church      Church         @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  nume        String
+  gen         Gender
+  createdAt   DateTime       @default(now())
+  createdById String?
+  createdBy   User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  children    PersonParent[]
+
+  @@index([churchId])
+  @@map("kin_external_parents")
+}
+
+/// A kinship proposal from the parents' names that someone chose to ignore ("Ignoră"), remembered by its key.
+model KinProposalIgnore {
+  id          String   @id @default(cuid())
+  churchId    String
+  church      Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  key         String
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([churchId, key])
+  @@map("kin_proposal_ignores")
 }
