@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Măsuri disciplinare deschise" };
  */
 export default async function OpenMeasuresPage() {
   const ctx = await requireCtx("disciplina");
-  const head = <PageHead title="Măsuri disciplinare deschise" sub="În cercetare sau aplicate — vizibil doar pastorilor și administratorilor" />;
+  const head = <PageHead title="Măsuri disciplinare deschise" sub="În cercetare sau aplicate — vizibil doar pastorilor și celor cărora un pastor le-a dat acces (Statut art. 44 lit. d)" />;
   if (!(await hasStepUp(ctx.user))) {
     return (
       <>

@@ -390,7 +390,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
               : discipline.count
                 ? `${discipline.count} ${discipline.count === 1 ? "măsură încheiată" : "măsuri încheiate"}.`
                 : "Nicio măsură disciplinară."}{" "}
-            Vizibil doar pastorilor și administratorilor.
+            Vizibil doar pastorilor și celor cărora un pastor le-a dat acces (Statut art. 44 lit. d).
           </p>
           <Link href={`/persoane/${x.id}/disciplina`} className="btn btn-sm">
             Deschide

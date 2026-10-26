@@ -31,7 +31,7 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
     return (
       <>
         <BackLink href={`/persoane/${id}`}>{memberName(person)}</BackLink>
-        <PageHead title="Disciplină" sub="Vizibil doar pastorilor și administratorilor (Statut art. 27)" />
+        <PageHead title="Disciplină" sub="Vizibil doar pastorilor și celor cărora un pastor le-a dat acces (Statut art. 27, art. 44 lit. d)" />
         <StepUpGate method={await stepUpMethod(ctx.user.id)} what="Datele disciplinare sunt confidențiale." />
       </>
     );
@@ -51,7 +51,7 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
   return (
     <>
       <BackLink href={`/persoane/${id}`}>{memberName(person)}</BackLink>
-      <PageHead title="Disciplină" sub="Vizibil doar pastorilor și administratorilor (Statut art. 27)" />
+      <PageHead title="Disciplină" sub="Vizibil doar pastorilor și celor cărora un pastor le-a dat acces (Statut art. 27, art. 44 lit. d)" />
       {suspended && person.inComitet ? (
         <div className="alert mb-3" role="status">
           Este suspendat — fără drept de vot — și încă membru în comitet.

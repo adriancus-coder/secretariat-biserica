@@ -212,6 +212,7 @@ export function PastorControl({ userId, isPastor, titlu, disabled }: { userId: s
 /** "Acces la măsurile disciplinare": on / off for one Administrator or Secretar (a pastor decides; step-up on the server). */
 export function DisciplineAccessToggle({ userId, name, on }: { userId: string; name: string; on: boolean }) {
   const [state, setState] = useState<FormState>({});
+  const [checked, setChecked] = useState(on);
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
@@ -219,15 +220,18 @@ export function DisciplineAccessToggle({ userId, name, on }: { userId: string; n
       <label className="check !border-0 !py-0 min-h-11">
         <input
           type="checkbox"
-          checked={on}
+          checked={checked}
           disabled={pending}
           aria-label={`Acces la măsurile disciplinare pentru ${name}`}
           onChange={(e) => {
             const value = e.target.checked;
+            setChecked(value);
             start(async () => {
               const r = await setDisciplineAccessAction(userId, value);
               setState(r);
-              if (r.ok) router.refresh();
+              // Refused (no step-up, not allowed): the box shows the stored state again.
+              if (!r.ok) setChecked(!value);
+              else router.refresh();
             });
           }}
         />
