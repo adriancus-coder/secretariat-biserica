@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePrayerKey, prayerLabel, prayerMessage, prayerMessageError, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
+import { answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerMessage, prayerMessageError, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
 
 const TODAY = "2026-10-28";
 const m = (id: string, prenume: string, over: Partial<PrayerMember> = {}): PrayerMember => ({
@@ -78,5 +78,19 @@ describe("weekly prayer", () => {
     expect(parsePrayerKey("p:abc")).toEqual({ personId: "abc" });
     expect(parsePrayerKey("x:abc")).toBeNull();
     expect(parsePrayerKey("f:a b")).toBeNull();
+  });
+
+  it("the head, a spouse or an adult without a family answers for the family in the campaign", () => {
+    const base = { id: "a", familyId: "f", rudenie: "", family: { headId: "h" } };
+    expect(answersForFamily({ ...base, family: { headId: "a" } })).toBe(true);
+    expect(answersForFamily({ ...base, rudenie: "Soție" })).toBe(true);
+    expect(answersForFamily({ ...base, familyId: null, family: null })).toBe(true);
+    expect(answersForFamily({ ...base, rudenie: "Fiu" })).toBe(false);
+  });
+
+  it("two parents answering differently: the more restrictive answer wins", () => {
+    expect(restrictivePrayer([{ optOut: false, includeChildren: true }, { optOut: true, includeChildren: false }])).toEqual({ optOut: true, includeChildren: false });
+    expect(restrictivePrayer([{ includeChildren: true }, { includeChildren: true }])).toEqual({ includeChildren: true });
+    expect(restrictivePrayer([{ optOut: false }, {}])).toEqual({ optOut: false });
   });
 });

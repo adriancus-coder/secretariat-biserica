@@ -31,4 +31,13 @@ describe("data-update proposal", () => {
     expect(r.errors.dataNasterii).toBeTruthy();
     expect(r.errors.copii).toBe("Cel mult 15 copii.");
   });
+
+  it("reads the weekly prayer section only when shown; an unticked box is a no", () => {
+    const base = { nume: "Pop", nota: "on", ...yes, copii: "[]" };
+    const none = parseProposal(base);
+    expect(none.ok && none.value.prayer).toBeUndefined();
+    const shown = parseProposal({ ...base, rugaciuneSectiune: "1", rugaciuneCopii: "on" });
+    expect(shown.ok && shown.value.prayer).toEqual({ optOut: false, includeChildren: true });
+  });
 });
+

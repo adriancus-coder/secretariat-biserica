@@ -12,6 +12,7 @@ vi.mock("@/server/session", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 const { loadPrayerPage, PRAYER_FAMILY_SELECT, PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT } = await import("@/server/queries/prayer");
+const { applyDecision } = await import("@/server/review");
 const { cancelPrayerWeekAction, markPrayerWeekAction, prayerCopiedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
 
 /** The weekly prayer: who is in the rotation, what is shown, and nothing else from the register. */
@@ -110,4 +111,35 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     current = other;
     expect((await setPrayerPrefsAction({ familyId: fam.popescu }, {}, form)).message).toContain("nu există");
   });
+
+  it("campaign: the parents' answers go through the review, the more restrictive winning", async () => {
+    const admin = { ...ctx, user: { ...ctx.user, role: "ADMIN" } } as Ctx;
+    const f = await prisma.family.findUniqueOrThrow({ where: { id: fam.barbu }, include: { members: true } });
+    const father = f.members.find((m) => m.prenume === "Vasile")!;
+    const mother = f.members.find((m) => m.prenume === "Ioana")!;
+    const campaign = await ctx.db.dataCampaign.create({ data: { nume: "Toamnă", deadline: new Date("2026-12-31"), privacyTextVersion: "1.2" } as never });
+    const self = (m: { nume: string; prenume: string }) => ({ nume: m.nume, prenume: m.prenume, gen: null, dataNasterii: null, dataCasatoriei: null, telefon: "+47 900 11 222", email: `${m.prenume}@x.no`, adresa: "Strada 1", dataBotez: null, botezAn: null, botezBiserica: "", botezLocalitate: "", botezOficiant: "", numeTata: "", numeMama: "" });
+    const consents = { PHOTOS: true, BIRTHDAY: true, CONTACT: true, DIRECTORY: true };
+    const submit = async (m: typeof father, prayer: { optOut: boolean; includeChildren: boolean }) =>
+      (await ctx.db.dataUpdateSubmission.create({ data: { campaignId: campaign.id, personId: m.id, via: "PERSONAL", proposed: { self: self(m), children: [], consents, nota: true, prayer } } as never })).id;
+    // Barbu: children included today. The father keeps them, the mother does not want them named.
+    const a = await submit(father, { optOut: false, includeChildren: true });
+    const b = await submit(mother, { optOut: false, includeChildren: false });
+    await applyDecision(admin, a, { decizie: "toate", nota: "", chosen: new Set() });
+    await applyDecision(admin, b, { decizie: "toate", nota: "", chosen: new Set() });
+    let fam1 = await prisma.family.findUniqueOrThrow({ where: { id: fam.barbu } });
+    expect([fam1.prayerOptOut, fam1.prayerIncludeChildren, fam1.prayerSource]).toEqual([false, false, "CAMPANIE"]);
+    // Later answers cannot loosen it: the father asks again for the children, the mother's "no" stays.
+    const c = await submit(father, { optOut: false, includeChildren: true });
+    await applyDecision(admin, c, { decizie: "toate", nota: "", chosen: new Set() });
+    fam1 = await prisma.family.findUniqueOrThrow({ where: { id: fam.barbu } });
+    expect(fam1.prayerIncludeChildren).toBe(false);
+    // One objection is enough.
+    const d = await submit(mother, { optOut: true, includeChildren: false });
+    await applyDecision(admin, d, { decizie: "toate", nota: "", chosen: new Set() });
+    expect((await prisma.family.findUniqueOrThrow({ where: { id: fam.barbu } })).prayerOptOut).toBe(true);
+    const log = await prisma.auditLog.findMany({ where: { entity: "FAMILY", entityId: fam.barbu } });
+    expect(log.length).toBeGreaterThan(0);
+  });
 });
+

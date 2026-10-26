@@ -121,3 +121,32 @@ export function parsePrayerKey(key: string): { familyId: string } | { personId: 
 export function prayerChangeText(at: Date | null, source: PrayerSourceKey | null): string | null {
   return at ? `${dotDateTime(at)}${source ? ` · ${PRAYER_SOURCE_LABEL[source]}` : ""}` : null;
 }
+
+/** An adult's answer in the data-update campaign: the objection and the children's consent. */
+export interface PrayerAnswer {
+  optOut: boolean;
+  includeChildren: boolean;
+}
+
+/** Who answers for the family in the campaign: its head or a spouse, or an adult without a family. */
+export function answersForFamily(a: { id: string; familyId: string | null; rudenie: string; family: { headId: string | null } | null }): boolean {
+  return !a.familyId || a.family?.headId === a.id || a.rudenie === "Soț" || a.rudenie === "Soție";
+}
+
+/**
+ * The parents' answers together, the more restrictive winning: one objection is enough to leave the
+ * family out, and the children are named only when every parent who answered agreed.
+ */
+export function restrictivePrayer(answers: Partial<PrayerAnswer>[]): Partial<PrayerAnswer> {
+  const opt = answers.map((a) => a.optOut).filter((v): v is boolean => v !== undefined);
+  const kids = answers.map((a) => a.includeChildren).filter((v): v is boolean => v !== undefined);
+  return {
+    ...(opt.length ? { optOut: opt.some(Boolean) } : {}),
+    ...(kids.length ? { includeChildren: kids.every(Boolean) } : {}),
+  };
+}
+
+export const PRAYER_FIELD_LABEL = {
+  optOut: "Rugăciunea săptămânală: nu doresc ca familia să fie pomenită",
+  includeChildren: "Rugăciunea săptămânală: pot fi pomeniți și copiii",
+} as const;
