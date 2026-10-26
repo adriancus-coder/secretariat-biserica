@@ -178,3 +178,7 @@ What Render actually provides (check the dashboard when the plan changes):
   - the app reminds administrators: a banner on Acasă and a line in Setări → Copie de siguranță when the last export (the SECURITY audit entry "Export date") is older than 30 days, or there has never been one.
 - Before any import in "replace" mode, export first.
 - **Test a restore** twice a year: restore a point in time (or a logical backup) into a new Render database, point a local copy of the app at it (`DATABASE_URL`), check that the latest records are there, then delete the test database. Also import the latest JSON export into an empty local database (`npm run db:deploy`, then Setări → Import with "înlocuire") to prove the file is complete.
+
+## Third-party data
+
+- `src/lib/postal-codes-no.json`: Postnummerregister © Posten Bring AS, licență NLOD. Public postal codes only; no personal data.
