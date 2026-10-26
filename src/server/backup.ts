@@ -1139,20 +1139,21 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       // that would make a third parent or a cycle is skipped with a warning).
       if (extras.kinship) {
         const links = await tx.personParent.findMany({ select: { parentId: true, childId: true } });
+        const births = new Map((await tx.person.findMany({ select: { id: true, dataNasterii: true } })).map((p) => [p.id, fromDbDate(p.dataNasterii)]));
         let skipped = 0;
         for (const k of extras.kinship) {
           const parentId = pid(k.parinte);
           const childId = pid(k.copil);
           if (!parentId || !childId) continue;
           if (links.some((l) => l.parentId === parentId && l.childId === childId)) continue;
-          if (parentLinkError(links, parentId, childId)) {
+          if (parentLinkError(links, parentId, childId, (x) => births.get(x))) {
             skipped++;
             continue;
           }
           await tx.personParent.create({ data: { parentId, childId, source: k.sursa, createdById: ctx.user.id } as never });
           links.push({ parentId, childId });
         }
-        if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (ar fi depășit doi părinți sau ar fi format un cerc).`);
+        if (skipped) warnings.push(`${skipped} legături de rudenie nu au fost importate (încălcau regulile: frați, diferență de vârstă, doi părinți sau un cerc).`);
       }
 
       const remapped = [people, meet, evs, docs, grs, nts, apps, ...(fams ? [fams] : [])].reduce(

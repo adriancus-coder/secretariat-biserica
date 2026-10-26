@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { familyLinks, familyParents, kinGraph, neamTree, neamuri, parentLinkError, relativeName, relatives, type KinLink, type KinPerson } from "./kinship";
+import { AGE_GAP_ERROR, familyLinks, kinGraph, linkViolations, SAME_FAMILY_ERROR, SIBLINGS_ERROR, neamTree, neamuri, parentLinkError, relativeName, relatives, type KinLink, type KinPerson } from "./kinship";
 
 const TODAY = "2026-10-28";
 const p = (id: string, over: Partial<KinPerson> = {}): KinPerson => ({ id, nume: "Ciobanu", prenume: id, gen: null, familyId: null, dataNasterii: null, active: true, statut: "MEMBRU", ...over });
@@ -81,15 +81,60 @@ describe("link rules", () => {
     expect(parentLinkError(links, "Vasile", "Petru")).toBeNull();
   });
 
-  it("family links: Fiu / Fiică / Copil become children of the head and the spouse", () => {
+  it("family links: Fiu / Fiică / Copil become children of the head and Soț / Soție only", () => {
     const m = (id: string, rudenie: string, extra: object = {}) => ({ id, rudenie, dataNasterii: null, ...extra });
     const members = [m("h", "Cap de familie"), m("w", "Soție"), m("s", "Fiu"), m("d", "Fiică", { dataNasterii: "1990-01-01" }), m("g", "Nepot"), m("b", "Părinte")];
-    expect(familyLinks(members, "h", TODAY)).toEqual([link("h", "s"), link("w", "s"), link("h", "d"), link("w", "d")]);
-    // A wife without a relation, with a married head (PRAYER-FAMILY-ROLES): she is the other parent.
-    const felix = [m("h", "Cap de familie", { dataCasatoriei: "2010-01-01" }), m("w", ""), m("s", "Fiu")];
-    expect(familyParents(felix, "h", TODAY).map((x) => x.id)).toEqual(["h", "w"]);
+    expect(familyLinks(members, "h")).toEqual([link("h", "s"), link("w", "s"), link("h", "d"), link("w", "d")]);
+    // Without Soț / Soție: the head only (never "all adults", never an inferred spouse).
+    expect(familyLinks([m("h", "Cap de familie", { dataCasatoriei: "2010-01-01" }), m("w", ""), m("s", "Fiu")], "h")).toEqual([link("h", "s")]);
     // Two spouses (to check on De verificat): only the head is linked.
-    expect(familyLinks([m("h", "Cap de familie"), m("a", "Soție"), m("b", "Soție"), m("s", "Fiu")], "h", TODAY)).toEqual([link("h", "s")]);
+    expect(familyLinks([m("h", "Cap de familie"), m("a", "Soție"), m("b", "Soție"), m("s", "Fiu")], "h")).toEqual([link("h", "s")]);
+  });
+});
+
+describe("the Ciobanu case (KINSHIP-FIX-SIBLINGS)", () => {
+  // Dumitru heads the family, Iulia has no relation, Felix is an adult Fiu, Thea a minor Fiică.
+  const m = (id: string, rudenie: string, dataNasterii: string) => ({ id, rudenie, dataNasterii });
+  const dumitru = m("Dumitru", "Cap de familie", "1965-01-01");
+  const iulia = m("Iulia", "", "1968-01-01");
+  const felix = m("Felix", "Fiu", "1990-01-01");
+  const thea = m("Thea", "Fiică", "2012-01-01");
+  const born = (id: string) => [dumitru, iulia, felix, thea].find((x) => x.id === id)?.dataNasterii ?? null;
+
+  it("Thea's parents: Dumitru only (and Iulia once she is Soție), never Felix — even when Felix is the family's head", () => {
+    expect(familyLinks([dumitru, iulia, felix, thea], "Dumitru")).toEqual([link("Dumitru", "Felix"), link("Dumitru", "Thea")]);
+    // The app may have chosen the adult son as the head (Membru first): he stays a son.
+    expect(familyLinks([dumitru, iulia, felix, thea], "Felix")).toEqual([link("Dumitru", "Felix"), link("Dumitru", "Thea")]);
+    const wife = { ...iulia, rudenie: "Soție" };
+    expect(familyLinks([dumitru, wife, felix, thea], "Dumitru").filter((l) => l.childId === "Thea")).toEqual([link("Dumitru", "Thea"), link("Iulia", "Thea")]);
+  });
+
+  it("Felix and Thea are siblings, not parent and child", () => {
+    const links = familyLinks([dumitru, iulia, felix, thea], "Dumitru");
+    const g = kinGraph([p("Dumitru"), p("Iulia"), p("Felix"), p("Thea")], links, []);
+    expect(relatives(g, "Felix").frati).toEqual(["Thea"]);
+    expect(relatives(g, "Felix").copii).toEqual([]);
+    expect(parentLinkError(links, "Felix", "Thea", born)).toBe(SIBLINGS_ERROR);
+  });
+
+  it("a parent at least 12 years older, when both birth dates are known", () => {
+    expect(parentLinkError([], "Felix", "Thea", born)).toBeNull(); // 22 years
+    expect(parentLinkError([], "Iulia", "Dumitru", born)).toBe(AGE_GAP_ERROR); // younger
+    expect(parentLinkError([], "Felix", "Thea", (id) => (id === "Felix" ? "2005-01-01" : born(id)))).toBe(AGE_GAP_ERROR); // 7 years
+    expect(parentLinkError([], "Felix", "Thea", (id) => (id === "Felix" ? null : born(id)))).toBeNull(); // unknown: allowed
+  });
+
+  it("the review finds the wrong stored links: siblings, too young, a son as parent in the common family", () => {
+    const persons = new Map(
+      [dumitru, iulia, felix, thea].map((x) => [x.id, { ...x, familyId: "fD" }] as const),
+    );
+    const stored = [
+      { ...link("Dumitru", "Felix"), id: "1" },
+      { ...link("Felix", "Thea"), id: "2" },
+    ];
+    expect(linkViolations(stored, persons, new Map([["fD", "Felix"]])).map((v) => [v.link.id, v.reason])).toEqual([["2", SAME_FAMILY_ERROR]]);
+    const withThea = [...stored, { ...link("Dumitru", "Thea"), id: "3" }];
+    expect(linkViolations(withThea, persons, new Map([["fD", "Dumitru"]])).map((v) => [v.link.id, v.reason])).toEqual([["2", SIBLINGS_ERROR]]);
   });
 });
 

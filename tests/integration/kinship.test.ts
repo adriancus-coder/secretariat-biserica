@@ -11,8 +11,8 @@ vi.mock("@/server/session", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { addKinLinkAction, createFamilyLinksAction, removeKinLinkAction } = await import("@/server/actions/kinship");
-const { loadKinship, personKinship } = await import("@/server/kinship");
+const { addKinLinkAction, checkKinLinksAction, removeKinLinkAction } = await import("@/server/actions/kinship");
+const { loadKinship, manualLinksToReview, personKinship } = await import("@/server/kinship");
 const { parsePrototypeJson } = await import("@/domain/backup");
 const { importBackup } = await import("@/server/backup");
 const { buildExportJson, parseImportJson } = await import("@/server/backup-json");
@@ -55,27 +55,28 @@ describe.skipIf(!hasTestDb)("kinship", () => {
     await prisma.$disconnect();
   });
 
-  it("creates the links from the families once (idempotent), counts only", async () => {
+  it("creates the links from the families once (idempotent), counts only: the head and Soț / Soție only", async () => {
     current = ctx;
-    expect((await createFamilyLinksAction()).message).toBe("Au fost create 4 legături părinte–copil.");
-    expect((await createFamilyLinksAction()).message).toBe("Nu era nicio legătură nouă de creat.");
+    expect((await checkKinLinksAction()).message).toBe("Verificare încheiată: 0 legături greșite șterse · 3 legături adăugate din familii.");
+    expect((await checkKinLinksAction()).message).toBe("Verificare încheiată: 0 legături greșite șterse · 0 legături adăugate din familii.");
     const links = await prisma.personParent.findMany({ select: { parentId: true, childId: true, source: true } });
-    expect(links.map((l) => `${l.parentId === id.Dumitru ? "Dumitru" : l.parentId === id.Elena ? "Elena" : l.parentId === id.Felix ? "Felix" : "Ana"}>${l.childId === id.Maria ? "Maria" : "Iosif"}`).sort()).toEqual([
-      "Ana>Iosif",
-      "Dumitru>Maria",
-      "Elena>Maria",
-      "Felix>Iosif",
-    ]);
+    const name = (x: string) => Object.entries(id).find(([, v]) => v === x)![0];
+    // Ana has no relation "Soție": Iosif is linked to Felix only.
+    expect(links.map((l) => `${name(l.parentId)}>${name(l.childId)}`).sort()).toEqual(["Dumitru>Maria", "Elena>Maria", "Felix>Iosif"]);
     expect(links.every((l) => l.source === "FAMILIE")).toBe(true);
   });
 
-  it("links the head of one family to the head of another as a son; refuses a third parent, a cycle, another church", async () => {
+  it("links the head of one family to the head of another as a son; refuses a third parent, a cycle, another church, siblings", async () => {
     current = ctx;
+    expect((await addKinLinkAction(id.Maria, "copil", id.Felix)).ok).toBe(true);
+    // Maria and Felix both children of Dumitru: Felix as Maria's child is refused once both links exist.
+    await prisma.personParent.deleteMany({ where: { parentId: id.Maria, childId: id.Felix } });
     expect((await addKinLinkAction(id.Felix, "parinte", id.Dumitru)).ok).toBe(true);
     expect((await addKinLinkAction(id.Elena, "copil", id.Felix)).ok).toBe(true);
-    expect((await addKinLinkAction(id.Felix, "parinte", id.Maria)).message).toBe("Persoana are deja doi părinți în registru.");
+    expect((await addKinLinkAction(id.Felix, "parinte", id.Ana)).message).toBe("Persoana are deja doi părinți în registru.");
     expect((await addKinLinkAction(id.Dumitru, "parinte", id.Iosif)).message).toBe("Legătura ar face din persoană strămoșul propriului părinte.");
     expect((await addKinLinkAction(id.Felix, "copil", id.strain)).message).toBe("Persoana nu există în registru.");
+    expect((await addKinLinkAction(id.Maria, "copil", id.Felix)).message).toBe("Persoanele sunt frați; nu pot fi părinte și copil.");
     const log = await prisma.auditLog.findMany({ where: { entity: "PERSON", entityId: id.Felix } });
     expect(JSON.stringify(log)).toContain("legătură adăugată: Ciobanu Dumitru este părintele lui Ciobanu Felix");
   });
@@ -83,12 +84,12 @@ describe.skipIf(!hasTestDb)("kinship", () => {
   it("deduces the relatives and one neam over both families", async () => {
     const k = await personKinship(ctx, id.Iosif, true);
     const by = Object.fromEntries(k!.groups.map((g) => [g.key, g.entries.map((e) => `${e.name} (${e.label})`)]));
-    expect(by.parinti.sort()).toEqual(["Ciobanu Ana (mamă)", "Ciobanu Felix (tată)"]);
+    expect(by.parinti.sort()).toEqual(["Ciobanu Felix (tată)"]);
     expect(by.bunici.sort()).toEqual(["Ciobanu Dumitru (bunic)", "Ciobanu Elena (bunică)"]);
     expect(by.unchi).toEqual(["Ciobanu Maria (mătușă)"]);
     expect(k!.neam?.name).toBe("Neamul Ciobanu Dumitru");
     const { neamuri } = await loadKinship(ctx.db);
-    expect(neamuri.map((n) => [n.name, n.persons, n.families, n.generations])).toEqual([["Neamul Ciobanu Dumitru", 6, 2, 3]]);
+    expect(neamuri.map((n) => [n.name, n.persons, n.families, n.generations])).toEqual([["Neamul Ciobanu Dumitru", 5, 2, 3]]);
     expect((await loadKinship(other.db)).neamuri).toEqual([]);
   });
 
@@ -97,12 +98,35 @@ describe.skipIf(!hasTestDb)("kinship", () => {
     const link = await prisma.personParent.findFirstOrThrow({ where: { parentId: id.Elena, childId: id.Felix } });
     expect((await removeKinLinkAction(link.id)).ok).toBe(true);
     const { data } = await buildExportJson(ctx);
-    expect((data.rudenii as unknown[]).length).toBe(5);
+    expect((data.rudenii as unknown[]).length).toBe(4);
     const parsed = parseImportJson(JSON.parse(JSON.stringify(data)));
     if (!parsed.ok) throw new Error(parsed.errors.join("; "));
     expect(parsePrototypeJson(data).ok).toBe(true);
     await importBackup(other, parsed.backup, "merge", parsed.extras);
-    expect(await other.db.personParent.count()).toBe(5);
+    expect(await other.db.personParent.count()).toBe(4);
     expect((await loadKinship(other.db)).neamuri.map((n) => n.name)).toEqual(["Neamul Ciobanu Dumitru"]);
+  });
+
+  it("the Ciobanu case: a wrong link from the family is deleted, a wrong manual one is only reported", async () => {
+    current = ctx;
+    const fD = (await prisma.person.findUniqueOrThrow({ where: { id: id.Dumitru } })).familyId!;
+    const thea = await prisma.person.create({ data: { churchId: ctx.user.churchId, nume: "Ciobanu", prenume: "Thea", familyId: fD, rudenie: "Fiică", dataNasterii: new Date("2012-01-01") } });
+    // As if created before the fix: Thea as Felix's child (FAMILIE), and Maria as Felix's child by hand.
+    await prisma.personParent.create({ data: { churchId: ctx.user.churchId, parentId: id.Felix, childId: thea.id, source: "FAMILIE" } });
+    await prisma.personParent.create({ data: { churchId: ctx.user.churchId, parentId: id.Felix, childId: id.Maria, source: "MANUAL" } });
+    expect((await checkKinLinksAction()).message).toBe(
+      "Verificare încheiată: 1 legătură greșită ștearsă · 2 legături adăugate din familii · 1 legătură adăugată manual este în „De verificat”.",
+    );
+    const theaParents = (await prisma.personParent.findMany({ where: { childId: thea.id } })).map((l) => l.parentId).sort();
+    expect(theaParents).toEqual([id.Dumitru, id.Elena].sort());
+    const k = await personKinship(ctx, id.Felix, true);
+    const by = Object.fromEntries(k!.groups.map((g) => [g.key, g.entries.map((e) => e.name)]));
+    // Thea is Felix's sister now; the wrong manual link (Maria as his child) stays until someone removes it.
+    expect(by.frati).toEqual(["Ciobanu Thea"]);
+    expect(by.copii.sort()).toEqual(["Ciobanu Iosif", "Ciobanu Maria"]);
+    expect(Object.fromEntries(k!.groups[1].entries.map((e) => [e.name, e.source]))).toEqual({ "Ciobanu Iosif": "din familie", "Ciobanu Maria": "adăugată manual" });
+    expect(await manualLinksToReview(ctx.db)).toEqual([
+      { id: expect.any(String), parent: { id: id.Felix, name: "Ciobanu Felix" }, child: { id: id.Maria, name: "Ciobanu Maria" }, reason: "Persoanele sunt frați; nu pot fi părinte și copil." },
+    ]);
   });
 });

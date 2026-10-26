@@ -28,6 +28,7 @@ function Row({ e, onRemove, pending }: { e: KinEntry; onRemove?: () => void; pen
           </>
         ) : null}
       </span>
+      {e.source ? <span className="tag">{e.source}</span> : null}
       {!e.active ? <span className="tag">nu mai este în evidență</span> : null}
       {onRemove ? (
         <button type="button" className="btn btn-sm" disabled={pending} onClick={onRemove} aria-label={`Șterge legătura cu ${e.name}`}>

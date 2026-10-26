@@ -55,13 +55,33 @@ export interface KinLink {
   childId: string;
 }
 
+const HEAD_RELATION = "Cap de familie";
+
 /**
- * The links a family suggests ("Creează legăturile din familii", source FAMILIE): every member with the
- * relation Fiu / Fiică / Copil is a child of the family's parents (at most two: with more, the head only).
+ * Who may be a parent in the links created from a family (KINSHIP-FIX-SIBLINGS): only the head (the
+ * family's head, or the member whose relation is "Cap de familie") and Soț / Soție, whatever their age —
+ * never "all adults", and never a member with a child's relation (an adult Fiu stays a son even when
+ * the app chose him as the family's head).
  */
-export function familyLinks(members: FamilyMember[], headId: string | null, today: string): KinLink[] {
-  const found = familyParents(members, headId, today);
-  const parents = found.length > 2 ? found.filter((p) => p.id === headId) : found;
+export function isLinkParent(m: FamilyMember, headId: string | null): boolean {
+  return !hasChildRelation(m) && (m.id === headId || m.rudenie.trim() === HEAD_RELATION || isSpouse(m));
+}
+
+/** The parents of the links of one family: at most two; with more, the "Cap de familie" (or the head) alone. */
+export function linkParents<T extends FamilyMember>(members: T[], headId: string | null): T[] {
+  const parents = members.filter((m) => isLinkParent(m, headId));
+  if (parents.length <= MAX_PARENTS) return parents;
+  const byRelation = parents.filter((m) => m.rudenie.trim() === HEAD_RELATION);
+  if (byRelation.length === 1) return byRelation;
+  return parents.filter((m) => m.id === headId);
+}
+
+/**
+ * The links a family suggests (source FAMILIE): every member with the relation Fiu / Fiică / Copil is a
+ * child of the head and of Soț / Soție (linkParents); without Soț / Soție, of the head only.
+ */
+export function familyLinks(members: FamilyMember[], headId: string | null): KinLink[] {
+  const parents = linkParents(members, headId);
   return members
     .filter((m) => !parents.includes(m) && OWN_CHILD_RELATIONS.includes(m.rudenie.trim()))
     .flatMap((child) => parents.map((p) => ({ parentId: p.id, childId: child.id })));
@@ -84,17 +104,67 @@ function ancestors(links: KinLink[], id: string): Set<string> {
   return seen;
 }
 
+/** A parent is at least this many years older than the child, when both birth dates are known. */
+export const MIN_PARENT_AGE_GAP = 12;
+export const SIBLINGS_ERROR = "Persoanele sunt frați; nu pot fi părinte și copil.";
+export const AGE_GAP_ERROR = "Diferența de vârstă e prea mică.";
+
+/** The birth date of a person, when known (for the age gap). */
+export type BirthOf = (id: string) => string | null | undefined;
+
+/** Siblings (a parent in common) or too close in age: the two checks shared by new links and the review of stored ones. */
+function pairError(links: KinLink[], parentId: string, childId: string, born: BirthOf): string | null {
+  const parentsOf = (id: string) => links.filter((l) => l.childId === id).map((l) => l.parentId);
+  const childParents = new Set(parentsOf(childId));
+  if (parentsOf(parentId).some((p) => childParents.has(p))) return SIBLINGS_ERROR;
+  const bp = born(parentId);
+  const bc = born(childId);
+  if (bp && bc && ageAt(bp, bc) < MIN_PARENT_AGE_GAP) return AGE_GAP_ERROR;
+  return null;
+}
+
 /**
- * Why a new parent-child link is refused (shown to the user), or null: never oneself, not twice, at most
- * two parents, and no cycle (a person cannot be an ancestor of their own parent). The church is checked
- * by the caller (both persons found through the church's scoped client).
+ * Why a new parent-child link is refused (shown to the user), or null: never oneself, not twice, not
+ * between siblings, the parent at least 12 years older (when both birth dates are known), at most two
+ * parents, and no cycle (a person cannot be an ancestor of their own parent). The church is checked by
+ * the caller (both persons found through the church's scoped client).
  */
-export function parentLinkError(links: KinLink[], parentId: string, childId: string): string | null {
+export function parentLinkError(links: KinLink[], parentId: string, childId: string, born: BirthOf = () => null): string | null {
   if (parentId === childId) return "O persoană nu poate fi propriul părinte.";
   if (links.some((l) => l.parentId === parentId && l.childId === childId)) return "Legătura există deja.";
+  const pair = pairError(links, parentId, childId, born);
+  if (pair) return pair;
   if (links.filter((l) => l.childId === childId).length >= MAX_PARENTS) return "Persoana are deja doi părinți în registru.";
   if (ancestors(links, parentId).has(childId)) return "Legătura ar face din persoană strămoșul propriului părinte.";
   return null;
+}
+
+export interface CheckPerson {
+  id: string;
+  dataNasterii: string | null;
+  familyId: string | null;
+  rudenie: string;
+}
+export const SAME_FAMILY_ERROR = "În familia comună, părintele nu este capul familiei sau soțul / soția.";
+
+/**
+ * The stored links that break the rules (Setări → Date "Verifică legăturile de rudenie", De verificat):
+ * siblings, too close in age, or — both in the same family — a parent who is not the head or Soț /
+ * Soție there (an adult Fiu "parent" of his brothers). Each link with the first reason found.
+ */
+export function linkViolations<L extends KinLink>(links: L[], persons: Map<string, CheckPerson>, heads: Map<string, string | null>): { link: L; reason: string }[] {
+  const born: BirthOf = (id) => persons.get(id)?.dataNasterii;
+  const out: { link: L; reason: string }[] = [];
+  for (const link of links) {
+    const others = links.filter((l) => l !== link);
+    const p = persons.get(link.parentId);
+    const c = persons.get(link.childId);
+    if (!p || !c) continue;
+    const pair = pairError(others, link.parentId, link.childId, born);
+    if (pair) out.push({ link, reason: pair });
+    else if (p.familyId && p.familyId === c.familyId && !isLinkParent(p, heads.get(p.familyId) ?? null)) out.push({ link, reason: SAME_FAMILY_ERROR });
+  }
+  return out;
 }
 
 export interface KinPerson {
