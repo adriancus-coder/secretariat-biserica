@@ -407,7 +407,7 @@ corecții deliberate:
 
 ## Atribuiri
 
-- `src/lib/postal-codes-no.json`: Postnummerregister © Posten Bring AS, licență NLOD (Norwegian Licence for Open Government Data).
+- `src/lib/postal-codes-no.json` (codurile poștale norvegiene și localitățile lor): Postnummerregister © Posten Bring AS, licență NLOD (Norwegian Licence for Open Government Data, https://data.norge.no/nlod/en/). Sursa: https://www.bring.no/postnummerregister-ansi.txt; numele localităților sunt scrise cu majuscule doar la început.
 
 ## Limitări și pași următori
 
