@@ -10,6 +10,11 @@ export function text(max: number, label = "Câmpul") {
   return str.transform((s) => s.trim()).pipe(z.string().max(max, `${label} poate avea cel mult ${max} de caractere.`));
 }
 
+/** Norwegian postal code: exactly four digits; empty is allowed. */
+export const postalCode = str
+  .transform((s) => s.trim())
+  .pipe(z.string().regex(/^(\d{4})?$/, "Codul poștal are exact 4 cifre."));
+
 export function requiredText(max: number, message: string, label = "Câmpul") {
   return text(max, label).pipe(z.string().min(1, message));
 }

@@ -11,6 +11,7 @@
  * Fișierele exportate de aplicație pot fi importate în prototip și invers.
  */
 import { z } from "zod";
+import { addressFromInput } from "@/lib/address";
 import { isIsoDate } from "@/lib/dates";
 import {
   DOCUMENT_TYPES,
@@ -44,7 +45,10 @@ export interface BPerson {
   dataNasterii: string | null;
   telefon: string;
   email: string;
+  /** Street and number; the postal code and locality are separate (old files carry one line, split on import). */
   adresa: string;
+  codPostal: string;
+  localitate: string;
   dataMembru: string | null;
   modIntrare: EntryModeKey | null;
   bisericaProvenienta: string;
@@ -128,6 +132,8 @@ export interface BNote {
 export interface BSettings {
   nume: string;
   adresa: string;
+  codPostal: string;
+  localitate: string;
   orgnr: string;
   telefon: string;
   email: string;
@@ -168,6 +174,8 @@ export function toPrototypeJson(b: Backup): Record<string, unknown> {
       telefon: p.telefon,
       email: p.email,
       adresa: p.adresa,
+      codPostal: p.codPostal,
+      localitate: p.localitate,
       dataMembru: d(p.dataMembru),
       modIntrare: p.modIntrare ? PROTOTYPE_ENTRY_LABEL[p.modIntrare] : "",
       bisericaProvenienta: p.bisericaProvenienta,
@@ -355,7 +363,7 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
       dataNasterii: date(m.dataNasterii, who, "data nașterii"),
       telefon: str.parse(m.telefon),
       email: str.parse(m.email),
-      adresa: str.parse(m.adresa),
+      ...addressFromInput({ adresa: str.parse(m.adresa), codPostal: str.parse(m.codPostal), localitate: str.parse(m.localitate) }),
       dataMembru: date(m.dataMembru, who, "data intrării"),
       modIntrare,
       bisericaProvenienta: str.parse(m.bisericaProvenienta),
@@ -526,7 +534,7 @@ export function parsePrototypeJson(raw: unknown): ImportResult {
     const lines = (v: unknown) => [...new Set(strList.parse(v).map((x) => x.trim()).filter(Boolean))];
     backup.settings = {
       nume: str.parse(st.nume),
-      adresa: str.parse(st.adresa),
+      ...addressFromInput({ adresa: str.parse(st.adresa), codPostal: str.parse(st.codPostal), localitate: str.parse(st.localitate) }),
       orgnr: str.parse(st.orgnr ?? st.orgNr),
       telefon: str.parse(st.telefon),
       email: str.parse(st.email),

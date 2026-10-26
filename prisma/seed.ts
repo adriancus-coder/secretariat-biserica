@@ -28,6 +28,7 @@ import { defaultRoleGroupsData } from "../src/lib/roles";
 import { slugVariant } from "../src/lib/slug";
 import { hashPassword } from "../src/server/password";
 import { seedRefusal } from "../src/lib/seed-guard";
+import { addressFromInput } from "../src/lib/address";
 
 const DEMO_CHURCH_ID = "demo";
 /** Public application form of the demo church: /cerere/maranata-stavanger */
@@ -87,26 +88,26 @@ const BOTEZ_AICI = { botezBiserica: "Maranata Stavanger", botezLocalitate: "Stav
 
 const PERSONS: P[] = [
   // Familia Mureșan (pastorul)
-  { key: "daniel", nume: "Mureșan", prenume: "Daniel", gen: "M", familie: "Mureșan", rudenie: "Cap de familie", dataNasterii: "1968-11-11", telefon: "+47 912 34 501", email: "daniel.muresan@example.org", adresa: "Kongsgårdbakken 3, Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1986-06-22", botezBiserica: "Emanuel", botezLocalitate: "Oradea", botezOficiant: "Vasile Talpoș", slujire: "pastor" },
-  { key: "rodica", nume: "Mureșan", prenume: "Rodica", gen: "F", familie: "Mureșan", rudenie: "Soție", dataNasterii: "1970-03-15", telefon: "+47 912 34 502", adresa: "Kongsgårdbakken 3, Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1988-07-10", slujire: "cor, școala duminicală" },
+  { key: "daniel", nume: "Mureșan", prenume: "Daniel", gen: "M", familie: "Mureșan", rudenie: "Cap de familie", dataNasterii: "1968-11-11", telefon: "+47 912 34 501", email: "daniel.muresan@example.org", adresa: "Kongsgårdbakken 3, 4005 Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1986-06-22", botezBiserica: "Emanuel", botezLocalitate: "Oradea", botezOficiant: "Vasile Talpoș", slujire: "pastor" },
+  { key: "rodica", nume: "Mureșan", prenume: "Rodica", gen: "F", familie: "Mureșan", rudenie: "Soție", dataNasterii: "1970-03-15", telefon: "+47 912 34 502", adresa: "Kongsgårdbakken 3, 4005 Stavanger", dataMembru: d(18, 9, 1), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Betel Oslo", dataBotez: "1988-07-10", slujire: "cor, școala duminicală" },
   { key: "lidia", nume: "Mureșan", prenume: "Lidia", gen: "F", familie: "Mureșan", rudenie: "Fiică", dataNasterii: "2001-05-20", telefon: "+47 912 34 503", dataMembru: d(10, 5, 15), modIntrare: "BOTEZ", dataBotez: d(10, 5, 15), ...BOTEZ_AICI, slujire: "tineret, cor" },
   // Familia Popescu
-  { key: "ion", nume: "Popescu", prenume: "Ion", gen: "M", familie: "Popescu", rudenie: "Cap de familie", dataNasterii: "1972-04-12", telefon: "+47 913 11 201", email: "ion.popescu@example.org", adresa: "Madlaveien 14, Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1992-06-14", botezLocalitate: "Râul Someș, Cluj", slujire: "diacon, comitet" },
-  { key: "maria", nume: "Popescu", prenume: "Maria", gen: "F", familie: "Popescu", rudenie: "Soție", dataNasterii: "1975-09-03", telefon: "+47 913 11 202", adresa: "Madlaveien 14, Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1994-08-21", slujire: "cor" },
+  { key: "ion", nume: "Popescu", prenume: "Ion", gen: "M", familie: "Popescu", rudenie: "Cap de familie", dataNasterii: "1972-04-12", telefon: "+47 913 11 201", email: "ion.popescu@example.org", adresa: "Madlaveien 14, 4005 Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1992-06-14", botezLocalitate: "Râul Someș, Cluj", slujire: "diacon, comitet" },
+  { key: "maria", nume: "Popescu", prenume: "Maria", gen: "F", familie: "Popescu", rudenie: "Soție", dataNasterii: "1975-09-03", telefon: "+47 913 11 202", adresa: "Madlaveien 14, 4005 Stavanger", dataMembru: d(20, 3, 2), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Harul Cluj", dataBotez: "1994-08-21", slujire: "cor" },
   { key: "andrei", nume: "Popescu", prenume: "Andrei", gen: "M", familie: "Popescu", rudenie: "Fiu", dataNasterii: "2005-02-10", dataMembru: d(3, 6, 18), modIntrare: "BOTEZ", dataBotez: d(3, 6, 18), ...BOTEZ_AICI, slujire: "tineret, sunet" },
   { key: "anapopescu", nume: "Popescu", prenume: "Ana", gen: "F", statut: "APARTINATOR", familie: "Popescu", rudenie: "Fiică", dataNasterii: "2012-07-19", dataMembru: "2012-07-19", modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: "2012-10-07" },
   // Familia Ionescu
-  { key: "mihai", nume: "Ionescu", prenume: "Mihai", gen: "M", familie: "Ionescu", rudenie: "Cap de familie", dataNasterii: "1980-01-25", telefon: "+47 918 20 301", email: "mihai.ionescu@example.org", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "comitet, casier" },
-  { key: "elena", nume: "Ionescu", prenume: "Elena", gen: "F", familie: "Ionescu", rudenie: "Soție", dataNasterii: "1983-06-30", telefon: "+47 918 20 302", adresa: "Hillevågsveien 22, Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "școala duminicală" },
+  { key: "mihai", nume: "Ionescu", prenume: "Mihai", gen: "M", familie: "Ionescu", rudenie: "Cap de familie", dataNasterii: "1980-01-25", telefon: "+47 918 20 301", email: "mihai.ionescu@example.org", adresa: "Hillevågsveien 22, 4005 Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "comitet, casier" },
+  { key: "elena", nume: "Ionescu", prenume: "Elena", gen: "F", familie: "Ionescu", rudenie: "Soție", dataNasterii: "1983-06-30", telefon: "+47 918 20 302", adresa: "Hillevågsveien 22, 4005 Stavanger", dataMembru: d(12, 5, 20), modIntrare: "BOTEZ", dataBotez: d(12, 5, 20), ...BOTEZ_AICI, slujire: "școala duminicală" },
   { key: "david", nume: "Ionescu", prenume: "David", gen: "M", statut: "APARTINATOR", familie: "Ionescu", rudenie: "Fiu", dataNasterii: d(4, 3, 8), dataMembru: d(4, 3, 8), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: d(4, 6, 12) },
   { key: "sara", nume: "Ionescu", prenume: "Sara", gen: "F", statut: "APARTINATOR", familie: "Ionescu", rudenie: "Fiică", dataNasterii: d(1, 11, 2), dataMembru: d(1, 11, 2), modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: clampPast(d(0, 2, 15)) },
   // Familia Pop (secretara)
-  { key: "vasile", nume: "Pop", prenume: "Vasile", gen: "M", familie: "Pop", rudenie: "Cap de familie", dataNasterii: "1985-02-02", telefon: "+47 920 44 101", adresa: "Tjensvollveien 7, Stavanger", dataMembru: d(9, 9, 12), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Speranța Timișoara", dataBotez: "2004-05-30", slujire: "muzică" },
-  { key: "ioana", nume: "Pop", prenume: "Ioana", gen: "F", familie: "Pop", rudenie: "Soție", dataNasterii: "1988-08-08", telefon: "+47 920 44 102", email: "ioana.pop@example.org", adresa: "Tjensvollveien 7, Stavanger", dataMembru: d(9, 9, 12), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Speranța Timișoara", dataBotez: "2006-06-11", slujire: "secretară, comitet" },
+  { key: "vasile", nume: "Pop", prenume: "Vasile", gen: "M", familie: "Pop", rudenie: "Cap de familie", dataNasterii: "1985-02-02", telefon: "+47 920 44 101", adresa: "Tjensvollveien 7, 4005 Stavanger", dataMembru: d(9, 9, 12), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Speranța Timișoara", dataBotez: "2004-05-30", slujire: "muzică" },
+  { key: "ioana", nume: "Pop", prenume: "Ioana", gen: "F", familie: "Pop", rudenie: "Soție", dataNasterii: "1988-08-08", telefon: "+47 920 44 102", email: "ioana.pop@example.org", adresa: "Tjensvollveien 7, 4005 Stavanger", dataMembru: d(9, 9, 12), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Speranța Timișoara", dataBotez: "2006-06-11", slujire: "secretară, comitet" },
   { key: "iosif", nume: "Pop", prenume: "Iosif", gen: "M", statut: "APARTINATOR", familie: "Pop", rudenie: "Fiu", dataNasterii: "2015-09-09", dataMembru: "2015-09-09", modIntrare: "NASCUT_IN_BISERICA", dataBinecuvantare: "2016-01-17" },
   // Familia Ștefănescu
-  { key: "petru", nume: "Ștefănescu", prenume: "Petru", gen: "M", familie: "Ștefănescu", rudenie: "Cap de familie", dataNasterii: "1958-12-01", telefon: "+47 915 00 111", adresa: "Eiganesveien 40, Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1980-08-17", slujire: "prezbiter, comitet" },
-  { key: "viorica", nume: "Ștefănescu", prenume: "Viorica", gen: "F", familie: "Ștefănescu", rudenie: "Soție", dataNasterii: "1961-04-04", telefon: "+47 915 00 112", adresa: "Eiganesveien 40, Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1982-09-05", slujire: "surori, vizite" },
+  { key: "petru", nume: "Ștefănescu", prenume: "Petru", gen: "M", familie: "Ștefănescu", rudenie: "Cap de familie", dataNasterii: "1958-12-01", telefon: "+47 915 00 111", adresa: "Eiganesveien 40, 4005 Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1980-08-17", slujire: "prezbiter, comitet" },
+  { key: "viorica", nume: "Ștefănescu", prenume: "Viorica", gen: "F", familie: "Ștefănescu", rudenie: "Soție", dataNasterii: "1961-04-04", telefon: "+47 915 00 112", adresa: "Eiganesveien 40, 4005 Stavanger", dataMembru: d(22, 1, 10), modIntrare: "TRANSFER", bisericaProvenienta: "Biserica Baptistă Brașov", dataBotez: "1982-09-05", slujire: "surori, vizite" },
   // Familia Țurcanu
   { key: "radu", nume: "Țurcanu", prenume: "Radu", gen: "M", familie: "Țurcanu", rudenie: "Cap de familie", dataNasterii: "1990-10-10", telefon: "+47 921 10 001", dataMembru: d(2, 6, 16), modIntrare: "BOTEZ", dataBotez: d(2, 6, 16), ...BOTEZ_AICI, botezLocalitate: "Lacul Mosvatnet, Stavanger" },
   { key: "cristina", nume: "Țurcanu", prenume: "Cristina", gen: "F", statut: "PRIETEN", familie: "Țurcanu", rudenie: "Soție", dataNasterii: "1992-12-12", telefon: "+47 921 10 002", inregistrat: d(3, 2, 1) },
@@ -169,7 +170,7 @@ async function main() {
       slug: DEMO_SLUG,
       applicationsOpen: true,
       nume: "Maranata Stavanger",
-      adresa: "Kongsgårdbakken 1, 4005 Stavanger, Norvegia",
+      ...addressFromInput({ adresa: "Kongsgårdbakken 1, 4005 Stavanger" }),
       orgNr: "912 345 678",
       telefon: "+47 51 00 00 00",
       email: "secretariat@maranata-stavanger.no",
@@ -199,7 +200,7 @@ async function main() {
       dataNasterii: p.dataNasterii ? date(p.dataNasterii) : null,
       telefon: p.telefon ?? "",
       email: p.email ?? "",
-      adresa: p.adresa ?? "",
+      ...addressFromInput({ adresa: p.adresa ?? "" }),
       dataMembru: p.dataMembru ? date(p.dataMembru) : null,
       modIntrare: p.modIntrare ?? null,
       bisericaProvenienta: p.bisericaProvenienta ?? "",
@@ -235,7 +236,7 @@ async function main() {
     )!;
     const h = members.find((p) => p.key === head.id)!;
     const family = await prisma.family.create({
-      data: { churchId, nume: defaultFamilyName(h), headId: pid(h.key), adresa: h.adresa ?? "" },
+      data: { churchId, nume: defaultFamilyName(h), headId: pid(h.key), ...addressFromInput({ adresa: h.adresa ?? "" }) },
     });
     await prisma.person.updateMany({ where: { id: { in: members.map((p) => pid(p.key)) } }, data: { familyId: family.id } });
   }
@@ -486,7 +487,7 @@ async function main() {
         dataNasterii: date("1990-04-12"),
         telefon: "+47 412 34 567",
         email: "andrei.munteanu@example.com",
-        adresa: "Tjensvollveien 12, 4021 Stavanger",
+        ...addressFromInput({ adresa: "Tjensvollveien 12, 4021 Stavanger" }),
         familie: "Munteanu",
         rudenie: "Cap de familie",
         bisericaProvenienta: "Biserica Penticostală Elim Timișoara",
@@ -506,7 +507,7 @@ async function main() {
         gen: "F",
         dataNasterii: date("1999-11-03"),
         telefon: "+47 987 65 432",
-        adresa: "Madlaveien 40, 4009 Stavanger",
+        ...addressFromInput({ adresa: "Madlaveien 40, 4009 Stavanger" }),
         mesaj: "Aș dori să mă pregătesc pentru botez. Vin la biserică de câteva luni.",
         consent: true,
         createdAt: date(addDays(TODAY, -1)),

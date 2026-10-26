@@ -85,6 +85,8 @@ export function selfSnapshot(p: {
   telefon: string;
   email: string;
   adresa: string;
+  codPostal: string;
+  localitate: string;
   dataBotez: Date | null;
   botezAn: number | null;
   botezBiserica: string;
@@ -102,6 +104,8 @@ export function selfSnapshot(p: {
     telefon: p.telefon,
     email: p.email,
     adresa: p.adresa,
+    codPostal: p.codPostal,
+    localitate: p.localitate,
     dataBotez: fromDbDate(p.dataBotez),
     botezAn: p.dataBotez ? null : p.botezAn,
     botezBiserica: p.botezBiserica,

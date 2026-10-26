@@ -7,6 +7,6 @@ import { monthsBefore, todayIso, toDbDate } from "@/lib/dates";
 export function expiredContactWhere(): Prisma.PersonWhereInput {
   return {
     dataIesire: { lte: toDbDate(monthsBefore(todayIso(), CONTACT_RETENTION_MONTHS))! },
-    OR: [{ telefon: { not: "" } }, { email: { not: "" } }, { adresa: { not: "" } }],
+    OR: [{ telefon: { not: "" } }, { email: { not: "" } }, { adresa: { not: "" } }, { codPostal: { not: "" } }, { localitate: { not: "" } }],
   };
 }

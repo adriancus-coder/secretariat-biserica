@@ -22,6 +22,8 @@ export const FIELD_LABELS: Record<string, string> = {
   telefon: "Telefon",
   email: "E-mail",
   adresa: "Adresă",
+  codPostal: "Cod poștal",
+  localitate: "Localitate",
   dataMembru: "Data intrării",
   modIntrare: "Mod de intrare",
   bisericaProvenienta: "Biserica de proveniență",

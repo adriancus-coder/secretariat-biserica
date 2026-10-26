@@ -26,51 +26,53 @@ enum Role {
 }
 
 model Church {
-  id               String  @id @default(cuid())
+  id               String    @id @default(cuid())
   nume             String
   /// Public address of the membership application form: /cerere/<slug> (a-z, 0-9, hyphens; 3-40 chars).
-  slug             String  @unique
+  slug             String    @unique
   /// Whether the public form accepts membership applications.
-  applicationsOpen Boolean @default(false)
+  applicationsOpen Boolean   @default(false)
   /// Every user must use a second factor (users without one are sent to its setup at login).
-  require2fa       Boolean @default(false)
+  require2fa       Boolean   @default(false)
   /// The public privacy notice (/confidentialitate/<slug>); "" = the built-in template.
-  privacyText      String  @default("")
+  privacyText      String    @default("")
   /// The model notice version the church adopted ("1.2"), and when; "[data]" in the notice.
   privacyVersion   String    @default("")
   privacyAdoptedAt DateTime? @db.Date
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
   comunitate       String    @default("")
-  adresa           String  @default("")
-  orgNr            String  @default("")
-  telefon          String  @default("")
-  email            String  @default("")
-  pastor           String  @default("")
-  secretar         String  @default("")
+  adresa           String    @default("")
+  codPostal        String    @default("")
+  localitate       String    @default("")
+  orgNr            String    @default("")
+  telefon          String    @default("")
+  email            String    @default("")
+  pastor           String    @default("")
+  secretar         String    @default("")
   /// Addresses preselected when the minutes are e-mailed (Setări → Organizația).
-  pastorEmail      String  @default("")
-  secretarEmail    String  @default("")
+  pastorEmail      String    @default("")
+  secretarEmail    String    @default("")
 
   // Nomenclatoare editabile. O listă goală înseamnă „valorile implicite” din aplicație.
-  tipuriSedinte    String[] @default([])
-  tipuriEvenimente String[] @default([])
-  tipuriMentiuni   String[] @default([])
-  gradeRudenie     String[] @default([])
+  tipuriSedinte           String[]  @default([])
+  tipuriEvenimente        String[]  @default([])
+  tipuriMentiuni          String[]  @default([])
+  gradeRudenie            String[]  @default([])
   /// Attendance rule per meeting type: { "<tip>": "TOTI" | "COMITET" | "MANUAL" }. Missing = default (src/lib/attendance.ts).
-  regulaPrezenta   Json     @default("{}")
+  regulaPrezenta          Json      @default("{}")
   /// Meeting types that are a General Assembly (Statut art. 46); empty = the type named "Adunare generală".
-  tipuriAG         String[] @default([])
+  tipuriAG                String[]  @default([])
   /// Meeting types whose minutes show the quorum line (default: none).
-  tipuriCvorum     String[] @default([])
+  tipuriCvorum            String[]  @default([])
   /// "Pastorii și administratorii intră cu parolă + Face ID / amprentă": for pastors and administrators the
   /// second factor must be a passkey (codes remain as audited recovery) and passkey-only sign-in is refused.
-  passkeyPolicy    Boolean  @default(false)
+  passkeyPolicy           Boolean   @default(false)
   /// Last daily (campaign answers) and weekly (assembly / committee) notification digests.
-  pushDailyAt      DateTime?
-  pushWeeklyAt     DateTime?
+  pushDailyAt             DateTime?
+  pushWeeklyAt            DateTime?
   /// "Semnătura se desenează de fiecare dată": "" = off, "TOATE" = every document, "TIPURI" = the types below.
-  semnaturaUnica       String   @default("")
-  semnaturaUnicaTipuri String[] @default([])
+  semnaturaUnica          String    @default("")
+  semnaturaUnicaTipuri    String[]  @default([])
   /// Committee mandate (Statut art. 45): elected on, the minutes of the election (a meeting id, checked
   /// against the church on save; no FK), extended once by 5 years.
   comitetAlesLa           DateTime? @db.Date
@@ -79,59 +81,59 @@ model Church {
   /// Statute excerpts on the application form (src/lib/statute-excerpts.ts); [] = the defaults.
   statutExtrase           Json      @default("[]")
   /// Default page layout of the printed minutes (src/lib/page-layout.ts); {} = the built-in layout.
-  pvLayout         Json     @default("{}")
+  pvLayout                Json      @default("{}")
   /// Default page layout of the registered documents (src/lib/page-layout.ts); {} = the standard layout.
-  docLayout        Json     @default("{}")
+  docLayout               Json      @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users           User[]
-  invitations     Invitation[]
-  persons         Person[]
-  meetings        Meeting[]
-  events          Event[]
-  documents       Document[]
-  groups          Group[]
-  notes           Note[]
-  auditLogs       AuditLog[]
-  passwordResets  PasswordReset[]
-  applications    Application[]
-  personProposals PersonProposal[]
-  pastoralNotes   PastoralNote[]
-  roles           ChurchRole[]
-  roleGroups      RoleGroup[]
-  families        Family[]
-  churchDocuments ChurchDocument[]
-  personAliases   PersonAlias[]
-  disciplinaryMeasures DisciplinaryMeasure[]
-  dataCampaigns   DataCampaign[]
-  dataUpdateLinks DataUpdateLink[]
+  users                 User[]
+  invitations           Invitation[]
+  persons               Person[]
+  meetings              Meeting[]
+  events                Event[]
+  documents             Document[]
+  groups                Group[]
+  notes                 Note[]
+  auditLogs             AuditLog[]
+  passwordResets        PasswordReset[]
+  applications          Application[]
+  personProposals       PersonProposal[]
+  pastoralNotes         PastoralNote[]
+  roles                 ChurchRole[]
+  roleGroups            RoleGroup[]
+  families              Family[]
+  churchDocuments       ChurchDocument[]
+  personAliases         PersonAlias[]
+  disciplinaryMeasures  DisciplinaryMeasure[]
+  dataCampaigns         DataCampaign[]
+  dataUpdateLinks       DataUpdateLink[]
   dataUpdateSubmissions DataUpdateSubmission[]
-  consents        Consent[]
+  consents              Consent[]
 
   @@map("churches")
 }
 
 model User {
-  id             String  @id @default(cuid())
-  churchId       String
-  church         Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  churchId         String
+  church           Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
   /// Adresa de e-mail, stocată cu litere mici; unică în toată aplicația (un utilizator aparține unei singure biserici).
-  email          String  @unique
-  name           String
-  passwordHash   String
-  role           Role    @default(VIZUALIZARE)
+  email            String    @unique
+  name             String
+  passwordHash     String
+  role             Role      @default(VIZUALIZARE)
   /// Pastor of the church (Statut art. 38–39), independent of the role; set only by an administrator.
-  isPastor       Boolean @default(false)
+  isPastor         Boolean   @default(false)
   /// Optional label: "pastor coordonator", "pastor asistent".
-  pastorTitlu    String  @default("")
+  pastorTitlu      String    @default("")
   /// "Semnătura mea": the user's saved signature (PNG ≤ 600×200, ≤ 40 KB), used only after a device unlock.
   signaturePng     Bytes?
   signatureSavedAt DateTime?
-  active         Boolean @default(true)
+  active           Boolean   @default(true)
   /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
-  sessionVersion Int     @default(0)
+  sessionVersion   Int       @default(0)
 
   // Second factor: TOTP (secret encrypted at rest, see src/server/two-factor.ts) and/or a code by e-mail.
   totpSecretEnc        String?
@@ -153,31 +155,31 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  auditLogs           AuditLog[]
-  invitationsSent     Invitation[]       @relation("InvitedBy")
-  passwordResets      PasswordReset[]    @relation("ResetFor")
-  resetsIssued        PasswordReset[]    @relation("ResetIssuedBy")
-  applicationsDecided Application[]      @relation("ApplicationDecidedBy")
-  signaturesCollected MeetingSignature[] @relation("SignatureCollectedBy")
-  meetingSends        MeetingSend[]
-  loginChallenges     LoginChallenge[]
-  passkeys            UserPasskey[]
-  pushSubscriptions   PushSubscription[]
+  auditLogs              AuditLog[]
+  invitationsSent        Invitation[]           @relation("InvitedBy")
+  passwordResets         PasswordReset[]        @relation("ResetFor")
+  resetsIssued           PasswordReset[]        @relation("ResetIssuedBy")
+  applicationsDecided    Application[]          @relation("ApplicationDecidedBy")
+  signaturesCollected    MeetingSignature[]     @relation("SignatureCollectedBy")
+  meetingSends           MeetingSend[]
+  loginChallenges        LoginChallenge[]
+  passkeys               UserPasskey[]
+  pushSubscriptions      PushSubscription[]
   /// Notification types this user turned off (Cont → Notificări); empty = all on.
-  pushOff             String[]           @default([])
-  documentSignatures  DocumentSignature[]
-  documentsApproved   Document[]          @relation("DocumentApprovedBy")
-  applicationsProposed Application[]      @relation("ApplicationProposedBy")
-  personProposalsMade  PersonProposal[]   @relation("PersonProposalProposedBy")
-  personProposalsDecided PersonProposal[] @relation("PersonProposalDecidedBy")
+  pushOff                String[]               @default([])
+  documentSignatures     DocumentSignature[]
+  documentsApproved      Document[]             @relation("DocumentApprovedBy")
+  applicationsProposed   Application[]          @relation("ApplicationProposedBy")
+  personProposalsMade    PersonProposal[]       @relation("PersonProposalProposedBy")
+  personProposalsDecided PersonProposal[]       @relation("PersonProposalDecidedBy")
   pastoralNotes          PastoralNote[]
-  webauthnChallenges  WebAuthnChallenge[]
-  churchDocuments     ChurchDocument[]
-  personAliases       PersonAlias[]
-  disciplinaryMeasures DisciplinaryMeasure[]
-  dataCampaigns       DataCampaign[]
-  submissionsDecided  DataUpdateSubmission[] @relation("SubmissionDecidedBy")
-  consentsRecorded    Consent[]              @relation("ConsentRecordedBy")
+  webauthnChallenges     WebAuthnChallenge[]
+  churchDocuments        ChurchDocument[]
+  personAliases          PersonAlias[]
+  disciplinaryMeasures   DisciplinaryMeasure[]
+  dataCampaigns          DataCampaign[]
+  submissionsDecided     DataUpdateSubmission[] @relation("SubmissionDecidedBy")
+  consentsRecorded       Consent[]              @relation("ConsentRecordedBy")
 
   @@index([churchId])
   @@map("users")
@@ -260,21 +262,23 @@ model Person {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  nume         String
-  prenume      String       @default("")
-  statut       PersonStatus @default(MEMBRU)
+  nume          String
+  prenume       String       @default("")
+  statut        PersonStatus @default(MEMBRU)
   /// "Copil → Membru": set by the statute_statuses migration (Statut art. 28), listed once in Setări → Date.
   statutAjustat String?
-  gen          Gender?
-  familyId     String?
-  family       Family?      @relation("FamilyMembers", fields: [familyId], references: [id], onDelete: SetNull)
+  gen           Gender?
+  familyId      String?
+  family        Family?      @relation("FamilyMembers", fields: [familyId], references: [id], onDelete: SetNull)
   /// The free-text family name used before families became records; kept for one release, then dropped.
-  familieVeche String       @default("")
-  rudenie      String       @default("")
-  dataNasterii DateTime?    @db.Date
-  telefon      String       @default("")
-  email        String       @default("")
-  adresa       String       @default("")
+  familieVeche  String       @default("")
+  rudenie       String       @default("")
+  dataNasterii  DateTime?    @db.Date
+  telefon       String       @default("")
+  email         String       @default("")
+  adresa        String       @default("")
+  codPostal     String       @default("")
+  localitate    String       @default("")
 
   // Intrare în biserică
   dataMembru          DateTime?  @db.Date
@@ -290,9 +294,9 @@ model Person {
   dataBinecuvantare   DateTime?  @db.Date
 
   // Ieșire din evidență
-  dataIesire         DateTime? @db.Date
-  modIesire          ExitMode?
-  bisericaDestinatie String    @default("")
+  dataIesire          DateTime? @db.Date
+  modIesire           ExitMode?
+  bisericaDestinatie  String    @default("")
   /// Statut art. 24 alin. 2: a withdrawal starts from a written request.
   dataCerereRetragere DateTime? @db.Date
   /// The minutes approving the entry (transfer: art. 23 alin. 3; reabilitare: art. 22 alin. 3).
@@ -326,25 +330,25 @@ model Person {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meetings       MeetingAttendee[]
-  groups         GroupMember[]
-  mentiuni       Note[]
-  documents      Document[]
-  application    Application?
-  roles          PersonRole[]
-  headOf         Family?            @relation("FamilyHead")
-  signatures     MeetingSignature[]
-  aliases        PersonAlias[]
-  proposals      PersonProposal[]
-  pastoralNotes  PastoralNote[]
+  meetings              MeetingAttendee[]
+  groups                GroupMember[]
+  mentiuni              Note[]
+  documents             Document[]
+  application           Application?
+  roles                 PersonRole[]
+  headOf                Family?                @relation("FamilyHead")
+  signatures            MeetingSignature[]
+  aliases               PersonAlias[]
+  proposals             PersonProposal[]
+  pastoralNotes         PastoralNote[]
   /// Administrators only (permission `disciplina`).
-  disciplinaryMeasures DisciplinaryMeasure[]
-  dataUpdateLinks      DataUpdateLink[]
+  disciplinaryMeasures  DisciplinaryMeasure[]
+  dataUpdateLinks       DataUpdateLink[]
   dataUpdateSubmissions DataUpdateSubmission[]
-  consents             Consent[]              @relation("ConsentOf")
-  consentsGivenFor     Consent[]              @relation("ConsentGivenBy")
+  consents              Consent[]              @relation("ConsentOf")
+  consentsGivenFor      Consent[]              @relation("ConsentGivenBy")
   /// Groups this person is responsible for.
-  responsibleFor Group[]            @relation("GroupResponsabil")
+  responsibleFor        Group[]                @relation("GroupResponsabil")
 
   @@index([churchId, sortKey])
   @@index([intrareMeetingId])
@@ -385,41 +389,41 @@ enum DisciplinaryForum {
 /// A disciplinary measure (Statut art. 27, 271, 272). Administrators only: never shown, counted,
 /// listed, exported or hinted to other roles (permission `disciplina`).
 model DisciplinaryMeasure {
-  id           String            @id @default(cuid())
-  churchId     String
-  church       Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
-  personId     String
-  person       Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
-  forma        DisciplinaryForm
-  stare        DisciplinaryState @default(CERCETARE)
-  dataInceput  DateTime          @db.Date
-  dataSfarsit  DateTime?         @db.Date
-  meetingId    String?
-  meeting      Meeting?          @relation(fields: [meetingId], references: [id], onDelete: SetNull)
-  motiv        String            @default("")
-  decisByForum DisciplinaryForum @default(LOCAL)
+  id                  String            @id @default(cuid())
+  churchId            String
+  church              Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  personId            String
+  person              Person            @relation(fields: [personId], references: [id], onDelete: Cascade)
+  forma               DisciplinaryForm
+  stare               DisciplinaryState @default(CERCETARE)
+  dataInceput         DateTime          @db.Date
+  dataSfarsit         DateTime?         @db.Date
+  meetingId           String?
+  meeting             Meeting?          @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  motiv               String            @default("")
+  decisByForum        DisciplinaryForum @default(LOCAL)
   /// Hearing before the committee (Statut art. 272 lit. a): date, time, place of the convocation letter.
-  audiereLa     DateTime?         @db.Date
-  audiereOra    String            @default("")
-  audiereLoc    String            @default("")
+  audiereLa           DateTime?         @db.Date
+  audiereOra          String            @default("")
+  audiereLoc          String            @default("")
   /// The disciplinary minutes (art. 272 lit. c), printed only in the administrators' "PV disciplinar".
-  abatere       String            @default("")
-  raspuns       String            @default("")
-  nuSaPrezentat Boolean           @default(false)
-  incadrare     String            @default("")
-  temei         String            @default("")
+  abatere             String            @default("")
+  raspuns             String            @default("")
+  nuSaPrezentat       Boolean           @default(false)
+  incadrare           String            @default("")
+  temei               String            @default("")
   /// Communication to the person (art. 27 alin. 10) and the appeal to the Comunitate (alin. 11).
-  comunicatLa         DateTime?     @db.Date
-  contestatieLa       DateTime?     @db.Date
+  comunicatLa         DateTime?         @db.Date
+  contestatieLa       DateTime?         @db.Date
   contestatieRezultat AppealResult?
   /// Reinstatement (art. 271): the written request and the committee minutes.
-  cerereRepunereLa  DateTime? @db.Date
-  repunereMeetingId String?
-  repunereMeeting   Meeting?  @relation("DisciplineReinstatement", fields: [repunereMeetingId], references: [id], onDelete: SetNull)
-  createdById  String?
-  createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  cerereRepunereLa    DateTime?         @db.Date
+  repunereMeetingId   String?
+  repunereMeeting     Meeting?          @relation("DisciplineReinstatement", fields: [repunereMeetingId], references: [id], onDelete: SetNull)
+  createdById         String?
+  createdBy           User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@index([churchId, personId])
   @@index([personId])
@@ -607,6 +611,8 @@ model Family {
   headId      String? @unique
   head        Person? @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
   adresa      String  @default("")
+  codPostal   String  @default("")
+  localitate  String  @default("")
   note        String  @default("")
   /// Created automatically (migration or import from family text), still with its default name and
   /// never edited; "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
@@ -629,15 +635,15 @@ enum OrdinationKind {
 }
 
 model ChurchRole {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   churchId  String
-  church    Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  church    Church          @relation(fields: [churchId], references: [id], onDelete: Cascade)
   nume      String
-  sortOrder Int       @default(0)
+  sortOrder Int             @default(0)
   groupId   String
-  group     RoleGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  group     RoleGroup       @relation(fields: [groupId], references: [id], onDelete: Restrict)
   /// Inactive roles stay on the persons that hold them but cannot be newly assigned.
-  active    Boolean   @default(true)
+  active    Boolean         @default(true)
   /// An ordained ministry (Statut art. 30): its holders are offered as officiants.
   ordinat   OrdinationKind?
 
@@ -698,41 +704,41 @@ model Meeting {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  titlu            String   @default("")
-  tip              String
-  data             DateTime @db.Date
+  titlu                 String               @default("")
+  tip                   String
+  data                  DateTime             @db.Date
   /// Ora în format HH:MM (sau șir gol).
-  ora              String   @default("")
-  loc              String   @default("")
-  presedinte       String   @default("")
-  invitati         String   @default("")
-  ordine           String   @default("")
-  discutii         String   @default("")
-  hotarari         String   @default("")
+  ora                   String               @default("")
+  loc                   String               @default("")
+  presedinte            String               @default("")
+  invitati              String               @default("")
+  ordine                String               @default("")
+  discutii              String               @default("")
+  hotarari              String               @default("")
   /// Number in the minutes register of the year `anRegistru` (the year of `data`); null = not numbered yet.
-  nr               Int?
-  anRegistru       Int?
+  nr                    Int?
+  anRegistru            Int?
   /// "Puncte discutate și aprobate", in order. Replaces the free texts discutii/hotarari (migrated into puncte/observatii).
-  puncte           String[] @default([])
-  observatii       String   @default("")
-  formulaIncheiere String   @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
+  puncte                String[]             @default([])
+  observatii            String               @default("")
+  formulaIncheiere      String               @default("Toate punctele au fost votate în unanimitate de membrii prezenți.")
   /// Rich versions from the editor (src/lib/rich-text.ts); the plain fields above keep their projection.
   /// puncteRich is an array with one document per point, in the order of `puncte`.
-  puncteRich       Json?
-  observatiiRich   Json?
-  formulaRich      Json?
+  puncteRich            Json?
+  observatiiRich        Json?
+  formulaRich           Json?
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
-  asteptati        Int?
+  asteptati             Int?
   /// General Assembly (Statut art. 46): when it was announced, its scope, ordinary / extraordinary,
   /// convened by the Comunitate (art. 461: 7 days instead of 14).
-  convocatLa            DateTime?          @db.Date
-  convocareText         String             @default("")
+  convocatLa            DateTime?            @db.Date
+  convocareText         String               @default("")
   tipAG                 GeneralAssemblyKind?
-  convocataDeComunitate Boolean            @default(false)
+  convocataDeComunitate Boolean              @default(false)
   /// Votes per point, aligned with `puncte`: {pentru, contra, abtineri, secret} or null (src/lib/general-assembly.ts).
   voturi                Json?
   /// This meeting's own page layout (src/lib/page-layout.ts); null = the church's default.
-  layout           Json?
+  layout                Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -740,8 +746,8 @@ model Meeting {
   disciplinaryMeasures DisciplinaryMeasure[]
   reinstatements       DisciplinaryMeasure[] @relation("DisciplineReinstatement")
   /// Persons whose entry / exclusion these minutes record.
-  entries Person[] @relation("PersonEntryMeeting")
-  exits   Person[] @relation("PersonExitMeeting")
+  entries              Person[]              @relation("PersonEntryMeeting")
+  exits                Person[]              @relation("PersonExitMeeting")
 
   /// A closed (signed) meeting is read-only until an administrator reopens it.
   locked   Boolean   @default(false)
@@ -1030,14 +1036,14 @@ model Document {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  tip        DocumentType
+  tip               DocumentType
   /// A recommendation issued during a disciplinary investigation under the domicile exception (Statut art. 27 alin. 6).
-  exceptieDomiciliu Boolean @default(false)
+  exceptieDomiciliu Boolean      @default(false)
   /// Numărul de înregistrare; unic pe biserică și an.
-  nr         Int
+  nr                Int
   /// Anul registrului (anul din `data`), folosit pentru numerotarea pe an.
-  anRegistru Int
-  data       DateTime     @db.Date
+  anRegistru        Int
+  data              DateTime     @db.Date
 
   personId String?
   person   Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
@@ -1056,21 +1062,21 @@ model Document {
   /// Pentru darea de seamă: anul raportat.
   anRaport Int?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  /// Pastor approval (Statut art. 38–39): CIORNA → DE_SEMNAT → APROBAT, or RESPINS back to the secretary.
+  stare            DocumentState       @default(CIORNA)
+  trimisLaSemnatLa DateTime?
+  aprobatDeUserId  String?
+  aprobatDe        User?               @relation("DocumentApprovedBy", fields: [aprobatDeUserId], references: [id], onDelete: SetNull)
+  aprobatLa        DateTime?
+  motivRespingere  String              @default("")
+  signatures       DocumentSignature[]
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
   @@index([personId])
   @@map("documents")
-  /// Pastor approval (Statut art. 38–39): CIORNA → DE_SEMNAT → APROBAT, or RESPINS back to the secretary.
-  stare            DocumentState @default(CIORNA)
-  trimisLaSemnatLa DateTime?
-  aprobatDeUserId  String?
-  aprobatDe        User?         @relation("DocumentApprovedBy", fields: [aprobatDeUserId], references: [id], onDelete: SetNull)
-  aprobatLa        DateTime?
-  motivRespingere  String        @default("")
-  signatures DocumentSignature[]
 }
 
 // ---------------------------------------------------------------------------
@@ -1242,6 +1248,8 @@ model Application {
   telefon             String    @default("")
   email               String    @default("")
   adresa              String    @default("")
+  codPostal           String    @default("")
+  localitate          String    @default("")
   familie             String    @default("")
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")

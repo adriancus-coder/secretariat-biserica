@@ -16,6 +16,8 @@ const NO_AI = new RegExp(["anth" + "ropic", "cla" + "ude"].join("|"), "i");
 const church = {
   nume: "Maranata Stavanger",
   adresa: "Stavanger",
+  codPostal: "4005",
+  localitate: "Stavanger",
   orgNr: "",
   telefon: "",
   email: "secretariat@example.no",

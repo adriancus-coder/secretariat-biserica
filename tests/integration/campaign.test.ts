@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createMissingLinks, privacyVersionOf } from "@/server/campaigns";
-import { adultChildren, writeOnlineConsents } from "@/server/data-update";
+import { adultChildren, selfSnapshot, writeOnlineConsents } from "@/server/data-update";
+import { selfChanges } from "@/lib/data-update-review";
 import { applyDecision } from "@/server/review";
 import { importBackup } from "@/server/backup";
 import { buildExportJson, parseImportJson } from "@/server/backup-json";
@@ -95,6 +96,8 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       telefon: "+47 911 11 111",
       email: "",
       adresa: "",
+      codPostal: "",
+      localitate: "",
       dataBotez: "2003-06-01",
       botezAn: 2003,
       botezBiserica: "",
@@ -129,6 +132,18 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).status).toBe("PARTIAL");
       const audit = await ctx.db.auditLog.findFirstOrThrow({ where: { entity: "PERSON", entityId: mother }, orderBy: { createdAt: "desc" } });
       expect(JSON.stringify(audit.changes)).toContain("Actualizare date");
+    });
+
+    it("a proposed postal code shows as its own change and, once approved, reaches the register (and the audit log)", async () => {
+      const proposed = self({ telefon: "+47 911 11 111", adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" });
+      const id = await submit({ self: proposed, children: [], consents, nota: true });
+      const register = selfSnapshot(await ctx.db.person.findUniqueOrThrow({ where: { id: mother } }));
+      expect(selfChanges(register, proposed as never).find((c) => c.field === "codPostal")).toMatchObject({ label: "Cod poștal", before: "—", after: "4323" });
+      await applyDecision(ctx, id, { decizie: "selectate", nota: "", chosen: new Set(["s:codPostal", "s:localitate"]) });
+      const p = await ctx.db.person.findUniqueOrThrow({ where: { id: mother } });
+      expect([p.adresa, p.codPostal, p.localitate]).toEqual(["", "4323", "Sandnes"]);
+      const audit = await ctx.db.auditLog.findFirstOrThrow({ where: { entity: "PERSON", entityId: mother }, orderBy: { createdAt: "desc" } });
+      expect(JSON.stringify(audit.changes)).toContain("codPostal");
     });
 
     it("consents of an answer sent before 1.2 keep the campaign's version", async () => {

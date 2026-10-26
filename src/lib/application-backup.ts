@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { addressFromInput } from "./address";
 import { isIsoDate } from "./dates";
 import { APPLICATION_KINDS, APPLICATION_STATUSES, GENDERS, type ApplicationKindKey, type ApplicationStatusKey, type GenderKey } from "./labels";
 
@@ -18,6 +19,8 @@ export interface BApplication {
   telefon: string;
   email: string;
   adresa: string;
+  codPostal: string;
+  localitate: string;
   familie: string;
   rudenie: string;
   bisericaProvenienta: string;
@@ -62,6 +65,8 @@ const entry = z.object({
   telefon: str(50),
   email: str(200),
   adresa: str(200),
+  codPostal: str(10),
+  localitate: str(100),
   familie: str(100),
   rudenie: str(60),
   bisericaProvenienta: str(160),
@@ -122,6 +127,7 @@ export function parseApplicationsJson(root: unknown, memberIds: ReadonlySet<stri
     const { locBotez, ...data } = r.data;
     applications.push({
       ...data,
+      ...addressFromInput(data),
       botezLocalitate: data.botezLocalitate || locBotez,
       botezAn: data.dataBotez ? Number(data.dataBotez.slice(0, 4)) : data.botezAn,
       id,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PersonNav } from "@/components/person-nav";
 import { useUnsavedGuard } from "@/components/ui/unsaved-guard";
+import { AddressFields } from "@/components/ui/address-fields";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
@@ -126,7 +127,7 @@ export function PersonForm({
             <TextField name="telefon" label="Telefon" type="tel" defaultValue={val("telefon")} error={e.telefon} />
             <TextField name="email" label="E-mail" type="email" defaultValue={val("email")} error={e.email} />
           </div>
-          <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
+          <AddressFields values={{ adresa: val("adresa"), codPostal: val("codPostal"), localitate: val("localitate") }} errors={e} />
         </>
       )}
       <div className="row2">

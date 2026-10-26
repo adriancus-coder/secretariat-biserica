@@ -11,6 +11,8 @@ const base: SelfData = {
   telefon: "+47 900 00 001",
   email: "",
   adresa: "Stavanger",
+  codPostal: "",
+  localitate: "",
   dataBotez: null,
   botezAn: 2001,
   botezBiserica: "",

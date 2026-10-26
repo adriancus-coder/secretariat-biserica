@@ -1,3 +1,4 @@
+import { formatAddress } from "./address";
 import { fmtL } from "./format";
 import { PRIVACY_NOTICE_1_2 } from "./privacy-notice";
 
@@ -5,6 +6,8 @@ export interface PrivacyChurch {
   nume: string;
   email: string;
   adresa: string;
+  codPostal?: string;
+  localitate?: string;
   orgNr?: string;
   telefon?: string;
   comunitate?: string;
@@ -22,7 +25,7 @@ export function privacyTemplate(c: PrivacyChurch): string {
   const name = c.nume.trim() ? (/^biserica\b/i.test(c.nume.trim()) ? c.nume.trim() : `Biserica Penticostală ${c.nume.trim()}`) : "Biserica [numele bisericii]";
   return [
     fill("Biserica Penticostală Maranata Stavanger", name),
-    fill("[adresa]", c.adresa),
+    fill("[adresa]", formatAddress(c)),
     fill("[nr.]", c.orgNr),
     fill("[e-mail]", c.email),
     fill("[telefon]", c.telefon),

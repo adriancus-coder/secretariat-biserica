@@ -22,6 +22,14 @@ const gen = (p: Partial<DocPerson>, tip: Parameters<typeof generateDocumentText>
   generateDocumentText({ tip, person: { ...base, ...p }, family: [], church, catre: "", scop: "", ...extra });
 
 describe("șabloanele de documente", () => {
+  it("the church address is printed in the Norwegian format (street, postal code, locality)", () => {
+    const withParts = { nume: "Maranata Stavanger", adresa: "Ulveveien 20", codPostal: "4323", localitate: "Sandnes" };
+    const t = generateDocumentText({ tip: "adeverinta", person: base, family: [], church: withParts, catre: "", scop: "" });
+    expect(t).toContain("cu sediul în Ulveveien 20, 4323 Sandnes, adeverește");
+    const c = generateDocumentText({ tip: "convocare", person: null, family: [], church: withParts, catre: "", scop: "", convocare: { data: "2026-11-01", ora: "11:00", loc: "", scop: "", tipAG: "ORDINARA", puncte: [] } });
+    expect(c).toContain("la sediul bisericii, Ulveveien 20, 4323 Sandnes");
+  });
+
   it("adeverința, cu acordurile de gen", () => {
     expect(gen({}, "adeverinta")).toBe(
       "Biserica Maranata Stavanger, cu sediul în Kongsgårdbakken 1, Stavanger, adeverește prin prezenta că Popescu Ion, născut la data de 5 martie 2010, este membru al bisericii noastre din data de 10 iunie 2020, fiind botezat în apă la data de 10 iunie 2020.\n\nPrezenta adeverință se eliberează la cererea dânsului, pentru a-i servi la cele legale.",

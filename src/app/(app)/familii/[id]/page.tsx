@@ -1,3 +1,4 @@
+import { formatAddress } from "@/lib/address";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -48,12 +49,12 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
         ) : null}
       </PageHead>
 
-      {f.adresa || f.note ? (
+      {formatAddress(f) || f.note ? (
         <dl className="detail mb-4">
-          {f.adresa ? (
+          {formatAddress(f) ? (
             <>
               <dt>Adresă</dt>
-              <dd>{f.adresa}</dd>
+              <dd>{formatAddress(f)}</dd>
             </>
           ) : null}
           {f.note ? (
@@ -98,7 +99,7 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
           <h3>Date despre familie</h3>
           <FamilyForm
             id={f.id}
-            initial={{ nume: f.nume, adresa: f.adresa, note: f.note, headId: f.headId ?? "" }}
+            initial={{ nume: f.nume, adresa: f.adresa, codPostal: f.codPostal, localitate: f.localitate, note: f.note, headId: f.headId ?? "" }}
             members={f.members
               .filter((m) => m.id === f.headId || canBeHead({ statut: m.statut, dataNasterii: fromDbDate(m.dataNasterii) }, today))
               .map((m) => ({ id: m.id, name: memberName(m) }))}

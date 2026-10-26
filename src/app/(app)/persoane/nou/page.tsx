@@ -66,6 +66,8 @@ export default async function NewPersonPage({ searchParams }: PageProps<"/persoa
       telefon: app.telefon,
       email: app.email,
       adresa: app.adresa,
+      codPostal: app.codPostal,
+      localitate: app.localitate,
       modIntrare: app.kind,
       // Statut art. 22 alin. 3: a member from the baptism date, or from the approval of the transfer.
       dataMembru: !member ? "" : app.kind === "BOTEZ" && app.dataBotez ? fromDbDate(app.dataBotez)! : todayIso(),

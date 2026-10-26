@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { FAMILY_NAME_MAX, NEW_FAMILY } from "../families";
-import { idSchema, longText, requiredText, text } from "../validation";
+import { idSchema, longText, postalCode, requiredText, text } from "../validation";
 
 export const familySchema = z.object({
   nume: requiredText(FAMILY_NAME_MAX, "Numele familiei este obligatoriu.", "Numele"),
   adresa: text(200, "Adresa"),
+  codPostal: postalCode,
+  localitate: text(100, "Localitatea"),
   note: longText(2000, "Notele"),
   /** "" only for a family without adults (no one can be head). */
   headId: z

@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { formatAddress } from "@/lib/address";
 import { ageAt, fromDbDate } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/labels";
@@ -24,6 +25,8 @@ export async function listFamilyRecords(ctx: Ctx, { q, page }: { q: string; page
       id: true,
       nume: true,
       adresa: true,
+      codPostal: true,
+      localitate: true,
       head: { select: { nume: true, prenume: true, sortKey: true } },
       _count: { select: { members: true } },
     },
@@ -37,7 +40,7 @@ export async function listFamilyRecords(ctx: Ctx, { q, page }: { q: string; page
     items: sorted.slice((current - 1) * FAMILIES_PAGE_SIZE, current * FAMILIES_PAGE_SIZE).map((f) => ({
       id: f.id,
       nume: f.nume,
-      adresa: f.adresa,
+      adresa: formatAddress(f),
       head: f.head ? memberName(f.head) : "",
       count: f._count.members,
     })),

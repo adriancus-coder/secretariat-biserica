@@ -71,7 +71,7 @@ export async function deleteExpiredContactsAction(): Promise<void> {
     await ctx.db.$transaction(async (tx) => {
       const rows = await tx.person.findMany({ where, select: { id: true, nume: true, prenume: true, botezBiserica: true, botezOficiant: true, numeTata: true, numeMama: true } });
       for (const p of rows) {
-        await tx.person.update({ where: { id: p.id }, data: { telefon: "", email: "", adresa: "", ...personDerived({ ...p, telefon: "", email: "" }) } });
+        await tx.person.update({ where: { id: p.id }, data: { telefon: "", email: "", adresa: "", codPostal: "", localitate: "", ...personDerived({ ...p, telefon: "", email: "" }) } });
       }
       await writeAudit(tx, ctx.user, {
         entity: "SECURITY",

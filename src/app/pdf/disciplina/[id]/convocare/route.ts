@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/pdf/discipli
   if (!(await hasStepUp(ctx.user))) redirect(`/persoane/${m.personId}/disciplina`);
   const church = await getChurch(ctx);
   const spec = hearingConvocationPrint(
-    { person: m.person, data: fromDbDate(m.audiereLa)!, ora: m.audiereOra, loc: m.audiereLoc, today: todayIso(), adresa: church.adresa },
+    { person: m.person, data: fromDbDate(m.audiereLa)!, ora: m.audiereOra, loc: m.audiereLoc, today: todayIso() },
     church,
   );
   return pdfResponse(await renderPdf(spec), pdfFileName(`convocare-audiere-${m.person.nume}`));

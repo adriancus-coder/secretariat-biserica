@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Confidențialitate" };
 export default async function ChurchPrivacyPage({ params }: PageProps<"/confidentialitate/[slug]">) {
   const { slug } = await params;
   if (!isValidSlug(slug)) notFound();
-  const church = await prisma.church.findUnique({ where: { slug }, select: { nume: true, email: true, adresa: true, orgNr: true, telefon: true, comunitate: true, privacyAdoptedAt: true, privacyText: true } });
+  const church = await prisma.church.findUnique({ where: { slug }, select: { nume: true, email: true, adresa: true, codPostal: true, localitate: true, orgNr: true, telefon: true, comunitate: true, privacyAdoptedAt: true, privacyText: true } });
   if (!church) notFound();
   return (
     <>

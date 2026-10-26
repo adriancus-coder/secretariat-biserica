@@ -44,7 +44,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
   }
   // Contact data of a person who left are restricted to administrators: not sent, kept on save.
   const restricted = contactRestricted(person, ctx.user.role);
-  if (restricted) for (const f of ["telefon", "email", "adresa"] as const) initial[f] = "";
+  if (restricted) for (const f of ["telefon", "email", "adresa", "codPostal", "localitate"] as const) initial[f] = "";
   initial.functii = rolesFieldValue(held);
   initial.inComitet = person.inComitet ? "on" : "";
   initial.familyId = person.familyId ?? "";
@@ -54,7 +54,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
   // new save replaces the proposal instead of being overwritten when the pastor confirms it.
   const waiting = await ctx.db.personProposal.findFirst({ where: { personId: id, status: "PROPUSA" }, orderBy: { createdAt: "desc" }, select: { id: true, kind: true, formular: true } });
   if (waiting && waiting.formular && typeof waiting.formular === "object" && !Array.isArray(waiting.formular)) Object.assign(initial, waiting.formular);
-  if (restricted) for (const f of ["telefon", "email", "adresa"] as const) initial[f] = "";
+  if (restricted) for (const f of ["telefon", "email", "adresa", "codPostal", "localitate"] as const) initial[f] = "";
   // The head of a family with other members changes family only after a new head is chosen.
   const headOf = await ctx.db.family.findUnique({ where: { headId: id }, select: { id: true, nume: true, _count: { select: { members: true } } } });
   const lockedFamily = headOf && headOf._count.members > 1 ? { id: headOf.id, nume: headOf.nume } : undefined;

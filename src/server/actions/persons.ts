@@ -130,11 +130,11 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         return;
       }
       const current = id
-        ? await ctx.db.person.findUnique({ where: { id }, select: { modIntrare: true, dataMembru: true, modIesire: true, dataIesire: true, statut: true, telefon: true, email: true, adresa: true } })
+        ? await ctx.db.person.findUnique({ where: { id }, select: { modIntrare: true, dataMembru: true, modIesire: true, dataIesire: true, statut: true, telefon: true, email: true, adresa: true, codPostal: true, localitate: true } })
         : null;
       if (id && !current) throw new ActionError("Persoana nu mai există în registru.");
       // Contact data the proposer could not see stay as stored when the pastor replays the form.
-      if (current && contactRestricted(current, ctx.user.role)) Object.assign(entries, { telefon: current.telefon, email: current.email, adresa: current.adresa });
+      if (current && contactRestricted(current, ctx.user.role)) Object.assign(entries, { telefon: current.telefon, email: current.email, adresa: current.adresa, codPostal: current.codPostal, localitate: current.localitate });
       const kind = proposalKind(
         current && { ...current, dataMembru: fromDbDate(current.dataMembru), dataIesire: fromDbDate(current.dataIesire) },
         { modIntrare: input.modIntrare || null, dataMembru: input.dataMembru || null, modIesire: input.modIesire || null, dataIesire: input.dataIesire || null },
@@ -155,7 +155,7 @@ export async function savePersonAction(id: string | null, _prev: PersonFormState
         if (!before) throw new ActionError("Persoana nu mai există în registru.");
         const extrasBefore = await auditExtras(tx, id);
         // A non-administrator never sees the contact data of a person who left: keep them as stored.
-        if (contactRestricted(before, ctx.user.role)) Object.assign(data, { telefon: before.telefon, email: before.email, adresa: before.adresa }, personDerived({ ...input, telefon: before.telefon, email: before.email }));
+        if (contactRestricted(before, ctx.user.role)) Object.assign(data, { telefon: before.telefon, email: before.email, adresa: before.adresa, codPostal: before.codPostal, localitate: before.localitate }, personDerived({ ...input, telefon: before.telefon, email: before.email }));
         const target = familyChoice === NEW_FAMILY ? NEW_FAMILY : familyChoice || null;
         // The head of a family with other members changes family only after a new head is chosen.
         if (before.headOf && target !== before.headOf.id) {

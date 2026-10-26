@@ -394,6 +394,15 @@ corecții deliberate:
     o măsură aplicată este menționată în scrisoare (alin. 9) și scrisoarea poate fi emisă doar de
     administrator; în timpul cercetării recomandarea se emite doar cu excepția schimbării domiciliului
     (alin. 6), menționată în text.
+21. **Adresa (format norvegian).** Adresa se afișează mereu „Ulveveien 20, 4323 Sandnes” (`formatAddress`,
+    `src/lib/address.ts`). Pe persoană, familie, cererea de membru și biserică, `adresa` este strada și
+    numărul; codul poștal (4 cifre) și localitatea sunt câmpuri separate. Dare de seamă și documentele
+    generate tipăresc adresa bisericii prin aceeași funcție (testele de paritate nu se schimbă: fără cod
+    poștal rezultatul este cel din prototip). Migrarea `address_format` desparte adresele vechi
+    „<stradă>[,] <4 cifre> <localitate>”; ce nu se potrivește rămâne întreg în `adresa` și apare în
+    „De verificat” cu motivul „Adresa nu are cod poștal”. Localitatea se completează la 4 cifre din
+    Postnummerregister (Bring, NLOD), inclus ca `src/lib/postal-codes-no.json`. Copia JSON păstrează câmpurile
+    separate și acceptă fișierele vechi cu adresa pe un singur rând.
 
 ## Limitări și pași următori
 

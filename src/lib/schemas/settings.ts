@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ATTENDANCE_RULES, type AttendanceRule } from "../attendance";
 import { ROLES } from "../labels";
 import { isValidSlug, SLUG_MAX, SLUG_MIN } from "../slug";
-import { longText, optionalEmail, requiredEnum, requiredText, text } from "../validation";
+import { longText, optionalEmail, postalCode, requiredEnum, requiredText, text } from "../validation";
 import { emailField } from "./auth";
 
 export const NOMEN_MAX_ITEMS = 60;
@@ -32,6 +32,8 @@ const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z
 export const SETTINGS_FIELDS = [
   "nume",
   "adresa",
+  "codPostal",
+  "localitate",
   "orgNr",
   "telefon",
   "email",
@@ -59,6 +61,8 @@ export const SETTINGS_FIELDS = [
 export const churchSettingsSchema = z.object({
   nume: requiredText(160, "Numele bisericii este obligatoriu.", "Numele"),
   adresa: text(300, "Adresa"),
+  codPostal: postalCode,
+  localitate: text(100, "Localitatea"),
   orgNr: text(60, "Org.nr."),
   telefon: text(60, "Telefonul"),
   comunitate: text(200, "Comunitatea"),

@@ -8,7 +8,7 @@ const person = { nume: "Pop", prenume: "Ana", gen: "F" as const };
 
 describe("disciplinary documents (Statut art. 27, 272)", () => {
   it("the hearing convocation names the date, time, place and art. 272 lit. a–b", () => {
-    const t = printToText(hearingConvocationPrint({ person, data: "2026-11-05", ora: "18:00", loc: "", today: "2026-10-25", adresa: "Str. 1" }, church));
+    const t = printToText(hearingConvocationPrint({ person, data: "2026-11-05", ora: "18:00", loc: "", today: "2026-10-25" }, church));
     expect(t).toContain("Sora Pop Ana,");
     expect(t).toContain("în data de 5 noiembrie 2026, ora 18:00, la sediul bisericii, Str. 1");
     expect(t).toContain("art. 272 lit. a");

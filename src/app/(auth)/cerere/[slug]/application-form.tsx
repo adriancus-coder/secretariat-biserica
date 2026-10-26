@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/shell/icons";
+import { AddressFields } from "@/components/ui/address-fields";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
@@ -119,7 +120,7 @@ export function ApplicationForm({
         <TextField name="telefon" label="Telefon" type="tel" defaultValue={v.telefon ?? ""} error={e.telefon} autoComplete="tel" />
         <TextField name="email" label="E-mail" type="email" defaultValue={v.email ?? ""} error={e.email} autoComplete="email" inputMode="email" />
       </div>
-      <TextField name="adresa" label="Adresă" defaultValue={v.adresa ?? ""} error={e.adresa} autoComplete="street-address" />
+      <AddressFields values={v} errors={e} autoComplete />
       <div className="row2 stack-sm">
         <TextField
           name="familie"

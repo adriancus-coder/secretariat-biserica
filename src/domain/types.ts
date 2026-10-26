@@ -44,7 +44,10 @@ export interface EventRecord {
 
 export interface ChurchInfo {
   nume: string;
+  /** Street and number; print with formatAddress() together with the two fields below. */
   adresa: string;
+  codPostal?: string;
+  localitate?: string;
   orgNr: string;
   telefon: string;
   email: string;

@@ -166,6 +166,14 @@ export async function saveXAction(id: string | null, _prev: FormState, formData:
 - `before` and `after` are comparable views that use names instead of ids (for example `groupView`).
 - The log is shown by `components/audit-trail.tsx` and on `/setari/jurnal`.
 
+### Address (Norwegian format)
+
+- `Person`, `Family`, `Application` and `Church` have `adresa` (street and number), `codPostal` (exactly 4 digits or empty, `postalCode` in `src/lib/validation.ts`) and `localitate`. The data-update proposal has them as `SELF_FIELDS` (review shows "Cod poștal: — → 4323").
+- Showing an address always goes through `formatAddress()` (`src/lib/address.ts`: "Ulveveien 20, 4323 Sandnes", skips empty parts, never two spaces). Never join the parts by hand (`tests/unit/address-format.test.ts` scans `src/`). `ChurchInfo` carries the three fields; letterhead, documents and discipline convocations format them.
+- `splitLegacyAddress()` / `addressFromInput()` read an old single line ("<street>[,] <4 digits> <locality>"): JSON import, seed. The migration `address_format` applies the same rule in SQL (idempotent, counts only; `tests/integration/address-migration.test.ts` re-runs its data block). Addresses without a postal code are listed on `/de-verificat` ("Adresa nu are cod poștal", `addressReviewWhere`, counted in the nav badge).
+- Forms use `AddressFields` (`src/components/ui/address-fields.tsx`): street, then code (numeric, 4 digits) and locality on one row (`.addr-row`); the locality fills in from `src/lib/postal-codes-no.json` (Bring Postnummerregister, NLOD; loaded on first use) and a locality the user typed is not overwritten.
+- Contact restriction after an exit (`contactRestricted`) covers all three fields. Export columns: `adresa`, `codPostal`, `localitate`, `adresaCompleta`. Backup keeps the fields separate.
+
 ### Dates
 
 - Domain dates are ISO strings `YYYY-MM-DD`; database columns are `@db.Date`.

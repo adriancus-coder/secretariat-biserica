@@ -5,6 +5,7 @@ import type { Block, PrintSpec, Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { richLines, TEXT_SIZE_DELTA, type RichRun } from "@/lib/rich-text";
 import type { ChurchInfo } from "@/domain/types";
+import { formatAddress } from "@/lib/address";
 
 /**
  * Generarea PDF-urilor pe server (pdfkit), reproducând macheta de tipărire din prototip:
@@ -43,7 +44,7 @@ function joinableRuns<R extends { text: string }>(runs: readonly R[]): R[] {
 
 /** Linia de detalii din antet: adresă · Org.nr. · telefon · e-mail. */
 export function letterheadDetails(c: ChurchInfo): string {
-  return [c.adresa, c.orgNr ? `Org.nr. ${c.orgNr}` : "", c.telefon, c.email].filter(Boolean).join(" · ");
+  return [formatAddress(c), c.orgNr ? `Org.nr. ${c.orgNr}` : "", c.telefon, c.email].filter(Boolean).join(" · ");
 }
 
 const CHART_COLORS = ["#2f5d8a", "#c0862b", "#7a4e8c", "#3f8a5a"];

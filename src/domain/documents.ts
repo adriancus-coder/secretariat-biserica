@@ -1,3 +1,4 @@
+import { formatAddress } from "@/lib/address";
 import { fmtL, memberName } from "@/lib/format";
 import { churchName } from "@/lib/baptism";
 import { DOCUMENT_TYPE_LABEL, PARENT_RELATIONS, type DocumentTypeKey, type GenderKey } from "@/lib/labels";
@@ -32,7 +33,7 @@ export interface DocumentTemplateInput {
   family: DocPerson[];
   /** The head of the person's family, named first among the parents. */
   familyHeadId?: string | null;
-  church: Pick<ChurchInfo, "nume" | "adresa">;
+  church: Pick<ChurchInfo, "nume" | "adresa" | "codPostal" | "localitate">;
   catre: string;
   scop: string;
   /** Textul dării de seamă (pentru tipul „raport”), calculat separat. */
@@ -98,7 +99,7 @@ export function generateDocumentText({
 
   switch (tip) {
     case "adeverinta":
-      return `${bis}, cu sediul în ${c.adresa || BLANK}, adeverește prin prezenta că ${nume}${nascut}, este membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din data de ${fmtL(m.dataMembru)}` : ""}${botezatInApa(", fiind ")}.\n\nPrezenta adeverință se eliberează la cererea ${f ? "dânsei" : "dânsului"}, pentru ${scop || "a-i servi la cele legale"}.`;
+      return `${bis}, cu sediul în ${formatAddress(c) || BLANK}, adeverește prin prezenta că ${nume}${nascut}, este membr${f ? "ă" : "u"} al bisericii noastre${m?.dataMembru ? ` din data de ${fmtL(m.dataMembru)}` : ""}${botezatInApa(", fiind ")}.\n\nPrezenta adeverință se eliberează la cererea ${f ? "dânsei" : "dânsului"}, pentru ${scop || "a-i servi la cele legale"}.`;
     case "botez":
       return `Se certifică prin prezenta că ${nume}${nascut}, a fost botezat${f ? "ă" : ""} în apă, prin cufundare, în Numele Tatălui, al Fiului și al Sfântului Duh, ${botezAn ? `în anul ${botezAn}` : `la data de ${m?.dataBotez ? fmtL(m.dataBotez) : BLANK}`}${
         botezBis ? `, în ${botezBis}${botezLoc ? ` din ${botezLoc}` : ""}` : `${botezLoc ? `, la ${botezLoc}` : ""}, în cadrul ${bis}`
@@ -119,7 +120,7 @@ export function generateDocumentText({
       const g = convocare;
       const kind = g?.tipAG === "EXTRAORDINARA" ? "extraordinară" : g?.tipAG === "ORDINARA" ? "ordinară" : "";
       const agenda = g?.puncte.length ? `\n\nOrdinea de zi:\n${g.puncte.map((p, i) => `${i + 1}. ${p}`).join("\n")}` : "";
-      return `În temeiul Statutului Cultului Creștin Penticostal (art. 46), conducerea ${bis} convoacă Adunarea Generală${kind ? ` ${kind}` : ""} a membrilor bisericii, care va avea loc în data de ${g?.data ? fmtL(g.data) : BLANK}${g?.ora ? `, ora ${g.ora}` : ""}, ${g?.loc ? `la ${g.loc}` : `la sediul bisericii, ${c.adresa || BLANK}`}.\n\nScopul adunării: ${g?.scop || BLANK}${agenda}\n\nSunt chemați să participe toți membrii cu drepturi depline ai bisericii.`;
+      return `În temeiul Statutului Cultului Creștin Penticostal (art. 46), conducerea ${bis} convoacă Adunarea Generală${kind ? ` ${kind}` : ""} a membrilor bisericii, care va avea loc în data de ${g?.data ? fmtL(g.data) : BLANK}${g?.ora ? `, ora ${g.ora}` : ""}, ${g?.loc ? `la ${g.loc}` : `la sediul bisericii, ${formatAddress(c) || BLANK}`}.\n\nScopul adunării: ${g?.scop || BLANK}${agenda}\n\nSunt chemați să participe toți membrii cu drepturi depline ai bisericii.`;
     }
   }
 }

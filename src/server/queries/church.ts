@@ -9,6 +9,8 @@ import { prisma } from "../db";
 import type { Ctx } from "../session";
 
 export interface ChurchSettings extends ChurchInfo {
+  codPostal: string;
+  localitate: string;
   id: string;
   /** Public address of the application form: /cerere/<slug>. */
   slug: string;
@@ -71,6 +73,8 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     applicationsOpen: c.applicationsOpen,
     nume: c.nume,
     adresa: c.adresa,
+    codPostal: c.codPostal,
+    localitate: c.localitate,
     orgNr: c.orgNr,
     telefon: c.telefon,
     email: c.email,

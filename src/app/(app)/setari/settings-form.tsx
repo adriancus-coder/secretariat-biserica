@@ -4,6 +4,7 @@ import { isGeneralAssembly } from "@/lib/general-assembly";
 import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
+import { AddressFields } from "@/components/ui/address-fields";
 import { TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { initialFormState } from "@/lib/form-state";
@@ -12,7 +13,7 @@ import { DOCUMENT_TYPE_LABEL, DOCUMENT_TYPES, type Nomenclatures } from "@/lib/l
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 
-type ChurchTextFields = "nume" | "adresa" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
+type ChurchTextFields = "nume" | "adresa" | "codPostal" | "localitate" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
 
 export function SettingsForm({
   church,
@@ -69,7 +70,7 @@ export function SettingsForm({
       <fieldset className="card" disabled={readOnly}>
         <h3>Organizația</h3>
         <TextField name="nume" label="Numele bisericii" placeholder="ex. Maranata Stavanger" defaultValue={val("nume")} error={e.nume} required />
-        <TextField name="adresa" label="Adresă" defaultValue={val("adresa")} error={e.adresa} />
+        <AddressFields values={{ adresa: val("adresa"), codPostal: val("codPostal"), localitate: val("localitate") }} errors={e} />
         <div className="row2 stack-sm">
           <TextField name="orgNr" label="Org.nr. / cod fiscal" defaultValue={val("orgNr")} error={e.orgNr} />
           <TextField name="telefon" label="Telefon" defaultValue={val("telefon")} error={e.telefon} />
