@@ -4,6 +4,9 @@ import { useState } from "react";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import type { FormState } from "@/lib/form-state";
+import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
+import { todayIso } from "@/lib/dates";
+import { Icon } from "@/components/shell/icons";
 import { CONSENT_QUESTION, CONSENT_QUESTION_CHILD, GENDER_LABEL, OPTIONAL_CONSENTS, type OptionalConsentKey } from "@/lib/labels";
 import { CHILD_LABEL, SELF_FIELDS, SELF_LABEL, type SelfData, type SelfField } from "@/lib/schemas/data-update";
 import { PrivacyText } from "../confidentialitate/privacy-text";
@@ -55,6 +58,10 @@ export function UpdateForm({
   const [changed, setChanged] = useState<Set<string>>(new Set());
   const [children, setChildren] = useState<ChildState[]>(childrenInitial);
   const [nextKey, setNextKey] = useState(1);
+  const [gen, setGen] = useState(str(self.gen));
+  const [birth, setBirth] = useState(str(self.dataNasterii));
+  const [marriage, setMarriage] = useState(str(self.dataCasatoriei));
+  const [unmarried, setUnmarried] = useState(Boolean(self.necasatorit));
   const registerChildren = new Map(childrenInitial.filter((c) => c.id).map((c) => [c.id, c]));
 
   const mark = (name: string, value: string, base: string) =>
@@ -64,6 +71,9 @@ export function UpdateForm({
       else next.delete(name);
       return next;
     });
+  // The marriage date and the flag are one field for the highlighting.
+  const markMarital = (date: string, flag: boolean) =>
+    mark("dataCasatoriei", flag ? "necasatorit" : date, register?.necasatorit ? "necasatorit" : str(register?.dataCasatoriei));
   const updateChild = (key: string, patch: Partial<ChildState>) => setChildren((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   const childJson = JSON.stringify(
     children.map((c) => ({
@@ -97,11 +107,57 @@ export function UpdateForm({
               <div key={f} className={changed.has(f) ? "field field-changed" : "field"}>
                 <label htmlFor={id}>{SELF_LABEL[f]}</label>
                 {f === "gen" ? (
-                  <select id={id} name="gen" defaultValue={str(self.gen)} onChange={(ev) => register && mark(f, ev.target.value, base)} aria-invalid={e.gen ? true : undefined}>
+                  <select
+                    id={id}
+                    name="gen"
+                    defaultValue={str(self.gen)}
+                    onChange={(ev) => {
+                      setGen(ev.target.value);
+                      if (register) mark(f, ev.target.value, base);
+                    }}
+                    aria-invalid={e.gen ? true : undefined}
+                  >
                     <option value="">—</option>
                     <option value="M">{GENDER_LABEL.M}</option>
                     <option value="F">{GENDER_LABEL.F}</option>
                   </select>
+                ) : f === "dataCasatoriei" ? (
+                  <>
+                    <input
+                      id={id}
+                      name={f}
+                      type="date"
+                      value={unmarried ? "" : marriage}
+                      disabled={unmarried}
+                      autoComplete="off"
+                      onChange={(ev) => {
+                        setMarriage(ev.target.value);
+                        if (ev.target.value) setUnmarried(false);
+                        if (register) markMarital(ev.target.value, false);
+                      }}
+                      aria-invalid={e[f] ? true : undefined}
+                      aria-describedby={e[f] ? `${id}-err` : undefined}
+                    />
+                    {isMinorByBirth(birth, todayIso()) ? null : (
+                      <label className="choice mt-2">
+                        <input
+                          type="checkbox"
+                          name="necasatorit"
+                          checked={unmarried}
+                          onChange={(ev) => {
+                            setUnmarried(ev.target.checked);
+                            if (ev.target.checked) setMarriage("");
+                            if (register) markMarital(ev.target.checked ? "" : marriage, ev.target.checked);
+                          }}
+                        />
+                        <span className="tick" aria-hidden="true">
+                          <Icon name="bifa" className="size-[14px]" />
+                        </span>
+                        {unmarriedLabel(gen)}
+                      </label>
+                    )}
+                    {e.necasatorit ? <p className="field-error">{e.necasatorit}</p> : null}
+                  </>
                 ) : (
                   <input
                     id={id}
@@ -109,7 +165,10 @@ export function UpdateForm({
                     type={TYPES[f] ?? "text"}
                     defaultValue={str(self[f])}
                     autoComplete="off"
-                    onInput={(ev) => register && mark(f, ev.currentTarget.value, base)}
+                    onInput={(ev) => {
+                      if (f === "dataNasterii") setBirth(ev.currentTarget.value);
+                      if (register) mark(f, ev.currentTarget.value, base);
+                    }}
                     aria-invalid={e[f] ? true : undefined}
                     aria-describedby={e[f] ? `${id}-err` : undefined}
                   />

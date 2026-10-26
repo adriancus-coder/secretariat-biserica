@@ -24,6 +24,16 @@ describe("data-update proposal", () => {
     expect(r.errors.acord_BIRTHDAY).toBe("Alegeți Da sau Nu.");
   });
 
+  it("reads the unmarried flag and refuses it together with a date", () => {
+    const ok = parseProposal({ nume: "Pop", nota: "on", ...yes, dataNasterii: "1980-01-01", necasatorit: "on" });
+    expect(ok.ok && ok.value.self.necasatorit).toBe(true);
+    const both = parseProposal({ nume: "Pop", nota: "on", ...yes, dataNasterii: "1980-01-01", necasatorit: "on", dataCasatoriei: "2005-06-11" });
+    expect(both.ok).toBe(false);
+    if (!both.ok) expect(both.errors.necasatorit).toBeTruthy();
+    const minor = parseProposal({ nume: "Pop", nota: "on", ...yes, dataNasterii: "2015-01-01", necasatorit: "on" });
+    expect(minor.ok && minor.value.self.necasatorit).toBe(false);
+  });
+
   it("refuses future dates and more than 15 children", () => {
     const r = parseProposal({ nume: "Pop", nota: "on", ...yes, dataNasterii: "2999-01-01", copii: JSON.stringify(Array(16).fill(child)) });
     expect(r.ok).toBe(false);

@@ -3,6 +3,7 @@ import { addMemberRegister, parseMemberRegister, type RegisterFields } from "./r
 
 const r: RegisterFields = {
   dataCasatoriei: "2001-06-10",
+  necasatorit: false,
   numeTata: "Ion Pop",
   numeMama: "",
   dataCerereRetragere: null,
@@ -21,6 +22,15 @@ describe("register fields in the backup", () => {
     const back = parseMemberRegister({ members });
     expect(back.get("p1")).toEqual(r);
     expect(back.has("p2")).toBe(false);
+  });
+
+  it("keeps the unmarried flag, never together with a date", () => {
+    const members: Record<string, Record<string, unknown>> = { a: { id: "a" } };
+    addMemberRegister(members, new Map([["a", { ...r, dataCasatoriei: null, necasatorit: true }]]));
+    expect(members.a.necasatorit).toBe(true);
+    expect(parseMemberRegister({ members }).get("a")?.necasatorit).toBe(true);
+    const both = parseMemberRegister({ members: [{ id: "b", dataCasatoriei: "2001-06-10", necasatorit: true }] });
+    expect(both.get("b")).toMatchObject({ dataCasatoriei: "2001-06-10", necasatorit: false });
   });
 
   it("ignores invalid dates and ids", () => {

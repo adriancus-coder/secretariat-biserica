@@ -30,6 +30,7 @@ import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { loadPastoralNotes } from "@/server/pastoral-notes";
 import { deletePastoralNoteAction, savePastoralNoteAction } from "@/server/actions/pastoral-notes";
 import { PastoralNotesCard } from "./pastoral-notes-card";
+import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
 import { consentState, CONSENT_STATE_LABEL, currentConsents } from "@/lib/consents";
 import { CONSENT_KINDS, CONSENT_LABEL, CONSENT_SOURCE_LABEL } from "@/lib/labels";
 
@@ -100,7 +101,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             ["E-mail", x.email],
             ["Adresă", x.adresa],
           ]) as [string, React.ReactNode][]),
-      ["Data căsătoriei", dcas ? fmt(dcas) : ""],
+      ["Data căsătoriei", dcas ? fmt(dcas) : x.necasatorit && !isMinorByBirth(dn, today) ? unmarriedLabel(x.gen) : ""],
       ["Părinți", parents],
       [
         "Intrare în biserică",

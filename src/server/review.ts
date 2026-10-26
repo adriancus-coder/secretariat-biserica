@@ -54,6 +54,8 @@ function selfData(
     ...v,
     dataNasterii: toDbDate(pick("dataNasterii")),
     dataCasatoriei: toDbDate(pick("dataCasatoriei")),
+    // The flag travels with the marriage date (one row in the review).
+    necasatorit: fields.has("dataCasatoriei") || !current ? proposed.necasatorit : current.necasatorit,
     dataBotez: toDbDate(dataBotez),
     botezAn,
     ...personDerived(v),

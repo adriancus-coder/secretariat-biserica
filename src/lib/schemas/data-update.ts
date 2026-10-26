@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { todayIso } from "../dates";
 import { GENDERS, OPTIONAL_CONSENTS, type OptionalConsentKey } from "../labels";
+import { normalizeUnmarried, UNMARRIED_AND_DATE_ERROR } from "../marital";
 import { idSchema, optionalDate, optionalEmail, optionalEnum, optionalPastYear, requiredText, text } from "../validation";
 
 /**
@@ -60,12 +61,15 @@ const answer = z.preprocess((v) => (v === "da" ? true : v === "nu" ? false : v),
 export const consentsSchema = z.object(Object.fromEntries(OPTIONAL_CONSENTS.map((k) => [k, answer])) as Record<OptionalConsentKey, typeof answer>);
 export type ConsentAnswers = Record<OptionalConsentKey, boolean>;
 
-export const selfSchema = z.object({
+const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean());
+
+const selfFields = z.object({
   nume: requiredText(100, "Numele este obligatoriu.", "Numele"),
   prenume: text(100, "Prenumele"),
   gen: optionalEnum(GENDERS),
   dataNasterii: optionalDate.refine(notFuture, "Data nașterii nu poate fi în viitor."),
   dataCasatoriei: optionalDate.refine(notFuture, "Data căsătoriei nu poate fi în viitor."),
+  necasatorit: checkbox,
   telefon: text(50, "Telefonul"),
   email: optionalEmail,
   adresa: text(200, "Adresa"),
@@ -77,6 +81,12 @@ export const selfSchema = z.object({
   numeTata: text(160, "Numele tatălui"),
   numeMama: text(160, "Numele mamei"),
 });
+/** "Necăsătorit(ă)" excludes the marriage date; a minor (by the birth date given) is never flagged. */
+export const selfSchema = selfFields
+  .superRefine((v, ctx) => {
+    if (v.necasatorit && v.dataCasatoriei) ctx.addIssue({ code: "custom", path: ["necasatorit"], message: UNMARRIED_AND_DATE_ERROR });
+  })
+  .transform((v) => ({ ...v, necasatorit: normalizeUnmarried(v, todayIso()) }));
 export type SelfData = z.output<typeof selfSchema>;
 
 export const childSchema = z.object({
@@ -106,7 +116,7 @@ export interface DataUpdateProposal {
 /** The form's fields → the proposal, with field errors (children as `copii.<i>.<field>`). */
 export function parseProposal(form: Record<string, unknown>): { ok: true; value: DataUpdateProposal } | { ok: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
-  const self = selfSchema.safeParse(Object.fromEntries(SELF_FIELDS.map((k) => [k, form[k] ?? ""])));
+  const self = selfSchema.safeParse({ ...Object.fromEntries(SELF_FIELDS.map((k) => [k, form[k] ?? ""])), necasatorit: form.necasatorit });
   if (!self.success) for (const i of self.error.issues) errors[String(i.path[0])] ??= i.message;
   const consents = consentsSchema.safeParse(Object.fromEntries(OPTIONAL_CONSENTS.map((k) => [k, form[`acord_${k}`]])));
   if (!consents.success) for (const i of consents.error.issues) errors[`acord_${String(i.path[0])}`] ??= "Alegeți Da sau Nu.";

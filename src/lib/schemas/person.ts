@@ -2,6 +2,7 @@ import { z } from "zod";
 import { todayIso } from "../dates";
 import { ENTRY_MODES, EXIT_MODES, GENDERS, PERSON_STATUSES } from "../labels";
 import { NEW_FAMILY } from "../families";
+import { normalizeUnmarried, UNMARRIED_AND_DATE_ERROR } from "../marital";
 import { baptismYearOf, idSchema, optionalId, longText, optionalDate, optionalPastYear, optionalEmail, optionalEnum, requiredEnum, requiredText, text } from "../validation";
 
 export const PERSON_FIELDS = [
@@ -28,6 +29,7 @@ export const PERSON_FIELDS = [
   "bisericaDestinatie",
   "dataCerereRetragere",
   "dataCasatoriei",
+  "necasatorit",
   "numeTata",
   "numeMama",
   "plecatDin",
@@ -63,6 +65,7 @@ const personFields = z.object({
   intrareMeetingId: optionalId,
   iesireMeetingId: optionalId,
   dataCasatoriei: optionalDate,
+  necasatorit: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
   numeTata: text(160, "Numele tatălui"),
   numeMama: text(160, "Numele mamei"),
   plecatDin: optionalDate,
@@ -79,7 +82,7 @@ export const personSchema = personFields
     }
   })
   // A full baptism date also fills the year; the year alone leaves the date empty.
-  .transform((v) => ({ ...v, botezAn: baptismYearOf(v.dataBotez, v.botezAn) }));
+  .transform((v) => ({ ...v, botezAn: baptismYearOf(v.dataBotez, v.botezAn), necasatorit: normalizeUnmarried(v, todayIso()) }));
 
 export type PersonInput = z.output<typeof personFields>;
 
@@ -113,6 +116,7 @@ export function personDateErrors(input: PersonInput, today: string): Record<stri
   }
   if (input.plecatDin && input.plecatDin > today) errors.plecatDin = "Data plecării nu poate fi în viitor.";
   if (input.dataCasatoriei && input.dataCasatoriei > today) errors.dataCasatoriei = "Data căsătoriei nu poate fi în viitor.";
+  if (input.necasatorit && input.dataCasatoriei) errors.necasatorit = UNMARRIED_AND_DATE_ERROR;
   // Statut art. 28: aparținătorii sunt nebotezați.
   if (input.statut === "APARTINATOR" && (input.dataBotez || input.botezAn)) {
     errors.statut = "Aparținătorii sunt persoane nebotezate (Statut art. 28). Alegeți „Membru” sau „Botezat, fără calitate de membru”.";

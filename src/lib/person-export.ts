@@ -1,4 +1,5 @@
 import { categoryDef, type CombineMode } from "@/domain/categories";
+import { unmarriedLabel } from "./marital";
 import { ageAt } from "./dates";
 import { fmtDot } from "@/domain/print";
 import { ENTRY_LABEL, GENDER_LABEL, STATUS_LABEL, type ConsentKindKey, type EntryModeKey, type GenderKey, type PersonStatusKey } from "./labels";
@@ -25,6 +26,7 @@ export interface ExportPerson {
   botezAn: number | null;
   botezBiserica: string;
   dataCasatoriei: string | null;
+  necasatorit: boolean;
   functii: string;
   inComitet: boolean;
   grupuri: string;
@@ -105,7 +107,7 @@ export function cell(p: ExportPerson, c: ExportColumn, refDate: string): string 
     case "botezBiserica":
       return p.botezBiserica;
     case "dataCasatoriei":
-      return p.dataCasatoriei ? fmtDot(p.dataCasatoriei) : "";
+      return p.dataCasatoriei ? fmtDot(p.dataCasatoriei) : p.necasatorit ? unmarriedLabel(p.gen) : "";
     case "functii":
       return p.functii;
     case "comitet":

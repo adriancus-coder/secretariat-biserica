@@ -2,6 +2,7 @@ import "server-only";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
+import { unmarriedLabel } from "@/lib/marital";
 import { fmtDot } from "@/domain/print";
 import { memberName } from "@/lib/format";
 import {
@@ -49,7 +50,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
           ["Gen", p.gen ? GENDER_LABEL[p.gen] : ""],
           ["Data nașterii", d(p.dataNasterii)],
           ["Botez în apă", baptism],
-          ["Data căsătoriei", d(p.dataCasatoriei)],
+          ["Data căsătoriei", p.dataCasatoriei ? d(p.dataCasatoriei) : p.necasatorit ? unmarriedLabel(p.gen) : ""],
           ["Numele tatălui", p.numeTata],
           ["Numele mamei", p.numeMama],
           ["Familie", p.family ? `${p.family.nume}${p.rudenie ? ` — ${p.rudenie}` : ""}` : ""],

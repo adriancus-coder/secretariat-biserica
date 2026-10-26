@@ -304,6 +304,8 @@ model Person {
 
   // Registru (Statut art. 14 alin. 3 lit. a)
   dataCasatoriei DateTime? @db.Date
+  /// "Necăsătorit(ă)": distinguishes "not married" from "date missing"; never set together with dataCasatoriei.
+  necasatorit    Boolean   @default(false)
   /// Parents' names, when the parents are not persons in the register.
   numeTata       String    @default("")
   numeMama       String    @default("")

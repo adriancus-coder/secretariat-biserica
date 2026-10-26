@@ -47,6 +47,7 @@ export default async function EditPersonPage({ params, searchParams }: PageProps
   if (restricted) for (const f of ["telefon", "email", "adresa"] as const) initial[f] = "";
   initial.functii = rolesFieldValue(held);
   initial.inComitet = person.inComitet ? "on" : "";
+  initial.necasatorit = person.necasatorit ? "on" : "";
   initial.familyId = person.familyId ?? "";
   initial.intrareMeetingId = person.intrareMeetingId ?? "";
   initial.iesireMeetingId = person.iesireMeetingId ?? "";

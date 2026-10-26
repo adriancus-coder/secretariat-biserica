@@ -8,6 +8,7 @@ import { isIsoDate } from "./dates";
 
 export interface RegisterFields {
   dataCasatoriei: string | null;
+  necasatorit: boolean;
   numeTata: string;
   numeMama: string;
   dataCerereRetragere: string | null;
@@ -17,7 +18,7 @@ export interface RegisterFields {
   iesirePv: string | null;
 }
 
-const KEYS = ["dataCasatoriei", "numeTata", "numeMama", "dataCerereRetragere", "plecatDin", "plecatUnde", "intrarePv", "iesirePv"] as const;
+const KEYS = ["dataCasatoriei", "necasatorit", "numeTata", "numeMama", "dataCerereRetragere", "plecatDin", "plecatUnde", "intrarePv", "iesirePv"] as const;
 const str = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 160) : "");
 const date = (v: unknown) => (typeof v === "string" && isIsoDate(v.trim()) ? v.trim() : null);
 const id = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : null);
@@ -45,6 +46,8 @@ export function parseMemberRegister(root: unknown): Map<string, RegisterFields> 
     if (!KEYS.some((k) => k in r)) continue;
     out.set(String(r.id ?? key), {
       dataCasatoriei: date(r.dataCasatoriei),
+      // Never together with a date.
+      necasatorit: r.necasatorit === true && !date(r.dataCasatoriei),
       numeTata: str(r.numeTata),
       numeMama: str(r.numeMama),
       dataCerereRetragere: date(r.dataCerereRetragere),

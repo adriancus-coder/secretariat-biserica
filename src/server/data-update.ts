@@ -82,6 +82,7 @@ export function selfSnapshot(p: {
   gen: "M" | "F" | null;
   dataNasterii: Date | null;
   dataCasatoriei: Date | null;
+  necasatorit: boolean;
   telefon: string;
   email: string;
   adresa: string;
@@ -99,6 +100,7 @@ export function selfSnapshot(p: {
     gen: p.gen,
     dataNasterii: fromDbDate(p.dataNasterii),
     dataCasatoriei: fromDbDate(p.dataCasatoriei),
+    necasatorit: p.necasatorit,
     telefon: p.telefon,
     email: p.email,
     adresa: p.adresa,
