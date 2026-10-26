@@ -8,6 +8,7 @@ import { NotificationsCard } from "./notifications-card";
 import { isPushConfigured, vapidPublicKey } from "@/server/push";
 import { deviceLabel, pushTypesFor, type PushType } from "@/lib/push";
 import { ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/labels";
+import { permissions } from "@/lib/permissions";
 import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { logoutEverywhereAction } from "@/server/actions/auth";
@@ -95,12 +96,15 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
           lastUsed: p.lastUsedAt ? dotDateTime(p.lastUsedAt) : null,
         }))}
       />
-      <MySignatureCard
-        name={user.name}
-        current={security.signaturePng ? `data:image/png;base64,${Buffer.from(security.signaturePng).toString("base64")}` : null}
-        savedAt={security.signatureSavedAt ? dotDateTime(security.signatureSavedAt) : null}
-        hasPasskey={security.passkeys.length > 0}
-      />
+      {/* A saved signature signs register documents: not for the "Rugăciune" role. */}
+      {permissions.read(user) ? (
+        <MySignatureCard
+          name={user.name}
+          current={security.signaturePng ? `data:image/png;base64,${Buffer.from(security.signaturePng).toString("base64")}` : null}
+          savedAt={security.signatureSavedAt ? dotDateTime(security.signatureSavedAt) : null}
+          hasPasskey={security.passkeys.length > 0}
+        />
+      ) : null}
       <SecurityCard
         totpEnabled={security.totpEnabled}
         emailOtpEnabled={security.emailOtpEnabled}

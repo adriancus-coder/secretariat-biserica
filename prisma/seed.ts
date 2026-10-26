@@ -5,6 +5,7 @@
  *   admin@demo.ro        (Administrator)
  *   secretar@demo.ro     (Secretar)
  *   vizualizare@demo.ro  (Vizualizare)
+ *   rugaciune@demo.ro    (Rugăciune: only the family of the week)
  *
  * Parola pentru toți: demo1234
  *
@@ -152,7 +153,7 @@ const PERSONS: P[] = [
 async function main() {
   console.log(`Seed pentru biserica demo (azi = ${TODAY})…`);
   await prisma.church.deleteMany({ where: { id: DEMO_CHURCH_ID } });
-  await prisma.user.deleteMany({ where: { email: { in: ["admin@demo.ro", "secretar@demo.ro", "vizualizare@demo.ro"] } } });
+  await prisma.user.deleteMany({ where: { email: { in: ["admin@demo.ro", "secretar@demo.ro", "vizualizare@demo.ro", "rugaciune@demo.ro"] } } });
 
   // A local database can hold leftover churches (from signup tests) that got the demo slug in the
   // migration backfill; they move to the next free variant so the demo keeps its address.
@@ -185,6 +186,7 @@ async function main() {
     prisma.user.create({ data: { churchId, email: "admin@demo.ro", name: "Daniel Mureșan", passwordHash, role: "ADMIN" } }),
     prisma.user.create({ data: { churchId, email: "secretar@demo.ro", name: "Ioana Pop", passwordHash, role: "SECRETAR" } }),
     prisma.user.create({ data: { churchId, email: "vizualizare@demo.ro", name: "Emanuel Ciobanu", passwordHash, role: "VIZUALIZARE" } }),
+    prisma.user.create({ data: { churchId, email: "rugaciune@demo.ro", name: "Lidia Stan", passwordHash, role: "RUGACIUNE" } }),
   ]);
 
   // Persoane

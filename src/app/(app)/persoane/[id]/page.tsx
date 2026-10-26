@@ -15,6 +15,8 @@ import { permissions } from "@/lib/permissions";
 import { getPersonDetail, parseListSpec, personNeighbors } from "@/server/queries/persons";
 import { PersonNav } from "@/components/person-nav";
 import { listHref, withDin } from "@/lib/person-nav";
+import { PrayerPrefsForm } from "@/components/prayer-prefs-form";
+import { prayerChangeText } from "@/lib/prayer";
 import { requireCtx } from "@/server/session";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
@@ -31,6 +33,7 @@ import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { loadPastoralNotes } from "@/server/pastoral-notes";
 import { deletePastoralNoteAction, savePastoralNoteAction } from "@/server/actions/pastoral-notes";
 import { PastoralNotesCard } from "./pastoral-notes-card";
+import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
 import { consentState, CONSENT_STATE_LABEL, currentConsents } from "@/lib/consents";
 import { CONSENT_KINDS, CONSENT_LABEL, CONSENT_SOURCE_LABEL } from "@/lib/labels";
 
@@ -101,7 +104,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             ["E-mail", x.email],
             ["Adresă", formatAddress(x)],
           ]) as [string, React.ReactNode][]),
-      ["Data căsătoriei", dcas ? fmt(dcas) : ""],
+      ["Data căsătoriei", dcas ? fmt(dcas) : x.necasatorit && !isMinorByBirth(dn, today) ? unmarriedLabel(x.gen) : ""],
       ["Părinți", parents],
       [
         "Intrare în biserică",
@@ -226,6 +229,22 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
                 rudenie={(await getChurch(ctx)).nomen.rudenie}
               />
             ) : null}
+          </div>
+        ) : null}
+        {!x.family && canWrite ? (
+          <div className="card" id="rugaciune">
+            <h3>Rugăciunea săptămânală</h3>
+            {await ctx.db.person
+              .findUniqueOrThrow({ where: { id: x.id }, select: { prayerOptOut: true, prayerIncludeChildren: true, prayerChangedAt: true, prayerSource: true } })
+              .then((p) => (
+                <PrayerPrefsForm
+                  target={{ personId: x.id }}
+                  optOut={p.prayerOptOut}
+                  includeChildren={p.prayerIncludeChildren}
+                  source={p.prayerSource}
+                  changed={prayerChangeText(p.prayerChangedAt, p.prayerSource)}
+                />
+              ))}
           </div>
         ) : null}
         {x.family ? (

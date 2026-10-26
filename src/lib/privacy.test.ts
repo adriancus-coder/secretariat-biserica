@@ -14,6 +14,10 @@ describe("privacy notice 1.2", () => {
     expect(t).not.toMatch(new RegExp(["anth" + "ropic", "cla" + "ude"].join("|"), "i"));
     expect(t).toContain("Render Services, Inc. și Resend, Inc. au sediul în Statele Unite ale Americii.");
     expect(t).toContain("Biserica nu folosește servicii de inteligență artificială pentru prelucrarea datelor persoanelor.");
+    // The weekly prayer for families (purposes and access).
+    expect(t).toContain("e) Rugăciunea săptămânală pentru familii: o persoană desemnată de comitet anunță pe grupul bisericii familia");
+    expect(t).toContain("Orice familie poate cere oricând să nu fie pomenită, fără nicio explicație.");
+    expect(t).toContain("- Persoana desemnată pentru anunțul de rugăciune vede doar numele familiilor.");
   });
 
   it("fills the church's details; an empty setting keeps its placeholder", () => {

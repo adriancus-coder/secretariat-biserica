@@ -24,12 +24,14 @@ d) Doar cu acordul dumneavoastră separat și opțional (art. 6 alin. 1 lit. a �
    - contactarea pentru anunțuri prin WhatsApp, SMS sau e-mail;
    - includerea telefonului și a adresei în lista de contacte a bisericii, vizibilă membrilor.
 Slujbele pot fi transmise audio sau video, cu acceptul conducerii bisericii (Statut, art. 104); imaginile de ansamblu din timpul slujbelor nu necesită acordul individual. Refuzul acordurilor opționale nu afectează în niciun fel apartenența sau participarea dumneavoastră la viața bisericii.
+e) Rugăciunea săptămânală pentru familii: o persoană desemnată de comitet anunță pe grupul bisericii familia pentru care ne rugăm în săptămâna respectivă. Se folosesc doar numele familiei și prenumele părinților; prenumele copiilor numai cu acordul părinților. Temei: activitatea legitimă a bisericii față de membrii și apropiații săi (art. 9 alin. 2 lit. d și art. 6 alin. 1 lit. f GDPR). Orice familie poate cere oricând să nu fie pomenită, fără nicio explicație. Cererile personale de rugăciune, mai ales cele despre sănătate, nu se fac publice fără acordul persoanei.
 
 4. Copiii
 Datele copiilor sub 18 ani sunt furnizate de părinți sau de tutorii legali, care își dau și acordurile opționale pentru ei. De la vârsta de 15 ani, tinerii își pot exprima sau retrage singuri acordurile opționale.
 
 5. Cine are acces la date
 - În cadrul Bisericii, conform Statutului (art. 14 alin. 3 lit. d): pastorii bisericii, secretarul, persoanele care administrează sistemul informatic și alte persoane împuternicite de conducerea bisericii, fiecare doar cu drepturile necesare rolului său. Accesul este protejat prin parolă și autentificare în doi pași, iar orice modificare este înregistrată.
+- Persoana desemnată pentru anunțul de rugăciune vede doar numele familiilor.
 - Alte biserici și forurile Cultului: la transfer, biserica la care vă transferați primește datele necesare; în cazurile prevăzute de Statut, Comunitatea de care aparține Biserica primește informările obligatorii.
 - Furnizori care prelucrează date în numele Bisericii, pe bază de contract, numai la instrucțiunile noastre:
    - Render Services, Inc. — găzduirea aplicației și a bazei de date, pe servere din Uniunea Europeană (Frankfurt, Germania);

@@ -38,6 +38,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       botezAn: true,
       botezBiserica: true,
       dataCasatoriei: true,
+      necasatorit: true,
       inComitet: true,
       roles: {
         where: { OR: [{ until: null }, { until: { gte: today } }] },
@@ -69,6 +70,7 @@ export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<Export
       botezAn: p.botezAn,
       botezBiserica: p.botezBiserica,
       dataCasatoriei: fromDbDate(p.dataCasatoriei),
+      necasatorit: p.necasatorit,
       functii: rolesText(
         [...p.roles]
           .sort((a, b) => a.role.group.sortOrder - b.role.group.sortOrder || a.role.sortOrder - b.role.sortOrder)

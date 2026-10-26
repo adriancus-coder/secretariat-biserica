@@ -44,6 +44,8 @@ export interface ChurchSettings extends ChurchInfo {
   privacyText: string;
   /** The model notice version adopted ("" = none yet) and when (ISO date). */
   privacyVersion: string;
+  /** The weekly prayer message ("" = the default text). */
+  prayerMessage: string;
   privacyAdoptedAt: string | null;
   /** The Comunitate the church belongs to. */
   comunitate: string;
@@ -88,6 +90,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     semnaturaUnicaTipuri: c.semnaturaUnicaTipuri,
     privacyText: c.privacyText,
     privacyVersion: c.privacyVersion,
+    prayerMessage: c.prayerMessage,
     privacyAdoptedAt: c.privacyAdoptedAt ? c.privacyAdoptedAt.toISOString().slice(0, 10) : null,
     comunitate: c.comunitate,
     pvLayout: storedLayout(c.pvLayout),

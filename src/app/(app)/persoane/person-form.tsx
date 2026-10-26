@@ -11,6 +11,8 @@ import { useActionForm } from "@/components/ui/use-action-form";
 import { todayIso } from "@/lib/dates";
 import type { PersonFormState } from "@/lib/form-state";
 import { ENTRY_LABEL, ENTRY_MODES, EXIT_LABEL, EXIT_MODES, GENDER_LABEL, GENDERS, PERSON_STATUSES, STATUS_HINT, STATUS_LABEL, type PersonStatusKey } from "@/lib/labels";
+import { Icon } from "@/components/shell/icons";
+import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
 import { savePersonAction } from "@/server/actions/persons";
 import { FamilyField, type FamilyChoice } from "./family-field";
 import { OfficiantField } from "@/components/officiant-field";
@@ -73,6 +75,11 @@ export function PersonForm({
   const e = state.errors ?? {};
   const val = (k: string) => v[k] ?? "";
   const [statut, setStatut] = useState<PersonStatusKey>((val("statut") || "MEMBRU") as PersonStatusKey);
+  const [gen, setGen] = useState(val("gen"));
+  const [birth, setBirth] = useState(val("dataNasterii"));
+  const [marriage, setMarriage] = useState(val("dataCasatoriei"));
+  const [unmarried, setUnmarried] = useState(val("necasatorit") === "on");
+  const minor = isMinorByBirth(birth, todayIso());
   const [baptised, setBaptised] = useState(Boolean(val("dataBotez") || val("botezAn")));
   const [modIntrare, setModIntrare] = useState(val("modIntrare"));
   const [modIesire, setModIesire] = useState(val("modIesire"));
@@ -112,12 +119,12 @@ export function PersonForm({
           onChange={(ev) => setStatut(ev.target.value as PersonStatusKey)}
           options={opts(PERSON_STATUSES, STATUS_LABEL)}
         />
-        <SelectField name="gen" label="Gen" defaultValue={val("gen")} error={e.gen} emptyLabel="—" options={opts(GENDERS, GENDER_LABEL)} />
+        <SelectField name="gen" label="Gen" defaultValue={val("gen")} onChange={(ev) => setGen(ev.target.value)} error={e.gen} emptyLabel="—" options={opts(GENDERS, GENDER_LABEL)} />
       </div>
       <FamilyField families={families} defaultValue={val("familyId")} error={e.familyId} locked={lockedFamily} />
       <div className="row2">
         <SelectField name="rudenie" label="Grad de rudenie" defaultValue={val("rudenie")} error={e.rudenie} emptyLabel="—" options={nomenOptions(rudenie, val("rudenie"))} />
-        <TextField name="dataNasterii" label="Data nașterii" type="date" defaultValue={val("dataNasterii")} error={e.dataNasterii} />
+        <TextField name="dataNasterii" label="Data nașterii" type="date" defaultValue={val("dataNasterii")} onChange={(ev) => setBirth(ev.target.value)} error={e.dataNasterii} />
       </div>
       {contactRestricted ? (
         <p className="hint mb-3">Datele de contact sunt restricționate după ieșirea din evidență; doar administratorii le văd și le modifică.</p>
@@ -131,7 +138,40 @@ export function PersonForm({
         </>
       )}
       <div className="row2">
-        <TextField name="dataCasatoriei" label="Data căsătoriei" type="date" defaultValue={val("dataCasatoriei")} error={e.dataCasatoriei} />
+        <div>
+          <TextField
+            name="dataCasatoriei"
+            label="Data căsătoriei"
+            type="date"
+            value={unmarried ? "" : marriage}
+            disabled={unmarried}
+            onChange={(ev) => {
+              setMarriage(ev.target.value);
+              if (ev.target.value) setUnmarried(false);
+            }}
+            error={e.dataCasatoriei}
+          />
+          {minor ? null : (
+            <>
+              <label className="choice mb-3">
+                <input
+                  type="checkbox"
+                  name="necasatorit"
+                  checked={unmarried}
+                  onChange={(ev) => {
+                    setUnmarried(ev.target.checked);
+                    if (ev.target.checked) setMarriage("");
+                  }}
+                />
+                <span className="tick" aria-hidden="true">
+                  <Icon name="bifa" className="size-[14px]" />
+                </span>
+                {unmarriedLabel(gen)}
+              </label>
+              {e.necasatorit ? <p className="field-error">{e.necasatorit}</p> : null}
+            </>
+          )}
+        </div>
         <div />
       </div>
       <div className="row2">

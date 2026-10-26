@@ -8,6 +8,7 @@ const base: SelfData = {
   gen: "M",
   dataNasterii: "1980-01-01",
   dataCasatoriei: null,
+  necasatorit: false,
   telefon: "+47 900 00 001",
   email: "",
   adresa: "Stavanger",
@@ -23,6 +24,16 @@ const base: SelfData = {
 };
 
 describe("data-update review", () => {
+  it("shows the marriage date and the unmarried flag as one row", () => {
+    const married = { ...base, dataCasatoriei: "2005-06-11" };
+    expect(selfChanges(married, { ...base, necasatorit: true })).toEqual([
+      { field: "dataCasatoriei", label: "Data căsătoriei", before: "11 iun 2005", after: "Necăsătorit" },
+    ]);
+    expect(selfChanges(base, { ...base, gen: "F", necasatorit: true })[1]).toEqual({ field: "dataCasatoriei", label: "Data căsătoriei", before: "—", after: "Necăsătorită" });
+    expect(selfChanges(base, { ...base, gen: null, necasatorit: true }).find((c) => c.field === "dataCasatoriei")?.after).toBe("Necăsătorit(ă)");
+    expect(selfChanges({ ...base, necasatorit: true }, { ...base, necasatorit: true })).toEqual([]);
+  });
+
   it("lists only the changed fields, with readable values", () => {
     const changes = selfChanges(base, { ...base, telefon: "+47 900 00 009", dataCasatoriei: "2005-06-11", adresa: " Stavanger " });
     expect(changes).toEqual([

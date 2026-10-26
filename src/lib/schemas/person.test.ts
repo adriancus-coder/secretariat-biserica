@@ -3,6 +3,31 @@ import { applyExitRule, personDateErrors, personSchema } from "./person";
 
 const form = (over: Record<string, string> = {}) => ({ nume: "Popescu", prenume: "Ion", statut: "MEMBRU", ...over });
 
+describe("necăsătorit(ă)", () => {
+  it("bifa fără dată se păstrează pentru un adult", () => {
+    const r = personSchema.parse(form({ necasatorit: "on", dataNasterii: "1990-01-01" }));
+    expect(r.necasatorit).toBe(true);
+    expect(r.dataCasatoriei).toBeNull();
+  });
+
+  it("bifa și data împreună sunt refuzate pe server", () => {
+    const r = personSchema.safeParse(form({ necasatorit: "on", dataCasatoriei: "2010-05-01", dataNasterii: "1985-01-01" }));
+    expect(r.success).toBe(false);
+    expect(r.error!.issues.map((i) => i.path[0])).toContain("necasatorit");
+  });
+
+  it("data fără bifă rămâne cum e", () => {
+    const r = personSchema.parse(form({ dataCasatoriei: "2010-05-01" }));
+    expect(r.necasatorit).toBe(false);
+    expect(r.dataCasatoriei).toBe("2010-05-01");
+  });
+
+  it("un minor nu este marcat: nu se salvează nimic", () => {
+    const r = personSchema.parse(form({ necasatorit: "on", dataNasterii: "2015-01-01" }));
+    expect(r.necasatorit).toBe(false);
+  });
+});
+
 describe("validarea persoanei", () => {
   it("acceptă un formular minimal și normalizează valorile goale", () => {
     const r = personSchema.parse(form({ gen: "", dataNasterii: "", email: "  " }));

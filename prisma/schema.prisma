@@ -23,6 +23,8 @@ enum Role {
   ADMIN
   SECRETAR
   VIZUALIZARE
+  /// Only /rugaciune (the family of the week) and the user's own account; no register data.
+  RUGACIUNE
 }
 
 model Church {
@@ -42,8 +44,8 @@ model Church {
   /// The Comunitate the church belongs to (Statut; addressee of the obligatory notices).
   comunitate       String    @default("")
   adresa           String    @default("")
-  codPostal        String    @default("")
-  localitate       String    @default("")
+  codPostal String @default("")
+  localitate String @default("")
   orgNr            String    @default("")
   telefon          String    @default("")
   email            String    @default("")
@@ -70,6 +72,10 @@ model Church {
   /// Last daily (campaign answers) and weekly (assembly / committee) notification digests.
   pushDailyAt             DateTime?
   pushWeeklyAt            DateTime?
+  /// The Monday whose "Familia săptămânii este pregătită" notification was sent (claimed before sending).
+  pushPrayerWeek          DateTime? @db.Date
+  /// The weekly prayer message ("Copiază mesajul"), {familia} its only variable; "" = the default text.
+  prayerMessage           String    @default("")
   /// "Semnătura se desenează de fiecare dată": "" = off, "TOATE" = every document, "TIPURI" = the types below.
   semnaturaUnica          String    @default("")
   semnaturaUnicaTipuri    String[]  @default([])
@@ -101,6 +107,7 @@ model Church {
   applications          Application[]
   personProposals       PersonProposal[]
   pastoralNotes         PastoralNote[]
+  prayerWeeks           PrayerWeek[]
   roles                 ChurchRole[]
   roleGroups            RoleGroup[]
   families              Family[]
@@ -173,6 +180,7 @@ model User {
   personProposalsMade    PersonProposal[]       @relation("PersonProposalProposedBy")
   personProposalsDecided PersonProposal[]       @relation("PersonProposalDecidedBy")
   pastoralNotes          PastoralNote[]
+  prayerWeeks            PrayerWeek[]
   webauthnChallenges     WebAuthnChallenge[]
   churchDocuments        ChurchDocument[]
   personAliases          PersonAlias[]
@@ -277,8 +285,8 @@ model Person {
   telefon       String       @default("")
   email         String       @default("")
   adresa        String       @default("")
-  codPostal     String       @default("")
-  localitate    String       @default("")
+  codPostal String @default("")
+  localitate String @default("")
 
   // Intrare în biserică
   dataMembru          DateTime?  @db.Date
@@ -308,6 +316,8 @@ model Person {
 
   // Registru (Statut art. 14 alin. 3 lit. a)
   dataCasatoriei DateTime? @db.Date
+  /// "Necăsătorit(ă)": distinguishes "not married" from "date missing"; never set together with dataCasatoriei.
+  necasatorit    Boolean   @default(false)
   /// Parents' names, when the parents are not persons in the register.
   numeTata       String    @default("")
   numeMama       String    @default("")
@@ -341,6 +351,12 @@ model Person {
   aliases               PersonAlias[]
   proposals             PersonProposal[]
   pastoralNotes         PastoralNote[]
+  prayerWeeks           PrayerWeek[]
+  /// Weekly prayer, for a person without a family (a family's own fields apply to its members).
+  prayerOptOut          Boolean                @default(false)
+  prayerIncludeChildren Boolean                @default(false)
+  prayerChangedAt       DateTime?
+  prayerSource          PrayerSource?
   /// Administrators only (permission `disciplina`).
   disciplinaryMeasures  DisciplinaryMeasure[]
   dataUpdateLinks       DataUpdateLink[]
@@ -603,25 +619,32 @@ model PersonAlias {
 
 /// A family, defined by its head. Members point to it through Person.familyId.
 model Family {
-  id          String  @id @default(cuid())
-  churchId    String
-  church      Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  id                    String        @id @default(cuid())
+  churchId              String
+  church                Church        @relation(fields: [churchId], references: [id], onDelete: Cascade)
   /// Display name, by default "Fam. <Prenume Nume of the head>".
-  nume        String
-  headId      String? @unique
-  head        Person? @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
-  adresa      String  @default("")
-  codPostal   String  @default("")
-  localitate  String  @default("")
-  note        String  @default("")
+  nume                  String
+  headId                String?       @unique
+  head                  Person?       @relation("FamilyHead", fields: [headId], references: [id], onDelete: SetNull)
+  adresa                String        @default("")
+  codPostal String @default("")
+  localitate String @default("")
+  note                  String        @default("")
   /// Created automatically (migration or import from family text), still with its default name and
   /// never edited; "Dizolvă familiile create automat" and "Recalculează capii de familie" act only on these.
-  autoCreated Boolean @default(false)
+  autoCreated           Boolean       @default(false)
+  /// Weekly prayer: "Nu doresc să fie pomenită" (objection) and "Pot fi pomeniți și copiii" (consent),
+  /// with when and from where the last change came (campaign, paper form, secretariat).
+  prayerOptOut          Boolean       @default(false)
+  prayerIncludeChildren Boolean       @default(false)
+  prayerChangedAt       DateTime?
+  prayerSource          PrayerSource?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members Person[] @relation("FamilyMembers")
+  members     Person[]     @relation("FamilyMembers")
+  prayerWeeks PrayerWeek[]
 
   @@index([churchId, nume])
   @@map("families")
@@ -1184,6 +1207,8 @@ enum AuditEntity {
   CAMPAIGN
   /// Pastoral notes: only that a note was added / changed / deleted, by whom, for whom. Pastors only.
   PASTORAL
+  /// The weekly prayer: marked / cancelled / message copied, never a family's name.
+  PRAYER
 }
 
 enum AuditAction {
@@ -1248,8 +1273,8 @@ model Application {
   telefon             String    @default("")
   email               String    @default("")
   adresa              String    @default("")
-  codPostal           String    @default("")
-  localitate          String    @default("")
+  codPostal String @default("")
+  localitate String @default("")
   familie             String    @default("")
   rudenie             String    @default("")
   bisericaProvenienta String    @default("")
@@ -1344,4 +1369,31 @@ model PastoralNote {
 
   @@index([churchId, personId])
   @@map("pastoral_notes")
+}
+
+enum PrayerSource {
+  CAMPANIE
+  HARTIE
+  SECRETARIAT
+}
+
+/// The family (or the person without a family) announced for prayer in a week: one row per week.
+model PrayerWeek {
+  id          String   @id @default(cuid())
+  churchId    String
+  church      Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  familyId    String?
+  family      Family?  @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  personId    String?
+  person      Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  /// Monday of the week.
+  weekStart   DateTime @db.Date
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@unique([churchId, weekStart])
+  @@index([churchId, familyId])
+  @@index([churchId, personId])
+  @@map("prayer_weeks")
 }

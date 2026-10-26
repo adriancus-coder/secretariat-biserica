@@ -72,6 +72,7 @@ Aplicația rulează la <http://localhost:3000>. Cu datele demo vă puteți auten
 | `admin@demo.ro` | Administrator | `demo1234` |
 | `secretar@demo.ro` | Secretar | `demo1234` |
 | `vizualizare@demo.ro` | Vizualizare | `demo1234` |
+| `rugaciune@demo.ro` | Rugăciune | `demo1234` |
 
 Fără date demo, deschideți `/inregistrare` și creați biserica și contul de administrator
 (prima biserică se poate înregistra oricând cât timp baza de date e goală).

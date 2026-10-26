@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "./icons";
-import { NAV_ITEMS, isActive, isMoreActive } from "./nav-items";
+import { isActive, isMoreActive, type NavItem } from "./nav-items";
 
 /**
- * Pending items shown as badges, by section ("/cereri", "/de-verificat"); only passed to roles that
- * can act on them, which also see the write-only sections.
+ * The entries the user may see (`navItemsFor`, computed on the server) and the pending items shown as
+ * badges, by section ("/cereri", "/de-verificat"); only passed to roles that can act on them. Without
+ * secondary entries (the "Rugăciune" role) there is no "Mai mult".
  */
-export function AppNav({ badges = {}, canWrite = false }: { badges?: Record<string, number>; canWrite?: boolean }) {
+export function AppNav({ items, badges = {} }: { items: NavItem[]; badges?: Record<string, number> }) {
   const total = Object.values(badges).reduce((a, b) => a + b, 0);
   const pathname = usePathname();
   const badge = (n: number) =>
@@ -20,13 +21,13 @@ export function AppNav({ badges = {}, canWrite = false }: { badges?: Record<stri
     ) : null;
   return (
     <nav className="shell-nav" aria-label="Navigare principală">
-      {NAV_ITEMS.filter((item) => canWrite || !item.writeOnly).map((item) => {
+      {items.map((item) => {
         const on = isActive(pathname, item.href);
         return (
           <Link
             key={item.href}
             href={item.href}
-            className={item.primary ? undefined : "desk-only"}
+            className={item.mobileOnly ? "mobile-only" : item.primary ? undefined : "desk-only"}
             aria-current={on ? "page" : undefined}
           >
             <Icon name={item.icon} />
@@ -35,11 +36,13 @@ export function AppNav({ badges = {}, canWrite = false }: { badges?: Record<stri
           </Link>
         );
       })}
-      <Link href="/mai-mult" className="mobile-only" aria-current={isMoreActive(pathname) ? "page" : undefined}>
-        <Icon name="mai" />
-        Mai mult
-        {badge(total)}
-      </Link>
+      {items.some((i) => !i.primary) ? (
+        <Link href="/mai-mult" className="mobile-only" aria-current={isMoreActive(pathname, items) ? "page" : undefined}>
+          <Icon name="mai" />
+          Mai mult
+          {badge(total)}
+        </Link>
+      ) : null}
     </nav>
   );
 }

@@ -5,6 +5,9 @@ import { AddressFields } from "@/components/ui/address-fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import type { FormState } from "@/lib/form-state";
+import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
+import { todayIso } from "@/lib/dates";
+import { Icon } from "@/components/shell/icons";
 import { CONSENT_QUESTION, CONSENT_QUESTION_CHILD, GENDER_LABEL, OPTIONAL_CONSENTS, type OptionalConsentKey } from "@/lib/labels";
 import { CHILD_LABEL, SELF_FIELDS, SELF_LABEL, type SelfData, type SelfField } from "@/lib/schemas/data-update";
 import { PrivacyText } from "../confidentialitate/privacy-text";
@@ -43,6 +46,7 @@ export function UpdateForm({
   childrenInitial,
   consents,
   privacyText,
+  prayer,
 }: {
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   self: Partial<SelfData>;
@@ -51,12 +55,18 @@ export function UpdateForm({
   childrenInitial: ChildState[];
   consents: Partial<Record<OptionalConsentKey, boolean>>;
   privacyText: string;
+  /** The weekly prayer section (head, spouse, adult without a family): the answers so far; absent = not shown. */
+  prayer?: { optOut: boolean; includeChildren: boolean };
 }) {
   const { state, pending, onSubmit } = useActionForm(action);
   const e = state.errors ?? {};
   const [changed, setChanged] = useState<Set<string>>(new Set());
   const [children, setChildren] = useState<ChildState[]>(childrenInitial);
   const [nextKey, setNextKey] = useState(1);
+  const [gen, setGen] = useState(str(self.gen));
+  const [birth, setBirth] = useState(str(self.dataNasterii));
+  const [marriage, setMarriage] = useState(str(self.dataCasatoriei));
+  const [unmarried, setUnmarried] = useState(Boolean(self.necasatorit));
   const registerChildren = new Map(childrenInitial.filter((c) => c.id).map((c) => [c.id, c]));
 
   const mark = (name: string, value: string, base: string) =>
@@ -66,6 +76,9 @@ export function UpdateForm({
       else next.delete(name);
       return next;
     });
+  // The marriage date and the flag are one field for the highlighting.
+  const markMarital = (date: string, flag: boolean) =>
+    mark("dataCasatoriei", flag ? "necasatorit" : date, register?.necasatorit ? "necasatorit" : str(register?.dataCasatoriei));
   const updateChild = (key: string, patch: Partial<ChildState>) => setChildren((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)));
   const childJson = JSON.stringify(
     children.map((c) => ({
@@ -99,11 +112,57 @@ export function UpdateForm({
               <div key={f} className={changed.has(f) ? "field field-changed" : "field"}>
                 <label htmlFor={id}>{SELF_LABEL[f]}</label>
                 {f === "gen" ? (
-                  <select id={id} name="gen" defaultValue={str(self.gen)} onChange={(ev) => register && mark(f, ev.target.value, base)} aria-invalid={e.gen ? true : undefined}>
+                  <select
+                    id={id}
+                    name="gen"
+                    defaultValue={str(self.gen)}
+                    onChange={(ev) => {
+                      setGen(ev.target.value);
+                      if (register) mark(f, ev.target.value, base);
+                    }}
+                    aria-invalid={e.gen ? true : undefined}
+                  >
                     <option value="">—</option>
                     <option value="M">{GENDER_LABEL.M}</option>
                     <option value="F">{GENDER_LABEL.F}</option>
                   </select>
+                ) : f === "dataCasatoriei" ? (
+                  <>
+                    <input
+                      id={id}
+                      name={f}
+                      type="date"
+                      value={unmarried ? "" : marriage}
+                      disabled={unmarried}
+                      autoComplete="off"
+                      onChange={(ev) => {
+                        setMarriage(ev.target.value);
+                        if (ev.target.value) setUnmarried(false);
+                        if (register) markMarital(ev.target.value, false);
+                      }}
+                      aria-invalid={e[f] ? true : undefined}
+                      aria-describedby={e[f] ? `${id}-err` : undefined}
+                    />
+                    {isMinorByBirth(birth, todayIso()) ? null : (
+                      <label className="choice mt-2">
+                        <input
+                          type="checkbox"
+                          name="necasatorit"
+                          checked={unmarried}
+                          onChange={(ev) => {
+                            setUnmarried(ev.target.checked);
+                            if (ev.target.checked) setMarriage("");
+                            if (register) markMarital(ev.target.checked ? "" : marriage, ev.target.checked);
+                          }}
+                        />
+                        <span className="tick" aria-hidden="true">
+                          <Icon name="bifa" className="size-[14px]" />
+                        </span>
+                        {unmarriedLabel(gen)}
+                      </label>
+                    )}
+                    {e.necasatorit ? <p className="field-error">{e.necasatorit}</p> : null}
+                  </>
                 ) : (
                   <input
                     id={id}
@@ -111,7 +170,10 @@ export function UpdateForm({
                     type={TYPES[f] ?? "text"}
                     defaultValue={str(self[f])}
                     autoComplete="off"
-                    onInput={(ev) => register && mark(f, ev.currentTarget.value, base)}
+                    onInput={(ev) => {
+                      if (f === "dataNasterii") setBirth(ev.currentTarget.value);
+                      if (register) mark(f, ev.currentTarget.value, base);
+                    }}
                     aria-invalid={e[f] ? true : undefined}
                     aria-describedby={e[f] ? `${id}-err` : undefined}
                   />
@@ -219,6 +281,26 @@ export function UpdateForm({
           <YesNo key={k} name={`acord_${k}`} question={CONSENT_QUESTION[k]} defaultValue={consents[k]} error={e[`acord_${k}`]} />
         ))}
       </fieldset>
+
+      {prayer ? (
+        <fieldset className="card" id="rugaciune">
+          <h3>Rugăciunea săptămânală pentru familii</h3>
+          <p className="hint mb-3">
+            În fiecare săptămână biserica se roagă pentru o familie. O persoană desemnată de comitet o anunță pe grupul bisericii, doar cu
+            numele familiei și prenumele părinților. Puteți cere oricând să nu fiți pomeniți, fără nicio explicație. Prenumele copiilor apar
+            numai cu acordul dumneavoastră.
+          </p>
+          <input type="hidden" name="rugaciuneSectiune" value="1" />
+          <label className="check">
+            <input type="checkbox" name="rugaciuneNepomenita" defaultChecked={prayer.optOut} />
+            Nu doresc ca familia mea să fie pomenită pe grupul bisericii
+          </label>
+          <label className="check">
+            <input type="checkbox" name="rugaciuneCopii" defaultChecked={prayer.includeChildren} />
+            Pot fi pomeniți și copiii noștri
+          </label>
+        </fieldset>
+      ) : null}
 
       {/* Honeypot: hidden from people, filled by bots. */}
       <div aria-hidden="true" className="hidden">

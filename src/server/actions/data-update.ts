@@ -19,6 +19,7 @@ import {
   writeOnlineConsents,
 } from "../data-update";
 import { currentPrivacyVersion } from "../campaigns";
+import { answersForFamily } from "@/lib/prayer";
 import { prisma } from "../db";
 import { clientIp, IP_LIMIT_MESSAGE } from "../ip-limits";
 import { sharedRateLimiter } from "../rate-limit";
@@ -104,7 +105,14 @@ export async function submitPersonalUpdateAction(token: string, _prev: FormState
     const own = new Set((await adultChildren(db, adult)).map((c) => c.id));
     // Only the adult's own minor children can be changed; anything else becomes a new child.
     const versiuneNota = await currentPrivacyVersion(r.link.churchId);
-    const proposal: DataUpdateProposal = { ...parsed.value, children: parsed.value.children.map((c) => (c.id && own.has(c.id) ? c : { ...c, id: null })), versiuneNota };
+    const { prayer, ...answers } = parsed.value;
+    const proposal: DataUpdateProposal = {
+      ...answers,
+      children: answers.children.map((c) => (c.id && own.has(c.id) ? c : { ...c, id: null })),
+      versiuneNota,
+      // The weekly prayer is answered by the head, a spouse or an adult without a family only.
+      ...(prayer && answersForFamily(adult) ? { prayer } : {}),
+    };
     await db.$transaction(async (tx) => {
       const pending = await tx.dataUpdateSubmission.findFirst({ where: { linkId: r.link.id, status: "PENDING" }, select: { id: true } });
       const json = proposal as unknown as Prisma.InputJsonObject;
@@ -170,9 +178,12 @@ export async function submitGeneralUpdateAction(token: string, _prev: FormState,
       select: { id: true, nume: true, prenume: true, telefon: true },
     });
     const matches = matchingPersons(identity, candidates);
+    // The general link does not ask about the weekly prayer (the family is not known before the match).
+    const { prayer: _ignored, ...answers } = parsed.value;
+    void _ignored;
     const proposal: DataUpdateProposal = {
-      ...parsed.value,
-      children: parsed.value.children.map((c) => ({ ...c, id: null })),
+      ...answers,
+      children: answers.children.map((c) => ({ ...c, id: null })),
       typed: { nume: identity.nume, telefon: identity.telefon },
       versiuneNota: await currentPrivacyVersion(r.campaign.churchId),
     };

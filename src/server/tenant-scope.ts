@@ -25,6 +25,7 @@ export const TENANT_MODELS = new Set([
   "Consent",
   "PersonProposal",
   "PastoralNote",
+  "PrayerWeek",
 ]);
 
 const WHERE_OPERATIONS = new Set([

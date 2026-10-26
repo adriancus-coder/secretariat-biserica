@@ -5,7 +5,7 @@ import { permissions, type Who } from "./permissions";
  * the address to open and the number of waiting items — never a name or any other personal data.
  * Pure.
  */
-export const PUSH_TYPES = ["DOCUMENT_SIGN", "DOCUMENT_DECIDED", "APPLICATION", "PROPOSAL", "CAMPAIGN", "REMINDER"] as const;
+export const PUSH_TYPES = ["DOCUMENT_SIGN", "DOCUMENT_DECIDED", "APPLICATION", "PROPOSAL", "CAMPAIGN", "REMINDER", "PRAYER"] as const;
 export type PushType = (typeof PUSH_TYPES)[number];
 
 /** The switches in Cont → Notificări. */
@@ -16,6 +16,7 @@ export const PUSH_TYPE_LABEL: Record<PushType, string> = {
   PROPOSAL: "Cereri și propuneri de aprobat",
   CAMPAIGN: "Răspunsuri la actualizarea datelor (zilnic)",
   REMINDER: "Adunarea Generală și mandatul comitetului (săptămânal)",
+  PRAYER: "Familia săptămânii pentru rugăciune (lunea dimineața)",
 };
 
 export const PUSH_MESSAGE: Record<PushType | "TEST", { title: string; url: string }> = {
@@ -25,6 +26,7 @@ export const PUSH_MESSAGE: Record<PushType | "TEST", { title: string; url: strin
   PROPOSAL: { title: "O cerere așteaptă aprobarea dumneavoastră", url: "/cereri?stare=propuse" },
   CAMPAIGN: { title: "Răspunsuri noi la actualizarea datelor, de verificat", url: "/de-verificat" },
   REMINDER: { title: "Memento: Adunarea Generală sau mandatul comitetului", url: "/" },
+  PRAYER: { title: "Familia săptămânii este pregătită.", url: "/rugaciune" },
   TEST: { title: "Notificare de test: notificările funcționează pe acest dispozitiv", url: "/cont" },
 };
 
@@ -35,6 +37,7 @@ export function pushTypesFor(user: Exclude<Who, string>): PushType[] {
   return PUSH_TYPES.filter((t) => {
     if (t === "DOCUMENT_SIGN" || t === "PROPOSAL") return pastor;
     if (t === "REMINDER") return write || pastor;
+    if (t === "PRAYER") return permissions.rugaciune(user);
     return write;
   });
 }

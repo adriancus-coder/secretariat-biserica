@@ -3,6 +3,8 @@ import "server-only";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
+import { unmarriedLabel } from "@/lib/marital";
+import { prayerChangeText } from "@/lib/prayer";
 import { fmtDot } from "@/domain/print";
 import { memberName } from "@/lib/format";
 import {
@@ -24,7 +26,18 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
   const p = await ctx.db.person.findUnique({
     where: { id: personId },
     include: {
-      family: { select: { nume: true, members: { select: { id: true, nume: true, prenume: true, rudenie: true } } } },
+      family: {
+        select: {
+          nume: true,
+          members: { select: { id: true, nume: true, prenume: true, rudenie: true } },
+          prayerOptOut: true,
+          prayerIncludeChildren: true,
+          prayerChangedAt: true,
+          prayerSource: true,
+          prayerWeeks: { select: { weekStart: true }, orderBy: { weekStart: "asc" } },
+        },
+      },
+      prayerWeeks: { select: { weekStart: true }, orderBy: { weekStart: "asc" } },
       roles: { include: { role: { select: { nume: true } } } },
       groups: { include: { group: { select: { nume: true } } } },
       aliases: { select: { alias: true } },
@@ -38,6 +51,9 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
     ? await ctx.db.disciplinaryMeasure.findMany({ where: { personId }, orderBy: { dataInceput: "asc" } })
     : [];
   const baptism = baptismSentence({ ...p, data: d(p.dataBotez) });
+  // The weekly prayer: the family's choice (or the person's, without a family) and the weeks announced.
+  const prayer = p.family ?? p;
+  const prayerWeeks = (p.family?.prayerWeeks ?? p.prayerWeeks).map((w) => d(w.weekStart));
   return {
     persoana: memberName(p),
     generatLa: todayIso(),
@@ -50,7 +66,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
           ["Gen", p.gen ? GENDER_LABEL[p.gen] : ""],
           ["Data nașterii", d(p.dataNasterii)],
           ["Botez în apă", baptism],
-          ["Data căsătoriei", d(p.dataCasatoriei)],
+          ["Data căsătoriei", p.dataCasatoriei ? d(p.dataCasatoriei) : p.necasatorit ? unmarriedLabel(p.gen) : ""],
           ["Numele tatălui", p.numeTata],
           ["Numele mamei", p.numeMama],
           ["Familie", p.family ? `${p.family.nume}${p.rudenie ? ` — ${p.rudenie}` : ""}` : ""],
@@ -73,6 +89,15 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
           ["Alte forme ale numelui", p.aliases.map((a) => a.alias).join(", ")],
           ["Cerere de membru", p.application ? `${d(p.application.createdAt)} — ${APPLICATION_STATUS_LABEL[p.application.status]}` : ""],
           ["Note", p.note],
+        ],
+      },
+      {
+        titlu: "Rugăciunea săptămânală pentru familii",
+        campuri: [
+          ["Nu dorește să fie pomenită", prayer.prayerOptOut ? "da" : "nu"],
+          ["Pot fi pomeniți și copiii", prayer.prayerIncludeChildren ? "da" : "nu"],
+          ["Ultima modificare", prayerChangeText(prayer.prayerChangedAt, prayer.prayerSource) ?? ""],
+          ["Săptămânile în care a fost anunțată", prayerWeeks.join(", ")],
         ],
       },
       {

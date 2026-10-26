@@ -10,6 +10,7 @@ import { tenantDb } from "@/server/tenant-db";
 import { IdentityForm } from "../identity-form";
 import { churchForCampaign, InvalidLink, LockedLink } from "../shared";
 import { UpdateForm, type ChildState } from "../update-form";
+import { answersForFamily } from "@/lib/prayer";
 
 export const metadata: Metadata = { title: "Actualizarea datelor", robots: { index: false } };
 
@@ -92,6 +93,7 @@ export default async function PersonalUpdatePage({ params }: PageProps<"/actuali
         childrenInitial={children}
         consents={proposal?.consents ?? latest(adult.id)}
         privacyText={church.notice}
+        prayer={answersForFamily(adult) ? (proposal?.prayer ?? { optOut: false, includeChildren: false }) : undefined}
       />
     </>
   );

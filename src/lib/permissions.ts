@@ -7,10 +7,20 @@ import type { RoleKey } from "./labels";
 export type Who = RoleKey | { role: RoleKey; isPastor?: boolean };
 
 const roleOf = (w: Who): RoleKey => (typeof w === "string" ? w : w.role);
-const pastorOf = (w: Who): boolean => typeof w !== "string" && w.isPastor === true;
+/** The "Rugăciune" role sees only the family of the week and its own account, so it is never a pastor. */
+const pastorOf = (w: Who): boolean => typeof w !== "string" && w.isPastor === true && w.role !== "RUGACIUNE";
 
 /** Regulile de acces pe roluri, folosite atât pe server (autorizare) cât și în interfață (afișare butoane). */
 export const permissions = {
+  /**
+   * The register and every page or action that asks for no stricter permission (`requireCtx()` /
+   * `actionCtx()` default to it): every role except "Rugăciune".
+   */
+  read: (w: Who) => roleOf(w) !== "RUGACIUNE",
+  /** The user's own account (Cont: password, two-step, passkeys, notifications): every role. */
+  account: () => true,
+  /** The weekly prayer for families (/rugaciune): the family of the week, nothing else from the register. */
+  rugaciune: (w: Who) => roleOf(w) === "ADMIN" || roleOf(w) === "SECRETAR" || roleOf(w) === "RUGACIUNE",
   /** Adăugare / modificare / ștergere în registre (persoane, ședințe, documente, ...). */
   write: (w: Who) => roleOf(w) === "ADMIN" || roleOf(w) === "SECRETAR",
   /** Setările organizației, nomenclatoare, utilizatori, import. */

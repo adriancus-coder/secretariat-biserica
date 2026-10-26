@@ -93,6 +93,7 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       gen: "F",
       dataNasterii: "1985-03-03",
       dataCasatoriei: null,
+      necasatorit: false,
       telefon: "+47 911 11 111",
       email: "",
       adresa: "",
@@ -184,6 +185,18 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       // The consents refer to the notice the person saw when answering (1.2), not the campaign's start.
       expect(new Set((await ctx.db.consent.findMany({ where: { submissionId: id } })).map((c) => c.textVersion))).toEqual(new Set(["1.2"]));
       expect((await ctx.db.dataUpdateSubmission.findUniqueOrThrow({ where: { id } })).personId).toBe(mother);
+    });
+
+    it("the unmarried flag is proposed, enters the register only on approval, and a date replaces it", async () => {
+      const id = await submit({ self: self({ necasatorit: true }), children: [], consents, nota: true });
+      expect((await ctx.db.person.findUniqueOrThrow({ where: { id: mother } })).necasatorit).toBe(false);
+      await applyDecision(ctx, id, { decizie: "selectate", nota: "", chosen: new Set(["s:dataCasatoriei"]) });
+      const flagged = await ctx.db.person.findUniqueOrThrow({ where: { id: mother } });
+      expect([flagged.necasatorit, flagged.dataCasatoriei]).toEqual([true, null]);
+      const next = await submit({ self: self({ necasatorit: false, dataCasatoriei: "2010-05-01" }), children: [], consents, nota: true });
+      await applyDecision(ctx, next, { decizie: "selectate", nota: "", chosen: new Set(["s:dataCasatoriei"]) });
+      const back = await ctx.db.person.findUniqueOrThrow({ where: { id: mother } });
+      expect([back.necasatorit, back.dataCasatoriei?.toISOString().slice(0, 10)]).toEqual([false, "2010-05-01"]);
     });
 
     it("a rejection changes nothing and keeps the note; a decided submission cannot be decided again", async () => {

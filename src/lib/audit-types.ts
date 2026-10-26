@@ -18,4 +18,5 @@ export type AuditEntityKey =
   | "SECURITY"
   | "DISCIPLINE"
   | "CAMPAIGN"
-  | "PASTORAL";
+  | "PASTORAL"
+  | "PRAYER";

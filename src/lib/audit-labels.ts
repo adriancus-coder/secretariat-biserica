@@ -40,6 +40,7 @@ export const FIELD_LABELS: Record<string, string> = {
   bisericaDestinatie: "Biserica de destinație",
   dataCerereRetragere: "Data cererii de retragere",
   dataCasatoriei: "Data căsătoriei",
+  necasatorit: "Necăsătorit(ă)",
   numeTata: "Numele tatălui",
   numeMama: "Numele mamei",
   plecatDin: "Plecat temporar din",
@@ -157,4 +158,5 @@ export const ENTITY_LABEL = {
   DISCIPLINE: "Disciplină",
   CAMPAIGN: "Actualizare date",
   PASTORAL: "Note pastorale",
+  PRAYER: "Rugăciunea săptămânală",
 } as const;

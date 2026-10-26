@@ -2,9 +2,12 @@ import "server-only";
 import {
   childChanges,
   decisionStatus,
+  prayerChanges,
   selfChanges,
 } from "@/lib/data-update-review";
 import { toDbDate } from "@/lib/dates";
+import { answersForFamily, PRAYER_SOURCE_LABEL, restrictivePrayer, type PrayerAnswer } from "@/lib/prayer";
+import type { Prisma } from "@/generated/prisma/client";
 import { memberName } from "@/lib/format";
 import { BELIEVER_RELATIONS } from "@/lib/labels";
 import { personDerived } from "@/lib/person-derived";
@@ -26,6 +29,53 @@ import { createFamilyFor, markEdited, settleFamily } from "./families";
 import { ActionError, type Ctx } from "./session";
 
 const NEW_PERSON = "nou";
+
+type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
+type PrayerDb = Pick<Ctx["db"], "family" | "person">;
+
+/** The weekly prayer choice that applies to a person: the family's, else the person's own. */
+export async function currentPrayer(db: PrayerDb, person: { id: string; familyId: string | null }): Promise<PrayerAnswer> {
+  const sel = { prayerOptOut: true, prayerIncludeChildren: true } as const;
+  const row = person.familyId ? await db.family.findUnique({ where: { id: person.familyId }, select: sel }) : await db.person.findUnique({ where: { id: person.id }, select: sel });
+  return { optOut: row?.prayerOptOut ?? false, includeChildren: row?.prayerIncludeChildren ?? false };
+}
+
+/**
+ * Applies the chosen prayer answers of a submission to the family (or the person without one), the
+ * more restrictive winning against the other parent's answers already approved in this campaign.
+ * Returns what was applied (stored on the submission for the next parent's decision).
+ */
+async function applyPrayer(
+  tx: Tx,
+  ctx: Ctx,
+  s: { id: string; campaignId: string },
+  adult: { id: string; familyId: string | null; nume: string; prenume: string },
+  chosen: Partial<PrayerAnswer>,
+  sursa: string,
+): Promise<Partial<PrayerAnswer>> {
+  const others = adult.familyId
+    ? await tx.dataUpdateSubmission.findMany({
+        where: { campaignId: s.campaignId, id: { not: s.id }, status: { in: ["ACCEPTED", "PARTIAL"] }, person: { familyId: adult.familyId } },
+        select: { proposed: true },
+      })
+    : [];
+  const applied = (x: { proposed: unknown }) => (x.proposed as DataUpdateProposal).prayerApplied ?? {};
+  const merged = restrictivePrayer([chosen, ...others.map(applied)]);
+  const value = { optOut: chosen.optOut === undefined ? undefined : merged.optOut, includeChildren: chosen.includeChildren === undefined ? undefined : merged.includeChildren };
+  const before = await currentPrayer(tx, adult);
+  const after = { optOut: value.optOut ?? before.optOut, includeChildren: value.includeChildren ?? before.includeChildren };
+  const data = { prayerOptOut: after.optOut, prayerIncludeChildren: after.includeChildren, prayerChangedAt: new Date(), prayerSource: "CAMPANIE" as const };
+  const yes = (b: boolean) => (b ? "da" : "nu");
+  const view = (a: PrayerAnswer) => ({ rugaciuneNepomenita: yes(a.optOut), rugaciuneCopii: yes(a.includeChildren), sursaRugaciune: PRAYER_SOURCE_LABEL.CAMPANIE });
+  if (adult.familyId) {
+    const f = await tx.family.update({ where: { id: adult.familyId }, data, select: { nume: true } });
+    await writeAudit(tx, ctx.user, { entity: "FAMILY", entityId: adult.familyId, entityLabel: f.nume, action: "UPDATE", fields: ["rugaciuneNepomenita", "rugaciuneCopii", "sursaRugaciune"], before: { ...view(before), sursaRugaciune: "" }, after: view(after), extra: { sursa } });
+  } else {
+    await tx.person.update({ where: { id: adult.id }, data });
+    await writeAudit(tx, ctx.user, { entity: "PERSON", entityId: adult.id, entityLabel: memberName(adult), action: "UPDATE", fields: ["rugaciuneNepomenita", "rugaciuneCopii", "sursaRugaciune"], before: { ...view(before), sursaRugaciune: "" }, after: view(after), extra: { sursa } });
+  }
+  return chosen;
+}
 
 /** The person columns of the proposal's own fields (only those chosen). */
 function selfData(
@@ -56,6 +106,8 @@ function selfData(
     ...v,
     dataNasterii: toDbDate(pick("dataNasterii")),
     dataCasatoriei: toDbDate(pick("dataCasatoriei")),
+    // The flag travels with the marriage date (one row in the review).
+    necasatorit: fields.has("dataCasatoriei") || !current ? proposed.necasatorit : current.necasatorit,
     dataBotez: toDbDate(dataBotez),
     botezAn,
     ...personDerived(v),
@@ -326,9 +378,25 @@ export async function applyDecision(
         givenByPersonId: personId,
       });
 
+    // The weekly prayer (personal link of the head, a spouse or an adult without a family).
+    let prayerApplied: Partial<PrayerAnswer> | null = null;
+    if (p.prayer) {
+      const now = await tx.person.findUniqueOrThrow({ where: { id: adult.id }, select: { id: true, familyId: true, rudenie: true, nume: true, prenume: true, family: { select: { headId: true } } } });
+      const changes = answersForFamily(now) ? prayerChanges(await currentPrayer(tx, now), p.prayer) : [];
+      const chosenPrayer = Object.fromEntries(changes.filter((c) => take(`r:${c.field}`)).map((c) => [c.field, p.prayer![c.field]])) as Partial<PrayerAnswer>;
+      total += changes.length;
+      accepted += Object.keys(chosenPrayer).length;
+      if (Object.keys(chosenPrayer).length) prayerApplied = await applyPrayer(tx, ctx, s, now, chosenPrayer, sursa);
+    }
+
     await tx.dataUpdateSubmission.update({
       where: { id },
-      data: { status: decisionStatus(total, accepted), personId, ...decided },
+      data: {
+        status: decisionStatus(total, accepted),
+        personId,
+        ...decided,
+        ...(prayerApplied ? { proposed: { ...p, prayerApplied } as unknown as Prisma.InputJsonObject } : {}),
+      },
     });
     await writeAudit(tx, ctx.user, {
       entity: "CAMPAIGN",

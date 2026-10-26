@@ -87,13 +87,14 @@ export async function loadDiscipline(ctx: Ctx): Promise<BDiscipline[]> {
 /** Member id → register fields of the Statut, for the export (see addMemberRegister). */
 export async function loadRegister(ctx: Ctx): Promise<Map<string, RegisterFields>> {
   const rows = await ctx.db.person.findMany({
-    select: { id: true, dataCasatoriei: true, numeTata: true, numeMama: true, dataCerereRetragere: true, plecatDin: true, plecatUnde: true, intrareMeetingId: true, iesireMeetingId: true },
+    select: { id: true, dataCasatoriei: true, necasatorit: true, numeTata: true, numeMama: true, dataCerereRetragere: true, plecatDin: true, plecatUnde: true, intrareMeetingId: true, iesireMeetingId: true },
   });
   return new Map(
     rows.map((r) => [
       r.id,
       {
         dataCasatoriei: fromDbDate(r.dataCasatoriei),
+        necasatorit: r.necasatorit,
         numeTata: r.numeTata,
         numeMama: r.numeMama,
         dataCerereRetragere: fromDbDate(r.dataCerereRetragere),
@@ -1165,6 +1166,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
 function registerData(r: RegisterFields | undefined) {
   return {
     dataCasatoriei: toDbDate(r?.dataCasatoriei),
+    necasatorit: r?.necasatorit ?? false,
     numeTata: r?.numeTata ?? "",
     numeMama: r?.numeMama ?? "",
     dataCerereRetragere: toDbDate(r?.dataCerereRetragere),
