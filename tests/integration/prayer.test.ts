@@ -56,7 +56,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
 
   it("reads only names, status, exit, birth date and relation: no contact data, notes or roles", () => {
     const keys = (o: object) => Object.keys(o).sort();
-    expect(keys(PRAYER_MEMBER_SELECT)).toEqual(["dataIesire", "dataNasterii", "gen", "id", "nume", "prenume", "rudenie", "statut"]);
+    expect(keys(PRAYER_MEMBER_SELECT)).toEqual(["dataCasatoriei", "dataIesire", "dataNasterii", "gen", "id", "nume", "prenume", "rudenie", "statut"]);
     expect(keys(PRAYER_PERSON_SELECT)).toEqual([...keys(PRAYER_MEMBER_SELECT), "prayerIncludeChildren", "prayerOptOut"].sort());
     expect(keys(PRAYER_FAMILY_SELECT)).toEqual(["headId", "id", "members", "prayerIncludeChildren", "prayerOptOut"]);
     const all = JSON.stringify([PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT, PRAYER_FAMILY_SELECT]);
@@ -74,6 +74,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
       "Pace, frați și surori! Săptămâna aceasta ne vom ruga pentru familia Popescu Ion și Maria și pentru copilul lor, ca Domnul să-i binecuvânteze cu sănătate și cu dragoste de Domnul și să le dea înțelepciune în toate. Amin.",
     );
     expect(JSON.stringify(popescu)).not.toMatch(/Ana|2016/);
+    expect(popescu.review).toBeNull();
     // With consent (Barbu), the little boy is named.
     expect(d.message).toContain("familia Barbu Vasile și Ioana și pentru micuțul Matei, ca Domnul");
     const text = JSON.stringify(d);
@@ -151,5 +152,30 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     const log = await prisma.auditLog.findMany({ where: { entity: "FAMILY", entityId: fam.barbu } });
     expect(log.length).toBeGreaterThan(0);
   });
-});
 
+  it("a wife without a relation (the Ciobanu case): named as the spouse, flagged for the secretariat only", async () => {
+    const { familiesToReview } = await import("@/server/queries/family-review");
+    const cb = other.user.churchId;
+    const f = await prisma.family.create({ data: { churchId: cb, nume: "Fam. Ciobanu Felix" } });
+    const felix = await prisma.person.create({ data: { churchId: cb, nume: "Ciobanu", prenume: "Felix", sortKey: "ciobanu felix", searchText: "felix", familyId: f.id, rudenie: "Cap de familie", gen: "M", dataCasatoriei: new Date("2012-07-01") } });
+    await prisma.person.create({ data: { churchId: cb, nume: "Ciobanu", prenume: "Naomi", sortKey: "ciobanu naomi", searchText: "naomi", familyId: f.id, rudenie: "", gen: "F", dataNasterii: new Date("1990-03-03") } });
+    await prisma.family.update({ where: { id: f.id }, data: { headId: felix.id } });
+    const secretar = other;
+    const prayerRole = { ...other, user: { ...other.user, role: "RUGACIUNE" } } as Ctx;
+    let skip = 0;
+    while ((await loadPrayerPage(secretar, skip)).next?.label.startsWith("Familia Ciobanu") !== true) skip++;
+    const page = await loadPrayerPage(secretar, skip);
+    expect(page.message).toContain("pentru familia Ciobanu Felix și Naomi, ca Domnul");
+    expect(page.message).not.toContain("copil");
+    expect(page.review).toEqual({ href: `/familii/${f.id}` });
+    const plain = await loadPrayerPage(prayerRole, skip);
+    expect(plain.review).toEqual({ href: null });
+    expect(JSON.stringify(plain)).not.toMatch(/rudenie|fără|1990|2012/);
+    expect(await familiesToReview(secretar.db)).toEqual([
+      { id: f.id, nume: "Fam. Ciobanu Felix", reasons: ["Ciobanu Naomi: membru fără rudenie", "Capul familiei are dată de căsătorie, dar familia nu are soț / soție"] },
+    ]);
+    // Nothing is changed automatically, and the other church sees none of it.
+    expect((await prisma.person.findFirstOrThrow({ where: { prenume: "Naomi" } })).rudenie).toBe("");
+    expect(await familiesToReview(ctx.db)).toEqual([]);
+  });
+});

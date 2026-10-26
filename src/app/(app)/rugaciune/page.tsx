@@ -24,6 +24,17 @@ export default async function PrayerPage({ searchParams }: PageProps<"/rugaciune
   return (
     <>
       <PageHead title="Rugăciunea săptămânală" sub={`Săptămâna din ${fmt(d.week)}`} />
+      {d.review ? (
+        <div className="alert" role="note">
+          {d.review.href ? (
+            <>
+              Datele familiei trebuie verificate înainte de trimitere. <Link href={d.review.href} className="underline">Deschide familia</Link>
+            </>
+          ) : (
+            "Verificați textul înainte de trimitere."
+          )}
+        </div>
+      ) : null}
       <PrayerWeekCard
         key={`${d.week}:${d.marked?.key ?? d.next?.key ?? ""}`}
         week={d.week}

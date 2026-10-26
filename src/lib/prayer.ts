@@ -12,6 +12,10 @@ import { compareRo } from "./text";
 export const PRAYER_STATUSES = ["MEMBRU", "APARTINATOR", "BOTEZAT_FARA_TRANSFER", "PRIETEN"] as const;
 /** Who counts as a parent in the family's line: the head and the spouse. */
 export const PRAYER_PARENT_RELATIONS = ["Cap de familie", "Soț", "Soție"];
+/** A spouse is always a parent in the message (whatever the birth date says). */
+export const PRAYER_SPOUSE_RELATIONS = ["Soț", "Soție"];
+/** Only these relations can make a member a child of the family (and only while a minor or without a birth date). */
+export const PRAYER_CHILD_RELATIONS = ["Fiu", "Fiică", "Copil", "Nepot", "Nepoată"];
 
 /** The week's message as edited on /rugaciune before sending (never stored on the server). */
 export const PRAYER_SHARE_MAX = 1000;
@@ -40,6 +44,8 @@ export interface PrayerMember {
   rudenie: string;
   /** "M" / "F" / null: only for the message's wording ("micuțul / micuța", "fratele / sora"). */
   gen?: string | null;
+  /** ISO; only to tell whether the head is married (never shown). */
+  dataCasatoriei?: string | null;
 }
 
 /** A family, or a person without a family ("p:<id>"), with its prayer settings and last announcement. */
@@ -55,6 +61,15 @@ export interface PrayerUnit {
 
 const active = (m: PrayerMember) => (PRAYER_STATUSES as readonly string[]).includes(m.statut) && !m.dataIesire && m.nume !== ANONYMOUS_NAME;
 const adult = (m: PrayerMember, today: string) => !m.dataNasterii || ageAt(m.dataNasterii, today) >= 18;
+const isSpouse = (m: PrayerMember) => PRAYER_SPOUSE_RELATIONS.includes(m.rudenie.trim());
+const hasChildRelation = (m: PrayerMember) => PRAYER_CHILD_RELATIONS.includes(m.rudenie.trim());
+/** Relations that never make a member the head's spouse (the head's own parents). */
+const NOT_SPOUSE = ["Părinte"];
+
+/** A child of the family: a child's relation AND a minor by the birth date (or no birth date). */
+export function isPrayerChild(m: PrayerMember, today: string): boolean {
+  return hasChildRelation(m) && (!m.dataNasterii || ageAt(m.dataNasterii, today) < 18);
+}
 
 /** At least one active adult and no objection. */
 export function inRotation(u: PrayerUnit, today: string): boolean {
@@ -66,15 +81,49 @@ function joinNames(names: string[]): string {
   return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} și ${names.at(-1)}`;
 }
 
-/** The parents (head and spouse, else the active adults) and the other active members. */
+/**
+ * Who the message names, from the active members:
+ * - the head, and every member with the relation Soț / Soție (always a parent, even with a wrong
+ *   birth date);
+ * - when the head has a marriage date and no member is Soț / Soție: the one adult without a child's
+ *   relation (and not the head's parent) is taken as the spouse; with several such adults none is;
+ * - children: only a child's relation (Fiu, Fiică, Copil, Nepot, Nepoată) and a minor or no birth date.
+ * Anyone else is left out of the message (familyRelationIssues says why, for the secretariat).
+ */
 export function prayerParts(u: PrayerUnit, today: string): { parents: PrayerMember[]; children: PrayerMember[] } {
   const live = u.members.filter(active);
-  const isParent = (m: PrayerMember) => adult(m, today) && (m.id === u.headId || PRAYER_PARENT_RELATIONS.includes(m.rudenie));
-  let parents = live.filter(isParent);
-  if (!parents.length) parents = live.filter((m) => adult(m, today));
-  const head = parents.find((m) => m.id === u.headId) ?? parents[0];
-  parents = head ? [head, ...parents.filter((m) => m !== head)] : parents;
-  return { parents, children: live.filter((m) => !parents.includes(m)) };
+  const head = live.find((m) => m.id === u.headId);
+  const spouses = live.filter((m) => m !== head && isSpouse(m));
+  let parents = head ? [head, ...spouses] : spouses;
+  const rest = live.filter((m) => !parents.includes(m));
+  if (head?.dataCasatoriei && !spouses.length) {
+    const candidates = rest.filter((m) => adult(m, today) && !hasChildRelation(m) && !NOT_SPOUSE.includes(m.rudenie.trim()));
+    if (candidates.length === 1) parents = [...parents, candidates[0]];
+  }
+  // A person without a family, or a family whose head left: the active adults who are not children.
+  if (!parents.length) parents = live.filter((m) => adult(m, today) && !hasChildRelation(m));
+  return { parents, children: live.filter((m) => !parents.includes(m) && isPrayerChild(m, today)) };
+}
+
+/**
+ * Why a family's relations need checking (secretariat only, never the "Rugăciune" role): nothing is
+ * changed automatically. Empty when the relations are consistent.
+ */
+export function familyRelationIssues(u: PrayerUnit, today: string): string[] {
+  const live = u.members.filter(active);
+  const head = live.find((m) => m.id === u.headId);
+  const spouses = live.filter((m) => m !== head && isSpouse(m));
+  const name = (m: PrayerMember) => `${m.nume.trim()} ${m.prenume.trim()}`.trim();
+  const out: string[] = [];
+  for (const m of live) {
+    if (m === head) continue;
+    if (!m.rudenie.trim()) out.push(`${name(m)}: membru fără rudenie`);
+    else if (hasChildRelation(m) && adult(m, today) && m.dataCasatoriei) out.push(`${name(m)}: adult cu rudenia „${m.rudenie.trim()}”, dar cu dată de căsătorie`);
+    else if (isSpouse(m) && !adult(m, today)) out.push(`${name(m)}: „${m.rudenie.trim()}” sub 18 ani`);
+  }
+  if (head?.dataCasatoriei && !spouses.length) out.push("Capul familiei are dată de căsătorie, dar familia nu are soț / soție");
+  if (spouses.length > 1) out.push(`Doi membri cu rudenia Soț / Soție: ${spouses.map(name).join(", ")}`);
+  return out;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PrayerMember, PrayerUnit } from "./prayer";
+import { familyRelationIssues, prayerParts, type PrayerMember, type PrayerUnit } from "./prayer";
 import { DEFAULT_FAMILY_MESSAGE, DEFAULT_PERSON_MESSAGE, OLD_DEFAULT_MESSAGE, prayerMessageFor, templateError } from "./prayer-message";
 
 const TODAY = "2026-10-28";
@@ -99,5 +99,64 @@ describe("the week's message, in the church's own words", () => {
     expect(templateError("Ne rugăm pentru {parinti}.", "person")).toContain("nu este permisă");
     expect(templateError("Ne rugăm pentru frate.", "person")).toContain("{persoana}");
     expect(templateError("", "family")).toBeNull();
+  });
+
+});
+
+describe("who is a parent and who is a child (PRAYER-FAMILY-ROLES)", () => {
+  const felix = () => m("Ciobanu", "Felix", { rudenie: "Cap de familie", gen: "M", dataCasatoriei: "2010-06-12" });
+
+  it("a wife with an empty relation and no children: named as the spouse, never „copilul”", () => {
+    const u = family([felix(), m("Ciobanu", "Naomi", { gen: "F" })], true);
+    expect(part(msg(u))).toBe("Ciobanu Felix și Naomi");
+    expect(msg(family([felix(), m("Ciobanu", "Naomi", { gen: "F" })]))).not.toMatch(/copil/);
+    expect(familyRelationIssues(u, TODAY)).toEqual(["Ciobanu Naomi: membru fără rudenie", "Capul familiei are dată de căsătorie, dar familia nu are soț / soție"]);
+  });
+
+  it("the same wife when the head has no marriage date: left out of the message, still no child, flagged", () => {
+    const u = family([m("Ciobanu", "Felix", { rudenie: "Cap de familie", gen: "M" }), m("Ciobanu", "Naomi", { gen: "F" })]);
+    expect(part(msg(u))).toBe("Ciobanu Felix");
+    expect(familyRelationIssues(u, TODAY)).toEqual(["Ciobanu Naomi: membru fără rudenie"]);
+  });
+
+  it("a „Soție” with a wrong birth date (under 18) is still a parent, and flagged", () => {
+    const u = family([felix(), m("Ciobanu", "Naomi", { rudenie: "Soție", gen: "F", dataNasterii: "2015-01-01" })], true);
+    expect(part(msg(u))).toBe("Ciobanu Felix și Naomi");
+    expect(familyRelationIssues(u, TODAY)).toEqual(["Ciobanu Naomi: „Soție” sub 18 ani"]);
+  });
+
+  it("an adult „Fiică” (25) is not a child; married, she is flagged", () => {
+    const daughter = m("Ciobanu", "Ana", { rudenie: "Fiică", gen: "F", dataNasterii: "2001-01-01" });
+    const u = family([felix(), wife("Ciobanu", "Naomi"), daughter], true);
+    expect(prayerParts(u, TODAY).children).toEqual([]);
+    expect(part(msg(u))).toBe("Ciobanu Felix și Naomi");
+    expect(familyRelationIssues(u, TODAY)).toEqual([]);
+    expect(familyRelationIssues(family([felix(), wife("Ciobanu", "Naomi"), { ...daughter, dataCasatoriei: "2024-08-01" }]), TODAY)).toEqual([
+      "Ciobanu Ana: adult cu rudenia „Fiică”, dar cu dată de căsătorie",
+    ]);
+  });
+
+  it("a „Fiu” without a birth date is a child", () => {
+    const u = family([felix(), wife("Ciobanu", "Naomi"), m("Ciobanu", "Iosif", { rudenie: "Fiu", gen: "M", dataNasterii: null })], true);
+    expect(part(msg(u))).toBe("Ciobanu Felix și Naomi și pentru copilul lor, Iosif");
+  });
+
+  it("a minor without a child's relation is never counted as a child", () => {
+    const u = family([felix(), wife("Ciobanu", "Naomi"), m("Ciobanu", "Iosif", { rudenie: "Altul", dataNasterii: "2020-01-01" })]);
+    expect(part(msg(u))).toBe("Ciobanu Felix și Naomi");
+  });
+
+  it("two members with Soț / Soție are flagged; the head's parent is never taken as the spouse", () => {
+    const two = family([felix(), wife("Ciobanu", "Naomi"), wife("Ciobanu", "Maria")]);
+    expect(familyRelationIssues(two, TODAY)).toEqual(["Doi membri cu rudenia Soț / Soție: Ciobanu Naomi, Ciobanu Maria"]);
+    const grandma = family([felix(), m("Ciobanu", "Elena", { rudenie: "Părinte", gen: "F", dataNasterii: "1950-01-01" })]);
+    expect(part(msg(grandma))).toBe("Ciobanu Felix");
+  });
+
+  it("a normal family with two children is unchanged", () => {
+    const u = family([head("Marin", "Vicențiu"), wife("Marin", "Rebeca"), kid("Andrei", "M", "2012-01-01"), kid("Ana", "F", "2016-01-01")], true);
+    expect(part(msg(u))).toBe("Marin Vicențiu și Rebeca și pentru copiii lor, Andrei și Ana");
+    expect(part(msg({ ...u, includeChildren: false }))).toBe("Marin Vicențiu și Rebeca și pentru copiii lor");
+    expect(familyRelationIssues(u, TODAY)).toEqual([]);
   });
 });

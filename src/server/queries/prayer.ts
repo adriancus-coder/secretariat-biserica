@@ -1,20 +1,22 @@
 import "server-only";
 import { fromDbDate, todayIso, toDbDate } from "@/lib/dates";
-import { prayerKey, prayerLabel, prayerRotation, weekStartOf, type PrayerUnit } from "@/lib/prayer";
+import { permissions } from "@/lib/permissions";
+import { familyRelationIssues, prayerKey, prayerLabel, prayerRotation, weekStartOf, type PrayerUnit } from "@/lib/prayer";
 import { prayerMessageFor } from "@/lib/prayer-message";
 import type { Ctx } from "../session";
 
 /**
  * The fields the weekly prayer reads, and nothing more: names, status and exit (who is active), the
- * birth date only to tell adults from minors (never shown), the relation to the family. No contact
+ * birth date only to tell adults from minors and the marriage date only to tell whether the head is
+ * married (never shown), the relation to the family. No contact
  * data, notes, roles or anything else (prayer.test.ts checks these selects).
  */
-export const PRAYER_MEMBER_SELECT = { id: true, nume: true, prenume: true, statut: true, dataNasterii: true, dataIesire: true, rudenie: true, gen: true } as const;
+export const PRAYER_MEMBER_SELECT = { id: true, nume: true, prenume: true, statut: true, dataNasterii: true, dataIesire: true, rudenie: true, gen: true, dataCasatoriei: true } as const;
 export const PRAYER_FAMILY_SELECT = { id: true, headId: true, prayerOptOut: true, prayerIncludeChildren: true, members: { select: PRAYER_MEMBER_SELECT } } as const;
 export const PRAYER_PERSON_SELECT = { ...PRAYER_MEMBER_SELECT, prayerOptOut: true, prayerIncludeChildren: true } as const;
 
-type Member = { id: string; nume: string; prenume: string; statut: string; dataNasterii: Date | null; dataIesire: Date | null; rudenie: string; gen: string | null };
-const member = (p: Member) => ({ ...p, dataNasterii: fromDbDate(p.dataNasterii), dataIesire: fromDbDate(p.dataIesire) });
+type Member = { id: string; nume: string; prenume: string; statut: string; dataNasterii: Date | null; dataIesire: Date | null; rudenie: string; gen: string | null; dataCasatoriei: Date | null };
+export const prayerMember = (p: Member) => ({ ...p, dataNasterii: fromDbDate(p.dataNasterii), dataIesire: fromDbDate(p.dataIesire), dataCasatoriei: fromDbDate(p.dataCasatoriei) });
 
 /** Every family and every person without a family, with the Monday of its last announcement. */
 export async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
@@ -32,7 +34,7 @@ export async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
     ...families.map((f) => ({
       key: prayerKey("f", f.id),
       headId: f.headId,
-      members: f.members.map(member),
+      members: f.members.map(prayerMember),
       optOut: f.prayerOptOut,
       includeChildren: f.prayerIncludeChildren,
       lastWeek: last.get(prayerKey("f", f.id)) ?? null,
@@ -40,7 +42,7 @@ export async function loadUnits(ctx: Ctx): Promise<PrayerUnit[]> {
     ...singles.map(({ prayerOptOut, prayerIncludeChildren, ...p }) => ({
       key: prayerKey("p", p.id),
       headId: p.id,
-      members: [member(p)],
+      members: [prayerMember(p)],
       optOut: prayerOptOut,
       includeChildren: prayerIncludeChildren,
       lastWeek: last.get(prayerKey("p", p.id)) ?? null,
@@ -63,6 +65,11 @@ export interface PrayerPageData {
    * consent the children's names are not in it, and nothing else about them reaches the page.
    */
   message: string;
+  /**
+   * The shown family's relations need checking (familyRelationIssues): the secretariat gets the
+   * family's link, the "Rugăciune" role only a plain reminder (no reason, no data). Null when fine.
+   */
+  review: { href: string } | { href: null } | null;
 }
 
 /**
@@ -70,6 +77,7 @@ export interface PrayerPageData {
  * since (objection, no active adult) is shown in the history without its name.
  */
 export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPageData> {
+  const details = permissions.write(ctx.user);
   const today = todayIso();
   const week = weekStartOf(today);
   const [units, recent, church] = await Promise.all([
@@ -96,6 +104,10 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
     total: rotation.length,
     history: recent.map((w) => ({ week: fromDbDate(w.weekStart)!, label: shown(w.familyId, w.personId) })),
     message,
+    review:
+      shownUnit && shownKey?.startsWith("f:") && familyRelationIssues(shownUnit, today).length
+        ? { href: details ? `/familii/${shownKey.slice(2)}` : null }
+        : null,
   };
 }
 

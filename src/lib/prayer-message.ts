@@ -23,9 +23,6 @@ export const FAMILY_VARIABLES = ["{parinti}", "{copii}", "{familia}"] as const;
 export const PERSON_VARIABLES = ["{persoana}", "{pe}", "{ii}", "{familia}"] as const;
 export const MESSAGE_TEMPLATE_MAX = 500;
 
-/** Children's relations counted as children when the birth date is missing. */
-const CHILD_RELATIONS = ["Fiu", "Fiică", "Copil", "Nepot", "Nepoată"];
-
 /** "Ana", "Ana și Matei", "Andrei, Ana și Samuel". */
 function joinNames(names: string[]): string {
   return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} și ${names.at(-1)}`;
@@ -39,11 +36,9 @@ export function parentsText(parents: Pick<PrayerMember, "nume" | "prenume">[]): 
   return joinNames(parents.map(memberName).filter(Boolean));
 }
 
-/** The minors of the family (18+ never): a birth date under 18, or no date and a child's relation. */
+/** The children (prayerParts already keeps only a child's relation and a minor or no birth date), with their age. */
 function minors(children: PrayerMember[], today: string): { m: PrayerMember; age: number | null }[] {
-  return children
-    .map((m) => ({ m, age: m.dataNasterii ? ageAt(m.dataNasterii, today) : null }))
-    .filter(({ m, age }) => (age === null ? CHILD_RELATIONS.includes(m.rudenie) : age < 18));
+  return children.map((m) => ({ m, age: m.dataNasterii ? ageAt(m.dataNasterii, today) : null }));
 }
 
 /**

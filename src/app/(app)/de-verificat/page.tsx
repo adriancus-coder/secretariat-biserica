@@ -7,6 +7,7 @@ import { memberName } from "@/lib/format";
 import { NameRow } from "@/components/ui/name-row";
 import type { DataUpdateProposal } from "@/lib/schemas/data-update";
 import { ADDRESS_REVIEW_REASON, addressReviewWhere } from "@/server/queries/address-review";
+import { FAMILY_REVIEW_TITLE, familiesToReview } from "@/server/queries/family-review";
 import { requireCtx } from "@/server/session";
 
 export const metadata: Metadata = { title: "De verificat" };
@@ -20,9 +21,10 @@ export default async function ReviewQueuePage() {
     include: { campaign: { select: { nume: true } }, person: { select: { nume: true, prenume: true } } },
   });
   const ADDRESS_LIMIT = 200;
-  const [addressTotal, addresses] = await Promise.all([
+  const [addressTotal, addresses, families] = await Promise.all([
     ctx.db.person.count({ where: addressReviewWhere }),
     ctx.db.person.findMany({ where: addressReviewWhere, orderBy: { sortKey: "asc" }, take: ADDRESS_LIMIT, select: { id: true, nume: true, prenume: true, adresa: true, localitate: true } }),
+    familiesToReview(ctx.db),
   ]);
   return (
     <>
@@ -47,7 +49,7 @@ export default async function ReviewQueuePage() {
           })}
         </ul>
       ) : (
-        addresses.length ? null : <EmptyState title="Nimic de verificat" />
+        addresses.length || families.length ? null : <EmptyState title="Nimic de verificat" />
       )}
       {addresses.length ? (
         <section className="mt-6" aria-labelledby="adrese-de-verificat">
@@ -68,6 +70,26 @@ export default async function ReviewQueuePage() {
             ))}
           </ul>
           {addressTotal > addresses.length ? <p className="hint mt-2">Primele {addresses.length} din {addressTotal}.</p> : null}
+        </section>
+      ) : null}
+      {families.length ? (
+        <section className="mt-6" aria-labelledby="familii-de-verificat">
+          <h2 id="familii-de-verificat" className="text-base font-semibold mb-1">
+            {FAMILY_REVIEW_TITLE} ({families.length})
+          </h2>
+          <p className="hint mb-3">Rudeniile decid cine apare în mesajul rugăciunii săptămânale. Corectați-le în fișa familiei; nimic nu se schimbă singur.</p>
+          <ul className="list">
+            {families.map((f) => (
+              <li key={f.id}>
+                <Link href={`/familii/${f.id}`} className="item">
+                  <span className="grow min-w-0">
+                    <NameRow name={<b>{f.nume}</b>} detail={f.reasons.join(" · ")} />
+                  </span>
+                  <span className="tag tag-warn">Rudenii</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
     </>
