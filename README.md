@@ -411,6 +411,10 @@ corecții deliberate:
     adulți. Darea de seamă are, după rândul copiilor minori, „Adulți: N (căsătoriți X, necăsătoriți Y,
     necompletat Z)”.
 
+## Atribuiri
+
+- `src/lib/postal-codes-no.json` (codurile poștale norvegiene și localitățile lor): Postnummerregister © Posten Bring AS, licență NLOD (Norwegian Licence for Open Government Data, https://data.norge.no/nlod/en/). Sursa: https://www.bring.no/postnummerregister-ansi.txt; numele localităților sunt scrise cu majuscule doar la început.
+
 ## Limitări și pași următori
 
 Limitările cunoscute și pașii următori, în ordinea priorității, sunt în [`docs/ROADMAP.md`](docs/ROADMAP.md).
