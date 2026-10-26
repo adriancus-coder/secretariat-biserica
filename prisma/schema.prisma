@@ -142,6 +142,11 @@ model User {
   isPastor         Boolean   @default(false)
   /// Optional label: "pastor coordonator", "pastor asistent".
   pastorTitlu      String    @default("")
+  /// DISCIPLINE-ACCESS (Statut art. 44 lit. d, art. 14 alin. 3 lit. d): access to the disciplinary
+  /// measures given by a pastor (an Administrator or Secretar only); who gave it (a user id) and when.
+  accesDisciplina     Boolean   @default(false)
+  accesDisciplinaDeLa String?
+  accesDisciplinaLa   DateTime?
   /// "Semnătura mea": the user's saved signature (PNG ≤ 600×200, ≤ 40 KB), used only after a device unlock.
   signaturePng     Bytes?
   signatureSavedAt DateTime?

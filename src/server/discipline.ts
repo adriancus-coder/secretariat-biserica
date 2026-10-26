@@ -74,7 +74,7 @@ export async function disciplineView(tx: Tx, id: string) {
 export async function recommendationDiscipline(ctx: Ctx, personId: string, exceptieDomiciliu: boolean): Promise<{ forma: string; dataInceput: string } | null> {
   const open = await openMeasure(ctx.db, personId);
   if (!open) return null;
-  if (!permissions.disciplina(ctx.user)) throw new ActionError("Documentul poate fi emis doar de pastor sau de administrator.");
+  if (!permissions.disciplina(ctx.user)) throw new ActionError("Documentul poate fi emis doar de pastor sau de cine are acces la măsurile disciplinare (Statut art. 44 lit. d).");
   if (open.stare === "CERCETARE") {
     if (!exceptieDomiciliu) {
       throw new ActionError(

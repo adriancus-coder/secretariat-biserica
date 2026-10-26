@@ -6,6 +6,8 @@ import { ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import { inviteSchema } from "@/lib/schemas/settings";
 import { booleanArg, idSchema } from "@/lib/validation";
 import { writeAudit } from "../audit";
+import { canGrantDiscipline } from "@/lib/permissions";
+import { hasActivePastor } from "../pastor-approval";
 import { hasStepUp, STEP_UP_REQUIRED } from "../step-up";
 import { prisma } from "../db";
 import { sendInvitationEmail, sendPasswordResetEmail, type EmailResult } from "../email";
@@ -123,8 +125,14 @@ export async function changeRoleAction(userId: string, _prev: FormState, formDat
     }
     // "Rugăciune" sees only the family of the week: it cannot keep the pastor flag (Statut art. 38–39).
     const dropPastor = role === "RUGACIUNE" && user.isPastor;
+    // Access to discipline is only for an Administrator or Secretar (Statut art. 44 lit. d): another role drops it.
+    const dropDiscipline = user.accesDisciplina && role !== "ADMIN" && role !== "SECRETAR";
     await ctx.db.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: userId }, data: { role, ...(dropPastor ? { isPastor: false, pastorTitlu: "" } : {}) } });
+      await tx.user.update({
+        where: { id: userId },
+        data: { role, ...(dropPastor ? { isPastor: false, pastorTitlu: "" } : {}), ...(dropDiscipline ? { accesDisciplina: false, accesDisciplinaDeLa: null, accesDisciplinaLa: null } : {}) },
+      });
+      if (dropDiscipline) await auditDisciplineAccess(tx, ctx.user, user, false, "rolul s-a schimbat");
       await writeAudit(tx, ctx.user, {
         entity: "USER",
         entityId: userId,
@@ -274,6 +282,52 @@ export async function setPastorAction(userId: string, _prev: FormState, formData
       });
     });
     return { ok: true, message: isPastor ? "Marcat ca pastor al bisericii." : "Nu mai este marcat ca pastor." };
+  });
+  revalidatePath("/", "layout");
+  return state;
+}
+
+type AuditTx = Parameters<typeof writeAudit>[0];
+
+/** SECURITY audit of the access to discipline: who, to whom, when (the entry's user and time). */
+async function auditDisciplineAccess(tx: AuditTx, actor: { id: string; name: string } & Parameters<typeof writeAudit>[1], target: { id: string; name: string; email: string }, on: boolean, why?: string) {
+  await writeAudit(tx, actor, {
+    entity: "SECURITY",
+    entityId: target.id,
+    entityLabel: `${target.name} <${target.email}>`,
+    action: "UPDATE",
+    fields: [],
+    extra: { observatie: `acces la măsurile disciplinare ${on ? "acordat" : "retras"} de ${actor.name}${why ? ` (${why})` : ""} — Statut art. 44 lit. d` },
+  });
+}
+
+/**
+ * Setări → Utilizatori și roluri → "Acces la măsurile disciplinare (art. 44 lit. d)": a pastor gives or
+ * takes back the access of an active Administrator or Secretar (not a pastor: pastors have it); in a
+ * church without any pastor user, an Administrator who has the access. Never to oneself. Step-up;
+ * audited SECURITY with who, to whom and when.
+ */
+export async function setDisciplineAccessAction(userId: string, on: boolean): Promise<FormState> {
+  const state = await runFormAction(null, async () => {
+    const ctx = await actionCtx();
+    parseOrThrow(idSchema, userId);
+    parseOrThrow(booleanArg, on);
+    const hasPastor = await hasActivePastor(ctx.user.churchId);
+    if (!canGrantDiscipline(ctx.user, hasPastor)) {
+      throw new ActionError(hasPastor ? "Accesul la măsurile disciplinare îl dă un pastor (Statut art. 44 lit. d)." : "Biserica nu are un pastor în aplicație; accesul îl poate da doar un administrator care are el însuși acces.");
+    }
+    if (!(await hasStepUp(ctx.user))) throw new ActionError(STEP_UP_REQUIRED);
+    if (userId === ctx.user.id) throw new ActionError("Nu vă puteți da singur acces la măsurile disciplinare.");
+    const user = await ctx.db.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ActionError("Utilizatorul nu există.");
+    if (on && (!user.active || (user.role !== "ADMIN" && user.role !== "SECRETAR"))) throw new ActionError("Accesul se dă doar unui Administrator sau Secretar activ.");
+    if (on && user.isPastor) throw new ActionError("Pastorii au deja acces.");
+    if (user.accesDisciplina === on) return { ok: true };
+    await ctx.db.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: on ? { accesDisciplina: true, accesDisciplinaDeLa: ctx.user.id, accesDisciplinaLa: new Date() } : { accesDisciplina: false, accesDisciplinaDeLa: null, accesDisciplinaLa: null } });
+      await auditDisciplineAccess(tx, ctx.user, user, on);
+    });
+    return { ok: true, message: on ? `${user.name} are acces la măsurile disciplinare.` : `${user.name} nu mai are acces la măsurile disciplinare.` };
   });
   revalidatePath("/", "layout");
   return state;

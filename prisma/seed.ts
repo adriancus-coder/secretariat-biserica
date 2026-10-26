@@ -183,7 +183,7 @@ async function main() {
 
   const passwordHash = await hashPassword(PASSWORD);
   const [admin] = await Promise.all([
-    prisma.user.create({ data: { churchId, email: "admin@demo.ro", name: "Daniel Mureșan", passwordHash, role: "ADMIN" } }),
+    prisma.user.create({ data: { churchId, email: "admin@demo.ro", name: "Daniel Mureșan", passwordHash, role: "ADMIN", accesDisciplina: true } }), // like the discipline_access migration (no pastor user in the demo)
     prisma.user.create({ data: { churchId, email: "secretar@demo.ro", name: "Ioana Pop", passwordHash, role: "SECRETAR" } }),
     prisma.user.create({ data: { churchId, email: "vizualizare@demo.ro", name: "Emanuel Ciobanu", passwordHash, role: "VIZUALIZARE" } }),
     prisma.user.create({ data: { churchId, email: "rugaciune@demo.ro", name: "Lidia Stan", passwordHash, role: "RUGACIUNE" } }),

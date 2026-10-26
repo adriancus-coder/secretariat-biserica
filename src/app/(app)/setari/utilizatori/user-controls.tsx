@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useState, useTransition } from "react";
 import { Icon } from "@/components/shell/icons";
 import { SelectField, TextField } from "@/components/ui/fields";
-import { initialFormState } from "@/lib/form-state";
+import { initialFormState, type FormState } from "@/lib/form-state";
 import { ROLE_DESCRIPTION, ROLE_LABEL, ROLES, type RoleKey } from "@/lib/labels";
 import {
   changeRoleAction,
@@ -13,6 +14,7 @@ import {
   setUserActiveAction,
   endUserSessionsAction,
   setPastorAction,
+  setDisciplineAccessAction,
   type LinkState,
 } from "@/server/actions/users";
 
@@ -204,5 +206,34 @@ export function PastorControl({ userId, isPastor, titlu, disabled }: { userId: s
       )}
       {state.message && !state.ok ? <span className="field-error">{state.message}</span> : null}
     </form>
+  );
+}
+
+/** "Acces la măsurile disciplinare": on / off for one Administrator or Secretar (a pastor decides; step-up on the server). */
+export function DisciplineAccessToggle({ userId, name, on }: { userId: string; name: string; on: boolean }) {
+  const [state, setState] = useState<FormState>({});
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <label className="check !border-0 !py-0 min-h-11">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={pending}
+          aria-label={`Acces la măsurile disciplinare pentru ${name}`}
+          onChange={(e) => {
+            const value = e.target.checked;
+            start(async () => {
+              const r = await setDisciplineAccessAction(userId, value);
+              setState(r);
+              if (r.ok) router.refresh();
+            });
+          }}
+        />
+        Acces
+      </label>
+      {state.message ? <span className={state.ok ? "hint !mt-0" : "field-error"} role="status">{state.message}</span> : null}
+    </span>
   );
 }

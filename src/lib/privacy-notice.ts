@@ -42,6 +42,7 @@ Datele copiilor sub 18 ani sunt furnizate de părinți sau de tutorii legali, ca
 
 5. Cine are acces la date
 - În cadrul Bisericii, conform Statutului (art. 14 alin. 3 lit. d): pastorii bisericii, secretarul, persoanele care administrează sistemul informatic și alte persoane împuternicite de conducerea bisericii, fiecare doar cu drepturile necesare rolului său. Accesul este protejat prin parolă și autentificare în doi pași, iar orice modificare este înregistrată.
+- Măsurile disciplinare sunt accesibile doar pastorilor și persoanelor împuternicite de pastor, conform Statutului (art. 44 lit. d).
 - Persoana desemnată pentru anunțul de rugăciune vede doar numele familiilor.
 - Alte biserici și forurile Cultului: la transfer, biserica la care vă transferați primește datele necesare; în cazurile prevăzute de Statut, Comunitatea de care aparține Biserica primește informările obligatorii.
 - Furnizori care prelucrează date în numele Bisericii, pe bază de contract, numai la instrucțiunile noastre:

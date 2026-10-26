@@ -13,12 +13,13 @@ import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
 
 vi.mock("@/server/session", () => ({ ActionError: class ActionError extends Error {} }));
 
-/** Statut art. 27: disciplinary measures reach administrators only. */
+/** Statut art. 27, art. 44 lit. d: disciplinary measures reach pastors and those a pastor gave access to. */
 describe.skipIf(!hasTestDb)("disciplinary measures", () => {
   const prisma = hasTestDb ? testPrisma() : (undefined as never);
-  const ctxFor = (churchId: string, userId: string, role: "ADMIN" | "SECRETAR"): Ctx =>
-    ({ user: { id: userId, name: role, email: `${userId}@x.ro`, role, churchId, churchName: "X" }, db: scopeToChurch(prisma, churchId) }) as Ctx;
+  const ctxFor = (churchId: string, userId: string, role: "ADMIN" | "SECRETAR", accesDisciplina = false): Ctx =>
+    ({ user: { id: userId, name: role, email: `${userId}@x.ro`, role, accesDisciplina, churchId, churchName: "X" }, db: scopeToChurch(prisma, churchId) }) as Ctx;
   let admin: Ctx;
+  let adminNoAccess: Ctx;
   let secretar: Ctx;
   let other: Ctx;
   let suspended = "";
@@ -30,9 +31,10 @@ describe.skipIf(!hasTestDb)("disciplinary measures", () => {
     const ua = await prisma.user.create({ data: { churchId: ca.id, email: "a@x.ro", name: "A", passwordHash: "x", role: "ADMIN" } });
     const us = await prisma.user.create({ data: { churchId: ca.id, email: "s@x.ro", name: "S", passwordHash: "x", role: "SECRETAR" } });
     const ub = await prisma.user.create({ data: { churchId: cb.id, email: "b@x.ro", name: "B", passwordHash: "x", role: "ADMIN" } });
-    admin = ctxFor(ca.id, ua.id, "ADMIN");
+    admin = ctxFor(ca.id, ua.id, "ADMIN", true);
+    adminNoAccess = ctxFor(ca.id, ua.id, "ADMIN");
     secretar = ctxFor(ca.id, us.id, "SECRETAR");
-    other = ctxFor(cb.id, ub.id, "ADMIN");
+    other = ctxFor(cb.id, ub.id, "ADMIN", true);
     const mk = async (prenume: string) => (await prisma.person.create({ data: { churchId: ca.id, nume: "Pop", prenume, sortKey: `pop ${prenume}`, searchText: prenume } })).id;
     suspended = await mk("Suspendat");
     member = await mk("Membru");
@@ -76,7 +78,22 @@ describe.skipIf(!hasTestDb)("disciplinary measures", () => {
     expect(asSecretar).not.toMatch(/disciplin|SUSPENDARE|motiv intern/i);
   });
 
-  it("an administrator's file imports the measures into another church, linked to the imported person", async () => {
+  it("an Administrator without access (art. 44 lit. d) gets no trace in the export; a Secretar with access does", async () => {
+    expect(JSON.stringify((await buildExportJson(adminNoAccess)).data)).not.toMatch(/disciplin|SUSPENDARE|motiv intern/i);
+    const withAccess = { ...secretar, user: { ...secretar.user, accesDisciplina: true } } as Ctx;
+    expect(JSON.stringify((await buildExportJson(withAccess)).data)).toContain("motiv intern");
+  });
+
+  it("an Administrator without access imports a file without its measures, silently", async () => {
+    const parsed = parseImportJson(JSON.parse(JSON.stringify((await buildExportJson(admin)).data)));
+    if (!parsed.ok) throw new Error(parsed.errors.join("; "));
+    const noAccess = { ...other, user: { ...other.user, accesDisciplina: false } } as Ctx;
+    const summary = await importBackup(noAccess, parsed.backup, "merge", parsed.extras);
+    expect(await other.db.disciplinaryMeasure.count()).toBe(0);
+    expect(JSON.stringify(summary)).not.toMatch(/disciplin/i);
+  });
+
+  it("a file of someone with access imports the measures into another church (importer with access), linked to the imported person", async () => {
     const parsed = parseImportJson(JSON.parse(JSON.stringify((await buildExportJson(admin)).data)));
     if (!parsed.ok) throw new Error(parsed.errors.join("; "));
     await importBackup(other, parsed.backup, "merge", parsed.extras);

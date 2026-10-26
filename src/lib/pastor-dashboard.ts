@@ -43,3 +43,11 @@ export function birthdaysCard(today: string, people: readonly { name: string; da
     detail: next.length ? `în 7 zile: ${next.slice(0, 3).map((p) => `${p.name} (${Number(p.day.slice(8))})`).join(", ")}${next.length > 3 ? "…" : ""}` : "niciuna în următoarele 7 zile",
   };
 }
+
+/**
+ * "Acces la disciplină" (Statut art. 44 lit. d): who besides the pastors sees the disciplinary measures,
+ * by a pastor's decision; opens the setting.
+ */
+export function disciplineAccessCard(names: readonly string[]): Pick<DashCard, "value" | "detail"> {
+  return { value: String(names.length), detail: names.length ? names.join(", ") : "doar pastorii" };
+}

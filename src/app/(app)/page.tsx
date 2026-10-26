@@ -11,7 +11,7 @@ import { isGeneralAssembly, ordinaryAssemblyMissing } from "@/lib/general-assemb
 import { permissions } from "@/lib/permissions";
 import { APPEAL_DAYS, appealDeadline } from "@/lib/discipline-print";
 import { mandateNotice } from "@/lib/committee";
-import { assemblyCard, birthdaysCard, mandateCard, type DashCard } from "@/lib/pastor-dashboard";
+import { assemblyCard, birthdaysCard, mandateCard, type DashCard, disciplineAccessCard } from "@/lib/pastor-dashboard";
 import { PastorDashboard } from "@/components/pastor-dashboard";
 import { committeeAbsences } from "@/server/queries/committee";
 import { getChurch } from "@/server/queries/church";
@@ -148,7 +148,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   let pastorCards: DashCard[] = [];
   if (isPastor) {
     const y = today.slice(0, 4);
-    const [proposedApps, proposedPersons, openMeasures, assemblies] = await Promise.all([
+    const [proposedApps, proposedPersons, openMeasures, assemblies, withAccess] = await Promise.all([
       ctx.db.application.count({ where: { status: "PROPUSA" } }),
       ctx.db.personProposal.count({ where: { status: "PROPUSA" } }),
       ctx.db.disciplinaryMeasure.count({ where: { stare: { in: ["CERCETARE", "APLICATA"] } } }),
@@ -156,6 +156,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         // Held this year: up to today (a meeting entered ahead is not held yet).
         where: { data: { gte: toDbDate(`${y}-01-01`)!, lte: toDbDate(today)! }, OR: [{ tipAG: null }, { tipAG: "ORDINARA" }] },
         select: { tip: true, data: true },
+      }),
+      ctx.db.user.findMany({
+        where: { accesDisciplina: true, isPastor: false, active: true, role: { in: ["ADMIN", "SECRETAR"] } },
+        orderBy: { name: "asc" },
+        select: { name: true },
       }),
     ]);
     const toApprove = proposedApps + proposedPersons;
@@ -176,6 +181,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         href: "/disciplina",
         alert: appeals.length > 0,
       },
+      { title: "Acces la disciplină", ...disciplineAccessCard(withAccess.map((u) => u.name)), href: "/setari/utilizatori#acces-disciplina" },
       { title: "Plecați de peste 3 luni", value: String(away3), detail: away6 ? `${away6} de peste 6 luni (transferul)` : "niciunul de peste 6 luni", href: categoryHref(away6 ? "plecati-6-luni" : "plecati-3-luni", undefined), alert: away6 > 0 },
       { title: `Aniversări în ${MONTHS_L[Number(month) - 1]}`, ...birthdaysCard(today, allBirthdays.filter((p) => agreed(p.id)).map((p) => ({ name: memberName(p), dataNasterii: p.dataNasterii! }))), href: "#aniversari" },
       { title: "Mandatul comitetului", ...mandateCard(today, church.comitetAlesLa, church.comitetPrelungit), href: categoryHref("comitet", undefined) },

@@ -6,6 +6,7 @@ import type { BAlias } from "@/lib/aliases-backup";
 import type { BExternalParent, BKinship } from "@/lib/kinship-backup";
 import { externalKey } from "@/lib/kinship-parents";
 import { parentLinkError } from "@/lib/kinship";
+import { permissions } from "@/lib/permissions";
 import { syncKinship } from "./kinship-sync";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
@@ -870,7 +871,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       }
 
       // Disciplinary measures (only an administrator imports; only an administrator's file carries them).
-      for (const d of extras.discipline ?? []) {
+      // Only someone with access to discipline (Statut art. 44 lit. d) imports it; for others it is skipped silently.
+      for (const d of permissions.disciplina(ctx.user) ? (extras.discipline ?? []) : []) {
         const personId = pid(d.membru);
         if (!personId) continue;
         const plan = await planIds(tx, TABLES.discipline, [d.id], churchId);

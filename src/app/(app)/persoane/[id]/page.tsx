@@ -423,9 +423,11 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
         <div className="card">
           <h3>Copie a datelor (art. 15 GDPR)</h3>
           <form method="get" action={`/api/persoane/${x.id}/copie`} className="flex flex-wrap gap-2 items-center">
-            <label className="check !border-0">
-              <input type="checkbox" name="disciplina" value="1" /> Include măsurile disciplinare
-            </label>
+            {permissions.disciplina(ctx.user) ? (
+              <label className="check !border-0">
+                <input type="checkbox" name="disciplina" value="1" /> Include măsurile disciplinare
+              </label>
+            ) : null}
             <button type="submit" name="format" value="pdf" className="btn btn-sm">
               Descarcă PDF
             </button>

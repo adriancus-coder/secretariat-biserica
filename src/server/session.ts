@@ -15,6 +15,8 @@ export interface CurrentUser {
   /** Pastor of the church (Statut art. 38–39), independent of the role; `pastorTitlu` e.g. "pastor coordonator". */
   isPastor: boolean;
   pastorTitlu: string;
+  /** DISCIPLINE-ACCESS: access to the disciplinary measures given by a pastor (Statut art. 44 lit. d). */
+  accesDisciplina: boolean;
   /** Bumped by "deconectare de pe toate dispozitivele" and password changes; binds step-up grants to the session. */
   sessionVersion: number;
   churchId: string;
@@ -38,6 +40,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       role: true,
       isPastor: true,
       pastorTitlu: true,
+      accesDisciplina: true,
       churchId: true,
       active: true,
       sessionVersion: true,
@@ -52,6 +55,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     role: user.role,
     isPastor: user.isPastor,
     pastorTitlu: user.pastorTitlu,
+    accesDisciplina: user.accesDisciplina,
     sessionVersion: user.sessionVersion,
     churchId: user.churchId,
     churchName: user.church.nume,
