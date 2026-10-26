@@ -1818,6 +1818,26 @@
     color: var(--ok);
   }
 
+  /* /rugaciune "Toate familiile": a list on phones, the sortable table from 600 px. */
+  .prayer-overview-table {
+    display: none;
+  }
+  .prayer-overview-list .item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .prayer-overview-list .item .body {
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+  @media (min-width: 600px) {
+    .prayer-overview-table {
+      display: block;
+    }
+    .prayer-overview-list {
+      display: none;
+    }
+  }
   /* /rugaciune: the family of the week, large; the history as a plain list. */
   .prayer-family {
     font-size: 1.25rem;

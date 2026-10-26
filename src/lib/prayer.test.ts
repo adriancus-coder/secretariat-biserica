@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { whatsappUrl, answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
+import { rotationOrderLabel, whatsappUrl, answersForFamily, parsePrayerKey, restrictivePrayer, prayerLabel, prayerRotation, weekStartOf, type PrayerMember, type PrayerUnit } from "./prayer";
 
 const TODAY = "2026-10-28";
 const m = (id: string, prenume: string, over: Partial<PrayerMember> = {}): PrayerMember => ({
@@ -95,5 +95,8 @@ describe("weekly prayer", () => {
     expect(url).toContain("%C8%9A"); // Ț
     expect(decodeURIComponent(url.slice("https://wa.me/?text=".length))).toBe(text);
   });
-});
 
+  it("names the place in the rotation: „Urmează”, „a 2-a”, „a 3-a”", () => {
+    expect([0, 1, 2, 9].map(rotationOrderLabel)).toEqual(["Urmează", "a 2-a", "a 3-a", "a 10-a"]);
+  });
+});

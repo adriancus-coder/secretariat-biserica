@@ -5,6 +5,7 @@ import { fmt } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { loadPrayerPage } from "@/server/queries/prayer";
 import { requireCtx } from "@/server/session";
+import { PrayerOverview } from "./prayer-overview";
 import { PrayerWeekCard } from "./prayer-week-card";
 
 export const metadata: Metadata = { title: "Rugăciune" };
@@ -19,7 +20,8 @@ export default async function PrayerPage({ searchParams }: PageProps<"/rugaciune
   const ctx = await requireCtx("rugaciune");
   const sp = await searchParams;
   const skip = Math.max(0, Math.min(500, Number.parseInt(typeof sp.sari === "string" ? sp.sari : "0", 10) || 0));
-  const d = await loadPrayerPage(ctx, skip);
+  const choose = typeof sp.alege === "string" && /^[fp]:[A-Za-z0-9_-]{1,64}$/.test(sp.alege) ? sp.alege : null;
+  const d = await loadPrayerPage(ctx, skip, choose);
   const label = d.marked?.label ?? d.next?.label ?? null;
   return (
     <>
@@ -45,8 +47,13 @@ export default async function PrayerPage({ searchParams }: PageProps<"/rugaciune
         skipHref={d.total > 1 ? `/rugaciune?sari=${skip + 1}` : null}
         message={d.message}
       />
+      <PrayerOverview rows={d.overview} shownKey={d.marked?.key ?? d.next?.key ?? null} canChoose={!d.marked} />
       <section className="card">
         <h3>Ultimele săptămâni</h3>
+        <p className="hint !mt-0 mb-2">
+          {d.summary.inRotation} {d.summary.inRotation === 1 ? "familie" : "familii"} în rotație · {d.summary.thisYear} {d.summary.thisYear === 1 ? "pomenită" : "pomenite"} anul acesta ·
+          un ciclu complet durează aproximativ {d.summary.cycleWeeks} {d.summary.cycleWeeks === 1 ? "săptămână" : "săptămâni"}
+        </p>
         {d.history.length ? (
           <ul className="list-plain space-y-2">
             {d.history.map((h) => (

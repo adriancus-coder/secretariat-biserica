@@ -70,20 +70,30 @@ export interface PrayerPageData {
    * family's link, the "Rugăciune" role only a plain reminder (no reason, no data). Null when fine.
    */
   review: { href: string } | { href: null } | null;
+  /**
+   * "Toate familiile": every unit of the rotation in its order (objections are not in the rotation),
+   * with the shown label (children's names only with consent) and the Monday of its last announcement.
+   */
+  overview: { key: string; label: string; last: string | null; order: number }[];
+  /** The proposed family was chosen by hand ("Alege săptămâna aceasta"), not by the rotation. */
+  chosen: boolean;
+  /** "X familii în rotație · Y pomenite anul acesta · un ciclu complet durează aproximativ Z săptămâni". */
+  summary: { inRotation: number; thisYear: number; cycleWeeks: number };
 }
 
 /**
  * The /rugaciune page: only the shown names, never a person's record. A unit that left the rotation
  * since (objection, no active adult) is shown in the history without its name.
  */
-export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPageData> {
+export async function loadPrayerPage(ctx: Ctx, skip: number, choose: string | null = null): Promise<PrayerPageData> {
   const details = permissions.write(ctx.user);
   const today = todayIso();
   const week = weekStartOf(today);
-  const [units, recent, church] = await Promise.all([
+  const [units, recent, church, yearWeeks] = await Promise.all([
     loadUnits(ctx),
     ctx.db.prayerWeek.findMany({ select: { weekStart: true, familyId: true, personId: true }, orderBy: { weekStart: "desc" }, take: 12 }),
     ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId }, select: { prayerMessage: true, prayerMessagePerson: true } }),
+    ctx.db.prayerWeek.findMany({ where: { weekStart: { gte: toDbDate(`${today.slice(0, 4)}-01-01`)! } }, select: { familyId: true, personId: true } }),
   ]);
   const byKey = new Map(units.map((u) => [u.key, u]));
   const shown = (familyId: string | null, personId: string | null) => {
@@ -93,14 +103,17 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
   };
   const rotation = prayerRotation(units, today);
   const current = recent.find((w) => fromDbDate(w.weekStart) === week);
-  const shownKey = current ? (current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? "")) : rotation.length ? rotation[skip % rotation.length].key : null;
+  // "Alege săptămâna aceasta": a unit of the rotation chosen by hand replaces the proposed one (not marked).
+  const picked = !current && choose ? (rotation.find((r) => r.key === choose) ?? null) : null;
+  const proposed = picked ?? (rotation.length ? rotation[skip % rotation.length] : null);
+  const shownKey = current ? (current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? "")) : (proposed?.key ?? null);
   const shownUnit = shownKey ? byKey.get(shownKey) : undefined;
   // A family that objected since (or left the register) gets no message.
   const message = shownUnit && !shownUnit.optOut ? prayerMessageFor(shownUnit, today, { family: church.prayerMessage, person: church.prayerMessagePerson }) : "";
   return {
     week,
     marked: current ? { key: current.familyId ? prayerKey("f", current.familyId) : prayerKey("p", current.personId ?? ""), label: shown(current.familyId, current.personId) } : null,
-    next: current || !rotation.length ? null : rotation[skip % rotation.length],
+    next: current ? null : proposed,
     total: rotation.length,
     history: recent.map((w) => ({ week: fromDbDate(w.weekStart)!, label: shown(w.familyId, w.personId) })),
     message,
@@ -108,6 +121,14 @@ export async function loadPrayerPage(ctx: Ctx, skip: number): Promise<PrayerPage
       shownUnit && shownKey?.startsWith("f:") && familyRelationIssues(shownUnit, today).length
         ? { href: details ? `/familii/${shownKey.slice(2)}` : null }
         : null,
+    overview: rotation.map((r, order) => ({ key: r.key, label: r.label, last: byKey.get(r.key)?.lastWeek ?? null, order })),
+    chosen: Boolean(picked),
+    summary: {
+      inRotation: rotation.length,
+      thisYear: new Set(yearWeeks.map((w) => (w.familyId ? `f:${w.familyId}` : `p:${w.personId}`)).filter((k) => k !== "p:null")).size,
+      // One family a week: a full cycle takes as many weeks as there are families.
+      cycleWeeks: rotation.length,
+    },
   };
 }
 

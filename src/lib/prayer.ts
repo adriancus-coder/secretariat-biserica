@@ -148,6 +148,11 @@ export function prayerRotation(units: PrayerUnit[], today: string): { key: strin
     .map(({ key, label }) => ({ key, label }));
 }
 
+/** The place in the rotation as shown in "Toate familiile": "Urmează", "a 2-a", "a 3-a" … */
+export function rotationOrderLabel(index: number): string {
+  return index === 0 ? "Urmează" : `a ${index + 1}-a`;
+}
+
 /** Monday of the week holding `iso`. */
 export function weekStartOf(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`).getUTCDay();

@@ -54,6 +54,21 @@ export async function cancelPrayerWeekAction(): Promise<FormState> {
   return state;
 }
 
+/**
+ * "Alege săptămâna aceasta": the family is proposed for this week instead of the rotation's (the page
+ * then shows it and its message); nothing is marked. Audited with the week only, never the name.
+ */
+export async function choosePrayerFamilyAction(key: string): Promise<FormState> {
+  return runFormAction(null, async () => {
+    const ctx = await actionCtx("rugaciune");
+    if (!parsePrayerKey(String(key)) || !(await prayerUnitLabel(ctx, String(key)))) throw new ActionError("Familia nu mai este în rotație. Reîncărcați pagina.");
+    const week = thisWeek();
+    if (await ctx.db.prayerWeek.findFirst({ where: { weekStart: week }, select: { id: true } })) throw new ActionError("Săptămâna aceasta este deja marcată.");
+    await writeAudit(ctx.db, ctx.user, { entity: "PRAYER", entityId: fromDbDate(week)!, entityLabel: weekLabel(week), action: "CREATE", fields: [], extra: { observatie: `familie aleasă manual pentru săptămâna ${fmt(fromDbDate(week))}` } });
+    return { ok: true };
+  });
+}
+
 const SHARE_CHANNELS = ["whatsapp", "share", "copy"] as const;
 export type PrayerShareChannel = (typeof SHARE_CHANNELS)[number];
 

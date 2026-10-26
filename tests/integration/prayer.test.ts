@@ -13,7 +13,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 const { loadPrayerPage, PRAYER_FAMILY_SELECT, PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT } = await import("@/server/queries/prayer");
 const { applyDecision } = await import("@/server/review");
-const { cancelPrayerWeekAction, markPrayerWeekAction, prayerSharedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
+const { cancelPrayerWeekAction, choosePrayerFamilyAction, markPrayerWeekAction, prayerSharedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
 
 /** The weekly prayer: who is in the rotation, what is shown, and nothing else from the register. */
 describe.skipIf(!hasTestDb)("weekly prayer", () => {
@@ -81,6 +81,33 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     for (const hidden of ["Ciobanu", "Dobre", "Enache", "900", "@x.no", "Strada", "2016", "2018"]) expect(text).not.toContain(hidden);
     // The page data is the label and the key, nothing more.
     expect(Object.keys(d.next!).sort()).toEqual(["key", "label"]);
+  });
+
+  it("„Toate familiile”: the rotation with names only (children only with consent); a family chosen by hand is proposed, not marked", async () => {
+    current = ctx;
+    const d = await loadPrayerPage(ctx, 0);
+    expect(d.overview.map((o) => [o.label, o.last, o.order])).toEqual([
+      ["Familia Barbu: Vasile și Ioana, cu copilul Matei", null, 0],
+      ["Familia Popescu: Ion și Maria", null, 1],
+    ]);
+    for (const o of d.overview) expect(Object.keys(o).sort()).toEqual(["key", "label", "last", "order"]);
+    expect(d.summary).toEqual({ inRotation: 2, thisYear: 0, cycleWeeks: 2 });
+    // No contact data, birth dates, objecting families or children named without consent anywhere.
+    const text = JSON.stringify(d);
+    for (const hidden of ["Ana", "2016", "2018", "1980", "900", "@x.no", "Strada", "Ciobanu", "Dobre", "Enache", "APARTINATOR", "Fiică"]) expect(text).not.toContain(hidden);
+    const popescu = d.overview[1].key;
+    expect((await choosePrayerFamilyAction(popescu)).ok).toBe(true);
+    const chosen = await loadPrayerPage(ctx, 0, popescu);
+    expect([chosen.next?.key, chosen.chosen]).toEqual([popescu, true]);
+    expect(chosen.message).toContain("familia Popescu Ion și Maria și pentru copilul lor, ca Domnul");
+    expect(await prisma.prayerWeek.count()).toBe(0);
+    const log = await prisma.auditLog.findFirstOrThrow({ where: { entity: "PRAYER" }, orderBy: { createdAt: "desc" } });
+    expect(JSON.stringify(log)).toContain("familie aleasă manual pentru săptămâna");
+    expect(JSON.stringify(log)).not.toMatch(/Popescu|Ion|Maria/);
+    // Another church's family, or a family out of the rotation, cannot be chosen.
+    expect((await choosePrayerFamilyAction(`f:${fam.altabiserica}`)).message).toContain("nu mai este în rotație");
+    expect((await loadPrayerPage(ctx, 0, `f:${fam.nu}`)).next?.key).toBe(d.overview[0].key);
+    await prisma.auditLog.deleteMany({ where: { id: log.id } }); // the next test counts the PRAYER entries it writes
   });
 
   it("marks once per week, cancels, and audits without the family's name", async () => {
