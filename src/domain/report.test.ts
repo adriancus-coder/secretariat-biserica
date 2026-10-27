@@ -35,7 +35,7 @@ describe("darea de seamă anuală", () => {
         "- Aparținători: 1 (din care a) minori nebotezați din familii de credincioși: 1; b) persoane nebotezate hotărâte: 0)",
         "- Botezați fără calitate de membru: 1",
         "- Prieteni ai casei Domnului (nebotezați): 1",
-        "- Copii minori: 1 (din care copii ai membrilor: 1)",
+        "- Copii minori: 1 (din care copii ai membrilor: 1, copii din alte familii: 0)",
         // Not in the prototype: the adults' marital status (the three add up to the adults).
         "- Adulți: 6 (căsătoriți 2, necăsătoriți 1, necompletat 3)",
         "- 2 familii",

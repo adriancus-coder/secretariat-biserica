@@ -82,6 +82,8 @@ describe("computeStats", () => {
     expect(names(s.copii)).toEqual(["Popescu Andrei", "Ionescu Rut"]);
     // Rut e minoră, dar familia Ionescu nu are membri (Elena e aparținătoare).
     expect(names(s.copiiMembri)).toEqual(["Popescu Andrei"]);
+    // MINORS-OTHER-FAMILIES: the other minors; the two add up to copii.
+    expect(names(s.copiiAlte)).toEqual(["Ionescu Rut"]);
     expect(names(s.apart)).toEqual(["Popescu Andrei", "Ionescu Rut"]);
     expect(names(s.botezatiFara)).toEqual(["Ionescu Elena"]);
     expect(names(s.prieteni)).toEqual(["Barbu Petru"]);
@@ -97,6 +99,22 @@ describe("computeStats", () => {
       ["46–60", 2],
       ["61+", 1],
     ]);
+  });
+
+  it("MINORS-OTHER-FAMILIES: copii = copii ai membrilor + copii din alte familii, mereu (și fără familie)", () => {
+    const extra = [
+      ...persons,
+      person({ id: "k", nume: "Vlad", prenume: "Iosif", gen: "M", statut: "PRIETEN", dataNasterii: "2015-01-01" }),
+      person({ id: "l", nume: "Popescu", prenume: "Ilie", gen: "M", statut: "APARTINATOR", familyId: "Popescu", rudenie: "Fiu", dataNasterii: "2016-01-01" }),
+    ];
+    for (const today of ["2026-09-28", "2020-06-01", "2012-12-31"]) {
+      for (const year of [undefined, 2019, 2025]) {
+        const s = computeStats(extra, events, { today, year });
+        expect(s.copiiMembri.length + s.copiiAlte.length).toBe(s.copii.length);
+        expect(s.copiiAlte.some((p) => s.copiiMembri.includes(p))).toBe(false);
+      }
+    }
+    expect(names(computeStats(extra, events, { today: TODAY }).copiiAlte)).toEqual(["Ionescu Rut", "Vlad Iosif"]);
   });
 
   it("mișcarea anului", () => {

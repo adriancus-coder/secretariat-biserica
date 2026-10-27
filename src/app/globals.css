@@ -1579,12 +1579,20 @@
   }
   .stat-families .stat-more {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 0 0.4em;
     min-height: 2.75rem;
     padding: 0 12px 6px;
     font-size: 0.75rem;
     color: var(--link);
     text-decoration: underline;
+  }
+  .stat-families .stat-more a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--link);
   }
   /* A figure that needs attention (e.g. "stare civilă necompletată" above 0). */
   .stat.stat-warn {

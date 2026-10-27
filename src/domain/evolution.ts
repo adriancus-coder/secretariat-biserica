@@ -101,6 +101,7 @@ export interface Structure {
   /** The adults in the record by marital status (the three add up to `adulti`). */
   marital: { adulti: number; casatoriti: number; necasatoriti: number; necompletat: number };
   /** Only the families of the church (FAMILIES-WITH-MEMBERS); `withoutMembers` = the others. */
+  children: { total: number; members: number; others: number };
   families: { count: number; withoutMembers: number; avgSize: number | null; withMinors: number; alone: number; withoutFamily: number };
 }
 
@@ -153,6 +154,8 @@ export function structure(input: CategoryInput): Structure {
       byGender("copii-minori", "Copii minori"),
     ],
     marital: { adulti: s.adulti.length, casatoriti: s.casatoriti.length, necasatoriti: s.necasatoriti.length, necompletat: s.stareCivilaNecompletata.length },
+    // MINORS-OTHER-FAMILIES: copii minori = copii ai membrilor + copii din alte familii.
+    children: { total: ctx.ids("copii-minori")!.length, members: ctx.ids("copii-membri")!.length, others: ctx.ids("copii-alte")!.length },
     families: {
       count: famLists.length,
       withoutMembers: famMembers.size - famLists.length,

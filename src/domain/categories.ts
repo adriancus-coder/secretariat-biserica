@@ -1,5 +1,5 @@
 import { ageAt, inYear, monthsBefore } from "@/lib/dates";
-import { OPTIONAL_CONSENTS, PARENT_RELATIONS, PRIETENI_TITLE, type ConsentKindKey } from "@/lib/labels";
+import { OPTIONAL_CONSENTS, OTHER_CHILDREN_HINT, OTHER_CHILDREN_TITLE, PARENT_RELATIONS, PRIETENI_TITLE, type ConsentKindKey } from "@/lib/labels";
 import type { ConsentState } from "@/lib/consents";
 import { computeStats, type Stats } from "./stats";
 import type { EventRecord, PersonRecord } from "./types";
@@ -17,6 +17,8 @@ export interface CategoryDef {
   key: string;
   label: string;
   group: CategoryGroup;
+  /** Shown under the list's title. */
+  hint?: string;
   /** Counts events of the selected year (else: the situation at the reference date). */
   yearly?: boolean;
 }
@@ -51,6 +53,7 @@ export const CATEGORIES: readonly CategoryDef[] = [
   { key: "femei", label: "Femei", group: "Statut" },
   { key: "copii-minori", label: "Copii minori", group: "Copii" },
   { key: "copii-membri", label: "Copii ai membrilor", group: "Copii" },
+  { key: "copii-alte", label: OTHER_CHILDREN_TITLE, group: "Copii", hint: OTHER_CHILDREN_HINT },
   { key: "copii-apartinatori", label: "Copii ai aparținătorilor", group: "Copii" },
   { key: "copii-fara-familie", label: "Copii fără familie", group: "Copii" },
   { key: "adulti", label: "Adulți (18+)", group: "Stare civilă" },
@@ -163,6 +166,8 @@ export function categoryContext(input: CategoryInput): CategoryContext {
           return ids(s.copii);
         case "copii-membri":
           return ids(s.copiiMembri);
+        case "copii-alte":
+          return ids(s.copiiAlte);
         case "copii-apartinatori":
           return ids(s.copii.filter((p) => p.familyId && apartFams.has(p.familyId)));
         case "copii-fara-familie":

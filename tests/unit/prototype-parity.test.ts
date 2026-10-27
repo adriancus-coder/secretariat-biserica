@@ -90,7 +90,8 @@ function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): st
     `- Aparținători: ${s.apart.length} (din care a) minori nebotezați din familii de credincioși: ${s.apartA.length}; b) persoane nebotezate hotărâte: ${s.apartB.length})`,
     `- Botezați fără calitate de membru: ${s.botezatiFara.length}`,
     `- Prieteni ai casei Domnului (nebotezați): ${s.prieteni.length}`,
-    `- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length})`,
+    // MINORS-OTHER-FAMILIES (README "Diferențe" 25): the other minors are named too; they add up to the total.
+    `- Copii minori: ${s.copii.length} (din care copii ai membrilor: ${s.copiiMembri.length}, copii din alte familii: ${s.copiiAlte.length})`,
     `- Adulți: ${s.adulti.length} (căsătoriți ${s.casatoriti.length}, necăsătoriți ${s.necasatoriti.length}, necompletat ${s.stareCivilaNecompletata.length})`,
   );
   // FAMILIES-WITH-MEMBERS (README "Diferențe" 24): "- N familii" counts only the families with a member.
@@ -98,6 +99,7 @@ function statuteBlock(protoText: string, s: ReturnType<typeof computeStats>): st
   expect(fam).toBeGreaterThan(0);
   expect(Number(lines[fam].slice(2).split(" ")[0])).toBe(s.fams + s.famsFaraMembri);
   lines[fam] = `- ${s.fams} familii`;
+  expect(s.copiiMembri.length + s.copiiAlte.length).toBe(s.copii.length);
   return lines.join("\n");
 }
 

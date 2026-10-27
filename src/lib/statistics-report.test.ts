@@ -28,6 +28,7 @@ const report: StatisticsReport = {
     bands: [{ min: 0, max: 13, n: 5 }, { min: 65, max: 200, n: 1 }],
     byStatus: [{ key: "membri", label: "Membri", M: 20, F: 21, total: 41, casatoriti: 30, necasatoriti: 5 }],
     marital: { adulti: 50, casatoriti: 30, necasatoriti: 8, necompletat: 12 },
+    children: { total: 7, members: 5, others: 2 },
     families: { count: 10, withoutMembers: 1, avgSize: 3.2, withMinors: 4, alone: 2, withoutFamily: 5 },
   },
 };
@@ -53,6 +54,8 @@ describe("statistics report", () => {
     expect(fam.rows[0]).toEqual(["Familii ale bisericii", 10]);
     expect(fam.rows[1]).toEqual(["Alte familii în evidență", 1]);
     expect(fam.rows[2]).toEqual(["Persoane pe familie, în medie", "3,2"]);
+    // MINORS-OTHER-FAMILIES: the children's rows, the two parts adding up to the total.
+    expect(fam.rows.slice(4, 7)).toEqual([["Copii minori", 7], ["Copii ai membrilor", 5], ["Copii din alte familii", 2]]);
   });
 
   it("prints the charts as tables in printToText, with the missing birth dates", () => {

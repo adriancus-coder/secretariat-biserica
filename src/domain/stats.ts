@@ -46,6 +46,8 @@ export interface Stats {
   membri: PersonRecord[];
   copii: PersonRecord[];
   copiiMembri: PersonRecord[];
+  /** MINORS-OTHER-FAMILIES: the other minors (no member in their family, or no family); copii = copiiMembri + copiiAlte. */
+  copiiAlte: PersonRecord[];
   apart: PersonRecord[];
   /** Aparținători kind a (Statut art. 28 alin. 1 lit. a): minors, unbaptised, in a believers' family. */
   apartA: PersonRecord[];
@@ -120,6 +122,7 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
   const memberFams = new Set(membri.map((p) => p.familyId).filter(Boolean));
   const copii = ev.filter(minor);
   const copiiMembri = copii.filter((p) => p.familyId && memberFams.has(p.familyId));
+  const copiiAlte = copii.filter((p) => !copiiMembri.includes(p));
   const apart = ev.filter((p) => p.statut === "APARTINATOR");
   const prieteni = ev.filter((p) => p.statut === "PRIETEN");
   // A baptism known only by its year counts by that year (not in the prototype).
@@ -167,6 +170,7 @@ export function computeStats(persons: PersonRecord[], events: EventRecord[], { y
     membri,
     copii,
     copiiMembri,
+    copiiAlte,
     apart,
     apartA,
     apartB,

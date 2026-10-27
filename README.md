@@ -428,6 +428,13 @@ corecții deliberate:
     celelalte familii au eticheta „fără membri ai bisericii”. Suma celor două numere este numărul
     prototipului (testul de paritate).
 
+25. **Copii din alte familii:** lângă „copii minori” și „copii ai membrilor” există categoria „copii
+    din alte familii”: minorii care nu sunt în familia unui membru (familii fără membri ai bisericii sau
+    fără familie), astfel încât copii minori = copii ai membrilor + copii din alte familii. Rândul din
+    darea de seamă devine „- Copii minori: N (din care copii ai membrilor: X, copii din alte familii:
+    Y)”; prototipul nu avea partea a doua. Cardul apare pe Acasă și în Statistici (și la 0), iar
+    tabelul „Familii” din PDF / Excel Statistici are rândurile copiilor.
+
 ## Atribuiri
 
 - `src/lib/postal-codes-no.json` (codurile poștale norvegiene și localitățile lor): Postnummerregister © Posten Bring AS, licență NLOD (Norwegian Licence for Open Government Data, https://data.norge.no/nlod/en/). Sursa: https://www.bring.no/postnummerregister-ansi.txt; numele localităților sunt scrise cu majuscule doar la început.

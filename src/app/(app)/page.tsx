@@ -26,7 +26,7 @@ import { expiredContactWhere } from "@/server/retention";
 import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { ChurchFamiliesStat } from "@/components/church-families-stat";
-import { PRIETENI_LABEL } from "@/lib/labels";
+import { OTHER_CHILDREN_HINT, OTHER_CHILDREN_LABEL, PRIETENI_LABEL } from "@/lib/labels";
 
 /** A bar whose number opens the list of persons behind it. */
 function Bar({ label, n, width, warn, href }: { label: string; n: number; width: number; warn?: boolean; href?: string }) {
@@ -48,9 +48,9 @@ function Bar({ label, n, width, warn, href }: { label: string; n: number; width:
 }
 
 /** A figure; with `href` it opens the exact list of persons it counts. */
-function Stat({ value, label, href, warn }: { value: React.ReactNode; label: React.ReactNode; href?: string; warn?: boolean }) {
+function Stat({ value, label, href, warn, title }: { value: React.ReactNode; label: React.ReactNode; href?: string; warn?: boolean; title?: string }) {
   return href ? (
-    <Link href={href} className={`stat stat-link${warn ? " stat-warn" : ""}`}>
+    <Link href={href} className={`stat stat-link${warn ? " stat-warn" : ""}`} title={title}>
       <b>{value}</b>
       <span>{label}</span>
     </Link>
@@ -315,7 +315,22 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </div>
       ) : null}
       <div className="stats">
-        <Stat value={s.ev.length} label="persoane în evidență" href={cat("toti")} />
+        {/* The men / women split under the total, so every row keeps three cards. */}
+        <div className="stat stat-families">
+          <Link href={cat("toti")} className="stat-main">
+            <b>{s.ev.length}</b>
+            <span>persoane în evidență</span>
+          </Link>
+          <span className="stat-more">
+            <Link href={cat("barbati")} aria-label={`${s.gen.M} bărbați — vezi lista`}>
+              {s.gen.M} bărbați
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link href={cat("femei")} aria-label={`${s.gen.F} femei — vezi lista`}>
+              {s.gen.F} femei
+            </Link>
+          </span>
+        </div>
         <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} href={cat("membri")} />
         <ChurchFamiliesStat count={s.fams} others={s.famsFaraMembri} />
       </div>
@@ -332,18 +347,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       <div className="stats">
         <Stat value={s.copii.length} label="copii minori" href={cat("copii-minori")} />
         <Stat value={s.copiiMembri.length} label="copii ai membrilor" href={cat("copii-membri")} />
-        <div className="stat">
-          <b className="stat-pair">
-            <Link href={cat("barbati")} className="stat-link" aria-label={`${s.gen.M} bărbați — vezi lista`}>
-              {s.gen.M}
-            </Link>{" "}
-            /{" "}
-            <Link href={cat("femei")} className="stat-link" aria-label={`${s.gen.F} femei — vezi lista`}>
-              {s.gen.F}
-            </Link>
-          </b>
-          <span>bărbați / femei</span>
-        </div>
+        <Stat value={s.copiiAlte.length} label={OTHER_CHILDREN_LABEL} href={cat("copii-alte")} title={OTHER_CHILDREN_HINT} />
       </div>
       {/* Marital status of the adults in the record: the three add up to the adults. */}
       <div className="stats mb-4">

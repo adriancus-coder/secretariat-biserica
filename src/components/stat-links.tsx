@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CategoryContext } from "@/domain/categories";
 import { categoryHref } from "@/lib/category-params";
-import { PRIETENI_LABEL } from "@/lib/labels";
+import { OTHER_CHILDREN_LABEL, PRIETENI_LABEL } from "@/lib/labels";
 
 const FIGURES: [key: string, label: string][] = [
   ["toti", "în evidență"],
@@ -10,6 +10,7 @@ const FIGURES: [key: string, label: string][] = [
   ["prieteni", PRIETENI_LABEL],
   ["copii-minori", "copii minori"],
   ["copii-membri", "copii ai membrilor"],
+  ["copii-alte", OTHER_CHILDREN_LABEL],
   ["casatoriti", "căsătoriți"],
   ["necasatoriti", "necăsătoriți"],
   ["stare-civila-necompletata", "stare civilă necompletată"],

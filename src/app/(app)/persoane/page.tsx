@@ -21,7 +21,7 @@ import {
 } from "@/server/queries/persons";
 import { listRoleGroups } from "@/server/queries/roles";
 import { selectionIds } from "@/server/queries/categories";
-import { CATEGORIES } from "@/domain/categories";
+import { CATEGORIES, categoryDef } from "@/domain/categories";
 import { parseCategorySelection, selectionLabel } from "@/lib/category-params";
 import { requireCtx } from "@/server/session";
 import { PersonRow } from "./person-row";
@@ -95,6 +95,12 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
             {selectionLabel(selection)} ({categoryIds.length})
           </h2>
           <p className="hint !mt-0">
+            {selection.keys.length === 1 && categoryDef(selection.keys[0])?.hint ? (
+              <>
+                {categoryDef(selection.keys[0])!.hint}
+                <br />
+              </>
+            ) : null}
             {selection.year ? `Anul ${selection.year}` : "Situația la zi"}
             {q || functie ? " · filtrată și după căutare sau funcție" : ""} ·{" "}
             <Link href={hrefWith("/persoane", params, { categorie: null, an: null, mod: null, pagina: null })}>Arată toată lista</Link>

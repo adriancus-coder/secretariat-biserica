@@ -26,6 +26,11 @@ export const PRIETENI_TITLE = "Prieteni ai casei Domnului (nebotezați)";
  * FAMILIES-WORDING: the families of the church (at least one active member, isChurchFamily) and the other
  * families of the register. Never written by hand outside this file (families-wording.test.ts scans src/).
  */
+/** MINORS-OTHER-FAMILIES: the minors not in a member's family (copii minori = copii ai membrilor + these). */
+export const OTHER_CHILDREN_LABEL = "copii din alte familii";
+export const OTHER_CHILDREN_TITLE = "Copii din alte familii";
+export const OTHER_CHILDREN_HINT = "Minori care nu sunt în familia unui membru al bisericii (familii fără membri sau fără familie).";
+
 export const CHURCH_FAMILIES_LABEL = "familii ale bisericii";
 export const CHURCH_FAMILIES_TITLE = "Familii ale bisericii";
 export const OTHER_FAMILIES_LABEL = "alte familii în evidență";

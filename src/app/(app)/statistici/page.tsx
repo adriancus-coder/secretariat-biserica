@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChurchFamiliesStat } from "@/components/church-families-stat";
+import { OTHER_CHILDREN_HINT, OTHER_CHILDREN_LABEL } from "@/lib/labels";
 import { LineChart, Pyramid, StackedBars } from "@/components/charts";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
@@ -237,6 +238,20 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
           <Link href={cat("copii-minori", d.an)} className="stat stat-link">
             <b>{st.families.withMinors}</b>
             <span>familii cu copii minori</span>
+          </Link>
+        </div>
+        <div className="stats">
+          <Link href={cat("copii-minori", d.an)} className="stat stat-link">
+            <b>{st.children.total}</b>
+            <span>copii minori</span>
+          </Link>
+          <Link href={cat("copii-membri", d.an)} className="stat stat-link">
+            <b>{st.children.members}</b>
+            <span>copii ai membrilor</span>
+          </Link>
+          <Link href={cat("copii-alte", d.an)} className="stat stat-link" title={OTHER_CHILDREN_HINT}>
+            <b>{st.children.others}</b>
+            <span>{OTHER_CHILDREN_LABEL}</span>
           </Link>
         </div>
         <div className="stats">

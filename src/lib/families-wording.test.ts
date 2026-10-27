@@ -21,7 +21,8 @@ describe("FAMILIES-WORDING", () => {
     }
     expect(offenders).toEqual([]);
     const labels = readFileSync("src/lib/labels.ts", "utf8");
-    expect(labels.match(/fără membri[^"]*/g)).toEqual(["fără membri ai bisericii"]);
+    // The row tag, and the hint of „copii din alte familii” (MINORS-OTHER-FAMILIES, the owner's wording).
+    expect(labels.match(/fără membri[^"]*/g)).toEqual(["fără membri sau fără familie).", "fără membri ai bisericii"]);
   });
 
   it("„+ N alte familii în evidență”, hidden at 0; the /familii filters", () => {
