@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
-import { DataTable, SortAwareLink } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
+import { SortAwareDownload } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { hrefWith, stringParam } from "@/components/ui/pager";
 import { SearchBox } from "@/components/ui/search-box";
@@ -108,15 +110,15 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
         </Suspense>
       </div>
       <div className="flex flex-wrap gap-2 mb-3">
-        <SortAwareLink href="/pdf/patrimoniu" params={params} target="_blank" rel="noopener" className="btn">
+        <SortAwareDownload file="/pdf/patrimoniu" params={params} filename="inventar.pdf" mime={MIME.pdf} inline>
           Descarcă PDF (cu semnături)
-        </SortAwareLink>
-        <SortAwareLink href="/pdf/patrimoniu" params={{ ...params, poze: "1" }} target="_blank" rel="noopener" className="btn">
+        </SortAwareDownload>
+        <SortAwareDownload file="/pdf/patrimoniu" params={{ ...params, poze: "1" }} filename="inventar.pdf" mime={MIME.pdf} inline>
           PDF cu poze
-        </SortAwareLink>
-        <SortAwareLink href="/api/patrimoniu" params={params} className="btn" download>
+        </SortAwareDownload>
+        <SortAwareDownload file="/api/patrimoniu" params={params} filename="inventar.xlsx" mime={MIME.xlsx}>
           Exportă (Excel)
-        </SortAwareLink>
+        </SortAwareDownload>
       </div>
       {rows.length ? (
         <>

@@ -8,6 +8,8 @@ import { TextAreaField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { sendApplicationLinkAction } from "@/server/actions/application-link";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export interface ApplicationLinkProps {
   url: string;
@@ -45,14 +47,14 @@ export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured
             </a>
           </p>
           <div className="flex flex-wrap gap-2">
-            <a className="btn" href={qrPng} download={`cerere-${slug}.png`}>
+            <DownloadLink file={qrPng} filename={`cerere-${slug}.png`} mime={MIME.png}>
               Descarcă PNG
-            </a>
+            </DownloadLink>
             <CopyButton text={url} label="Copiază linkul" className="btn" />
             <ShareButton url={url} />
-            <a className="btn" href="/pdf/afis-cerere" target="_blank" rel="noopener">
+            <DownloadLink file="/pdf/afis-cerere" filename="afis-cerere.pdf" mime={MIME.pdf} inline>
               Afiș PDF
-            </a>
+            </DownloadLink>
             <SendLinkButton configured={emailConfigured} subject={subject} frame={frame} />
           </div>
         </div>

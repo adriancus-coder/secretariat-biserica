@@ -27,6 +27,8 @@ import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { ChurchFamiliesStat } from "@/components/church-families-stat";
 import { OTHER_CHILDREN_HINT, OTHER_CHILDREN_LABEL, PRIETENI_LABEL } from "@/lib/labels";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 /** A bar whose number opens the list of persons behind it. */
 function Bar({ label, n, width, warn, href }: { label: string; n: number; width: number; warn?: boolean; href?: string }) {
@@ -199,7 +201,6 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       },
     ];
   }
-  const reportHref = canWrite ? `/documente/nou?tip=raport&an=${selectedYear}` : `/pdf/dare-de-seama?an=${selectedYear}`;
 
   return (
     <>
@@ -382,9 +383,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                 Arată
               </button>
             </noscript>
-            <Link href={reportHref} className="btn btn-primary btn-sm" prefetch={false}>
-              Dare de seamă {selectedYear}
-            </Link>
+            {canWrite ? (
+              <Link href={`/documente/nou?tip=raport&an=${selectedYear}`} className="btn btn-primary btn-sm" prefetch={false}>
+                Dare de seamă {selectedYear}
+              </Link>
+            ) : (
+              <DownloadLink file={`/pdf/dare-de-seama?an=${selectedYear}`} filename={`dare-de-seama-${selectedYear}.pdf`} mime={MIME.pdf} inline className="btn btn-primary btn-sm">
+                Dare de seamă {selectedYear}
+              </DownloadLink>
+            )}
           </form>
         </div>
 

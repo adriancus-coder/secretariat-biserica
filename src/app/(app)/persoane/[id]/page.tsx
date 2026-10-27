@@ -38,6 +38,8 @@ import { PastoralNotesCard } from "./pastoral-notes-card";
 import { isMinorByBirth, unmarriedLabel } from "@/lib/marital";
 import { consentState, CONSENT_STATE_LABEL, currentConsents } from "@/lib/consents";
 import { CONSENT_KINDS, CONSENT_LABEL, CONSENT_SOURCE_LABEL } from "@/lib/labels";
+import { DownloadForm, DownloadSubmit } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export async function generateMetadata({ params }: PageProps<"/persoane/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -422,19 +424,19 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
       {permissions.admin(ctx.user.role) ? (
         <div className="card">
           <h3>Copie a datelor (art. 15 GDPR)</h3>
-          <form method="get" action={`/api/persoane/${x.id}/copie`} className="flex flex-wrap gap-2 items-center">
+          <DownloadForm action={`/api/persoane/${x.id}/copie`} filename="copie-date.pdf" mime={MIME.pdf} personal className="flex flex-wrap gap-2 items-center">
             {permissions.disciplina(ctx.user) ? (
               <label className="check !border-0">
                 <input type="checkbox" name="disciplina" value="1" /> Include măsurile disciplinare
               </label>
             ) : null}
-            <button type="submit" name="format" value="pdf" className="btn btn-sm">
+            <DownloadSubmit name="format" value="pdf" className="btn btn-sm" mime={MIME.pdf} filename="copie-date.pdf">
               Descarcă PDF
-            </button>
-            <button type="submit" name="format" value="json" className="btn btn-sm">
+            </DownloadSubmit>
+            <DownloadSubmit name="format" value="json" className="btn btn-sm" mime={MIME.json} filename="copie-date.json">
               Descarcă JSON
-            </button>
-          </form>
+            </DownloadSubmit>
+          </DownloadForm>
         </div>
       ) : null}
 

@@ -22,6 +22,8 @@ import { getChurch } from "@/server/queries/church";
 import { AssignNumberButton } from "./assign-number";
 import { getMeeting } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Proces-verbal" };
 
@@ -55,12 +57,12 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
           </>
         }
       >
-        <a href={`/pdf/proces-verbal/${x.id}`} target="_blank" rel="noopener" className="btn">
+        <DownloadLink file={`/pdf/proces-verbal/${x.id}`} filename="proces-verbal.pdf" mime={MIME.pdf} inline>
           Tipărește (PDF)
-        </a>
-        <a href={`/pdf/proces-verbal/${x.id}/word`} className="btn" download>
+        </DownloadLink>
+        <DownloadLink file={`/pdf/proces-verbal/${x.id}/word`} filename="proces-verbal.docx" mime={MIME.docx}>
           Deschide în Word
-        </a>
+        </DownloadLink>
         {canWrite ? (
           <Link href={`/procese-verbale/${x.id}/asezare`} className="btn">
             Așezare în pagină

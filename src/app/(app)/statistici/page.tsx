@@ -11,7 +11,9 @@ import { categoryHref } from "@/lib/category-params";
 import { MONTHS_L } from "@/lib/format";
 import { requestedYear } from "@/lib/statistics-params";
 import { bandLabel, statisticsTableDefs, statisticsWhen } from "@/lib/statistics-report";
-import { DataTable, SortAwareLink } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
+import { SortAwareDownload } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 import { loadStatistics } from "@/server/queries/statistics";
 import { requireCtx } from "@/server/session";
 import { loadKinship } from "@/server/kinship";
@@ -53,12 +55,12 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
     <>
       <PageHead title="Statistici" sub={statisticsWhen(d)}>
         {/* The exports follow the table sort chosen on the page. */}
-        <SortAwareLink href="/pdf/statistici" params={{ an: d.an ? String(d.an) : undefined }} target="_blank" rel="noopener" className="btn">
+        <SortAwareDownload file="/pdf/statistici" params={{ an: d.an ? String(d.an) : undefined }} filename="statistici.pdf" mime={MIME.pdf} inline>
           Descarcă PDF
-        </SortAwareLink>
-        <SortAwareLink href="/api/statistici/excel" params={{ an: d.an ? String(d.an) : undefined }} className="btn" download>
+        </SortAwareDownload>
+        <SortAwareDownload file="/api/statistici/excel" params={{ an: d.an ? String(d.an) : undefined }} filename="statistici.xlsx" mime={MIME.xlsx}>
           Exportă tabelele (Excel)
-        </SortAwareLink>
+        </SortAwareDownload>
       </PageHead>
       <form method="get" className="toolbar items-center">
         <label htmlFor="an" className="sr-only">

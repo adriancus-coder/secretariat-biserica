@@ -17,6 +17,8 @@ import {
   type PageLayout,
 } from "@/lib/page-layout";
 import type { FormState } from "@/lib/form-state";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -207,12 +209,12 @@ export function LayoutEditor({
 
       <div className="layout-preview">
         <div className="flex flex-wrap gap-2 mb-2">
-          <a className="btn" href={previewUrl} target="_blank" rel="noopener">
+          <DownloadLink file={previewUrl} filename="previzualizare.pdf" mime={MIME.pdf} inline>
             Previzualizează (PDF)
-          </a>
-          <a className="btn" href={`${subject.pdfBase}/word?previzualizare=1&${previewQuery}`} download>
+          </DownloadLink>
+          <DownloadLink file={`${subject.pdfBase}/word?previzualizare=1&${previewQuery}`} filename="previzualizare.docx" mime={MIME.docx}>
             Deschide în Word
-          </a>
+          </DownloadLink>
         </div>
         {/* Phones show PDFs poorly inside a page: the button above opens the preview instead. */}
         <iframe key={previewQuery} src={previewUrl} title="Previzualizare PDF" className="layout-frame" />

@@ -1598,6 +1598,37 @@
     min-height: 2.75rem;
     color: var(--link);
   }
+  /* PWA-DOWNLOADS: a download inside running text looks like a link (underlined). */
+  .link-inline {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--link);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .download-msg {
+    display: block;
+    flex-basis: 100%;
+    margin-top: 4px;
+  }
+  .download-ready {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex-basis: 100%;
+  }
+  .photo-panel.download-warning {
+    width: min(100%, 28rem);
+    padding: 16px;
+  }
+  .download-warning p {
+    margin: 0;
+    color: var(--ink);
+  }
   /* Inside a card (Statistici) the three figures have less room on a phone. */
   @media (max-width: 599px) {
     .card .stats {

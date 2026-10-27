@@ -15,6 +15,8 @@ import { deleteDisciplineAction, removeFromCommitteeAction } from "@/server/acti
 import { meetingChoices } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
 import { DisciplineForm } from "./discipline-form";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Disciplină" };
 
@@ -65,9 +67,9 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
       {excluded ? (
         <p className="hint mb-3">
           Excluderea produce efecte după informarea scrisă a Comunității (art. 27 alin. 5):{" "}
-          <a href={`/pdf/disciplina/${excluded.id}/informare`} target="_blank" rel="noopener">
+          <DownloadLink file={`/pdf/disciplina/${excluded.id}/informare`} filename="informare-excludere.pdf" mime={MIME.pdf} inline personal className="link-inline">
             Informare privind excluderea (PDF)
-          </a>
+          </DownloadLink>
           .
         </p>
       ) : null}
@@ -96,19 +98,19 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
                 ) : null}
                 <div className="flex flex-wrap gap-x-3 text-sm mt-1">
                   {m.audiereLa ? (
-                    <a href={`/pdf/disciplina/${m.id}/convocare`} target="_blank" rel="noopener">
+                    <DownloadLink file={`/pdf/disciplina/${m.id}/convocare`} filename="convocare-audiere.pdf" mime={MIME.pdf} inline personal className="link-inline">
                       Convocare la audiere (PDF)
-                    </a>
+                    </DownloadLink>
                   ) : null}
                   {m.stare !== "CERCETARE" && m.meetingId && m.abatere ? (
-                    <a href={`/pdf/disciplina/${m.id}/proces-verbal`} target="_blank" rel="noopener">
+                    <DownloadLink file={`/pdf/disciplina/${m.id}/proces-verbal`} filename="pv-disciplinar.pdf" mime={MIME.pdf} inline personal className="link-inline">
                       PV disciplinar (PDF)
-                    </a>
+                    </DownloadLink>
                   ) : null}
                   {m.stare === "APLICATA" ? (
-                    <a href={`/pdf/disciplina/${m.id}/comunicare`} target="_blank" rel="noopener">
+                    <DownloadLink file={`/pdf/disciplina/${m.id}/comunicare`} filename="comunicare-sanctiune.pdf" mime={MIME.pdf} inline personal className="link-inline">
                       Comunicarea sancțiunii (PDF)
-                    </a>
+                    </DownloadLink>
                   ) : null}
                 </div>
                 {m.stare === "APLICATA" && ["SUSPENDARE", "RETRAGERE_DREPTURI", "EXCLUDERE"].includes(m.forma) ? (

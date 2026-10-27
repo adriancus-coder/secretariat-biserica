@@ -11,6 +11,8 @@ import Link from "next/link";
 import { dismissStatusAdjustmentsAction } from "@/server/actions/statute";
 import { FamilyRepair } from "./family-repair";
 import { ImportForm } from "./import-form";
+import { DownloadForm, DownloadSubmit } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Copie de siguranță" };
 
@@ -51,7 +53,7 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
           {exportAgeText(exportDays)} Recomandăm un export cel puțin o dată pe lună (săptămânal cât timp baza de date este pe planul gratuit).
         </p>
         {stepMethod === "passkey" && !stepped ? <StepUpGate method="passkey" what="Exportul conține toate datele bisericii." compact /> : null}
-        <form method="post" action="/api/export" className="grid gap-2 max-w-sm">
+        <DownloadForm method="post" action="/api/export" filename="copie-de-siguranta.json" mime={MIME.json} personal className="grid gap-2 max-w-sm">
           {sp.export === "parola" ? (
             <div className="alert" role="alert">
               Parola nu este corectă.
@@ -82,11 +84,11 @@ export default async function DataPage({ searchParams }: PageProps<"/setari/date
             </label>
           ) : null}
           <div>
-            <button type="submit" className="btn" disabled={stepMethod === "passkey" && !stepped}>
+            <DownloadSubmit className="btn" disabled={stepMethod === "passkey" && !stepped}>
               Exportă datele (JSON)
-            </button>
+            </DownloadSubmit>
           </div>
-        </form>
+        </DownloadForm>
       </div>
       {permissions.admin(user.role) ? (
         <div className="card">

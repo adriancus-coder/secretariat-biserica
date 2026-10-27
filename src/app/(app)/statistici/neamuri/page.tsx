@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DataTable, SortAwareLink } from "@/components/ui/data-table";
+import { DataTable } from "@/components/ui/data-table";
+import { SortAwareDownload } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 import { BackLink, EmptyState, PageHead } from "@/components/ui/page-head";
 import { NEAM_COLUMNS, NEAM_DEFAULT_SORT, NEAM_TABLE_ID, neamRows } from "@/lib/kinship-report";
 import { loadKinship } from "@/server/kinship";
@@ -17,12 +19,12 @@ export default async function NeamuriPage() {
     <>
       <BackLink href="/statistici">Statistici</BackLink>
       <PageHead title="Neamuri" sub="Rude din registru (părinți, copii și căsătorii) din cel puțin două familii">
-        <SortAwareLink href="/pdf/neamuri" params={{}} target="_blank" rel="noopener" className="btn">
+        <SortAwareDownload file="/pdf/neamuri" params={{}} filename="neamuri.pdf" mime={MIME.pdf} inline>
           Descarcă PDF
-        </SortAwareLink>
-        <SortAwareLink href="/api/statistici/neamuri" params={{}} className="btn" download>
+        </SortAwareDownload>
+        <SortAwareDownload file="/api/statistici/neamuri" params={{}} filename="neamuri.xlsx" mime={MIME.xlsx}>
           Exportă (Excel)
-        </SortAwareLink>
+        </SortAwareDownload>
       </PageHead>
       {rows.length ? (
         <section className="card">

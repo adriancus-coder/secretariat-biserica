@@ -19,6 +19,8 @@ import { loadConsentStates } from "@/server/consents";
 import { categoryHref } from "@/lib/category-params";
 import { consentKey } from "@/domain/categories";
 import { CONSENT_KINDS, CONSENT_LABEL, OPTIONAL_CONSENTS, type ConsentKindKey } from "@/lib/labels";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Actualizare date" };
 
@@ -77,12 +79,12 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
               <span className="break-all text-sm">{c.generalUrl}</span>
               <div className="flex flex-wrap gap-2">
                 <CopyButton text={c.generalUrl} label="Copiază linkul" />
-                <a href={qrPng!} download="cod-qr-actualizare-date.png" className="btn btn-sm">
+                <DownloadLink file={qrPng!} filename="cod-qr-actualizare-date.png" mime={MIME.png} className="btn btn-sm">
                   Descarcă PNG
-                </a>
-                <a href={`/pdf/afis-actualizare/${c.id}`} target="_blank" rel="noopener" className="btn btn-sm">
+                </DownloadLink>
+                <DownloadLink file={`/pdf/afis-actualizare/${c.id}`} filename="afis-actualizare.pdf" mime={MIME.pdf} inline className="btn btn-sm">
                   Afiș A5 (PDF)
-                </a>
+                </DownloadLink>
               </div>
               <p className="hint">Formularul se deschide gol pentru oricine; răspunsurile ajung la „De verificat”.</p>
             </div>
@@ -147,9 +149,9 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
             Exportă situația acordurilor
           </Link>
         ) : null}
-        <a href="/pdf/formular-acorduri" target="_blank" rel="noopener" className="btn btn-sm mt-2 ml-2">
+        <DownloadLink file="/pdf/formular-acorduri" filename="formular-acorduri.pdf" mime={MIME.pdf} inline className="btn btn-sm mt-2 ml-2">
           Formular pe hârtie (PDF)
-        </a>
+        </DownloadLink>
       </div>
 
       <form method="get" className="toolbar items-center">

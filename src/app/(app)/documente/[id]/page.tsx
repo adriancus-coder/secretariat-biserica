@@ -20,6 +20,8 @@ import { approveDocumentAction, rejectDocumentAction, sendToPastorAction, signDo
 import { ApprovalCard } from "./approval-card";
 import { dotDateTime } from "@/lib/dates";
 import { SignaturesCard } from "./signatures-card";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Document" };
 
@@ -68,12 +70,12 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
     <>
       <BackLink href="/documente">Documente</BackLink>
       <PageHead title={x.titlu || DOCUMENT_TYPE_LABEL[x.tip]} sub={DOCUMENT_TYPE_LABEL[x.tip]}>
-        <a href={`/pdf/document/${x.id}`} target="_blank" rel="noopener" className="btn">
+        <DownloadLink file={`/pdf/document/${x.id}`} filename="document.pdf" mime={MIME.pdf} inline>
           {x.stare === "APROBAT" ? "Tipărește (PDF)" : "Previzualizează (ciornă)"}
-        </a>
-        <a href={`/pdf/document/${x.id}/word`} className="btn" download>
+        </DownloadLink>
+        <DownloadLink file={`/pdf/document/${x.id}/word`} filename="document.docx" mime={MIME.docx}>
           {x.stare === "APROBAT" ? "Deschide în Word" : "Word (ciornă)"}
-        </a>
+        </DownloadLink>
         {canWrite ? (
           <Link href={`/documente/${x.id}/asezare`} className="btn">
             Așezare în pagină

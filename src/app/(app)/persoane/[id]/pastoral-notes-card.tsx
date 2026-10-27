@@ -6,6 +6,8 @@ import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import type { FormState } from "@/lib/form-state";
 import { PASTORAL_NOTE_MAX } from "@/lib/schemas/pastoral-note";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export interface PastoralNoteItem {
   id: string;
@@ -107,9 +109,9 @@ export function PastoralNotesCard({
       )}
       <NoteForm action={add} label="Adaugă nota" />
       <div className="mt-3">
-        <a href={exportHref} className="btn" target="_blank" rel="noopener">
+        <DownloadLink file={exportHref} filename="note-pastorale.pdf" mime={MIME.pdf} inline personal>
           Exportă notele pastorale (PDF)
-        </a>
+        </DownloadLink>
       </div>
     </div>
   );

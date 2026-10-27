@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/shell/icons";
 import { TextAreaField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
+import { saveBlob } from "@/lib/download";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { sendMinutesAction } from "@/server/actions/meeting-send";
 
@@ -183,15 +184,8 @@ export function ShareMinutesButton({ meetingId, fileName, title }: { meetingId: 
         }
         return;
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.dataset.fallback = "download";
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      // Where files cannot be shared: the app's own download (PWA-DOWNLOADS).
+      saveBlob(blob, fileName);
     } catch {
       setError("PDF-ul nu a putut fi pregătit. Încercați din nou.");
     } finally {

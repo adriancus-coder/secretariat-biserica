@@ -9,6 +9,8 @@ import { permissions } from "@/lib/permissions";
 import { deleteEventAction } from "@/server/actions/events";
 import { getEvent } from "@/server/queries/events";
 import { requireCtx } from "@/server/session";
+import { DownloadLink } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Eveniment" };
 
@@ -26,9 +28,9 @@ export default async function EventPage({ params }: PageProps<"/calendar/[id]">)
     <>
       <BackLink href={`/calendar?luna=${x.data.slice(0, 7)}&zi=${x.data}`}>Calendar</BackLink>
       <PageHead title={x.titlu} sub={x.tip}>
-        <a href={`/pdf/eveniment/${x.id}`} target="_blank" rel="noopener" className="btn">
+        <DownloadLink file={`/pdf/eveniment/${x.id}`} filename="eveniment.pdf" mime={MIME.pdf} inline>
           Tipărește (PDF)
-        </a>
+        </DownloadLink>
         {canWrite ? (
           <Link href={`/calendar/${x.id}/editare`} className="btn btn-primary">
             Editează

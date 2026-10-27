@@ -29,7 +29,7 @@ function SortIcon({ state }: { state: "asc" | "desc" | "none" }) {
  * Every data table (CLAUDE.md UI rules): header buttons sort by any column (▲ ascending, ▼ descending,
  * ↕ not sorted; a tap cycles ascending → descending → the default order); numbers numerically, dates
  * chronologically, text in Romanian order. The sort is kept in the URL (`?sort=<id>.<column>&dir=`) so
- * reloads, shared links and the PDF / Excel exports (SortAwareLink) follow it. Footer rows (totals)
+ * reloads, shared links and the PDF / Excel exports (SortAwareDownload) follow it. Footer rows (totals)
  * stay at the bottom. On narrow screens the table scrolls inside its card with the first column and
  * the header kept in view.
  */
@@ -157,19 +157,3 @@ export function DataTable({
   );
 }
 
-/** An export link (PDF, Excel) that carries the table sort currently in the URL. */
-export function SortAwareLink({ href, params: fixed = {}, children, ...rest }: { href: string; params?: Record<string, string | undefined>; children: ReactNode } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
-  const params = useSearchParams();
-  const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(fixed)) if (v) q.set(k, v);
-  for (const k of ["sort", "dir"]) {
-    const v = params.get(k);
-    if (v) q.set(k, v);
-  }
-  const qs = q.toString();
-  return (
-    <a href={`${href}${qs ? `?${qs}` : ""}`} {...rest}>
-      {children}
-    </a>
-  );
-}

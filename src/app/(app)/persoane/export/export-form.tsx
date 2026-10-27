@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/shell/icons";
+import { DownloadForm, DownloadSubmit } from "@/components/ui/download";
+import { MIME } from "@/lib/download";
 import { CATEGORIES, CATEGORY_GROUPS } from "@/domain/categories";
 import { EXPORT_COLUMNS, EXPORT_SORT_LABEL, EXPORT_SORTS, type ExportColumn, type ExportSort } from "@/lib/person-export";
 import { exportCountAction } from "@/server/actions/person-export";
@@ -37,7 +39,7 @@ export function ExportForm({
   }, [recount, cats]);
 
   return (
-    <form ref={form} method="post" action="/api/persoane/export" onChange={() => void recount()} className="export-form">
+    <DownloadForm formRef={form} method="post" action="/api/persoane/export" filename="persoane.xlsx" mime={MIME.xlsx} personal onChange={() => void recount()} className="export-form">
       {error ? (
         <p className="alert mb-3" role="alert">
           {error}
@@ -153,17 +155,17 @@ export function ExportForm({
           </label>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <button type="submit" name="format" value="xlsx" className="btn btn-primary" disabled={!cats.size || count === 0}>
+          <DownloadSubmit name="format" value="xlsx" className="btn btn-primary" disabled={!cats.size || count === 0} mime={MIME.xlsx} filename="persoane.xlsx">
             <Icon name="documente" className="size-[18px]" /> Descarcă Excel
-          </button>
-          <button type="submit" name="format" value="csv" className="btn" disabled={!cats.size || count === 0}>
+          </DownloadSubmit>
+          <DownloadSubmit name="format" value="csv" className="btn" disabled={!cats.size || count === 0} mime={MIME.csv} filename="persoane.csv">
             CSV
-          </button>
-          <button type="submit" name="format" value="pdf" className="btn" disabled={!cats.size || count === 0}>
+          </DownloadSubmit>
+          <DownloadSubmit name="format" value="pdf" className="btn" disabled={!cats.size || count === 0} mime={MIME.pdf} filename="persoane.pdf">
             PDF
-          </button>
+          </DownloadSubmit>
         </div>
       </div>
-    </form>
+    </DownloadForm>
   );
 }
