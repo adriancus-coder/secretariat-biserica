@@ -1543,7 +1543,7 @@
   .stat {
     background: var(--panel);
     border-radius: 12px;
-    padding: 10px 12px;
+    padding: 10px clamp(6px, 1.6vw, 12px);
   }
   .stat b {
     font-family: var(--font-serif);
@@ -1552,13 +1552,17 @@
     line-height: 1;
     font-weight: 600;
   }
+  /*
+   * CARD-HYPHENS: labels break only between words (no automatic hyphens: „evi-dență”); break-word is only a
+   * safety net for a word wider than the card. On narrow screens the label shrinks with the width, never
+   * under 13 px (a px floor on purpose, so the long words fit three cards a row at 360 px and 130 %).
+   */
   .stat span {
-    font-size: 0.75rem;
+    font-size: clamp(13px, 3.4vw, 0.875rem);
     color: var(--ink-3);
-    /* A long word („necompletată”) in a narrow card at 130 %: hyphenated, else broken, never outside the card. */
     display: block;
-    hyphens: auto;
-    overflow-wrap: anywhere;
+    hyphens: manual;
+    overflow-wrap: break-word;
   }
   /* FAMILIES-WORDING: „familii ale bisericii” with „+ N alte familii în evidență” under it. */
   .stat.stat-families {
@@ -1569,7 +1573,7 @@
   .stat-families .stat-main {
     display: block;
     flex: 1 1 auto;
-    padding: 10px 12px 4px;
+    padding: 10px clamp(6px, 1.6vw, 12px) 4px;
     color: var(--ink);
     text-decoration: none;
     border-radius: 12px;
@@ -1583,8 +1587,8 @@
     align-items: center;
     gap: 0 0.4em;
     min-height: 2.75rem;
-    padding: 0 12px 6px;
-    font-size: 0.75rem;
+    padding: 0 clamp(6px, 1.6vw, 12px) 6px;
+    font-size: clamp(13px, 3.4vw, 0.875rem);
     color: var(--link);
     text-decoration: underline;
   }
@@ -1593,6 +1597,12 @@
     align-items: center;
     min-height: 2.75rem;
     color: var(--link);
+  }
+  /* Inside a card (Statistici) the three figures have less room on a phone. */
+  @media (max-width: 599px) {
+    .card .stats {
+      gap: 6px;
+    }
   }
   /* A figure that needs attention (e.g. "stare civilă necompletată" above 0). */
   .stat.stat-warn {
