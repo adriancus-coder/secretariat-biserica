@@ -29,7 +29,7 @@ export interface ApplicationLinkProps {
 export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured, subject, frame }: ApplicationLinkProps) {
   return (
     <div className="card application-link">
-      <h3>Linkul cererii de membru</h3>
+      <h3 id="cerere">Linkul cererii de membru</h3>
       {open ? null : (
         <div className="alert mb-3" role="status">
           Linkul este închis: cine îl deschide vede că biserica nu primește cereri online. Porniți „Primește cereri de membru online” în

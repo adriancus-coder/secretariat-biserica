@@ -18,7 +18,7 @@ export interface StatuteRow {
 export function StatutesCard({ slug, statutes, readOnly }: { slug: string; statutes: StatuteRow[]; readOnly: boolean }) {
   return (
     <div className="card mt-7">
-      <h3>Statute (pentru cererea de membru)</h3>
+      <h3 id="statute">Statute (pentru cererea de membru)</h3>
       <p className="hint mb-3">
         Fiecare statut încărcat apare în formularul public de cerere, cu o bifă „Am citit și sunt de acord”. PDF, cel mult 10 MB.
       </p>

@@ -66,7 +66,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
         </div>
       ) : null}
       <div className="card">
-        <h3>{user.name}</h3>
+        <h3 id="profil">{user.name}</h3>
         <dl className="detail">
           <dt>E-mail</dt>
           <dd>{user.email}</dd>
@@ -114,11 +114,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/cont">) 
         required={security.church.require2fa}
       />
       <div className="card">
-        <h3>Schimbă parola</h3>
+        <h3 id="parola">Schimbă parola</h3>
         <ChangePasswordForm />
       </div>
       <div className="card">
-        <h3>Aspect</h3>
+        <h3 id="aspect">Aspect</h3>
         <p className="hint mb-3">Tema și mărimea textului se păstrează pe acest dispozitiv.</p>
         <ThemeSwitcher current={theme} />
         <div className="mt-3 flex flex-wrap items-center gap-3">

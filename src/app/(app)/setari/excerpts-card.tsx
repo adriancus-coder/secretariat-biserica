@@ -35,7 +35,7 @@ export function ExcerptsCard({ excerpts, isDefault, readOnly }: { excerpts: Stat
 
   return (
     <div className="card mt-7">
-      <h3>Extrase din statut afișate în cererea de membru</h3>
+      <h3 id="extrase">Extrase din statut afișate în cererea de membru</h3>
       <p className="hint mb-3">
         Apar în formularul public de cerere, în cardul „Ce înseamnă să fiți membru al bisericii”, și pliate în pagina de actualizare a datelor pentru
         membri și aparținători. Pagina deschide statutul Cultului la pagina respectivă. {isDefault ? "Acum: textul implicit." : "Acum: text modificat."}

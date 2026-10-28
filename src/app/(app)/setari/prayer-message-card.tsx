@@ -67,7 +67,7 @@ export function PrayerMessageCard({
   };
   return (
     <form onSubmit={onSubmit} noValidate className="card mt-7" id="rugaciune">
-      <h3>Rugăciunea săptămânală</h3>
+      <h3 id="rugaciune">Rugăciunea săptămânală</h3>
       <p className="hint mb-3">
         Mesajele propuse pe pagina <Link href="/rugaciune">Rugăciune</Link> pentru grupul bisericii (se pot modifica înainte de trimitere). Goale,
         se folosesc textele implicite.

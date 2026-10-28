@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 
 /** Pictogramele din prototip (SVG inline, contur). */
 const PATHS: Record<string, ReactNode> = {
+  cauta: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </>
+  ),
   acasa: (
     <>
       <path d="M3 11 12 3l9 8" />

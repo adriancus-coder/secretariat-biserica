@@ -54,7 +54,7 @@ export function MySignatureCard({ name, current, savedAt, hasPasskey }: { name: 
 
   return (
     <div className="card" id="semnatura">
-      <h3>Semnătura mea</h3>
+      <h3 id="semnatura">Semnătura mea</h3>
       <p className="hint mb-3">
         O semnătură salvată se pune pe un document doar după deblocarea dispozitivului dumneavoastră (Face ID, amprentă sau PIN), de fiecare dată.
         {hasPasskey ? "" : " Adăugați întâi acest dispozitiv mai sus pentru a o putea folosi."}

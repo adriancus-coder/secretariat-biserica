@@ -446,6 +446,10 @@
     .side-toggle {
       display: none;
     }
+    /* GLOBAL-SEARCH: „Caută” stays (only „Extinde meniul” is for tablets). */
+    .side-toggle.side-search {
+      display: flex;
+    }
     .shell-main {
       padding: 32px 36px 60px;
       max-width: 1000px;
@@ -1652,6 +1656,131 @@
     .card .stats {
       gap: 6px;
     }
+  }
+  /* GLOBAL-SEARCH: the field, the live results, the dialog (Ctrl+K). */
+  .gsearch {
+    position: relative;
+    min-width: 0;
+  }
+  .gsearch-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 2.75rem;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--field);
+    color: var(--ink-2);
+  }
+  .gsearch-field input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    min-height: 2.75rem;
+    padding: 0;
+    color: var(--ink);
+    font-size: 1rem;
+  }
+  .gsearch-field input:focus {
+    outline: none;
+  }
+  .gsearch-field:focus-within {
+    outline: 2px solid var(--gold);
+    outline-offset: 1px;
+  }
+  .gsearch-busy {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    border-top-color: var(--ink-2);
+    animation: gsearch-spin 0.8s linear infinite;
+  }
+  @keyframes gsearch-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .gsearch-results {
+    margin-top: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .gsearch-group + .gsearch-group {
+    border-top: 1px solid var(--line);
+  }
+  .gsearch-group-title {
+    padding: 8px 12px 2px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .gsearch-hit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px 12px;
+    min-height: 2.75rem;
+    padding: 6px 12px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .gsearch-hit:hover,
+  .gsearch-hit[aria-selected="true"] {
+    background: var(--gold-soft);
+  }
+  .gsearch-t {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .gsearch-m {
+    font-size: 0.8125rem;
+    color: var(--ink-2);
+    overflow-wrap: anywhere;
+  }
+  .gsearch-more {
+    color: var(--link);
+    text-decoration: underline;
+  }
+  .gsearch-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10vh 16px 16px;
+    background: rgba(15, 18, 28, 0.55);
+  }
+  .gsearch-panel {
+    width: min(100%, 40rem);
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--paper);
+    box-shadow: var(--shadow);
+  }
+  .side-search {
+    margin: 0 12px 4px;
+    width: auto !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  }
+  .gsearch-kbd {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    font-family: inherit;
+  }
+  /* GLOBAL-SEARCH: a section reached by its anchor is not hidden under the top bar. */
+  h2[id],
+  h3[id] {
+    scroll-margin-top: 5rem;
   }
   /* A figure that needs attention (e.g. "stare civilă necompletată" above 0). */
   .stat.stat-warn {

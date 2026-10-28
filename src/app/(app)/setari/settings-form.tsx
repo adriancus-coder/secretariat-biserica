@@ -68,7 +68,7 @@ export function SettingsForm({
   return (
     <form action={action} noValidate>
       <fieldset className="card" disabled={readOnly}>
-        <h3>Organizația</h3>
+        <h3 id="organizatia">Organizația</h3>
         <TextField name="nume" label="Numele bisericii" placeholder="ex. Maranata Stavanger" defaultValue={val("nume")} error={e.nume} required />
         <AddressFields values={{ adresa: val("adresa"), codPostal: val("codPostal"), localitate: val("localitate") }} errors={e} />
         <div className="row2 stack-sm">
@@ -158,7 +158,7 @@ export function SettingsForm({
       </fieldset>
       {applicationLink}
       <fieldset className="card" disabled={readOnly}>
-        <h3>Confidențialitate</h3>
+        <h3 id="confidentialitate">Confidențialitate</h3>
         <p className="hint mb-2">
           Textul public despre datele personale:{" "}
           <a href={privacyUrl} target="_blank" rel="noopener noreferrer" className="break-all">
@@ -175,7 +175,7 @@ export function SettingsForm({
         />
       </fieldset>
       <fieldset className="card" disabled={readOnly}>
-        <h3>Nomenclatoare</h3>
+        <h3 id="nomenclatoare">Nomenclatoare</h3>
         <div className="hint mb-2.5">Câte o valoare pe linie. O listă goală revine la valorile implicite.</div>
         {nom("tipuriSedinte", "Tipuri de ședințe", nomen.tipuriSedinte)}
         <div className="attendance-rules mb-3.5">

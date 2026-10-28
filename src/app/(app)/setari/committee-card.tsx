@@ -36,7 +36,7 @@ export function CommitteeCard({
   const v = state.values;
   return (
     <div className="card mt-7">
-      <h3>Comitetul bisericii</h3>
+      <h3 id="comitet">Comitetul bisericii</h3>
       <p className="hint mb-3">
         Statut art. 45: comitetul este ales pentru 5 ani; mandatul poate fi prelungit o singură dată cu 5 ani. Pe Acasă apare o atenționare cu 6 luni
         înainte de expirare.

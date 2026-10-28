@@ -59,7 +59,8 @@ const PUBLIC_ROUTES = new Set([
   "src/app/deconectat/route.ts",
   "src/app/manifest.ts",
 ]);
-const ACCOUNT_PAGES = new Set(["src/app/(app)/cont/page.tsx", "src/app/(app)/layout.tsx"]);
+// /cautare: every signed-in user; the church's data only with `read` (GLOBAL-SEARCH).
+const ACCOUNT_PAGES = new Set(["src/app/(app)/cont/page.tsx", "src/app/(app)/layout.tsx", "src/app/(app)/cautare/page.tsx"]);
 const PRAYER_PAGES = new Set(["src/app/(app)/rugaciune/page.tsx"]);
 
 describe("the Rugăciune role reaches no register data", () => {
@@ -95,6 +96,8 @@ describe("the Rugăciune role reaches no register data", () => {
     "src/server/actions/push.ts": ["*"],
     "src/server/actions/data-update.ts": ["*"],
     "src/server/actions/applications.ts": ["submitApplicationAction"],
+    // GLOBAL-SEARCH: the pages the user may open; the data groups need `read` (checked in searchData).
+    "src/server/actions/search.ts": ["globalSearchAction"],
     "src/server/actions/prayer.ts": ["markPrayerWeekAction", "cancelPrayerWeekAction", "prayerSharedAction", "choosePrayerFamilyAction"],
   };
 

@@ -6,6 +6,7 @@ import { SideNav } from "@/components/shell/side-nav";
 import { navItemsFor } from "@/components/shell/nav-items";
 import { Icon } from "@/components/shell/icons";
 import { Flash } from "@/components/ui/flash";
+import { SearchButton, SearchDialog } from "@/components/global-search";
 import { AppBadge } from "@/components/pwa/app-badge";
 import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
@@ -33,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
         </header>
         <AppNav items={items} badges={badges} />
-        <SideNav items={items} badges={badges}>
+        <SideNav items={items} badges={badges} top={<SearchButton />}>
           <div className="shell-user">
             <div className="side-account">
               <Link href="/cont" className="who" title="Contul meu" aria-label={`Contul meu: ${user.name}`}>
@@ -61,6 +62,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense>
         <Flash />
       </Suspense>
+      {/* GLOBAL-SEARCH: Ctrl+K / Cmd+K, or the sidebar's „Caută”. */}
+      <SearchDialog />
       <AppBadge count={Object.values(badges).reduce((a, b) => a + b, 0)} />
     </div>
   );

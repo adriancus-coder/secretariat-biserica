@@ -47,7 +47,7 @@ export function SecurityCard({
 
   return (
     <div className="card">
-      <h3>Autentificare în doi pași</h3>
+      <h3 id="securitate">Autentificare în doi pași</h3>
       <p className="hint mb-3">
         La autentificare, pe lângă parolă, se cere un cod.
         {required ? " Biserica cere această protecție pentru toți utilizatorii." : ""}

@@ -68,7 +68,7 @@ export function NotificationsCard({
     });
   return (
     <div className="card" id="notificari">
-      <h3>Notificări</h3>
+      <h3 id="notificari">Notificări</h3>
       <p className="hint">Pentru ce așteaptă după dumneavoastră: documente de semnat, cereri, răspunsuri de verificat. Notificarea conține doar un titlu general, fără nume sau alte date.</p>
       {!env ? null : env.iosBrowser ? (
         <p className="alert">Pe iPhone și iPad, notificările funcționează după ce instalați aplicația pe ecranul principal (Partajează → Adaugă pe ecranul principal) și o deschideți de acolo.</p>

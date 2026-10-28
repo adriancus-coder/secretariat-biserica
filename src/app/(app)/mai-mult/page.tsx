@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Icon } from "@/components/shell/icons";
 import { navItemsFor } from "@/components/shell/nav-items";
 import { PageHead } from "@/components/ui/page-head";
+import { GlobalSearch } from "@/components/global-search";
 import { InstallApp } from "@/components/pwa/install-app";
 import { permissions } from "@/lib/permissions";
 import { requirePermission } from "@/server/session";
@@ -18,6 +19,9 @@ export default async function MorePage() {
     <>
       <WideRedirect />
       <PageHead title="Mai mult" />
+      <div className="mb-4">
+        <GlobalSearch />
+      </div>
       <div className="moremenu">
         {navItemsFor((p) => permissions[p](user)).filter((i) => !i.primary).map((i) => (
           <Link key={i.href} href={i.href}>

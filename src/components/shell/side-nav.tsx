@@ -23,7 +23,7 @@ function readWide(): boolean {
  * Setări plus `children` (the account block, server-rendered). Between 820 and 1023 px it starts
  * narrow (icons, the label as tooltip and accessible name); "Extinde" widens it and is remembered.
  */
-export function SideNav({ items, badges = {}, children }: { items: NavItem[]; badges?: Record<string, number>; children?: React.ReactNode }) {
+export function SideNav({ items, badges = {}, children, top }: { items: NavItem[]; badges?: Record<string, number>; children?: React.ReactNode; /** Under the toggle: the „Caută” button (GLOBAL-SEARCH). */ top?: React.ReactNode }) {
   const pathname = usePathname();
   const { groups, bottom } = sideNav(items);
   const [wide, setWide] = useState(false);
@@ -67,6 +67,7 @@ export function SideNav({ items, badges = {}, children }: { items: NavItem[]; ba
         <Icon name="mai" />
         <span className="side-label">{wide ? "Restrânge meniul" : "Extinde meniul"}</span>
       </button>
+      {top}
       <nav className="side-nav" aria-label="Navigare principală">
         {groups.map((g, i) => (
           <div key={g.title} className="side-group" role="group" aria-labelledby={`side-group-${i}`}>

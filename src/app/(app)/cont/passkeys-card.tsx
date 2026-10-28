@@ -61,7 +61,7 @@ export function PasskeysCard({ rows, configured, required }: { rows: PasskeyRow[
 
   return (
     <div className="card" id="dispozitive">
-      <h3>Face ID / amprentă / PIN-ul telefonului</h3>
+      <h3 id="passkeys">Face ID / amprentă / PIN-ul telefonului</h3>
       <p className="hint mb-3">
         Intrați în cont și confirmați operațiile importante cu deblocarea dispozitivului. Amprenta sau fața nu părăsesc niciodată telefonul:
         aplicația primește doar o confirmare semnată de dispozitiv.

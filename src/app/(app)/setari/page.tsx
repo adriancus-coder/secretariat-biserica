@@ -2,6 +2,7 @@ import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { GlobalSearch } from "@/components/global-search";
 import { cookies } from "next/headers";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
@@ -62,6 +63,10 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHead title="Setări" sub="Organizația, semnături, nomenclatoare" />
+      {/* GLOBAL-SEARCH on phones (from 820 px the sidebar has „Caută”). */}
+      <div className="mobile-only mb-4">
+        <GlobalSearch />
+      </div>
       {permissions.admin(role) && !stepped ? (
         <StepUpGate method={stepMethod} what="Nota de informare, securitatea autentificării și statutele se modifică după confirmarea identității." compact />
       ) : null}
@@ -127,7 +132,7 @@ export default async function SettingsPage() {
       />
       <ExcerptsCard excerpts={church.statutExtrase} isDefault={isDefaultExcerpts(church.statutExtrase)} readOnly={!permissions.admin(role)} />
       <div className="card mt-7">
-        <h3>Aspect</h3>
+        <h3 id="aspect">Aspect</h3>
         <p className="hint mb-3">
           Tema se păstrează pe acest dispozitiv. Mărimea textului se alege la <Link href="/cont">Contul meu → Aspect</Link>.
         </p>
