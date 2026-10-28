@@ -49,13 +49,62 @@ export function absentees(expected: readonly string[], present: readonly string[
 }
 
 /**
- * "Prezenți 12 din 15 (80 %)": of the `expected` persons (stored when the meeting was saved),
- * those not absent. Null when nothing was expected (manual types, meetings saved before the rules).
+ * ATTENDANCE-COUNT: a meeting's attendance is recorded by name (the ticks, MeetingAttendee) or only as a
+ * number (`Meeting.numarPrezenti`; then no names and no absentees).
  */
-export function quorumLine(expected: number | null, absent: number): string | null {
+export const ATTENDANCE_MODES = ["nume", "numar"] as const;
+export type AttendanceMode = (typeof ATTENDANCE_MODES)[number];
+export const ATTENDANCE_MODE_LABEL: Record<AttendanceMode, string> = { nume: "Pe nume", numar: "Doar numărul" };
+export const COUNT_MODE_COMMITTEE_HINT = "La «Doar numărul», absențele membrilor comitetului nu se mai urmăresc pentru această ședință (art. 45).";
+export const PERSONAL_HISTORY_NOTE = "Ședințele consemnate doar ca număr nu apar aici.";
+
+export const attendanceMode = (numarPrezenti: number | null | undefined): AttendanceMode => (numarPrezenti == null ? "nume" : "numar");
+
+/**
+ * The count field when the mode changes: to „Doar numărul” it starts at the persons ticked; back to
+ * „Pe nume” it is cleared.
+ */
+export function countOnModeChange(next: AttendanceMode, ticked: number): string {
+  return next === "numar" ? String(ticked) : "";
+}
+
+/** How many were present: the number when recorded as one, else the persons ticked. */
+export function presentCount(m: { numarPrezenti: number | null | undefined; present: number }): number {
+  return m.numarPrezenti ?? m.present;
+}
+
+/** The absentees shown: none when the attendance is only a number. */
+export function shownAbsentees<T>(numarPrezenti: number | null | undefined, absent: readonly T[]): T[] {
+  return numarPrezenti == null ? [...absent] : [];
+}
+
+/** „Mai mulți decât cei așteptați (N). Verificați.” — a warning only (guests may come too). */
+export function countAboveExpected(count: number | null, expected: number | null): string | null {
+  return count !== null && expected !== null && expected > 0 && count > expected ? `Mai mulți decât cei așteptați (${expected}). Verificați.` : null;
+}
+
+/**
+ * The votes of a point never exceed those present: for + against + abstentions ≤ presentCount. Checked
+ * when the attendance is known (a number, or at least one person ticked). Returns the error or null.
+ */
+export function votesOverPresent(votes: readonly ({ pentru: number; contra: number; abtineri: number } | null)[] | null, present: number, known: boolean): string | null {
+  if (!votes || !known) return null;
+  for (const [i, v] of votes.entries()) {
+    if (!v) continue;
+    const total = v.pentru + v.contra + v.abtineri;
+    if (total > present) return `Punctul ${i + 1}: ${total} voturi, mai multe decât prezenții (${present}).`;
+  }
+  return null;
+}
+
+/**
+ * "Prezenți 12 din 15 (80 %)": of the `expected` persons (stored when the meeting was saved), those
+ * present (presentCount; by name, the expected ones not absent). Null when nothing was expected.
+ */
+export function quorumLine(expected: number | null, present: number): string | null {
   if (!expected) return null;
-  const present = Math.max(0, expected - absent);
-  return `Prezenți ${present} din ${expected} (${Math.round((present / expected) * 100)} %)`;
+  const p = Math.max(0, present);
+  return `Prezenți ${p} din ${expected} (${Math.round((p / expected) * 100)} %)`;
 }
 
 /** "(3) Ana Pop, Ion Pop": attendance as count and names, for the audit log. */

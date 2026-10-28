@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   const existing = previewId.success ? await getMeeting(ctx, previewId.data) : null;
   const rule = church.attendanceRules[m.tip] ?? "MANUAL";
   const expected = await expectedAttendees(ctx.db, rule, m.data);
-  const absentIds = absentees(expected, m.prezenti);
+  // ATTENDANCE-COUNT: by number there are no names and no absentees (the schema already emptied prezenti).
+  const absentIds = m.numarPrezenti !== null ? [] : absentees(expected, m.prezenti);
   // Names through the church-scoped client: ids of another church simply find nobody.
   const people = await ctx.db.person.findMany({
     where: { id: { in: [...m.prezenti, ...absentIds] } },
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       data: m.data,
       prezenti: present,
       absenti: people.filter((p) => absentIds.includes(p.id)),
+      numarPrezenti: m.numarPrezenti,
       invitati: m.invitati,
       ordine: m.ordine,
       puncte: m.puncte,
@@ -57,6 +59,7 @@ export async function POST(req: Request) {
           asteptati: rule === "MANUAL" ? null : expected.length,
           present: present.length,
           absent: absentIds.length,
+          numarPrezenti: m.numarPrezenti,
           convocatLa: m.convocatLa ?? null,
           voturi: m.voturi ?? null,
         },

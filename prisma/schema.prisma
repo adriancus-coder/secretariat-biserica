@@ -778,6 +778,8 @@ model Meeting {
   formulaRich           Json?
   /// How many persons the type's attendance rule expected when the meeting was saved (null: manual type or saved before the rules).
   asteptati             Int?
+  /// ATTENDANCE-COUNT: the attendance recorded only as a number (no names, no absentees); null = by name (MeetingAttendee).
+  numarPrezenti         Int?
   /// General Assembly (Statut art. 46): when it was announced, its scope, ordinary / extraordinary,
   /// convened by the Comunitate (art. 461: 7 days instead of 14).
   convocatLa            DateTime?            @db.Date

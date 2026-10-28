@@ -15,6 +15,7 @@ export const MEETING_FIELDS = [
   "presedinte",
   "prezenti",
   "absenti",
+  "numarPrezenti",
   "invitati",
   "ordine",
   "puncte",
@@ -86,6 +87,9 @@ export const meetingSchema = z
     loc: text(160, "Locul"),
     presedinte: text(120, "Președintele de ședință"),
     prezenti: z.array(idSchema).max(5000),
+    // ATTENDANCE-COUNT: „Pe nume” (the ticks) or „Doar numărul” (numarPrezenti, no names).
+    modPrezenta: z.enum(["nume", "numar"]).catch("nume"),
+    numarPrezenti: optionalInt(0, 100000),
     invitati: text(1000, "Invitații"),
     ordine: longText(20000, "Ordinea de zi"),
     puncte: pointsField,
@@ -103,7 +107,11 @@ export const meetingSchema = z
     voturi: votesField,
   })
   .transform((m, ctx) => {
-    const out = { ...m, ...minutesFromRich(m) };
+    const { modPrezenta, ...rest } = m;
+    const byNumber = modPrezenta === "numar";
+    if (byNumber && rest.numarPrezenti === null) ctx.addIssue({ code: "custom", path: ["numarPrezenti"], message: "Scrieți numărul de prezenți." });
+    // By number: no names; by name: no number.
+    const out = { ...rest, prezenti: byNumber ? [] : rest.prezenti, numarPrezenti: byNumber ? rest.numarPrezenti : null, ...minutesFromRich(rest) };
     if (out.puncte.some((p) => p.length > POINT_MAX)) ctx.addIssue({ code: "custom", path: ["puncte"], message: `Un punct poate avea cel mult ${POINT_MAX} de caractere.` });
     if (out.observatii.length > 20000) ctx.addIssue({ code: "custom", path: ["observatii"], message: "Observațiile pot avea cel mult 20000 de caractere." });
     if (out.formulaIncheiere.length > 300) ctx.addIssue({ code: "custom", path: ["formulaIncheiere"], message: "Formula de încheiere poate avea cel mult 300 de caractere." });

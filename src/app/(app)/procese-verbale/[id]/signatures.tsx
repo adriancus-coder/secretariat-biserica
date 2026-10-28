@@ -17,12 +17,15 @@ export interface SignatureRow {
 export function Signatures({
   meetingId,
   rows,
+  emptyText = "Nicio persoană prezentă.",
   locked,
   canWrite,
   canUnlock,
 }: {
   meetingId: string;
   rows: SignatureRow[];
+  /** Shown when nobody can sign (ATTENDANCE-COUNT: the attendance is only a number). */
+  emptyText?: string;
   locked: boolean;
   canWrite: boolean;
   canUnlock: boolean;
@@ -74,7 +77,7 @@ export function Signatures({
           ))}
         </ul>
       ) : (
-        <p className="hint">Nicio persoană prezentă.</p>
+        <p className="hint">{emptyText}</p>
       )}
       {error ? (
         <p className="field-error" role="alert">

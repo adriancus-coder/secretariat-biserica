@@ -109,8 +109,20 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             <dd>{x.presedinte}</dd>
           </>
         ) : null}
-        <dt>Prezenți ({x.prezenti.length})</dt>
-        <dd>{x.prezenti.length ? <PersonLinks list={x.prezenti} /> : "—"}</dd>
+        {x.numarPrezenti != null ? (
+          <>
+            {/* ATTENDANCE-COUNT: only the number, no names and no absentees. */}
+            <dt>Prezenți</dt>
+            <dd>
+              {x.numarPrezenti} <span className="text-sm text-ink-2">(consemnați doar ca număr)</span>
+            </dd>
+          </>
+        ) : (
+          <>
+            <dt>Prezenți ({x.prezenti.length})</dt>
+            <dd>{x.prezenti.length ? <PersonLinks list={x.prezenti} /> : "—"}</dd>
+          </>
+        )}
         {x.absenti.length ? (
           <>
             <dt>Absenți ({x.absenti.length})</dt>
@@ -197,6 +209,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         locked={x.locked}
         canWrite={canWrite}
         canUnlock={permissions.admin(ctx.user.role)}
+        emptyText={x.numarPrezenti != null ? "Prezența a fost consemnată doar ca număr: nu se adună semnăturile celor prezenți." : undefined}
         rows={x.prezenti.map((p) => ({
           id: p.id,
           name: p.name,

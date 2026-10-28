@@ -47,6 +47,8 @@ export default async function EditMeetingPage({ params }: PageProps<"/procese-ve
           convocareText: m.convocareText,
           tipAG: m.tipAG ?? "",
           convocataDeComunitate: m.convocataDeComunitate ? "on" : "",
+          modPrezenta: m.numarPrezenti != null ? "numar" : "nume",
+          numarPrezenti: m.numarPrezenti != null ? String(m.numarPrezenti) : "",
         }}
         votes={m.voturi}
         excused={m.absenti.filter((p) => p.motivat).map((p) => p.id)}

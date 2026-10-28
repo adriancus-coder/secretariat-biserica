@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { absentees, attendanceText } from "@/lib/attendance";
+import { absentees, attendanceText, votesOverPresent } from "@/lib/attendance";
 import { minutesFormatting, pointsText } from "@/lib/minutes";
 import { Prisma } from "@/generated/prisma/client";
 import { toDbDate } from "@/lib/dates";
@@ -49,11 +49,12 @@ async function auditView(tx: Tx, id: string) {
  * Attendance rows: the persons present, plus the expected ones (by the type's rule) who are not;
  * `asteptati` is how many the rule expected (null for a manual type).
  */
-async function attendance(ctx: Ctx, tip: string, date: string, present: string[]) {
+async function attendance(ctx: Ctx, tip: string, date: string, present: string[], byNumber: boolean) {
   const church = await getChurch(ctx);
   const rule = church.attendanceRules[tip] ?? "MANUAL";
   const expected = await expectedAttendees(ctx.db, rule, date);
-  const absent = absentees(expected, present);
+  // ATTENDANCE-COUNT: recorded only as a number, there are no attendee rows (no names, no absentees).
+  const absent = byNumber ? [] : absentees(expected, present);
   return {
     asteptati: rule === "MANUAL" ? null : expected.length,
     rows: [
@@ -93,7 +94,10 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
     const prezenti = await assertPersonsInChurch(ctx.db, ids);
     // Import review: the "Nepotriviți" names matched by hand are remembered as aliases of the attendees.
     const picks = importing ? parseOrThrow(pickedNamesSchema, pickedNamesInput(formData)).filter((p) => prezenti.includes(p.personId)) : [];
-    const { asteptati, rows } = await attendance(ctx, fields.tip, fields.data, prezenti);
+    const byNumber = fields.numarPrezenti !== null;
+    const voteError = votesOverPresent(voturi, byNumber ? fields.numarPrezenti! : prezenti.length, byNumber || prezenti.length > 0);
+    if (voteError) throw new ValidationError({ voturi: voteError });
+    const { asteptati, rows } = await attendance(ctx, fields.tip, fields.data, prezenti, byNumber);
     // Excused absences ticked in the form (only absentees count); without the field the saved ones stay.
     const excusedInForm = formData.get("motivatiForm") === "1" ? new Set(formData.getAll("motivati").map(String)) : null;
     const year = Number(fields.data.slice(0, 4));
@@ -132,6 +136,8 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
         // A signature belongs to someone present: removing a person from the list removes it.
         await tx.meetingSignature.deleteMany({ where: { meetingId: id, personId: { notIn: prezenti } } });
         const after = await auditView(tx, id);
+        // The ticks were removed: the log says why.
+        const toNumber = byNumber && before.numarPrezenti === null && (before.prezenti || before.absenti);
         await writeAudit(tx, ctx.user, {
           entity: "MEETING",
           entityId: id,
@@ -140,6 +146,7 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
           fields: MEETING_FIELDS,
           before,
           after,
+          ...(toNumber ? { extra: { observatie: `prezența consemnată ca număr: ${fields.numarPrezenti}` } } : {}),
         });
         return id;
       }

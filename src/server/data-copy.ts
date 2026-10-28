@@ -1,5 +1,6 @@
 import { formatAddress } from "@/lib/address";
 import "server-only";
+import { PERSONAL_HISTORY_NOTE } from "@/lib/attendance";
 import { DIRECTION_LABEL } from "@/lib/correspondence";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
@@ -122,6 +123,8 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       },
       {
         titlu: "Prezență la ședințe",
+        // ATTENDANCE-COUNT: only the meetings recorded by name can name the person.
+        campuri: [["Notă", PERSONAL_HISTORY_NOTE]],
         tabel: {
           coloane: ["Data", "Ședința", "Proces-verbal"],
           randuri: p.meetings

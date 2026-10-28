@@ -826,6 +826,19 @@
     margin-bottom: 5px;
     font-weight: 500;
   }
+  /* ATTENDANCE-COUNT: „Pe nume” / „Doar numărul” in the minutes form. */
+  .attendance-mode {
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .attendance-mode-choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: 8px;
+    margin-top: 4px;
+  }
   .choice {
     position: relative;
     display: flex;

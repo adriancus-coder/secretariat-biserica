@@ -69,6 +69,8 @@ export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraf
       presedinte: draft.pastor ?? church.pastor,
       invitati: draft.invitati.join(", "),
       formulaIncheiere: draft.formulaIncheiere ?? DEFAULT_CLOSING,
+      // ATTENDANCE-COUNT: a number of those present and no name matched → the meeting is proposed by number.
+      ...(draft.numarPrezenti !== null && !selected.size ? { modPrezenta: "numar", numarPrezenti: String(draft.numarPrezenti) } : {}),
     },
     points: draft.puncte,
     // The review form edits rich text: Word minutes arrive as plain text, one paragraph per line.

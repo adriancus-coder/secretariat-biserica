@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { PersonChecklist, type ChecklistOption } from "@/components/person-checklist";
 import { PreviewButton } from "@/components/rich-editor/preview-frame";
 import { RichEditor } from "@/components/rich-editor/rich-editor";
 import { Field, nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
-import { ATTENDANCE_RULE_LABEL, type AttendanceRule } from "@/lib/attendance";
+import { ATTENDANCE_MODE_LABEL, ATTENDANCE_MODES, ATTENDANCE_RULE_LABEL, COUNT_MODE_COMMITTEE_HINT, countAboveExpected, countOnModeChange, type AttendanceMode, type AttendanceRule } from "@/lib/attendance";
 import { AG_KIND_LABEL, convocationWarning, isGeneralAssembly, type Vote } from "@/lib/general-assembly";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import type { PickedName } from "@/lib/minutes-import";
@@ -94,13 +94,44 @@ export function MeetingForm({
   const absent = rule === "MANUAL" ? [] : prefill[rule].filter((pid) => !attendees.has(pid) && names.has(pid));
   const [excusedSet, setExcused] = useState<Set<string>>(() => new Set(excused));
 
+  // ATTENDANCE-COUNT: „Pe nume” (the ticks) or „Doar numărul”.
+  const [mode, setMode] = useState<AttendanceMode>(v.modPrezenta === "numar" ? "numar" : "nume");
+  const [count, setCount] = useState(val("numarPrezenti"));
+  const expectedCount = rule === "MANUAL" ? null : prefill[rule].length;
+  const countNumber = /^\d+$/.test(count.trim()) ? Number(count.trim()) : null;
+  const tooMany = mode === "numar" ? countAboveExpected(countNumber, expectedCount) : null;
+  function changeMode(next: AttendanceMode) {
+    if (next === mode) return;
+    setMode(next);
+    // To the number: as many as are ticked; back to the names: the number is cleared (the rule's list when nobody is ticked).
+    setCount(countOnModeChange(next, attendees.size));
+    if (next === "nume" && !attendees.size && rule !== "MANUAL") setAttendees(new Set(prefill[rule]));
+  }
+  // Saving by number removes the saved ticks (an existing meeting recorded by name): asked once, in the app.
+  const formRef = useRef<HTMLFormElement>(null);
+  const [ask, setAsk] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const removesTicks = mode === "numar" && id !== null && selected.length > 0;
+  function submit(ev: FormEvent<HTMLFormElement>) {
+    const submitter = (ev.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    if (removesTicks && !confirmed && submitter?.dataset.nativeSubmit === undefined) {
+      ev.preventDefault();
+      setAsk(true);
+      return;
+    }
+    onSubmit(ev);
+  }
+  useEffect(() => {
+    if (confirmed) formRef.current?.requestSubmit();
+  }, [confirmed]);
+
   const previewHost = `preview-${id ?? "nou"}`;
   // Built once: the editors keep their own state afterwards (also across validation errors).
   const [observatiiDoc] = useState(() => rich?.observatii ?? plainToRich(initial.observatii ?? ""));
   const [formulaDoc] = useState(() => rich?.formula ?? plainToRich(initial.formulaIncheiere || DEFAULT_CLOSING));
 
   return (
-    <form onSubmit={onSubmit} noValidate className="edit-split">
+    <form ref={formRef} onSubmit={submit} noValidate className="edit-split">
       <div className="edit-main">
       {id ? <input type="hidden" name="previewId" value={id} /> : null}
       {onImported ? <input type="hidden" name="import" value="1" /> : null}
@@ -176,10 +207,46 @@ export function MeetingForm({
         <TextField name="loc" label="Locul" defaultValue={val("loc")} error={e.loc} />
       </div>
       <TextField name="presedinte" label="Președinte de ședință" defaultValue={val("presedinte")} error={e.presedinte} />
-      <Field label={`Prezenți (${inRegister} în registru)`} error={e.prezenti}>
-        <PersonChecklist name="prezenti" options={people} selected={attendees} onSelectedChange={setAttendees} />
-      </Field>
-      {absent.length ? (
+      <fieldset className="attendance-mode" aria-describedby={rule === "COMITET" ? "count-mode-hint" : undefined}>
+        <legend className="text-sm font-medium text-ink-2">Prezența</legend>
+        <div className="attendance-mode-choices">
+          {ATTENDANCE_MODES.map((m) => (
+            <label key={m} className="choice">
+              <input type="radio" name="modPrezenta" value={m} checked={mode === m} onChange={() => changeMode(m)} />
+              {ATTENDANCE_MODE_LABEL[m]}
+            </label>
+          ))}
+        </div>
+        {rule === "COMITET" ? (
+          <p id="count-mode-hint" className="hint !mt-1">
+            {COUNT_MODE_COMMITTEE_HINT}
+          </p>
+        ) : null}
+      </fieldset>
+      {mode === "numar" ? (
+        <>
+          <TextField
+            name="numarPrezenti"
+            label="Număr de prezenți"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={count}
+            onChange={(ev) => setCount(ev.target.value)}
+            error={e.numarPrezenti}
+            required
+          />
+          {tooMany ? (
+            <p className="tag tag-warn !block whitespace-normal mb-3" role="status">
+              {tooMany}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <Field label={`Prezenți (${inRegister} în registru)`} error={e.prezenti}>
+          <PersonChecklist name="prezenti" options={people} selected={attendees} onSelectedChange={setAttendees} />
+        </Field>
+      )}
+      {mode === "nume" && absent.length ? (
         <Field label={`Absenți (${absent.length}) — bifați absențele motivate`}>
           <input type="hidden" name="motivatiForm" value="1" />
           <div className="checklist scroll-panel">
@@ -215,6 +282,28 @@ export function MeetingForm({
         <RichEditor name="formulaRich" id={`formula-${previewHost}`} initial={formulaDoc} label="Formula de încheiere" minRows={2} invalid={Boolean(e.formulaIncheiere ?? e.formulaRich)} />
       </Field>
       <FormMessage state={state} />
+      {ask ? (
+        <div className="alert mb-3" role="alertdialog" aria-labelledby="count-confirm">
+          <p id="count-confirm" className="m-0">
+            Lista de prezență pe nume ({selected.length} {selected.length === 1 ? "persoană" : "persoane"}) se șterge și rămâne doar numărul. Continuați?
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setAsk(false);
+                setConfirmed(true);
+              }}
+            >
+              Da, păstrează doar numărul
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setAsk(false)}>
+              Renunță
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="actions">
         <Link href={cancelHref} className="btn btn-ghost">
           Renunță

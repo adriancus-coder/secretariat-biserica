@@ -19,6 +19,8 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 export interface MeetingExtra {
   absenti: string[];
   asteptati: number | null;
+  /** ATTENDANCE-COUNT: the attendance recorded only as a number (no names then); absent = by name. */
+  numarPrezenti?: number;
   nr?: number | null;
   puncte?: string[];
   observatii?: string;
@@ -72,6 +74,7 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (!m) continue;
     if (x.absenti.length) m.absenti = x.absenti;
     if (x.asteptati !== null) m.asteptati = x.asteptati;
+    if (x.numarPrezenti !== undefined) m.numarPrezenti = x.numarPrezenti;
     if (x.nr != null) m.nr = x.nr;
     if (x.puncte) m.puncte = x.puncte;
     if (x.observatii !== undefined) m.observatii = x.observatii;
@@ -107,6 +110,8 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
       absenti: Array.isArray(m.absenti) ? [...new Set(m.absenti.filter((v): v is string => typeof v === "string" && ID_RE.test(v)))] : [],
       asteptati: int(m.asteptati, 100_000),
     };
+    const numar = int(m.numarPrezenti, 100_000);
+    if (numar !== null) x.numarPrezenti = numar;
     const nr = int(m.nr, 9999);
     if (nr) x.nr = nr;
     if (Array.isArray(m.puncte)) {
@@ -171,6 +176,7 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     if (
       x.absenti.length ||
       x.asteptati !== null ||
+      x.numarPrezenti !== undefined ||
       x.nr ||
       x.puncte ||
       x.observatii !== undefined ||

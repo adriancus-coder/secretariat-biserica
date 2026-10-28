@@ -110,6 +110,8 @@ export interface MeetingPrint {
   /** Present persons, already in register order (by surname). */
   prezenti: { nume: string; prenume: string }[];
   absenti: { nume: string; prenume: string }[];
+  /** ATTENDANCE-COUNT: the attendance recorded only as a number: „Prezenți: N”, no names, no absentees. */
+  numarPrezenti?: number | null;
   invitati: string;
   ordine: string;
   puncte: string[];
@@ -148,14 +150,19 @@ export function fmtDot(iso: string): string {
  */
 export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   const n = x.prezenti.length;
+  const byNumber = x.numarPrezenti != null;
   const blocks: Block[] = [
     { type: "title", text: x.nr !== null ? `Proces verbal nr. ${x.nr}` : "Proces verbal", asWritten: true },
     para(`Încheiat azi, ${fmtDot(x.data)}, cu ocazia ședinței de ${x.tip.toLocaleLowerCase("ro-RO")}.`),
-    para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`),
-    para(x.prezenti.map(firstLast).join(", ") || "—"),
   ];
-  if (x.semnaturi?.length) blocks.push({ type: "signatureTable", rows: x.semnaturi });
-  if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
+  if (byNumber) {
+    // Only the number (the General Assembly's line already carries it).
+    if (!x.adunare) blocks.push(para(`Prezenți: ${x.numarPrezenti}`));
+  } else {
+    blocks.push(para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`), para(x.prezenti.map(firstLast).join(", ") || "—"));
+    if (x.semnaturi?.length) blocks.push({ type: "signatureTable", rows: x.semnaturi });
+    if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
+  }
   if (x.adunare) blocks.push(para(x.adunare));
   if (x.cvorum) blocks.push(para(`Cvorum: ${x.cvorum.replace(/^Prezenți/, "prezenți")}`));
   if (x.invitati) blocks.push(para(`Invitați: ${x.invitati}`));

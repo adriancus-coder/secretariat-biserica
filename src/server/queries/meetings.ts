@@ -1,5 +1,6 @@
-import { storedVotes } from "@/lib/general-assembly";
 import "server-only";
+import { storedVotes } from "@/lib/general-assembly";
+import { presentCount } from "@/lib/attendance";
 import { fromDbDate, toDbDate, todayIso } from "@/lib/dates";
 import { memberName } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
@@ -25,6 +26,7 @@ export async function listMeetings(ctx: Ctx, page: number) {
       nr: true,
       anRegistru: true,
       puncte: true,
+      numarPrezenti: true,
       _count: { select: { prezenti: { where: { status: "PRESENT" } } } },
     },
   });
@@ -34,7 +36,8 @@ export async function listMeetings(ctx: Ctx, page: number) {
       titlu: m.titlu,
       tip: m.tip,
       data: fromDbDate(m.data)!,
-      prezenti: m._count.prezenti,
+      // ATTENDANCE-COUNT: the number when recorded as one, else the persons ticked.
+      prezenti: presentCount({ numarPrezenti: m.numarPrezenti, present: m._count.prezenti }),
       puncte: m.puncte.length,
       nr: m.nr,
       anRegistru: m.anRegistru,

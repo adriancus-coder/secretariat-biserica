@@ -335,6 +335,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
     select: {
       id: true,
       asteptati: true,
+      numarPrezenti: true,
       nr: true,
       puncte: true,
       observatii: true,
@@ -361,6 +362,7 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
         absenti: m.prezenti.map((p) => p.personId),
         ...(m.prezenti.some((p) => p.motivat) ? { motivati: m.prezenti.filter((p) => p.motivat).map((p) => p.personId) } : {}),
         asteptati: m.asteptati,
+        ...(m.numarPrezenti !== null ? { numarPrezenti: m.numarPrezenti } : {}),
         nr: m.nr,
         puncte: m.puncte,
         observatii: m.observatii,
@@ -829,6 +831,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           nr,
           anRegistru: nr !== null ? year : null,
           asteptati: extra?.asteptati ?? null,
+          numarPrezenti: extra?.numarPrezenti ?? null,
           locked: Boolean(extra?.inchisLa),
           lockedAt: extra?.inchisLa ? new Date(extra.inchisLa) : null,
           ...(extra?.asezare ? { layout: { ...extra.asezare } as Prisma.InputJsonObject } : {}),
@@ -838,9 +841,10 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           convocataDeComunitate: extra?.convocataDeComunitate ?? false,
           voturi: extra?.voturi ? (extra.voturi.slice(0, (extra?.puncte ?? split!.puncte).length) as unknown as Prisma.InputJsonArray) : Prisma.DbNull,
         };
-        const prezenti = [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
+        // ATTENDANCE-COUNT: a meeting recorded by number has no attendee rows.
+        const prezenti = extra?.numarPrezenti !== undefined ? [] : [...new Set(m.prezenti.map(pid).filter((x): x is string => x !== null))];
         const excusedIds = new Set((extra?.motivati ?? []).map(pid));
-        const absenti = [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
+        const absenti = extra?.numarPrezenti !== undefined ? [] : [...new Set((extra?.absenti ?? []).map(pid).filter((x): x is string => x !== null && !prezenti.includes(x)))];
         const rows = [
           ...prezenti.map((personId) => ({ personId, status: "PRESENT" as const })),
           ...absenti.map((personId) => ({ personId, status: "ABSENT" as const, motivat: excusedIds.has(personId) })),

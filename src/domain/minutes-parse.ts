@@ -19,6 +19,8 @@ export interface MinutesDraft {
   data: string | null;
   tip: string | null;
   prezenti: string[];
+  /** ATTENDANCE-COUNT: „prezenți: 23 de membri” — the number written, when the text has one. */
+  numarPrezenti: number | null;
   absenti: string[];
   invitati: string[];
   puncte: string[];
@@ -93,9 +95,12 @@ export function parseMinutesText(text: string): ParsedMinutes {
 
   // Attendees: the names after "prezenți:" on the same line, else the next non-empty line.
   let prezenti: string[] = [];
+  let numarPrezenti: number | null = null;
   const pi = folded.findIndex((l) => /\bprezenti\b/.test(l));
   if (pi >= 0) {
     const after = clean(lines[pi].slice(folded[pi].indexOf("prezenti") + "prezenti".length).replace(/^\s*:/, ""));
+    const counted = /^(\d{1,5})\b/.exec(after);
+    if (counted) numarPrezenti = Number(counted[1]);
     const inline = after.replace(/^\d+\s*(?:de\s*)?(?:membri|persoane)\.?/i, "").trim();
     if (names(inline).length) prezenti = names(inline);
     else {
@@ -127,6 +132,7 @@ export function parseMinutesText(text: string): ParsedMinutes {
       data,
       tip,
       prezenti,
+      numarPrezenti,
       absenti: [],
       invitati: [],
       puncte,

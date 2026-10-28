@@ -36,9 +36,9 @@ describe("absentees and quorum", () => {
   });
 
   it("quorum line", () => {
-    expect(quorumLine(15, 3)).toBe("Prezenți 12 din 15 (80 %)");
-    expect(quorumLine(3, 1)).toBe("Prezenți 2 din 3 (67 %)");
-    expect(quorumLine(5, 0)).toBe("Prezenți 5 din 5 (100 %)");
+    expect(quorumLine(15, 12)).toBe("Prezenți 12 din 15 (80 %)");
+    expect(quorumLine(3, 2)).toBe("Prezenți 2 din 3 (67 %)");
+    expect(quorumLine(5, 5)).toBe("Prezenți 5 din 5 (100 %)");
     expect(quorumLine(0, 0)).toBeNull();
     expect(quorumLine(null, 2)).toBeNull();
   });

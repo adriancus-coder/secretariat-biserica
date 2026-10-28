@@ -1,5 +1,6 @@
 import "server-only";
 import { meetingPrint, type PrintSpec } from "@/domain/print";
+import { shownAbsentees } from "@/lib/attendance";
 import { minutesAttendance } from "@/lib/general-assembly";
 import { dotDateTime } from "@/lib/dates";
 import { resolveLayout, type PageLayout } from "@/lib/page-layout";
@@ -16,13 +17,15 @@ type MeetingRecord = NonNullable<Awaited<ReturnType<typeof getMeeting>>>;
  */
 export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: PageLayout): PrintSpec {
   const lines = minutesAttendance({ ...m, present: m.prezenti.length, absent: m.absenti.length }, church);
+  const byNumber = m.numarPrezenti != null;
   const spec = meetingPrint(
     {
       nr: m.nr,
       tip: m.tip,
       data: m.data,
-      prezenti: m.prezenti,
-      absenti: m.absenti,
+      prezenti: byNumber ? [] : m.prezenti,
+      absenti: shownAbsentees(m.numarPrezenti, m.absenti),
+      numarPrezenti: m.numarPrezenti,
       invitati: m.invitati,
       ordine: m.ordine,
       puncte: m.puncte,

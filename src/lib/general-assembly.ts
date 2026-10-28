@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { daysBetween } from "./dates";
 import { fmtL } from "./format";
+import { quorumLine } from "./attendance";
 import { roleKey } from "./roles";
 
 export const DEFAULT_AG_TYPE = "Adunare generală";
@@ -94,13 +95,16 @@ export function attendanceLines(x: {
   asteptati: number | null;
   present: number;
   absent: number;
+  /** ATTENDANCE-COUNT: the attendance recorded only as a number (null = by name). */
+  numarPrezenti?: number | null;
   convocatLa: string | null;
   date: string;
 }): { adunare: string | null; cvorum: string | null } {
-  if (isGeneralAssembly(x.tip, x.tipuriAG)) return { adunare: assemblyLine(x.asteptati, x.present, x.convocatLa, x.date), cvorum: null };
+  const byNumber = x.numarPrezenti != null;
+  if (isGeneralAssembly(x.tip, x.tipuriAG)) return { adunare: assemblyLine(x.asteptati, byNumber ? x.numarPrezenti! : x.present, x.convocatLa, x.date), cvorum: null };
   if (!x.tipuriCvorum.includes(x.tip) || !x.asteptati) return { adunare: null, cvorum: null };
-  const present = Math.max(0, x.asteptati - x.absent);
-  return { adunare: null, cvorum: `Prezenți ${present} din ${x.asteptati} (${Math.round((present / x.asteptati) * 100)} %)` };
+  // By name the quorum counts the expected persons not absent (a ticked guest is not one of them).
+  return { adunare: null, cvorum: quorumLine(x.asteptati, byNumber ? x.numarPrezenti! : x.asteptati - x.absent) };
 }
 
 /** Is the year's ordinary AG missing (shown from 1 October, art. 46 alin. 3)? */
@@ -116,13 +120,13 @@ export function storedVotes(raw: unknown): (Vote | null)[] | null {
 
 /** The minutes' attendance and vote lines, as the PDF, the Word file, the page and the preview show them. */
 export function minutesAttendance(
-  m: { tip: string; data: string; asteptati: number | null; present: number; absent: number; convocatLa: string | null; voturi: (Vote | null)[] | null },
+  m: { tip: string; data: string; asteptati: number | null; present: number; absent: number; numarPrezenti?: number | null; convocatLa: string | null; voturi: (Vote | null)[] | null },
   church: { tipuriAG: readonly string[]; tipuriCvorum: readonly string[]; attendanceRules: Record<string, string> },
 ): { adunare: string | null; cvorum: string | null; voturi: (string | null)[] | null } {
   const ag = isGeneralAssembly(m.tip, church.tipuriAG);
   const rule: VoteRule = ag ? "AG" : church.attendanceRules[m.tip] === "COMITET" ? "COMITET" : "SIMPLA";
   return {
     ...attendanceLines({ ...m, tipuriAG: church.tipuriAG, tipuriCvorum: church.tipuriCvorum, date: m.data }),
-    voturi: m.voturi ? m.voturi.map((v) => (v ? voteLine(v, m.present, rule) : null)) : null,
+    voturi: m.voturi ? m.voturi.map((v) => (v ? voteLine(v, m.numarPrezenti ?? m.present, rule) : null)) : null,
   };
 }

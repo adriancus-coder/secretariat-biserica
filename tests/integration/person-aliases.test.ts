@@ -18,6 +18,7 @@ const draft = (prezenti: string[]): MinutesDraft => ({
   data: "2025-03-01",
   tip: "Comitet",
   prezenti,
+  numarPrezenti: null,
   absenti: [],
   invitati: [],
   puncte: [],
