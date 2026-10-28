@@ -20,6 +20,8 @@ import { prayerChangeText } from "@/lib/prayer";
 import { requireCtx } from "@/server/session";
 import { personKinship } from "@/server/kinship";
 import { KinshipCard } from "./kinship-card";
+import { EventHistoryCard } from "@/components/event-history-card";
+import { historyEvents } from "@/server/queries/event-persons";
 import { statusTagClass } from "../person-row";
 import { NoFamilyActions } from "./family-actions";
 import { PersonRemoval } from "./person-removal";
@@ -59,6 +61,7 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
   const { person: x, family, groups, responsibleFor, roles, notes, notesCount, documents, audit, aliases } = detail;
   const canWrite = permissions.write(ctx.user.role);
   const kinship = await personKinship(ctx, id, canWrite);
+  const eventHistory = await historyEvents(ctx, { personId: id });
   const today = todayIso();
   // Administrators only (`disciplina`): the query never runs for other roles.
   const discipline = permissions.disciplina(ctx.user)
@@ -336,6 +339,8 @@ export default async function PersonPage({ params, searchParams }: PageProps<"/p
             ) : null}
           </div>
         </div>
+
+        <EventHistoryCard events={eventHistory} />
 
         <div className="card">
           <h3>Documente eliberate ({documents.length})</h3>

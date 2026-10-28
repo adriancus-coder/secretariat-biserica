@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { getChurch } from "@/server/queries/church";
 import { getEvent } from "@/server/queries/events";
+import { eventFormOptions } from "@/server/queries/event-persons";
 import { officiantOptions } from "@/server/queries/officiants";
 import { requireCtx } from "@/server/session";
 import { EventForm } from "../../event-form";
@@ -12,7 +13,7 @@ export const metadata: Metadata = { title: "Editează evenimentul" };
 export default async function EditEventPage({ params }: PageProps<"/calendar/[id]/editare">) {
   const { id } = await params;
   const ctx = await requireCtx("write");
-  const [e, church] = await Promise.all([getEvent(ctx, id), getChurch(ctx)]);
+  const [e, church, options] = await Promise.all([getEvent(ctx, id), getChurch(ctx), eventFormOptions(ctx)]);
   if (!e) notFound();
   return (
     <>
@@ -22,6 +23,7 @@ export default async function EditEventPage({ params }: PageProps<"/calendar/[id
         id={id}
         initial={{
           titlu: e.titlu,
+          familyId: e.familyId ?? "",
           tip: e.tip,
           data: e.data,
           ora: e.ora,
@@ -37,6 +39,9 @@ export default async function EditEventPage({ params }: PageProps<"/calendar/[id
         contributii={e.contributii}
         tipuri={church.nomen.tipuriEvenimente}
         officiants={await officiantOptions(ctx)}
+        familyOptions={options.families}
+        personOptions={options.persons}
+        persoane={e.persoane}
         cancelHref={`/calendar/${id}`}
       />
     </>

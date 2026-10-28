@@ -12,6 +12,7 @@ import { parseCampaignsJson, parseConsentsJson } from "@/lib/consents-backup";
 import { permissions } from "@/lib/permissions";
 import { addDocumentExtras, parseDocumentExtras } from "@/lib/document-backup";
 import { addMemberFamilies, familiesToJson, parseFamiliesJson } from "@/lib/families-backup";
+import { addEventExtras, parseEventExtras } from "@/lib/event-backup";
 import { addGroupExtras, parseGroupExtras } from "@/lib/group-backup";
 import { addMeetingExtras, committeeToJson, parseCommitteeJson, parseMeetingExtras } from "@/lib/meeting-backup";
 import { fromDbDate } from "@/lib/dates";
@@ -30,6 +31,7 @@ import {
   loadCampaignsAndConsents,
   loadDocumentExtras,
   loadFamilies,
+  loadEventExtras,
   loadGroupExtras,
   loadMeetingExtras,
   loadRoles,
@@ -62,12 +64,14 @@ export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {})
     loadCampaignsAndConsents(ctx),
   ]);
   const kinship = await loadKinshipLinks(ctx);
+  const eventExtras = await loadEventExtras(ctx);
   const data = toPrototypeJson(backup);
   type Coll = Record<string, Record<string, unknown>>;
   addMemberFamilies(data.members as Coll, families.familyOf);
   addMeetingExtras(data.meetings as Coll, attendance);
   addDocumentExtras(data.documents as Coll, documentExtras);
   addGroupExtras(data.groups as Coll, groupExtras);
+  addEventExtras(data.events as Coll, eventExtras);
   addMemberBaptism(data.members as Coll, baptism);
   addMemberRegister(data.members as Coll, register);
   addMemberRoles(data.members as Coll, roles.functii);
@@ -129,6 +133,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       meetings: parseMeetingExtras(raw),
       documents: parseDocumentExtras(raw),
       groups: parseGroupExtras(raw),
+      events: parseEventExtras(raw),
       baptism: parseMemberBaptism(raw),
       register: parseMemberRegister(raw),
       discipline: parseDisciplineJson(raw),

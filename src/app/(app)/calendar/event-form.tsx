@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { nomenOptions, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { OfficiantField } from "@/components/officiant-field";
 import { isOfficiatedEvent, type OfficiantOption } from "@/lib/officiants";
+import type { EventPersonInput } from "@/lib/event-persons";
 import { saveEventAction } from "@/server/actions/events";
+import type { EventFamilyOption, EventPersonOption } from "@/server/queries/event-persons";
+import { EventPersonsField } from "./event-persons-field";
 
 interface Contribution {
   key: number;
@@ -22,6 +25,9 @@ export function EventForm({
   tipuri,
   officiants = [],
   cancelHref,
+  familyOptions,
+  personOptions,
+  persoane = [],
 }: {
   id: string | null;
   initial: Record<string, string>;
@@ -30,6 +36,10 @@ export function EventForm({
   /** Persons holding an ordained role (Statut art. 30). */
   officiants?: OfficiantOption[];
   cancelHref: string;
+  /** EVENT-PERSONS: the families and persons offered, and the event's persons. */
+  familyOptions: EventFamilyOption[];
+  personOptions: EventPersonOption[];
+  persoane?: EventPersonInput[];
 }) {
   const { state, pending, onSubmit } = useActionForm(saveEventAction.bind(null, id));
   const v = state.values ?? initial;
@@ -38,6 +48,16 @@ export function EventForm({
   const nextKey = useRef(contributii.length);
   const [tip, setTip] = useState(val("tip"));
   const [agapa, setAgapa] = useState(initial.agapaActiva === "on");
+  // The title is suggested from the persons only while empty (or still the last suggestion).
+  const [titlu, setTitlu] = useState(val("titlu"));
+  const lastSuggestion = useRef("");
+  const onTitle = useCallback((t: string) => {
+    setTitlu((cur) => {
+      if (cur.trim() && cur !== lastSuggestion.current) return cur;
+      lastSuggestion.current = t;
+      return t;
+    });
+  }, []);
   const [rows, setRows] = useState<Contribution[]>(() => contributii.map((c, i) => ({ key: i, ...c })));
 
   function addRow() {
@@ -52,11 +72,20 @@ export function EventForm({
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <TextField name="titlu" label="Titlu" placeholder="ex. Seară de evanghelizare" defaultValue={val("titlu")} error={e.titlu} required />
+      <TextField name="titlu" label="Titlu" placeholder="ex. Seară de evanghelizare" value={titlu} onChange={(ev) => setTitlu(ev.target.value)} error={e.titlu} required />
       <div className="row2">
         <SelectField name="tip" label="Tip" defaultValue={val("tip")} onChange={(ev) => setTip(ev.target.value)} error={e.tip} options={nomenOptions(tipuri, val("tip"))} />
         <TextField name="data" label="Data" type="date" defaultValue={val("data")} error={e.data} required />
       </div>
+      <EventPersonsField
+        tip={tip}
+        initialFamilyId={initial.familyId ?? ""}
+        initialPersons={persoane}
+        families={familyOptions}
+        persons={personOptions}
+        error={e.persoane ?? e.familyId}
+        onTitle={onTitle}
+      />
       <div className="row2">
         <TextField name="ora" label="Ora" type="time" defaultValue={val("ora")} error={e.ora} />
         <TextField name="loc" label="Loc" defaultValue={val("loc")} error={e.loc} />

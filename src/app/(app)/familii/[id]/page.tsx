@@ -1,3 +1,5 @@
+import { EventHistoryCard } from "@/components/event-history-card";
+import { historyEvents } from "@/server/queries/event-persons";
 import { formatAddress } from "@/lib/address";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -43,6 +45,7 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
   const head = f.members.find((m) => m.id === f.headId);
   // The neam the family belongs to (through any of its members).
   const kin = await loadKinship(ctx.db);
+  const eventHistory = await historyEvents(ctx, { familyId: id });
   const neam = f.members.map((m) => neamOf(kin.neamuri, m.id)).find(Boolean) ?? null;
   const prayer = canWrite
     ? await ctx.db.family.findUniqueOrThrow({ where: { id }, select: { prayerOptOut: true, prayerIncludeChildren: true, prayerChangedAt: true, prayerSource: true } })
@@ -156,6 +159,8 @@ export default async function FamilyPage({ params }: PageProps<"/familii/[id]">)
           />
         </div>
       ) : null}
+
+      <EventHistoryCard events={eventHistory} showPersons />
 
       {audit.length ? (
         <div className="card">

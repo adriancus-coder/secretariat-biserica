@@ -772,6 +772,43 @@
     margin: 0;
     font-weight: 400;
   }
+  /* EVENT-PERSONS: the event form's persons and „Trece în registru”: stacked, 44 px ticks. */
+  .event-persons legend,
+  .register-person legend {
+    padding: 0;
+    margin-bottom: 4px;
+  }
+  .event-checks .check,
+  .register-person .check {
+    min-height: 44px;
+    align-items: flex-start;
+    padding-top: 10px;
+  }
+  .event-checks .check input,
+  .register-person .check input {
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: none;
+  }
+  .register-person {
+    border: 0;
+    padding: 0;
+    margin: 0 0 12px;
+    min-width: 0;
+  }
+  /* Buttons that carry a person's name wrap instead of widening the page. */
+  .event-cert {
+    white-space: normal;
+    text-align: left;
+    height: auto;
+    max-width: 100%;
+  }
+  .event-new-child {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
   /* Switch: a checkbox with role="switch"; on = accent colour */
   .switch-row {
     display: flex;

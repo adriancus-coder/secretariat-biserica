@@ -44,6 +44,8 @@ export async function scrubPersonTraces(tx: Tx, churchId: string, needles: reado
       WHERE "churchId" = ${churchId} AND strpos("responsabil" || "agapaResponsabil" || "invitat" || "descriere" || "titlu", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "event_contributions" c SET "cine" = replace(c."cine", ${n}, ${r}), "ce" = replace(c."ce", ${n}, ${r})
       FROM "events" e WHERE e."id" = c."eventId" AND e."churchId" = ${churchId} AND strpos(c."cine" || c."ce", ${n}) > 0`;
+    await tx.$executeRaw`UPDATE "event_persons" SET "numeLiber" = ''
+      WHERE "churchId" = ${churchId} AND "numeLiber" <> '' AND strpos("numeLiber", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "groups" SET "responsabil" = replace("responsabil", ${n}, ${r}), "descriere" = replace("descriere", ${n}, ${r})
       WHERE "churchId" = ${churchId} AND strpos("responsabil" || "descriere", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "notes" SET "text" = replace("text", ${n}, ${r}), "familie" = replace("familie", ${n}, ${r}),
@@ -106,6 +108,8 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.pastoralNote.deleteMany({ where: { personId: id } });
     // The weekly prayer: the weeks this person (without a family) was announced.
     await tx.prayerWeek.deleteMany({ where: { personId: id } });
+    // EVENT-PERSONS: the events keep their place, without the person (unlinked, no free name).
+    await tx.eventPerson.updateMany({ where: { personId: id }, data: { personId: null, numeLiber: "" } });
     // KINSHIP: the person's parent-child links go (the relatives keep their other links).
     await tx.personParent.deleteMany({ where: { OR: [{ parentId: id }, { childId: id }] } });
     // A parent outside the register known only through this person goes with them.

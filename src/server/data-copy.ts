@@ -2,6 +2,7 @@ import { formatAddress } from "@/lib/address";
 import "server-only";
 import { PERSONAL_HISTORY_NOTE } from "@/lib/attendance";
 import { DIRECTION_LABEL } from "@/lib/correspondence";
+import { EVENT_ROLE_LABEL, type EventPersonRole } from "@/lib/event-persons";
 import { baptismSentence } from "@/lib/baptism";
 import type { DataCopy } from "@/lib/data-copy";
 import { fromDbDate, todayIso } from "@/lib/dates";
@@ -48,6 +49,7 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       application: { select: { createdAt: true, status: true, kind: true } },
       documents: { select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       correspondence: { select: { nr: true, an: true, data: true, directie: true, subiect: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
+      eventRoles: { select: { rol: true, aplicatInRegistruLa: true, event: { select: { titlu: true, tip: true, data: true } } } },
       meetings: { where: { status: "PRESENT" }, select: { meeting: { select: { tip: true, data: true, nr: true, anRegistru: true } } } },
     },
   });
@@ -131,6 +133,16 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
             .map((m) => m.meeting)
             .sort((a, b) => a.data.getTime() - b.data.getTime())
             .map((m) => [d(m.data), m.tip, m.nr !== null ? `nr. ${m.nr}/${m.anRegistru}` : ""]),
+        },
+      },
+      {
+        // EVENT-PERSONS: the calendar events naming the person (blessing, baptism, wedding, funeral).
+        titlu: "Evenimente din calendar",
+        tabel: {
+          coloane: ["Data", "Eveniment", "Rol", "Trecut în registru"],
+          randuri: [...p.eventRoles]
+            .sort((a, b) => a.event.data.getTime() - b.event.data.getTime())
+            .map((r) => [d(r.event.data), `${r.event.titlu} (${r.event.tip})`, EVENT_ROLE_LABEL[r.rol as EventPersonRole], r.aplicatInRegistruLa ? "da" : "nu"]),
         },
       },
       {

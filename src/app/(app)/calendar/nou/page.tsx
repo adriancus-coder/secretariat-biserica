@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { isIsoDate, todayIso } from "@/lib/dates";
 import { getChurch } from "@/server/queries/church";
+import { eventFormOptions } from "@/server/queries/event-persons";
 import { officiantOptions } from "@/server/queries/officiants";
 import { requireCtx } from "@/server/session";
 import { EventForm } from "../event-form";
@@ -11,7 +12,7 @@ export const metadata: Metadata = { title: "Eveniment nou" };
 export default async function NewEventPage({ searchParams }: PageProps<"/calendar/nou">) {
   const ctx = await requireCtx("write");
   const sp = await searchParams;
-  const church = await getChurch(ctx);
+  const [church, options] = await Promise.all([getChurch(ctx), eventFormOptions(ctx)]);
   const data = typeof sp.data === "string" && isIsoDate(sp.data) ? sp.data : todayIso();
   return (
     <>
@@ -23,6 +24,8 @@ export default async function NewEventPage({ searchParams }: PageProps<"/calenda
         contributii={[]}
         tipuri={church.nomen.tipuriEvenimente}
         officiants={await officiantOptions(ctx)}
+        familyOptions={options.families}
+        personOptions={options.persons}
         cancelHref="/calendar"
       />
     </>

@@ -12,6 +12,8 @@ import { permissions } from "@/lib/permissions";
 import { APPEAL_DAYS, appealDeadline } from "@/lib/discipline-print";
 import { mandateNotice } from "@/lib/committee";
 import { inventoryReminder } from "@/lib/patrimony";
+import { eventsWaitingForRegister } from "@/server/queries/event-persons";
+import { IgnoreRegisterButton } from "./calendar/[id]/register-card";
 import { photoQuotaText } from "@/lib/asset-photos";
 import { assemblyCard, birthdaysCard, mandateCard, type DashCard, disciplineAccessCard } from "@/lib/pastor-dashboard";
 import { PastorDashboard } from "@/components/pastor-dashboard";
@@ -124,6 +126,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const mandate = canWrite ? mandateNotice(today, church.comitetAlesLa, church.comitetPrelungit) : null;
   // PATRIMONY (Statut art. 43 alin. 7): once a year, in November before the General Assembly (write roles).
   const inventory = canWrite ? inventoryReminder(today) : null;
+  // EVENT-PERSONS: events taken place whose register data wait for „Trece în registru” (write roles).
+  const registerEvents = canWrite ? await eventsWaitingForRegister(ctx) : [];
   // PATRIMONY-PHOTOS: with the reminder, the space the photos use (administrators).
   const photoSpace = inventory && permissions.admin(ctx.user.role) ? photoQuotaText((await ctx.db.assetPhoto.aggregate({ _sum: { bytes: true } }))._sum.bytes ?? 0) : null;
   const absences = permissions.admin(ctx.user.role) ? await committeeAbsences(ctx, church) : [];
@@ -235,6 +239,21 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
               <li key={a.id}>
                 <Link href={`/persoane/${a.personId}/disciplina`}>{memberName(a.person)}</Link>:{" "}
                 {a.contestatieLa ? `contestație depusă la ${fmt(fromDbDate(a.contestatieLa)!)}, fără rezultat` : `până la ${fmt(a.deadline)}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {registerEvents.length ? (
+        <div className="alert mb-4" role="status">
+          <p className="m-0">Evenimente cu date de trecut în registru ({registerEvents.length}):</p>
+          <ul className="m-0 mt-1 pl-0 list-none">
+            {registerEvents.map((ev) => (
+              <li key={ev.id} className="flex flex-wrap items-center gap-2 mt-1">
+                <Link href={`/calendar/${ev.id}#registru-title`}>
+                  {ev.titlu} ({fmt(ev.data)})
+                </Link>
+                <IgnoreRegisterButton eventId={ev.id} />
               </li>
             ))}
           </ul>

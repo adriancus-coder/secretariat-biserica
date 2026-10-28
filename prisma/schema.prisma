@@ -131,34 +131,35 @@ model Church {
   assets                Asset[]
   assetPhotos           AssetPhoto[]
   assetSubcategories    AssetSubcategory[]
+  eventPersons          EventPerson[]
 
   @@map("churches")
 }
 
 model User {
-  id               String    @id @default(cuid())
-  churchId         String
-  church           Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(cuid())
+  churchId            String
+  church              Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
   /// Adresa de e-mail, stocată cu litere mici; unică în toată aplicația (un utilizator aparține unei singure biserici).
-  email            String    @unique
-  name             String
-  passwordHash     String
-  role             Role      @default(VIZUALIZARE)
+  email               String    @unique
+  name                String
+  passwordHash        String
+  role                Role      @default(VIZUALIZARE)
   /// Pastor of the church (Statut art. 38–39), independent of the role; set only by an administrator.
-  isPastor         Boolean   @default(false)
+  isPastor            Boolean   @default(false)
   /// Optional label: "pastor coordonator", "pastor asistent".
-  pastorTitlu      String    @default("")
+  pastorTitlu         String    @default("")
   /// DISCIPLINE-ACCESS (Statut art. 44 lit. d, art. 14 alin. 3 lit. d): access to the disciplinary
   /// measures given by a pastor (an Administrator or Secretar only); who gave it (a user id) and when.
   accesDisciplina     Boolean   @default(false)
   accesDisciplinaDeLa String?
   accesDisciplinaLa   DateTime?
   /// "Semnătura mea": the user's saved signature (PNG ≤ 600×200, ≤ 40 KB), used only after a device unlock.
-  signaturePng     Bytes?
-  signatureSavedAt DateTime?
-  active           Boolean   @default(true)
+  signaturePng        Bytes?
+  signatureSavedAt    DateTime?
+  active              Boolean   @default(true)
   /// Crește la schimbarea parolei / dezactivare, invalidând sesiunile emise anterior.
-  sessionVersion   Int       @default(0)
+  sessionVersion      Int       @default(0)
 
   // Second factor: TOTP (secret encrypted at rest, see src/server/two-factor.ts) and/or a code by e-mail.
   totpSecretEnc        String?
@@ -391,6 +392,7 @@ model Person {
   consentsGivenFor      Consent[]              @relation("ConsentGivenBy")
   /// Groups this person is responsible for.
   responsibleFor        Group[]                @relation("GroupResponsabil")
+  eventRoles            EventPerson[]
 
   @@index([churchId, sortKey])
   @@index([intrareMeetingId])
@@ -671,6 +673,7 @@ model Family {
 
   members     Person[]     @relation("FamilyMembers")
   prayerWeeks PrayerWeek[]
+  events      Event[]
 
   @@index([churchId, nume])
   @@map("families")
@@ -999,13 +1002,52 @@ model Event {
   agapaResponsabil String  @default("")
   agapaPersoane    Int?
 
+  /// EVENT-PERSONS: the family the event is about (a blessing, a baptism, a family dinner …).
+  familyId          String?
+  family            Family?   @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  /// „Ignoră” on Acasă: the register changes this event proposes are no longer asked for.
+  registruIgnoratLa DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   contributii EventContribution[]
+  persoane    EventPerson[]
 
   @@index([churchId, data])
+  @@index([familyId])
   @@map("events")
+}
+
+enum EventPersonRole {
+  COPIL
+  BOTEZAT
+  MIRE
+  MIREASA
+  DECEDAT
+}
+
+/// EVENT-PERSONS: the persons an event is about (src/lib/event-persons.ts). `numeLiber` only for a
+/// bride or groom who is not in the register (another church).
+model EventPerson {
+  id                  String          @id @default(cuid())
+  churchId            String
+  church              Church          @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  eventId             String
+  event               Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personId            String?
+  person              Person?         @relation(fields: [personId], references: [id], onDelete: SetNull)
+  numeLiber           String          @default("")
+  rol                 EventPersonRole
+  ordine              Int             @default(0)
+  /// When its register changes were applied („Trece în registru”).
+  aplicatInRegistruLa DateTime?
+  createdAt           DateTime        @default(now())
+
+  @@index([churchId])
+  @@index([eventId])
+  @@index([personId])
+  @@map("event_persons")
 }
 
 /// „Cine aduce ce” la agapă.
@@ -1147,34 +1189,34 @@ enum AssetState {
 /// the church's inventory of goods. Never deleted: a good leaves by "Scoate din uz" (date and reason).
 /// No personal data except the optional responsible person.
 model Asset {
-  id            String      @id @default(cuid())
+  id            String            @id @default(cuid())
   churchId      String
-  church        Church      @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  church        Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
   nrInventar    Int
   denumire      String
   /// From the nomenclature Church.categoriiPatrimoniu.
   categorie     String
-  cantitate     Int         @default(1)
+  cantitate     Int               @default(1)
   /// The value of the whole line, in NOK (optional, whole kroner).
   valoare       Int?
-  dataIntrarii  DateTime?   @db.Date
-  provenienta   AssetOrigin @default(CUMPARARE)
+  dataIntrarii  DateTime?         @db.Date
+  provenienta   AssetOrigin       @default(CUMPARARE)
   /// Where it is.
-  loc           String      @default("")
-  stare         AssetState  @default(BUN)
-  dataIesirii   DateTime?   @db.Date
-  motivIesirii  String      @default("")
-  observatii    String      @default("")
+  loc           String            @default("")
+  stare         AssetState        @default(BUN)
+  dataIesirii   DateTime?         @db.Date
+  motivIesirii  String            @default("")
+  observatii    String            @default("")
   /// Free text, or the person of the register (responsabilId).
-  responsabil   String      @default("")
+  responsabil   String            @default("")
   responsabilId String?
-  responsabilP  Person?     @relation(fields: [responsabilId], references: [id], onDelete: SetNull)
+  responsabilP  Person?           @relation(fields: [responsabilId], references: [id], onDelete: SetNull)
   /// PATRIMONY-SUBCATEGORIES: optional, always one of the category's subcategories (checked on save).
   subcategoryId String?
   subcategory   AssetSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
   createdById   String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   photos        AssetPhoto[]
 
   @@unique([churchId, nrInventar])

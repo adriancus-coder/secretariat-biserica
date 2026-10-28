@@ -1,4 +1,5 @@
 import "server-only";
+import type { EventPersonRole } from "@/lib/event-persons";
 import { daysInMonth, fromDbDate, isoFromParts, toDbDate } from "@/lib/dates";
 import type { Ctx } from "../session";
 
@@ -100,8 +101,11 @@ export async function monthEntries(ctx: Ctx, year: number, month0: number): Prom
 export async function getEvent(ctx: Ctx, id: string) {
   const e = await ctx.db.event.findUnique({
     where: { id },
-    include: { contributii: { orderBy: { pozitie: "asc" }, select: { cine: true, ce: true } } },
+    include: {
+      contributii: { orderBy: { pozitie: "asc" }, select: { cine: true, ce: true } },
+      persoane: { orderBy: { ordine: "asc" }, select: { personId: true, numeLiber: true, rol: true } },
+    },
   });
   if (!e) return null;
-  return { ...e, data: fromDbDate(e.data)! };
+  return { ...e, data: fromDbDate(e.data)!, persoane: e.persoane.filter((p) => p.personId || p.numeLiber).map((p) => ({ ...p, rol: p.rol as EventPersonRole })) };
 }

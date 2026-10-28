@@ -20,6 +20,8 @@ import { Prisma } from "@/generated/prisma/client";
 import type { BApplication } from "@/lib/application-backup";
 import { exportedState, type DocumentExtra } from "@/lib/document-backup";
 import type { GroupExtra } from "@/lib/group-backup";
+import type { EventExtra } from "@/lib/event-backup";
+import type { EventPersonRole } from "@/lib/event-persons";
 import type { BCommittee, MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
 import { richToPlain, type RichDoc } from "@/lib/rich-text";
@@ -409,6 +411,25 @@ export async function loadGroupExtras(ctx: Ctx): Promise<Map<string, GroupExtra>
   );
 }
 
+/** EVENT-PERSONS: event id → its family and persons, for the export. */
+export async function loadEventExtras(ctx: Ctx): Promise<Map<string, EventExtra>> {
+  const rows = await ctx.db.event.findMany({
+    where: { OR: [{ familyId: { not: null } }, { persoane: { some: {} } }] },
+    select: { id: true, familyId: true, persoane: { orderBy: { ordine: "asc" }, select: { personId: true, numeLiber: true, rol: true, aplicatInRegistruLa: true } } },
+  });
+  return new Map(
+    rows.map((e) => [
+      e.id,
+      {
+        familie: e.familyId,
+        persoane: e.persoane
+          .filter((p) => p.personId || p.numeLiber)
+          .map((p) => ({ membru: p.personId, numeLiber: p.numeLiber, rol: p.rol as EventPersonRole, aplicatLa: p.aplicatInRegistruLa?.toISOString() ?? null })),
+      },
+    ]),
+  );
+}
+
 /** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
 export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
   const rows = await ctx.db.document.findMany({
@@ -456,6 +477,8 @@ export interface ImportExtras {
   meetings?: ReadonlyMap<string, MeetingExtra>;
   /** Document id → the rich text, as in the file (see parseDocumentExtras). */
   documents?: ReadonlyMap<string, DocumentExtra>;
+  /** Event id → its family and persons, as in the file (see parseEventExtras). */
+  events?: ReadonlyMap<string, EventExtra>;
   /** Group id → the linked roles, as in the file (see parseGroupExtras). */
   groups?: ReadonlyMap<string, GroupExtra>;
   /**
@@ -980,6 +1003,37 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         } else {
           await tx.event.create({ data: { ...data, id, churchId, createdAt: ts(e.createdAt), contributii: { create: contributii } } });
         }
+      }
+      // EVENT-PERSONS: the event's family and persons, only those the church has (checked through tx).
+      if (extras.events?.size) {
+        const fileFamily = (id: string | null) => (id ? (fams?.map.get(id) ?? id) : null);
+        const known = async (model: "person" | "family", ids: string[]) =>
+          new Set(
+            ids.length
+              ? (model === "person" ? await tx.person.findMany({ where: { id: { in: ids } }, select: { id: true } }) : await tx.family.findMany({ where: { id: { in: ids } }, select: { id: true } })).map((r) => r.id)
+              : [],
+          );
+        const evExtras = backup.events.flatMap((e) => (extras.events?.get(e.id) ? [{ id: evs.map.get(e.id)!, x: extras.events.get(e.id)! }] : []));
+        const personIds = await known("person", [...new Set(evExtras.flatMap((v) => v.x.persoane.map((p) => pid(p.membru) ?? p.membru).filter((x): x is string => Boolean(x))))]);
+        const familyIds = await known("family", [...new Set(evExtras.map((v) => fileFamily(v.x.familie)).filter((x): x is string => Boolean(x)))]);
+        let dropped = 0;
+        for (const { id, x } of evExtras) {
+          const familyId = fileFamily(x.familie);
+          await tx.event.update({ where: { id }, data: { familyId: familyId && familyIds.has(familyId) ? familyId : null } });
+          await tx.eventPerson.deleteMany({ where: { eventId: id } });
+          const rows = x.persoane.flatMap((p, ordine) => {
+            const personId = p.membru ? (pid(p.membru) ?? p.membru) : null;
+            if (personId && !personIds.has(personId)) {
+              dropped++;
+              return [];
+            }
+            return [{ churchId, eventId: id, personId, numeLiber: personId ? "" : p.numeLiber, rol: p.rol, ordine, aplicatInRegistruLa: p.aplicatLa ? new Date(p.aplicatLa) : null }];
+          });
+          const seen = new Set<string>();
+          const unique = rows.filter((r) => !r.personId || (!seen.has(r.personId) && seen.add(r.personId)));
+          if (unique.length) await tx.eventPerson.createMany({ data: unique });
+        }
+        if (dropped) warnings.push(`Evenimente: ${dropped} ${dropped === 1 ? "persoană care nu este" : "persoane care nu sunt"} în registru ${dropped === 1 ? "a fost lăsată" : "au fost lăsate"} deoparte.`);
       }
 
       // Documente (numerotare unică pe an)

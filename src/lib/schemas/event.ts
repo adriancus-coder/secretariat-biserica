@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { longText, optionalInt, optionalTime, requiredDate, requiredText, text } from "../validation";
+import { idSchema, longText, optionalId, optionalInt, optionalTime, requiredDate, requiredText, text } from "../validation";
 
 export const EVENT_FIELDS = [
   "titlu",
@@ -15,7 +15,38 @@ export const EVENT_FIELDS = [
   "agapaResponsabil",
   "agapaPersoane",
   "contributii",
+  "familie",
+  "persoane",
 ] as const;
+
+/** EVENT-PERSONS: the persons of the event, as JSON in the hidden field `persoane`. */
+const eventPersonsField = z
+  .string()
+  .optional()
+  .transform((s, ctx) => {
+    if (!s?.trim()) return [];
+    let list: unknown;
+    try {
+      list = JSON.parse(s);
+    } catch {
+      list = null;
+    }
+    const r = z
+      .array(
+        z.object({
+          personId: idSchema.nullable(),
+          numeLiber: z.string().trim().max(160).default(""),
+          rol: z.enum(["COPIL", "BOTEZAT", "MIRE", "MIREASA", "DECEDAT"]),
+        }),
+      )
+      .max(30)
+      .safeParse(list);
+    if (!r.success) {
+      ctx.addIssue({ code: "custom", message: "Lista de persoane a evenimentului este invalidă." });
+      return z.NEVER;
+    }
+    return r.data;
+  });
 
 const contribution = z.object({
   cine: text(160, "„Cine”"),
@@ -36,6 +67,8 @@ export const eventSchema = z.object({
   agapaResponsabil: text(160, "Responsabilul agapei"),
   agapaPersoane: optionalInt(0, 100000),
   contributii: z.array(contribution).max(300),
+  familyId: optionalId,
+  persoane: eventPersonsField,
 });
 
 export type EventInput = z.output<typeof eventSchema>;

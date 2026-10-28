@@ -307,6 +307,21 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     await a.assetSubcategory.delete({ where: { id: s.id } });
   });
 
+  it("event persons are isolated per church and go with the event", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const e = await a.event.create({ data: { titlu: "Binecuvântare", tip: "Binecuvântare copil", data: new Date("2026-05-03T00:00:00Z") } as never });
+    const r = await a.eventPerson.create({ data: { eventId: e.id, personId: personA, rol: "COPIL" } as never });
+    expect(r.churchId).toBe(churchA);
+    expect(await b.eventPerson.findUnique({ where: { id: r.id } })).toBeNull();
+    expect(await b.eventPerson.findMany({ where: { personId: personA } })).toHaveLength(0);
+    expect(await b.eventPerson.count()).toBe(0);
+    expect((await b.eventPerson.updateMany({ data: { numeLiber: "X" } })).count).toBe(0);
+    await expect(b.eventPerson.delete({ where: { id: r.id } })).rejects.toMatchObject({ code: "P2025" });
+    await a.event.delete({ where: { id: e.id } });
+    expect(await prisma.eventPerson.findUnique({ where: { id: r.id } })).toBeNull();
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

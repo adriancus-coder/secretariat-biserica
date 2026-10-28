@@ -22,6 +22,8 @@ export function PersonPicker({
   onChange,
   label,
   emptyText = "Niciun responsabil ales.",
+  allTitle = "Toate persoanele",
+  noneLabel = "— niciunul —",
 }: {
   name: string;
   /** `disabled`: why this person cannot be chosen (shown short; the row cannot be picked). */
@@ -32,6 +34,9 @@ export function PersonPicker({
   label: string;
   /** Shown while nobody is chosen. */
   emptyText?: string;
+  /** The last section's title (e.g. the other families when the picker lists families). */
+  allTitle?: string;
+  noneLabel?: string;
 }) {
   const [q, setQ] = useState("");
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -39,13 +44,13 @@ export function PersonPicker({
     const seen = new Set<string>();
     const f = normalizeSearch(q);
     const match = (id: string) => !f || normalizeSearch(byId.get(id)?.name ?? "").includes(f);
-    const out = [...sections, { title: "Toate persoanele", ids: people.map((p) => p.id) }].map((s) => {
+    const out = [...sections, { title: allTitle, ids: people.map((p) => p.id) }].map((s) => {
       const ids = s.ids.filter((id) => byId.has(id) && !seen.has(id));
       ids.forEach((id) => seen.add(id));
       return { title: s.title, ids: ids.filter(match) };
     });
     return out.filter((s) => s.ids.length);
-  }, [q, sections, people, byId]);
+  }, [q, sections, people, byId, allTitle]);
   const chosen = value ? byId.get(value) : undefined;
 
   const row = (id: string, text: string, note?: string, disabled?: string) => {
@@ -81,7 +86,7 @@ export function PersonPicker({
       </p>
       <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Caută după nume…" aria-label={`Caută: ${label}`} />
       <div className="picker-list" role="listbox" aria-label={label}>
-        {!q ? row("", "— niciunul —") : null}
+        {!q ? row("", noneLabel) : null}
         {groups.map((s) => (
           <div key={s.title} role="group" aria-label={s.title}>
             <div className="picker-section">{s.title}</div>
