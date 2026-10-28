@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { after } from "next/server";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -6,12 +5,10 @@ import { AppNav } from "@/components/shell/app-nav";
 import { SideNav } from "@/components/shell/side-nav";
 import { navItemsFor } from "@/components/shell/nav-items";
 import { Icon } from "@/components/shell/icons";
-import { TextSizeControl } from "@/components/text-size-control";
 import { Flash } from "@/components/ui/flash";
 import { AppBadge } from "@/components/pwa/app-badge";
 import { ROLE_LABEL } from "@/lib/labels";
 import { permissions } from "@/lib/permissions";
-import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { runFirstKinshipCheck } from "@/server/kinship-sync";
 import { pendingBadges } from "@/server/queries/badges";
 import { requireUser } from "@/server/session";
@@ -23,7 +20,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const badges = permissions.read(user) ? await pendingBadges(user) : {};
   // KINSHIP-AUTO: the church's first full check of the kinship links, once, after the response.
   if (permissions.write(user)) after(() => runFirstKinshipCheck(user));
-  const textSize = parseUiTextSize((await cookies()).get(TEXT_SIZE_COOKIE)?.value);
   return (
     <div className="shell">
       <div className="shell-side">
@@ -39,7 +35,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppNav items={items} badges={badges} />
         <SideNav items={items} badges={badges}>
           <div className="shell-user">
-            <TextSizeControl current={textSize} tone="dark" />
             <div className="side-account">
               <Link href="/cont" className="who" title="Contul meu" aria-label={`Contul meu: ${user.name}`}>
                 <Icon name="cont" className="size-[18px]" />

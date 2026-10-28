@@ -469,8 +469,7 @@
       flex-basis: 76px;
     }
     html:not([data-nav-lata]) .shell-top,
-    html:not([data-nav-lata]) .side-group-title,
-    html:not([data-nav-lata]) .side-foot .text-size {
+    html:not([data-nav-lata]) .side-group-title {
       display: none;
     }
     html:not([data-nav-lata]) .side-label {
@@ -566,6 +565,12 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+  .moremenu-sub {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    text-align: center;
   }
   .moremenu a,
   .moremenu button {
@@ -2804,15 +2809,6 @@
     min-width: 4em;
     text-align: center;
     font-size: 0.875rem;
-  }
-  .text-size-dark button {
-    background: transparent;
-    border-color: rgba(255, 255, 255, 0.25);
-    color: #f4f1e8;
-  }
-  .text-size-dark .text-size-value {
-    color: #f4f1e8;
-    opacity: 0.8;
   }
 }
 

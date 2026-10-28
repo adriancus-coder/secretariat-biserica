@@ -15,8 +15,11 @@ function applySize(s: UiTextSize) {
   }
 }
 
-/** A⁻ / A⁺: the size of the app's text on this device (100 %, 115 %, 130 %). */
-export function TextSizeControl({ current, tone = "light" }: { current: UiTextSize; tone?: "light" | "dark" }) {
+/**
+ * A⁻ / A⁺: the size of the app's text on this device (100 %, 115 %, 130 %). Shown only in Contul meu →
+ * Aspect (TEXT-SIZE-ONE-PLACE); the root layout applies the saved size on every page.
+ */
+export function TextSizeControl({ current }: { current: UiTextSize }) {
   const [size, setSize] = useState<UiTextSize>(current);
   const i = TEXT_SIZES_UI.indexOf(size);
   const go = (d: -1 | 1) => {
@@ -26,7 +29,7 @@ export function TextSizeControl({ current, tone = "light" }: { current: UiTextSi
     applySize(next);
   };
   return (
-    <div className={`text-size text-size-${tone}`} role="group" aria-label="Mărimea textului">
+    <div className="text-size" role="group" aria-label="Mărimea textului">
       <button type="button" onClick={() => go(-1)} disabled={i === 0} aria-label="Micșorează textul" title="Micșorează textul">
         A<sup>−</sup>
       </button>

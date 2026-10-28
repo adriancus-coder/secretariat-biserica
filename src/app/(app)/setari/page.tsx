@@ -3,11 +3,9 @@ import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { TextSizeControl } from "@/components/text-size-control";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PageHead } from "@/components/ui/page-head";
 import { permissions } from "@/lib/permissions";
-import { TEXT_SIZE_COOKIE, parseUiTextSize } from "@/lib/text-size";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { getChurch } from "@/server/queries/church";
 import { requestOrigin } from "@/server/request-origin";
@@ -46,7 +44,6 @@ export default async function SettingsPage() {
   const jar = await cookies();
   const [stepMethod, stepped] = await Promise.all([stepUpMethod(ctx.user.id), hasStepUp(ctx.user)]);
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
-  const textSize = parseUiTextSize(jar.get(TEXT_SIZE_COOKIE)?.value);
   const role = ctx.user.role;
   const formUrl = appUrl(`/cerere/${church.slug}`, await requestOrigin());
   // The QR code and the sending controls are for those who may write; it follows the saved slug.
@@ -74,7 +71,10 @@ export default async function SettingsPage() {
         {permissions.write(role) ? <Link href="/setari/actualizare-date">Actualizare date (campanie)</Link> : null}
         <Link href="/setari/functii">Nomenclatoare: funcții și slujiri</Link>
         {permissions.audit(role) ? <Link href="/setari/jurnal">Jurnal de modificări</Link> : null}
-        <Link href="/cont">Contul meu</Link>
+        <Link href="/cont">
+          Contul meu
+          <span className="moremenu-sub">parolă, autentificare, aspect (mărimea textului)</span>
+        </Link>
       </nav>
       {permissions.admin(role) && privacyModelOutdated(church) ? (
         <div className="alert mb-4" role="status">
@@ -128,12 +128,10 @@ export default async function SettingsPage() {
       <ExcerptsCard excerpts={church.statutExtrase} isDefault={isDefaultExcerpts(church.statutExtrase)} readOnly={!permissions.admin(role)} />
       <div className="card mt-7">
         <h3>Aspect</h3>
-        <p className="hint mb-3">Tema și mărimea textului se păstrează pe acest dispozitiv.</p>
+        <p className="hint mb-3">
+          Tema se păstrează pe acest dispozitiv. Mărimea textului se alege la <Link href="/cont">Contul meu → Aspect</Link>.
+        </p>
         <ThemeSwitcher current={theme} />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="font-medium">Mărimea textului</span>
-          <TextSizeControl current={textSize} />
-        </div>
       </div>
       <p className="hint mt-5">
         Datele sunt partajate cu toți utilizatorii bisericii dumneavoastră și nu sunt vizibile altor biserici.
