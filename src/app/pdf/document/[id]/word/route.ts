@@ -1,3 +1,4 @@
+import { hasStepUp } from "@/server/step-up";
 import { notFound } from "next/navigation";
 import { pageLayoutInput, pageLayoutSchema } from "@/lib/page-layout";
 import { docxResponse, renderDocx } from "@/server/docx/render";
@@ -14,6 +15,9 @@ export async function GET(req: Request, { params }: RouteContext<"/pdf/document/
   const ctx = await requireCtx();
   const [doc, church] = await Promise.all([getDocument(ctx, id), getChurch(ctx)]);
   if (!doc) notFound();
+  if (doc.confidential && !(await hasStepUp(ctx.user))) {
+    return new Response("Confirmați identitatea pe pagina documentului, apoi încercați din nou.", { status: 403, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
   const sp = new URL(req.url).searchParams;
   const preview = sp.get("previzualizare") === "1" ? pageLayoutSchema.safeParse(pageLayoutInput(sp)) : null;
   const docx = await renderDocx(documentSpec({ ...doc, signatures: await printSignatures(doc.id) }, church, preview?.success ? preview.data : undefined));

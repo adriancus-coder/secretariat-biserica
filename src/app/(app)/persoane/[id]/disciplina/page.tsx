@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { StepUpGate } from "@/components/passkey/step-up-gate";
 import { ReinstateForm } from "./reinstate-form";
@@ -15,8 +16,6 @@ import { deleteDisciplineAction, removeFromCommitteeAction } from "@/server/acti
 import { meetingChoices } from "@/server/queries/meetings";
 import { requireCtx } from "@/server/session";
 import { DisciplineForm } from "./discipline-form";
-import { DownloadLink } from "@/components/ui/download";
-import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Disciplină" };
 
@@ -67,9 +66,7 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
       {excluded ? (
         <p className="hint mb-3">
           Excluderea produce efecte după informarea scrisă a Comunității (art. 27 alin. 5):{" "}
-          <DownloadLink file={`/pdf/disciplina/${excluded.id}/informare`} filename="informare-excludere.pdf" mime={MIME.pdf} inline personal className="link-inline">
-            Informare privind excluderea (PDF)
-          </DownloadLink>
+          <GeneratedActions ctx={ctx} kind="disciplina-informare" params={{ id: excluded.id }} fileName="informare-excludere" className="link-inline" label="Informare privind excluderea (previzualizează și editează)" />
           .
         </p>
       ) : null}
@@ -98,19 +95,13 @@ export default async function DisciplinePage({ params, searchParams }: PageProps
                 ) : null}
                 <div className="flex flex-wrap gap-x-3 text-sm mt-1">
                   {m.audiereLa ? (
-                    <DownloadLink file={`/pdf/disciplina/${m.id}/convocare`} filename="convocare-audiere.pdf" mime={MIME.pdf} inline personal className="link-inline">
-                      Convocare la audiere (PDF)
-                    </DownloadLink>
+                    <GeneratedActions ctx={ctx} kind="disciplina-convocare" params={{ id: m.id }} fileName="convocare-audiere" className="link-inline" label="Convocare la audiere" />
                   ) : null}
                   {m.stare !== "CERCETARE" && m.meetingId && m.abatere ? (
-                    <DownloadLink file={`/pdf/disciplina/${m.id}/proces-verbal`} filename="pv-disciplinar.pdf" mime={MIME.pdf} inline personal className="link-inline">
-                      PV disciplinar (PDF)
-                    </DownloadLink>
+                    <GeneratedActions ctx={ctx} kind="disciplina-proces-verbal" params={{ id: m.id }} fileName="pv-disciplinar" className="link-inline" label="PV disciplinar" />
                   ) : null}
                   {m.stare === "APLICATA" ? (
-                    <DownloadLink file={`/pdf/disciplina/${m.id}/comunicare`} filename="comunicare-sanctiune.pdf" mime={MIME.pdf} inline personal className="link-inline">
-                      Comunicarea sancțiunii (PDF)
-                    </DownloadLink>
+                    <GeneratedActions ctx={ctx} kind="disciplina-comunicare" params={{ id: m.id }} fileName="comunicare-sanctiune" className="link-inline" label="Comunicarea sancțiunii" />
                   ) : null}
                 </div>
                 {m.stare === "APLICATA" && ["SUSPENDARE", "RETRAGERE_DREPTURI", "EXCLUDERE"].includes(m.forma) ? (

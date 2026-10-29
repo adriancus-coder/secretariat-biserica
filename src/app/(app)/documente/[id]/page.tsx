@@ -1,3 +1,5 @@
+import { StepUpGate } from "@/components/passkey/step-up-gate";
+import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,6 +32,15 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
   const ctx = await requireCtx();
   const x = await getDocument(ctx, id);
   if (!x) notFound();
+  // GENERATED-EDIT: a registered disciplinary act asks for the step-up first.
+  if (x.confidential && !(await hasStepUp(ctx.user))) {
+    return (
+      <>
+        <BackLink href="/documente">Documente</BackLink>
+        <StepUpGate method={await stepUpMethod(ctx.user.id)} what="Documentul conține date disciplinare confidențiale." />
+      </>
+    );
+  }
   const canWrite = permissions.write(ctx.user.role);
   // A dare de seamă: its year's figures as links to the persons behind them.
   const reportCats = x.tip === "raport" && x.anRaport ? await loadCategories(ctx, x.anRaport) : null;

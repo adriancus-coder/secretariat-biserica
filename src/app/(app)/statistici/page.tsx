@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChurchFamiliesStat } from "@/components/church-families-stat";
@@ -55,9 +56,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
     <>
       <PageHead title="Statistici" sub={statisticsWhen(d)}>
         {/* The exports follow the table sort chosen on the page. */}
-        <SortAwareDownload file="/pdf/statistici" params={{ an: d.an ? String(d.an) : undefined }} filename="statistici.pdf" mime={MIME.pdf} inline>
-          Descarcă PDF
-        </SortAwareDownload>
+        <GeneratedActions ctx={ctx} kind="statistici" params={{ an: String(d.year) }} fileName={`statistici-${d.year}`} />
         <SortAwareDownload file="/api/statistici/excel" params={{ an: d.an ? String(d.an) : undefined }} filename="statistici.xlsx" mime={MIME.xlsx}>
           Exportă tabelele (Excel)
         </SortAwareDownload>

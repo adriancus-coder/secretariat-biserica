@@ -20,7 +20,12 @@ export default async function AuditPage({ searchParams }: PageProps<"/setari/jur
   const hidden: AuditEntityKey[] = [...(permissions.disciplina(ctx.user) ? [] : ["DISCIPLINE" as const]), ...(permissions.pastoral(ctx.user) ? [] : ["PASTORAL" as const])];
   const labels = Object.entries(ENTITY_LABEL).filter(([k]) => !hidden.includes(k as AuditEntityKey));
   const entity = (labels.map(([k]) => k) as AuditEntityKey[]).find((k) => k === stringParam(sp.tip));
-  const where = entity ? { entity } : hidden.length ? { entity: { notIn: hidden } } : {};
+  // GENERATED-EDIT: the entries of confidential (registered disciplinary) documents, only with `disciplina`.
+  const confidential = permissions.disciplina(ctx.user) ? [] : (await ctx.db.document.findMany({ where: { confidential: true }, select: { id: true } })).map((d) => d.id);
+  const where = {
+    ...(entity ? { entity } : hidden.length ? { entity: { notIn: hidden } } : {}),
+    ...(confidential.length ? { NOT: { entity: "DOCUMENT" as const, entityId: { in: confidential } } } : {}),
+  };
   const total = await ctx.db.auditLog.count({ where });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(pageParam(sp.pagina), pages);

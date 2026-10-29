@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -93,9 +94,7 @@ export default async function CorrespondenceListPage({ searchParams }: PageProps
         </Suspense>
       </div>
       <div className="flex flex-wrap gap-2 mb-3">
-        <SortAwareDownload file="/pdf/corespondenta" params={params} filename="registru-corespondenta.pdf" mime={MIME.pdf} inline>
-          Descarcă PDF
-        </SortAwareDownload>
+        <GeneratedActions ctx={ctx} kind="corespondenta" params={params} fileName={`registru-intrare-iesire-${an}`} />
         <SortAwareDownload file="/api/corespondenta" params={params} filename="registru-corespondenta.xlsx" mime={MIME.xlsx}>
           Exportă (Excel)
         </SortAwareDownload>

@@ -11,6 +11,7 @@ import { correspondenceLabel as label, correspondenceView as view, markAnswered 
 import { lockCorrespondenceRegister, nextFreeCorrespondenceNumber } from "../doc-numbering";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction, ValidationError } from "./run";
+import { visibleDocument } from "../confidential-documents";
 
 /**
  * "+ Înregistrează intrare / ieșire", "Răspunde", editing (write roles). The number is the next free one
@@ -26,7 +27,7 @@ export async function saveCorrespondenceAction(id: string | null, _prev: FormSta
     const input = parseOrThrow(correspondenceSchema, Object.fromEntries(formData));
     const an = Number(input.data.slice(0, 4));
     if (input.personId && !(await ctx.db.person.findUnique({ where: { id: input.personId }, select: { id: true } }))) throw new ValidationError({ personId: "Persoana nu mai există în registru." });
-    if (input.documentId && !(await ctx.db.document.findUnique({ where: { id: input.documentId }, select: { id: true } }))) throw new ValidationError({ documentId: "Documentul nu mai există." });
+    if (input.documentId && !visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: input.documentId }, select: { id: true, confidential: true } }))) throw new ValidationError({ documentId: "Documentul nu mai există." });
     const answered = input.raspunsLaId ? await ctx.db.correspondence.findUnique({ where: { id: input.raspunsLaId }, select: { id: true, directie: true, rezolvare: true, nr: true, an: true } }) : null;
     if (input.raspunsLaId && (!answered || answered.directie !== "INTRARE" || answered.id === id)) throw new ValidationError({ raspunsLaId: "Intrarea la care se răspunde nu există." });
     if (input.directie === "INTRARE" && (input.raspunsLaId || input.documentId)) throw new ValidationError({ directie: "Doar o ieșire răspunde la o intrare sau este un document emis." });

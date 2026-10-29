@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BackLink, PageHead } from "@/components/ui/page-head";
@@ -9,8 +10,6 @@ import { idSchema } from "@/lib/validation";
 import { withdrawConsentAction } from "@/server/actions/consents";
 import { requireCtx } from "@/server/session";
 import { PaperConsentForm } from "./paper-form";
-import { DownloadLink } from "@/components/ui/download";
-import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Acorduri GDPR" };
 
@@ -67,9 +66,7 @@ export default async function ConsentsPage({ params }: PageProps<"/persoane/[id]
       <div className="card">
         <h3>Înregistrează acord pe hârtie</h3>
         <p className="hint mb-3">
-          <DownloadLink file="/pdf/formular-acorduri" filename="formular-acorduri.pdf" mime={MIME.pdf} inline className="link-inline">
-            Tipărește formularul gol (PDF)
-          </DownloadLink>
+          <GeneratedActions ctx={ctx} kind="formular-acorduri" params={{}} fileName="formular-acorduri" className="link-inline" label="Formularul gol (previzualizează și editează)" />
           . Răspunsurile despre rugăciunea săptămânală se trec pe pagina familiei (sursa: formular pe hârtie).
         </p>
         <PaperConsentForm personId={id} parents={parents} />

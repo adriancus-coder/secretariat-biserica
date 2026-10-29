@@ -118,7 +118,8 @@ export async function searchData(ctx: Ctx, q: string, limit: number, only?: Sear
         .$queryRaw<Row[]>(
           Prisma.sql`SELECT d.id, d.nr, d."anRegistru", d.tip::text AS tip, d.titlu, d.persoana, d.data, count(*) OVER () AS total
             FROM documents d
-            WHERE d."churchId" = ${church} AND ${allTerms(Prisma.sql`concat_ws(' ', d.nr || '/' || d."anRegistru", d.titlu, d.persoana, d.catre)`, terms, docTypes)}
+            WHERE d."churchId" = ${church} AND (d.confidential = false OR ${permissions.disciplina(ctx.user)})
+              AND ${allTerms(Prisma.sql`concat_ws(' ', d.nr || '/' || d."anRegistru", d.titlu, d.persoana, d.catre)`, terms, docTypes)}
             ORDER BY d.data DESC, d.nr DESC LIMIT ${limit}`,
         )
         .then((rows) => ({

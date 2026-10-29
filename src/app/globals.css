@@ -2627,6 +2627,94 @@
     }
   }
 
+  /* GENERATED-EDIT: the editor of a generated document; the preview beside it from 1024 px, behind
+     „Previzualizare” below (src/app/(app)/editare-document/generated-editor.tsx). */
+  .gen-switch {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .gen-switch[hidden],
+  .gen-edit[hidden],
+  .gen-preview[hidden] {
+    display: none;
+  }
+  .gen-switch .btn.is-on {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .gen-edit,
+  .gen-block,
+  .gen-block > *,
+  .gen-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .gen-block input {
+    width: 100%;
+  }
+  .gen-block-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .gen-blocks {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .gen-table-scroll {
+    /* The containing block of the header's screen-reader label (absolute), so it scrolls with the table. */
+    position: relative;
+    max-width: 100%;
+    overflow-x: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .gen-table table {
+    border-collapse: collapse;
+  }
+  .gen-table td,
+  .gen-table th {
+    padding: 2px;
+  }
+  .gen-table td input,
+  .gen-table th input {
+    min-width: 7rem;
+  }
+  .gen-table th input {
+    font-weight: 600;
+  }
+  .gen-preview .preview-frame {
+    display: block;
+    width: 100%;
+    height: 75vh;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+  }
+  @media (min-width: 1024px) {
+    .gen-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .gen-preview {
+      position: sticky;
+      top: 16px;
+    }
+    .gen-preview .preview-frame {
+      height: calc(100vh - 96px);
+    }
+  }
+  .generated-saved {
+    margin-top: 4px;
+  }
+
   /* Statistici: SVG charts and tables (src/components/charts.tsx). */
   .chart {
     margin: 0 0 12px;

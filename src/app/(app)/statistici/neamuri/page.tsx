@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
@@ -19,9 +20,7 @@ export default async function NeamuriPage() {
     <>
       <BackLink href="/statistici">Statistici</BackLink>
       <PageHead title="Neamuri" sub="Rude din registru (părinți, copii și căsătorii) din cel puțin două familii">
-        <SortAwareDownload file="/pdf/neamuri" params={{}} filename="neamuri.pdf" mime={MIME.pdf} inline>
-          Descarcă PDF
-        </SortAwareDownload>
+        <GeneratedActions ctx={ctx} kind="neamuri" params={{}} fileName="neamuri" />
         <SortAwareDownload file="/api/statistici/neamuri" params={{}} filename="neamuri.xlsx" mime={MIME.xlsx}>
           Exportă (Excel)
         </SortAwareDownload>

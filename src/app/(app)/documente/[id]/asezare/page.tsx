@@ -1,3 +1,4 @@
+import { visibleDocument } from "@/server/confidential-documents";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LayoutEditor } from "@/components/layout-editor";
@@ -18,7 +19,7 @@ export default async function DocumentLayoutPage({ params }: PageProps<"/documen
   if (!idSchema.safeParse(id).success) notFound();
   const ctx = await requireCtx("write");
   const [doc, church] = await Promise.all([
-    ctx.db.document.findUnique({ where: { id }, select: { id: true, nr: true, anRegistru: true, tip: true, titlu: true, layout: true } }),
+    ctx.db.document.findUnique({ where: { id }, select: { id: true, nr: true, anRegistru: true, tip: true, titlu: true, layout: true, confidential: true } }).then((d) => visibleDocument(ctx.user, d)),
     getChurch(ctx),
   ]);
   if (!doc) notFound();

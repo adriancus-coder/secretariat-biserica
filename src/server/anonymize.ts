@@ -44,6 +44,9 @@ export async function scrubPersonTraces(tx: Tx, churchId: string, needles: reado
       WHERE "churchId" = ${churchId} AND strpos("responsabil" || "agapaResponsabil" || "invitat" || "descriere" || "titlu", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "event_contributions" c SET "cine" = replace(c."cine", ${n}, ${r}), "ce" = replace(c."ce", ${n}, ${r})
       FROM "events" e WHERE e."id" = c."eventId" AND e."churchId" = ${churchId} AND strpos(c."cine" || c."ce", ${n}) > 0`;
+    // GENERATED-EDIT: a saved (unregistered) version naming the person goes; a registered act stays (official record).
+    await tx.$executeRaw`DELETE FROM "generated_documents"
+      WHERE "churchId" = ${churchId} AND "documentId" IS NULL AND strpos("blocks"::text || "titlu", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "event_persons" SET "numeLiber" = ''
       WHERE "churchId" = ${churchId} AND "numeLiber" <> '' AND strpos("numeLiber", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "groups" SET "responsabil" = replace("responsabil", ${n}, ${r}), "descriere" = replace("descriere", ${n}, ${r})
@@ -96,6 +99,12 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.personRole.deleteMany({ where: { personId: id } });
     await tx.personAlias.deleteMany({ where: { personId: id } });
     // Disciplinary measures are deleted with the identity (Statut art. 27; administrators only).
+    // GENERATED-EDIT: the saved versions of the person's disciplinary documents (not the registered acts).
+    const measureIds = (await tx.disciplinaryMeasure.findMany({ where: { personId: id }, select: { id: true } })).map((m) => m.id);
+    if (measureIds.length)
+      await tx.generatedDocument.deleteMany({
+        where: { documentId: null, sourceKey: { in: measureIds.flatMap((m) => ["convocare", "comunicare", "informare", "proces-verbal"].map((k) => `disciplina-${k}:${m}`)) } },
+      });
     await tx.disciplinaryMeasure.deleteMany({ where: { personId: id } });
     // Campaign data: the consents, the personal links and the submissions (which hold the typed data).
     await tx.consent.deleteMany({ where: { OR: [{ personId: id }] } });

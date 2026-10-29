@@ -14,6 +14,7 @@ import { permissions } from "@/lib/permissions";
 import { syncKinship } from "./kinship-sync";
 import { storedLayout } from "@/lib/page-layout";
 import "server-only";
+import { visibleDocumentsWhere } from "./confidential-documents";
 import { randomUUID } from "node:crypto";
 import { normalizeDocumentNumbers, type Backup, type BDocument } from "@/domain/backup";
 import { Prisma } from "@/generated/prisma/client";
@@ -21,6 +22,7 @@ import type { BApplication } from "@/lib/application-backup";
 import { exportedState, type DocumentExtra } from "@/lib/document-backup";
 import type { GroupExtra } from "@/lib/group-backup";
 import type { EventExtra } from "@/lib/event-backup";
+import { GENERATED_ID_SOURCE, isDisciplineKind, remapGeneratedKey, type BGenerated } from "@/lib/generated-backup";
 import type { EventPersonRole } from "@/lib/event-persons";
 import type { BCommittee, MeetingExtra } from "@/lib/meeting-backup";
 import { DEFAULT_CLOSING, pointsText, splitDecisions } from "@/lib/minutes";
@@ -131,7 +133,8 @@ export async function loadBackup(ctx: Ctx): Promise<Backup> {
     ctx.db.person.findMany({ orderBy: [{ sortKey: "asc" }, { id: "asc" }], include: { family: { select: { nume: true } } } }),
     ctx.db.meeting.findMany({ ...byName, include: { prezenti: { where: { status: "PRESENT" }, select: { personId: true } } } }),
     ctx.db.event.findMany({ ...byName, include: { contributii: { orderBy: { pozitie: "asc" } } } }),
-    ctx.db.document.findMany({ orderBy: [{ anRegistru: "asc" }, { nr: "asc" }] }),
+    // GENERATED-EDIT: registered disciplinary acts only in the files of users with `disciplina`.
+    ctx.db.document.findMany({ where: visibleDocumentsWhere(ctx.user), orderBy: [{ anRegistru: "asc" }, { nr: "asc" }] }),
     ctx.db.group.findMany({ ...byName, include: { membri: { select: { personId: true } } } }),
     ctx.db.note.findMany(byName),
     ctx.db.church.findUniqueOrThrow({ where: { id: ctx.user.churchId } }),
@@ -433,13 +436,13 @@ export async function loadEventExtras(ctx: Ctx): Promise<Map<string, EventExtra>
 /** Document id → the fields beyond the prototype's format (rich text, own layout), for the export. */
 export async function loadDocumentExtras(ctx: Ctx): Promise<Map<string, DocumentExtra>> {
   const rows = await ctx.db.document.findMany({
-    where: { OR: [{ textRich: { not: Prisma.DbNull } }, { layout: { not: Prisma.DbNull } }, { stare: { not: "APROBAT" } }] },
-    select: { id: true, textRich: true, layout: true, stare: true, motivRespingere: true },
+    where: { OR: [{ textRich: { not: Prisma.DbNull } }, { layout: { not: Prisma.DbNull } }, { stare: { not: "APROBAT" } }, { confidential: true }], ...visibleDocumentsWhere(ctx.user) },
+    select: { id: true, textRich: true, layout: true, stare: true, motivRespingere: true, confidential: true },
   });
   const out = new Map<string, DocumentExtra>();
   for (const r of rows) {
     const doc = storedRich(r.textRich);
-    out.set(r.id, { ...(doc ? { textRich: doc } : {}), ...(r.layout ? { asezare: storedLayout(r.layout) } : {}), ...exportedState(r.stare, r.motivRespingere) });
+    out.set(r.id, { ...(doc ? { textRich: doc } : {}), ...(r.layout ? { asezare: storedLayout(r.layout) } : {}), ...exportedState(r.stare, r.motivRespingere), ...(r.confidential ? { confidential: true as const } : {}) });
   }
   return out;
 }
@@ -477,6 +480,8 @@ export interface ImportExtras {
   meetings?: ReadonlyMap<string, MeetingExtra>;
   /** Document id → the rich text, as in the file (see parseDocumentExtras). */
   documents?: ReadonlyMap<string, DocumentExtra>;
+  /** GENERATED-EDIT: the saved versions of generated documents (see parseGeneratedJson); null = not in the file. */
+  generated?: BGenerated[] | null;
   /** Event id → its family and persons, as in the file (see parseEventExtras). */
   events?: ReadonlyMap<string, EventExtra>;
   /** Group id → the linked roles, as in the file (see parseGroupExtras). */
@@ -582,6 +587,8 @@ async function chunked<T>(items: T[], size: number, fn: (chunk: T[]) => Promise<
  */
 export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, extras: ImportExtras = {}): Promise<ImportSummary> {
   const churchId = ctx.user.churchId;
+  // GENERATED-EDIT: registered disciplinary acts are imported only by users with `disciplina`.
+  if (!permissions.disciplina(ctx.user)) backup = { ...backup, documents: backup.documents.filter((d) => !extras.documents?.get(d.id)?.confidential) };
   const applications = extras.applications ?? null;
   const rolesIn = extras.roles ?? null;
   const famIn = extras.families ?? null;
@@ -591,13 +598,14 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       if (mode === "replace") {
         if (applications) await tx.application.deleteMany({});
         if (extras.correspondence) await tx.correspondence.deleteMany({});
+        if (extras.generated) await tx.generatedDocument.deleteMany(permissions.disciplina(ctx.user) ? {} : { where: { kind: { notIn: ["disciplina-convocare", "disciplina-comunicare", "disciplina-informare", "disciplina-proces-verbal"] } } });
         if (extras.assets) await tx.asset.deleteMany({});
         if (extras.assetSubcategories) await tx.assetSubcategory.deleteMany({});
         if (rolesIn?.roles) await tx.churchRole.deleteMany({});
         if (rolesIn?.groups) await tx.roleGroup.deleteMany({ where: { roles: { none: {} } } });
         await tx.family.deleteMany({});
         await tx.note.deleteMany({});
-        await tx.document.deleteMany({});
+        await tx.document.deleteMany({ where: visibleDocumentsWhere(ctx.user) });
         await tx.group.deleteMany({});
         await tx.event.deleteMany({});
         await tx.meeting.deleteMany({});
@@ -915,6 +923,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         await tx.person.update({ where: { id: personId }, data: { intrareMeetingId: meetingOf(r.intrarePv), iesireMeetingId: meetingOf(r.iesirePv) } });
       }
 
+      const disciplineIds = new Map<string, string>();
+      const campaignIds = new Map<string, string>();
       // Disciplinary measures (only an administrator imports; only an administrator's file carries them).
       // Only someone with access to discipline (Statut art. 44 lit. d) imports it; for others it is skipped silently.
       for (const d of permissions.disciplina(ctx.user) ? (extras.discipline ?? []) : []) {
@@ -922,6 +932,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (!personId) continue;
         const plan = await planIds(tx, TABLES.discipline, [d.id], churchId);
         const id = plan.map.get(d.id)!;
+        disciplineIds.set(d.id, id);
         const data = {
           personId,
           forma: d.forma,
@@ -953,6 +964,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       for (const c of extras.campaigns ?? []) {
         const plan = await planIds(tx, TABLES.campaigns, [c.id], churchId);
         const id = plan.map.get(c.id)!;
+        campaignIds.set(c.id, id);
         const data = { nume: c.nume, deadline: toDbDate(c.deadline)!, status: c.stare, privacyTextVersion: c.versiuneNota };
         if (plan.existing.has(c.id)) await tx.dataCampaign.update({ where: { id }, data });
         else await tx.dataCampaign.create({ data: { ...data, id, churchId, generalLinkEnabled: false, createdById: ctx.user.id } });
@@ -1065,6 +1077,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         // Issued documents (no state in the file) are approved; signatures are not imported.
         stare: (extra?.stare ?? "APROBAT") as "CIORNA" | "RESPINS" | "APROBAT",
         motivRespingere: extra?.motivRespingere ?? "",
+        // Changed only by a user with `disciplina` (anyone else leaves an existing act as it is).
+        ...(permissions.disciplina(ctx.user) ? { confidential: Boolean(extra?.confidential) } : {}),
         };
       };
       // Actualizările întâi pe numere temporare negative, ca să nu se ciocnească între ele.
@@ -1372,6 +1386,39 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           }
           if (skipped) warnings.push(`${skipped} poze ale patrimoniului nu au fost importate (imagine nevalidă, cel mult ${PHOTOS_PER_ASSET} pe bun sau limita de ${mb(PHOTOS_CHURCH_QUOTA)} MB).`);
         }
+      }
+
+      // GENERATED-EDIT: the saved versions of generated documents, their keys pointing to the imported records.
+      if (extras.generated?.length) {
+        const exists = async (collection: "events" | "groups" | "campaigns" | "discipline", id: string) =>
+          Boolean(
+            await (collection === "events"
+              ? tx.event.findFirst({ where: { id }, select: { id: true } })
+              : collection === "groups"
+                ? tx.group.findFirst({ where: { id }, select: { id: true } })
+                : collection === "campaigns"
+                  ? tx.dataCampaign.findFirst({ where: { id }, select: { id: true } })
+                  : tx.disciplinaryMeasure.findFirst({ where: { id }, select: { id: true } })),
+          );
+        const maps = { events: evs.map, groups: grs.map, campaigns: campaignIds, discipline: disciplineIds };
+        let skipped = 0;
+        for (const g of extras.generated) {
+          if (isDisciplineKind(g.tip) && !permissions.disciplina(ctx.user)) continue;
+          const collection = GENERATED_ID_SOURCE[g.tip];
+          const fileId = g.cheie.split(":")[1] ?? "";
+          const target = collection ? (maps[collection].get(fileId) ?? fileId) : null;
+          const key = remapGeneratedKey(g, () => target);
+          if (!key || (collection && !(await exists(collection, target!)))) {
+            skipped++;
+            continue;
+          }
+          const documentId = g.document ? (docs.map.get(g.document) ?? null) : null;
+          const data = { kind: g.tip, titlu: g.titlu, blocks: g.blocuri as object, layout: g.asezare ? (g.asezare as object) : Prisma.DbNull, sourceHash: g.amprenta, documentId, updatedById: ctx.user.id };
+          const existing = await tx.generatedDocument.findFirst({ where: { sourceKey: key }, select: { id: true } });
+          if (existing) await tx.generatedDocument.update({ where: { id: existing.id }, data });
+          else await tx.generatedDocument.create({ data: { ...data, sourceKey: key, churchId, createdById: ctx.user.id } });
+        }
+        if (skipped) warnings.push(`Versiuni editate ale documentelor generate lăsate deoparte (sursa lor nu există în această biserică): ${skipped}.`);
       }
 
       // KINSHIP-AUTO: the imported families give their links too (the same check as after any family change).

@@ -1,4 +1,5 @@
 import "server-only";
+import { visibleDocumentsWhere } from "@/server/confidential-documents";
 import { contactRestricted } from "@/lib/contact-access";
 import type { RoleKey } from "@/lib/labels";
 import type { Prisma } from "@/generated/prisma/client";
@@ -288,7 +289,7 @@ export async function getPersonDetail(ctx: Ctx, id: string) {
     ctx.db.note.findMany({ where: { personId: id }, orderBy: [{ data: "desc" }, { createdAt: "desc" }], take: 5 }),
     ctx.db.note.count({ where: { personId: id } }),
     ctx.db.document.findMany({
-      where: { personId: id },
+      where: { personId: id, ...visibleDocumentsWhere(ctx.user) },
       orderBy: [{ data: "desc" }, { nr: "desc" }],
       select: { id: true, nr: true, anRegistru: true, data: true, titlu: true, tip: true },
     }),

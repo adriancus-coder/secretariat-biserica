@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -82,9 +83,7 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
                 <DownloadLink file={qrPng!} filename="cod-qr-actualizare-date.png" mime={MIME.png} className="btn btn-sm">
                   Descarcă PNG
                 </DownloadLink>
-                <DownloadLink file={`/pdf/afis-actualizare/${c.id}`} filename="afis-actualizare.pdf" mime={MIME.pdf} inline className="btn btn-sm">
-                  Afiș A5 (PDF)
-                </DownloadLink>
+                <GeneratedActions ctx={ctx} kind="afis-actualizare" params={{ id: c.id }} fileName="afis-actualizare" className="btn btn-sm" label="Afiș A5 (previzualizează și editează)" />
               </div>
               <p className="hint">Formularul se deschide gol pentru oricine; răspunsurile ajung la „De verificat”.</p>
             </div>
@@ -149,9 +148,7 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
             Exportă situația acordurilor
           </Link>
         ) : null}
-        <DownloadLink file="/pdf/formular-acorduri" filename="formular-acorduri.pdf" mime={MIME.pdf} inline className="btn btn-sm mt-2 ml-2">
-          Formular pe hârtie (PDF)
-        </DownloadLink>
+        <GeneratedActions ctx={ctx} kind="formular-acorduri" params={{}} fileName="formular-acorduri" className="btn btn-sm mt-2 ml-2" label="Formular pe hârtie (previzualizează și editează)" />
       </div>
 
       <form method="get" className="toolbar items-center">

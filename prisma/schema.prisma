@@ -132,6 +132,7 @@ model Church {
   assetPhotos           AssetPhoto[]
   assetSubcategories    AssetSubcategory[]
   eventPersons          EventPerson[]
+  generatedDocuments    GeneratedDocument[]
 
   @@map("churches")
 }
@@ -195,6 +196,8 @@ model User {
   pushOff                String[]               @default([])
   documentSignatures     DocumentSignature[]
   documentsApproved      Document[]             @relation("DocumentApprovedBy")
+  generatedCreated       GeneratedDocument[]    @relation("GeneratedCreatedBy")
+  generatedUpdated       GeneratedDocument[]    @relation("GeneratedUpdatedBy")
   applicationsProposed   Application[]          @relation("ApplicationProposedBy")
   personProposalsMade    PersonProposal[]       @relation("PersonProposalProposedBy")
   personProposalsDecided PersonProposal[]       @relation("PersonProposalDecidedBy")
@@ -1132,6 +1135,9 @@ model Document {
   tip               DocumentType
   /// A recommendation issued during a disciplinary investigation under the domicile exception (Statut art. 27 alin. 6).
   exceptieDomiciliu Boolean      @default(false)
+  /// GENERATED-EDIT: a registered disciplinary act (convocation, communication, notice): only users with the
+  /// `disciplina` permission see it (lists, register, search, backup); its page and files ask for the step-up.
+  confidential      Boolean      @default(false)
   /// Numărul de înregistrare; unic pe biserică și an.
   nr                Int
   /// Anul registrului (anul din `data`), folosit pentru numerotarea pe an.
@@ -1166,6 +1172,7 @@ model Document {
   motivRespingere  String              @default("")
   signatures       DocumentSignature[]
   correspondence   Correspondence[]
+  generated        GeneratedDocument[]
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
@@ -1421,6 +1428,8 @@ enum AuditEntity {
   PASTORAL
   /// The weekly prayer: marked / cancelled / message copied, never a family's name.
   PRAYER
+  /// GENERATED-EDIT: an edited version of a generated document saved / remade from data (never its content).
+  GENERATED
 }
 
 enum AuditAction {
@@ -1673,4 +1682,35 @@ model KinProposalIgnore {
 
   @@unique([churchId, key])
   @@map("kin_proposal_ignores")
+}
+
+/// GENERATED-EDIT: the edited and saved version of a document the app generates (event sheet, statistics,
+/// inventory, register, posters, disciplinary acts…): one per source (`sourceKey`, e.g. "eveniment:<id>",
+/// "statistici:2026"). `blocks` holds the editor's model (src/lib/generated-blocks.ts: text blocks as they
+/// are, signatures / charts / pictures as references to the freshly generated document, never bytes);
+/// `sourceHash` is the fingerprint of the data when it was saved („Datele s-au schimbat de la editare”).
+model GeneratedDocument {
+  id          String    @id @default(cuid())
+  churchId    String
+  church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  kind        String
+  sourceKey   String
+  titlu       String    @default("")
+  blocks      Json
+  layout      Json?
+  sourceHash  String
+  /// A registered official act (disciplinary convocation…): the numbered document; the version is then read-only.
+  documentId  String?
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?     @relation("GeneratedCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?     @relation("GeneratedUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([churchId, sourceKey])
+  @@index([churchId])
+  @@index([documentId])
+  @@map("generated_documents")
 }

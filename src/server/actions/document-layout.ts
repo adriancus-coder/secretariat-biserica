@@ -11,6 +11,7 @@ import { prisma } from "../db";
 import { getChurch } from "../queries/church";
 import { actionCtx, ActionError } from "../session";
 import { parseOrThrow, runFormAction } from "./run";
+import { visibleDocument } from "../confidential-documents";
 
 /**
  * "Așezare în pagină" of a registered document, like the minutes'. The button pressed (`scop`):
@@ -23,7 +24,7 @@ export async function saveDocumentLayoutAction(documentId: string, _prev: FormSt
     const scop = String(formData.get("scop") ?? "pv");
     const ctx = await actionCtx(scop === "implicit" ? "admin" : "write");
     parseOrThrow(idSchema, documentId);
-    const doc = await ctx.db.document.findUnique({ where: { id: documentId }, select: { id: true, nr: true, anRegistru: true, tip: true, titlu: true, layout: true } });
+    const doc = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: documentId }, select: { id: true, nr: true, anRegistru: true, tip: true, titlu: true, layout: true, confidential: true } }));
     if (!doc) throw new ActionError("Documentul nu mai există în registru.");
     const church = await getChurch(ctx);
     const label = `Nr. ${doc.nr}/${doc.anRegistru} — ${doc.titlu || DOCUMENT_TYPE_LABEL[doc.tip]}`;

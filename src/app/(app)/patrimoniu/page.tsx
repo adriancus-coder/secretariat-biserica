@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -9,6 +10,7 @@ import { EmptyState, PageHead } from "@/components/ui/page-head";
 import { hrefWith, stringParam } from "@/components/ui/pager";
 import { SearchBox } from "@/components/ui/search-box";
 import { fmt } from "@/lib/format";
+import { todayIso } from "@/lib/dates";
 import {
   ASSET_COLUMNS,
   ASSET_DEFAULT_SORT,
@@ -110,9 +112,7 @@ export default async function PatrimonyPage({ searchParams }: PageProps<"/patrim
         </Suspense>
       </div>
       <div className="flex flex-wrap gap-2 mb-3">
-        <SortAwareDownload file="/pdf/patrimoniu" params={params} filename="inventar.pdf" mime={MIME.pdf} inline>
-          Descarcă PDF (cu semnături)
-        </SortAwareDownload>
+        <GeneratedActions ctx={ctx} kind="patrimoniu" params={params} fileName={`inventar-${todayIso()}`} />
         <SortAwareDownload file="/pdf/patrimoniu" params={{ ...params, poze: "1" }} filename="inventar.pdf" mime={MIME.pdf} inline>
           PDF cu poze
         </SortAwareDownload>

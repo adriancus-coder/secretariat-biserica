@@ -1,4 +1,5 @@
 import "server-only";
+import { visibleDocument, visibleDocumentsWhere } from "@/server/confidential-documents";
 import { defaultDocumentTitle, generateDocumentText } from "@/domain/documents";
 import { fromDbDate } from "@/lib/dates";
 import type { DocumentTypeKey } from "@/lib/labels";
@@ -17,10 +18,10 @@ import { hasActivePastor } from "../pastor-approval";
 export const DOCUMENTS_PAGE_SIZE = 30;
 
 export async function listDocuments(ctx: Ctx, { page, year }: { page: number; year: number | null }) {
-  const where = year ? { anRegistru: year } : {};
+  const where = { ...(year ? { anRegistru: year } : {}), ...visibleDocumentsWhere(ctx.user) };
   const [total, years] = await Promise.all([
     ctx.db.document.count({ where }),
-    ctx.db.document.groupBy({ by: ["anRegistru"], _count: { _all: true } }),
+    ctx.db.document.groupBy({ by: ["anRegistru"], where: visibleDocumentsWhere(ctx.user), _count: { _all: true } }),
   ]);
   const pages = Math.max(1, Math.ceil(total / DOCUMENTS_PAGE_SIZE));
   const current = Math.min(Math.max(1, page), pages);
@@ -44,7 +45,7 @@ export async function listDocuments(ctx: Ctx, { page, year }: { page: number; ye
 /** "De semnat": documents sent to the pastor and waiting for approval, oldest first. */
 export async function documentsToSign(ctx: Ctx) {
   const rows = await ctx.db.document.findMany({
-    where: { stare: "DE_SEMNAT" },
+    where: { stare: "DE_SEMNAT", ...visibleDocumentsWhere(ctx.user) },
     orderBy: [{ trimisLaSemnatLa: "asc" }, { nr: "asc" }],
     select: { id: true, tip: true, nr: true, anRegistru: true, data: true, titlu: true, persoana: true, catre: true, trimisLaSemnatLa: true },
   });
@@ -52,7 +53,7 @@ export async function documentsToSign(ctx: Ctx) {
 }
 
 export async function getDocument(ctx: Ctx, id: string) {
-  const d = await ctx.db.document.findUnique({ where: { id } });
+  const d = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id } }));
   if (!d) return null;
   // Without a pastor in the app there is no approval: the document is issued as it is.
   const stare = (await hasActivePastor(ctx.user.churchId)) ? d.stare : ("APROBAT" as const);

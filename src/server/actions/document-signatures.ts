@@ -20,6 +20,7 @@ import { after } from "next/server";
 import { actionCtx, ActionError, getCurrentUser } from "../session";
 import { normalizeSignature, SignatureImageError } from "../signature-image";
 import { runFormAction } from "./run";
+import { visibleDocument } from "../confidential-documents";
 
 /**
  * Cont → "Semnătura mea": saves or replaces the user's signature (drawn or a PNG), normalised like
@@ -95,7 +96,7 @@ export async function signDocumentAction(documentId: string, role: SignatureRole
     if (!idSchema.safeParse(documentId).success || (role !== "PASTOR" && role !== "SECRETAR")) throw new ActionError("Document necunoscut.");
     if (!input || (input.mode !== "UNICA" && input.mode !== "SALVATA")) throw new ActionError("Semnătură invalidă.");
     // Through the church-scoped client: a document of another church is simply not found.
-    const doc = await ctx.db.document.findUnique({ where: { id: documentId }, select: { id: true, tip: true, nr: true, anRegistru: true, titlu: true, stare: true } });
+    const doc = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: documentId }, select: { id: true, tip: true, nr: true, anRegistru: true, titlu: true, stare: true, confidential: true } }));
     if (!doc) throw new ActionError("Documentul nu mai există.");
     // The pastor signs by approving; an approved document is changed only by editing it (back to a draft).
     if (role === "PASTOR") throw new ActionError("Pastorul semnează prin „Aprobă și semnează”.");
@@ -119,7 +120,7 @@ export async function sendToPastorAction(documentId: string): Promise<FormState>
   const state = await runFormAction(null, async () => {
     const ctx = await actionCtx("write");
     if (!idSchema.safeParse(documentId).success) throw new ActionError("Document necunoscut.");
-    const doc = await ctx.db.document.findUnique({ where: { id: documentId } });
+    const doc = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: documentId } }));
     if (!doc) throw new ActionError("Documentul nu mai există.");
     if (doc.stare !== "CIORNA" && doc.stare !== "RESPINS") throw new ActionError(doc.stare === "APROBAT" ? "Documentul este deja aprobat." : "Documentul a fost deja trimis pastorului.");
     const pastors = await prisma.user.findMany({ where: { churchId: ctx.user.churchId, isPastor: true, active: true }, select: { email: true } });
@@ -154,7 +155,7 @@ export async function approveDocumentAction(documentId: string, input: SignInput
     const ctx = await actionCtx("pastor");
     if (!idSchema.safeParse(documentId).success) throw new ActionError("Document necunoscut.");
     if (!input || (input.mode !== "UNICA" && input.mode !== "SALVATA")) throw new ActionError("Semnătură invalidă.");
-    const doc = await ctx.db.document.findUnique({ where: { id: documentId } });
+    const doc = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: documentId } }));
     if (!doc) throw new ActionError("Documentul nu mai există.");
     if (doc.stare !== "DE_SEMNAT") throw new ActionError("Documentul nu este trimis spre semnare.");
     const image = await signatureImage(ctx, doc.id, doc.tip, input);
@@ -186,7 +187,7 @@ export async function rejectDocumentAction(documentId: string, _prev: FormState,
     if (!idSchema.safeParse(documentId).success) throw new ActionError("Document necunoscut.");
     const motiv = String(formData.get("motiv") ?? "").trim().slice(0, 1000);
     if (!motiv) return { message: "Scrieți motivul respingerii.", errors: { motiv: "Scrieți motivul respingerii." } };
-    const doc = await ctx.db.document.findUnique({ where: { id: documentId } });
+    const doc = visibleDocument(ctx.user, await ctx.db.document.findUnique({ where: { id: documentId } }));
     if (!doc) throw new ActionError("Documentul nu mai există.");
     if (doc.stare !== "DE_SEMNAT") throw new ActionError("Documentul nu este trimis spre semnare.");
     await ctx.db.$transaction(async (tx) => {

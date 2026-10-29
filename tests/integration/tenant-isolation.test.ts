@@ -322,6 +322,23 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await prisma.eventPerson.findUnique({ where: { id: r.id } })).toBeNull();
   });
 
+  it("saved versions of generated documents are isolated per church", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const g = await a.generatedDocument.create({ data: { kind: "statistici", sourceKey: "statistici:2026", blocks: [], sourceHash: "h" } as never });
+    expect(g.churchId).toBe(churchA);
+    expect(await b.generatedDocument.findUnique({ where: { id: g.id } })).toBeNull();
+    expect(await b.generatedDocument.findFirst({ where: { sourceKey: "statistici:2026" } })).toBeNull();
+    expect(await b.generatedDocument.count()).toBe(0);
+    expect((await b.generatedDocument.updateMany({ data: { titlu: "X" } })).count).toBe(0);
+    await expect(b.generatedDocument.delete({ where: { id: g.id } })).rejects.toMatchObject({ code: "P2025" });
+    // The same source key in another church is its own version.
+    const other = await b.generatedDocument.create({ data: { kind: "statistici", sourceKey: "statistici:2026", blocks: [], sourceHash: "h" } as never });
+    expect(other.churchId).toBe(churchB);
+    await a.generatedDocument.delete({ where: { id: g.id } });
+    await b.generatedDocument.delete({ where: { id: other.id } });
+  });
+
   it("kinship links are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

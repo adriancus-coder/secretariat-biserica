@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import Link from "next/link";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { PageHead } from "@/components/ui/page-head";
@@ -29,8 +30,6 @@ import { loadConsentStates } from "@/server/consents";
 import { daysSinceLastExport, EXPORT_REMINDER_DAYS, exportAgeText } from "@/server/queries/export-reminder";
 import { ChurchFamiliesStat } from "@/components/church-families-stat";
 import { OTHER_CHILDREN_HINT, OTHER_CHILDREN_LABEL, PRIETENI_LABEL } from "@/lib/labels";
-import { DownloadLink } from "@/components/ui/download";
-import { MIME } from "@/lib/download";
 
 /** A bar whose number opens the list of persons behind it. */
 function Bar({ label, n, width, warn, href }: { label: string; n: number; width: number; warn?: boolean; href?: string }) {
@@ -407,9 +406,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                 Dare de seamă {selectedYear}
               </Link>
             ) : (
-              <DownloadLink file={`/pdf/dare-de-seama?an=${selectedYear}`} filename={`dare-de-seama-${selectedYear}.pdf`} mime={MIME.pdf} inline className="btn btn-primary btn-sm">
-                Dare de seamă {selectedYear}
-              </DownloadLink>
+              <GeneratedActions ctx={ctx} kind="dare-de-seama" params={{ an: String(selectedYear) }} fileName={`dare-de-seama-${selectedYear}`} className="btn btn-primary btn-sm" label={`Dare de seamă ${selectedYear}`} />
             )}
           </form>
         </div>

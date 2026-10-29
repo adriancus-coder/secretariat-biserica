@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,8 +10,6 @@ import { permissions } from "@/lib/permissions";
 import { deleteGroupAction } from "@/server/actions/groups-notes";
 import { getGroup } from "@/server/queries/groups-notes";
 import { requireCtx } from "@/server/session";
-import { DownloadLink } from "@/components/ui/download";
-import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Grup" };
 
@@ -29,9 +28,7 @@ export default async function GroupPage({ params }: PageProps<"/grupuri/[id]">) 
     <>
       <BackLink href="/grupuri">Grupuri</BackLink>
       <PageHead title={g.nume}>
-        <DownloadLink file={`/pdf/grup/${g.id}`} filename="grup.pdf" mime={MIME.pdf} inline>
-          Tipărește lista (PDF)
-        </DownloadLink>
+        <GeneratedActions ctx={ctx} kind="grup" params={{ id: g.id }} fileName={`grup-${g.nume}`} />
         {canWrite ? (
           <Link href={`/grupuri/${g.id}/editare`} className="btn btn-primary">
             Editează

@@ -1,5 +1,6 @@
 "use client";
 
+import { GeneratedEditLink } from "@/components/generated/generated-links";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/shell/icons";
@@ -52,9 +53,9 @@ export function ApplicationLink({ url, slug, qrSvg, qrPng, open, emailConfigured
             </DownloadLink>
             <CopyButton text={url} label="Copiază linkul" className="btn" />
             <ShareButton url={url} />
-            <DownloadLink file="/pdf/afis-cerere" filename="afis-cerere.pdf" mime={MIME.pdf} inline>
-              Afiș PDF
-            </DownloadLink>
+            <GeneratedEditLink kind="afis-cerere" params={{}}>
+              Afiș PDF (previzualizează și editează)
+            </GeneratedEditLink>
             <SendLinkButton configured={emailConfigured} subject={subject} frame={frame} />
           </div>
         </div>

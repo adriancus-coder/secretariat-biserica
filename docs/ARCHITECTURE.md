@@ -36,7 +36,7 @@ tests/                  integration (tenant isolation, numbering, anonymisation,
 
 ## Data model
 
-Every church-owned table has a `churchId` column (42 models in total). The main relations:
+Every church-owned table has a `churchId` column (43 models in total). The main relations:
 
 ```mermaid
 erDiagram

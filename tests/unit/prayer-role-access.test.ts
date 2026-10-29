@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { GENERATED, isGeneratedKind } from "@/lib/generated-kinds";
 import { permissions, type Permission } from "@/lib/permissions";
 
 /**
@@ -31,11 +32,16 @@ const PERMISSION_NAMES = Object.keys(permissions) as Permission[];
 function guards(code: string): { perms: Permission[]; anyUser: boolean } {
   const perms: Permission[] = [];
   const named = (text: string) => [...text.matchAll(/"(\w+)"/g)].map((m) => m[1]).filter((n): n is Permission => (PERMISSION_NAMES as string[]).includes(n));
+  // GENERATED-EDIT: a guard taking the kind's permission (`requireCtx(meta.permission)`) asks for every kind's.
+  const kindPerms = Object.values(GENERATED).map((k) => k.permission);
   for (const m of code.matchAll(/\b(?:requireCtx|actionCtx|requirePermission)\(([^)]*)\)/g)) {
     const args = m[1].trim();
     if (!args) perms.push("read");
+    else if (/\.permission\b/.test(args)) perms.push(...kindPerms);
     else perms.push(...(named(args).length ? named(args) : named(code)));
   }
+  // A thin route `generatedRoute("<kind>", …)` holds the kind's guard (src/server/generated.ts).
+  for (const m of code.matchAll(/\bgeneratedRoute\("([\w-]+)"/g)) if (isGeneratedKind(m[1])) perms.push(GENERATED[m[1]].permission);
   // Code that loads the user itself must test a permission on it.
   const anyUser = /\b(getCurrentUser|requireUser)\(/.test(code);
   if (anyUser) for (const m of code.matchAll(/permissions\.(\w+)\(/g)) perms.push(m[1] as Permission);

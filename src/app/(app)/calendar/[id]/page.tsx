@@ -1,3 +1,4 @@
+import { GeneratedActions } from "@/components/generated/generated-actions";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,8 +14,6 @@ import { eventWithPersons } from "@/server/queries/event-persons";
 import { getEvent } from "@/server/queries/events";
 import { RegisterCard } from "./register-card";
 import { requireCtx } from "@/server/session";
-import { DownloadLink } from "@/components/ui/download";
-import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Eveniment" };
 
@@ -35,9 +34,7 @@ export default async function EventPage({ params }: PageProps<"/calendar/[id]">)
     <>
       <BackLink href={`/calendar?luna=${x.data.slice(0, 7)}&zi=${x.data}`}>Calendar</BackLink>
       <PageHead title={x.titlu} sub={x.tip}>
-        <DownloadLink file={`/pdf/eveniment/${x.id}`} filename="eveniment.pdf" mime={MIME.pdf} inline>
-          Tipărește (PDF)
-        </DownloadLink>
+        <GeneratedActions ctx={ctx} kind="eveniment" params={{ id: x.id }} fileName={`${x.data}-${x.titlu}`} />
         {canWrite ? (
           <Link href={`/calendar/${x.id}/editare`} className="btn btn-primary">
             Editează

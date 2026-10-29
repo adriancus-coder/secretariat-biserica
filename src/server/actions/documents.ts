@@ -23,6 +23,7 @@ import { actionCtx, ActionError, type Ctx } from "../session";
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 import { isUniqueViolation, parseOrThrow, runFormAction, ValidationError } from "./run";
 import { logError } from "../log";
+import { visibleDocument } from "../confidential-documents";
 
 const label = (d: { nr: number; anRegistru: number; titlu: string; tip: keyof typeof DOCUMENT_TYPE_LABEL }) =>
   `Nr. ${d.nr}/${d.anRegistru} — ${d.titlu || DOCUMENT_TYPE_LABEL[d.tip]}`;
@@ -95,7 +96,7 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
         await lockDocumentRegister(tx, ctx.user.churchId, anRegistru);
         const nr = input.nr ?? (await nextFreeNumber(tx, ctx.user.churchId, anRegistru));
         if (id) {
-          const before = auditView(await tx.document.findUnique({ where: { id } }));
+          const before = auditView(visibleDocument(ctx.user, await tx.document.findUnique({ where: { id } })));
           if (!before) throw new ActionError("Documentul nu mai există în registru.");
           // Numele persoanei rămâne cel de la emitere, dacă persoana nu s-a schimbat.
           const persoana = person ? (person.id === before.personId && before.persoana ? before.persoana : memberName(person)) : "";
@@ -179,7 +180,7 @@ export async function deleteDocumentAction(id: string): Promise<FormState> {
     const ctx = await actionCtx("write");
     parseOrThrow(idSchema, id);
     await ctx.db.$transaction(async (tx) => {
-      const before = auditView(await tx.document.findUnique({ where: { id } }));
+      const before = auditView(visibleDocument(ctx.user, await tx.document.findUnique({ where: { id } })));
       if (!before) throw new ActionError("Documentul nu mai există în registru.");
       await tx.document.delete({ where: { id } });
       await writeAudit(tx, ctx.user, {

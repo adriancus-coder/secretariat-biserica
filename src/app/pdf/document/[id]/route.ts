@@ -1,3 +1,4 @@
+import { hasStepUp } from "@/server/step-up";
 import { notFound } from "next/navigation";
 import { pageLayoutInput, pageLayoutSchema } from "@/lib/page-layout";
 import { pdfFileName, pdfResponse, renderPdf } from "@/server/pdf/render";
@@ -13,6 +14,9 @@ export async function GET(req: Request, { params }: RouteContext<"/pdf/document/
   // „previzualizare” e rută separată (POST); aici doar documente salvate.
   const [doc, church] = await Promise.all([getDocument(ctx, id), getChurch(ctx)]);
   if (!doc) notFound();
+  if (doc.confidential && !(await hasStepUp(ctx.user))) {
+    return new Response("Confirmați identitatea pe pagina documentului, apoi încercați din nou.", { status: 403, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
   // ?previzualizare=1 with the layout fields: the "Așezare în pagină" preview of unsaved changes.
   const sp = new URL(req.url).searchParams;
   const preview = sp.get("previzualizare") === "1" ? pageLayoutSchema.safeParse(pageLayoutInput(sp)) : null;

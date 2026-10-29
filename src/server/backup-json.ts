@@ -3,6 +3,8 @@ import { parsePrototypeJson, toPrototypeJson, type Backup } from "@/domain/backu
 import { aliasesToJson, parseAliasesJson } from "@/lib/aliases-backup";
 import { assetPhotosToJson, assetsToJson, assetSubcategoriesToJson, parseAssetPhotosJson, parseAssetsJson, parseAssetSubcategoriesJson } from "@/lib/asset-backup";
 import { correspondenceToJson, parseCorrespondenceJson } from "@/lib/correspondence-backup";
+import { generatedToJson, isDisciplineKind, parseGeneratedJson } from "@/lib/generated-backup";
+import { isGeneratedKind } from "@/lib/generated-kinds";
 import { externalParentsToJson, kinshipToJson, parseExternalParentsJson, parseKinshipJson } from "@/lib/kinship-backup";
 import { applicationsToJson, parseApplicationsJson } from "@/lib/application-backup";
 import { addMemberBaptism, parseMemberBaptism } from "@/lib/baptism-backup";
@@ -93,6 +95,10 @@ export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {})
       rudenii: kinshipToJson(kinship.links),
       parintiExterni: externalParentsToJson(kinship.externals),
       corespondenta: correspondenceToJson(await loadCorrespondence(ctx)),
+      // GENERATED-EDIT: the disciplinary versions only in the files of users with `disciplina`.
+      documenteGenerate: generatedToJson(
+        (await ctx.db.generatedDocument.findMany({ orderBy: { sourceKey: "asc" } })).filter((g) => !isGeneratedKind(g.kind) || !isDisciplineKind(g.kind) || permissions.disciplina(ctx.user)),
+      ),
       subcategoriiPatrimoniu: assetSubcategoriesToJson(await ctx.db.assetSubcategory.findMany({ orderBy: [{ categorie: "asc" }, { ordine: "asc" }] })),
       patrimoniu: assetsToJson(await loadAssetsForBackup(ctx)),
       // PATRIMONY-PHOTOS: only when asked ("Include pozele patrimoniului"): the file grows by about 4/3 of them.
@@ -144,6 +150,7 @@ export function parseImportJson(raw: unknown): ParsedImport {
       externalParents: parseExternalParentsJson(raw),
       committee: parseCommitteeJson(raw),
       correspondence: parseCorrespondenceJson(raw),
+      generated: parseGeneratedJson(raw),
       assets: parseAssetsJson(raw),
       assetPhotos: parseAssetPhotosJson(raw),
       assetSubcategories: parseAssetSubcategoriesJson(raw),

@@ -16,6 +16,8 @@ export interface DocumentExtra {
   /** Only a document not yet approved; a sent one comes back as a draft (to be sent again). */
   stare?: "CIORNA" | "RESPINS";
   motivRespingere?: string;
+  /** GENERATED-EDIT: a registered disciplinary act; only in the files (and imports) of users with `disciplina`. */
+  confidential?: true;
 }
 
 /** The exported state of a document: nothing for an approved one. */
@@ -34,6 +36,7 @@ export function addDocumentExtras(documents: Record<string, Record<string, unkno
     if (x.asezare) d.asezare = x.asezare;
     if (x.stare) d.stare = x.stare;
     if (x.motivRespingere) d.motivRespingere = x.motivRespingere;
+    if (x.confidential) d.confidential = true;
   }
 }
 
@@ -59,7 +62,8 @@ export function parseDocumentExtras(root: unknown): Map<string, DocumentExtra> {
       x.stare = "RESPINS";
       if (typeof d.motivRespingere === "string" && d.motivRespingere.trim()) x.motivRespingere = d.motivRespingere.trim().slice(0, 1000);
     }
-    if (x.textRich || x.asezare || x.stare) out.set(String(d.id ?? key).trim(), x);
+    if (d.confidential === true) x.confidential = true;
+    if (x.textRich || x.asezare || x.stare || x.confidential) out.set(String(d.id ?? key).trim(), x);
   }
   return out;
 }

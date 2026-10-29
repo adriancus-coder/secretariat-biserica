@@ -47,7 +47,8 @@ export async function loadDataCopy(ctx: Ctx, personId: string, withDiscipline: b
       groups: { include: { group: { select: { nume: true } } } },
       aliases: { select: { alias: true } },
       application: { select: { createdAt: true, status: true, kind: true } },
-      documents: { select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
+      // A registered disciplinary act only with the discipline part of the copy.
+      documents: { where: withDiscipline ? {} : { confidential: false }, select: { nr: true, anRegistru: true, tip: true, data: true, titlu: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       correspondence: { select: { nr: true, an: true, data: true, directie: true, subiect: true }, orderBy: [{ data: "asc" }, { nr: "asc" }] },
       eventRoles: { select: { rol: true, aplicatInRegistruLa: true, event: { select: { titlu: true, tip: true, data: true } } } },
       meetings: { where: { status: "PRESENT" }, select: { meeting: { select: { tip: true, data: true, nr: true, anRegistru: true } } } },
