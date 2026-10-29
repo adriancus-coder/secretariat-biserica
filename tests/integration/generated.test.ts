@@ -130,12 +130,12 @@ describe.skipIf(!hasTestDb)("generated documents", () => {
     const target = await redirectOf(saveGeneratedAction("eveniment", p.toString(), {}, form({ blocks: JSON.stringify(blocks), scop: "salvare" })));
     expect(target).toContain("/editare-document?");
     const saved = (await savedVersion(secretar, generatedKey("eveniment", { id: ids.event })))!;
-    expect(saved.sourceHash).toBe(sourceHash(src.spec));
+    expect([saved.sourceHash, saved.hashVersion]).toEqual([sourceHash(src), 2]);
     expect(printToText(applyStored(src.spec, saved.blocks, saved.layout))).toContain("Program nou, editat");
     // The data change: the fingerprint differs (the page shows „Datele s-au schimbat”), nothing is overwritten.
     await prisma.event.update({ where: { id: ids.event }, data: { invitat: "Pastor Ionescu" } });
     const fresh = (await loadSource(secretar, "eveniment", p))!;
-    expect(sourceHash(fresh.spec)).not.toBe(saved.sourceHash);
+    expect(sourceHash(fresh)).not.toBe(saved.sourceHash);
     expect(printToText(applyStored(fresh.spec, (await savedVersion(secretar, saved.sourceKey))!.blocks, null))).toContain("Program nou, editat");
     // A viewer previews but does not save.
     current = viewer;

@@ -15,14 +15,16 @@ export interface BGenerated {
   blocuri: StoredBlock[];
   asezare: PageLayout | null;
   amprenta: string;
+  /** GENERATED-HASH-STABLE: 2 = the fingerprint of the source's data; absent (older files) = 1, of the printed text. */
+  versiuneAmprenta: number;
   document: string | null;
 }
 
-export function generatedToJson(rows: readonly { kind: string; sourceKey: string; titlu: string; blocks: unknown; layout: unknown; sourceHash: string; documentId: string | null }[]): BGenerated[] {
+export function generatedToJson(rows: readonly { kind: string; sourceKey: string; titlu: string; blocks: unknown; layout: unknown; sourceHash: string; hashVersion: number; documentId: string | null }[]): BGenerated[] {
   return rows.flatMap((r) => {
     const blocuri = storedBlocksOf(r.blocks);
     return isGeneratedKind(r.kind) && blocuri
-      ? [{ tip: r.kind, cheie: r.sourceKey, titlu: r.titlu, blocuri, asezare: r.layout ? storedLayout(r.layout) : null, amprenta: r.sourceHash, document: r.documentId }]
+      ? [{ tip: r.kind, cheie: r.sourceKey, titlu: r.titlu, blocuri, asezare: r.layout ? storedLayout(r.layout) : null, amprenta: r.sourceHash, versiuneAmprenta: r.hashVersion, document: r.documentId }]
       : [];
   });
 }
@@ -45,6 +47,7 @@ export function parseGeneratedJson(root: unknown): BGenerated[] | null {
       blocuri,
       asezare: typeof r.asezare === "object" && r.asezare !== null ? storedLayout(r.asezare) : null,
       amprenta: typeof r.amprenta === "string" ? r.amprenta.slice(0, 128) : "",
+      versiuneAmprenta: r.versiuneAmprenta === 2 ? 2 : 1,
       document: typeof r.document === "string" ? r.document.slice(0, 64) : null,
     });
   }

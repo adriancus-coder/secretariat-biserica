@@ -8,7 +8,7 @@ import { fixedLabel, toStored } from "@/lib/generated-blocks";
 import { canSaveGenerated, GENERATED, isGeneratedKind, kindParams } from "@/lib/generated-kinds";
 import { DOCUMENT_STATE_LABEL } from "@/lib/labels";
 import { DEFAULT_LAYOUT, storedLayout } from "@/lib/page-layout";
-import { loadSource, savedVersion, sourceHash } from "@/server/generated";
+import { loadSource, savedVersion, sourceHash, upgradeHash } from "@/server/generated";
 import { requireCtx } from "@/server/session";
 import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { GeneratedEditor } from "./generated-editor";
@@ -71,7 +71,7 @@ export default async function GeneratedEditPage({ searchParams }: PageProps<"/ed
           {saved.updatedBy ? ` de ${saved.updatedBy.name}` : ""}.
         </p>
       ) : null}
-      {saved && saved.sourceHash !== sourceHash(src.spec) && !registered ? (
+      {saved && (await upgradeHash(ctx, src, saved)) !== sourceHash(src) && !registered ? (
         <div className="alert mb-3" role="status">
           Datele s-au schimbat de la editare. Reface din date?
         </div>

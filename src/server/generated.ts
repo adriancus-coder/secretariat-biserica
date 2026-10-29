@@ -8,6 +8,7 @@ import { fromDbDate, todayIso } from "@/lib/dates";
 import { disciplinaryMinutesPrint, exclusionNoticePrint, hearingConvocationPrint, sanctionNoticePrint } from "@/lib/discipline-print";
 import { fmtL, memberName } from "@/lib/format";
 import { blocksFingerprintText, resolveStored, storedBlocksOf, type StoredBlock } from "@/lib/generated-blocks";
+import { asOfDay, stableJson } from "@/lib/source-data";
 import { GENERATED, generatedKey, kindParams, type GeneratedKind } from "@/lib/generated-kinds";
 import { neamPrint } from "@/lib/kinship-report";
 import { DISCIPLINARY_FORM_LABEL } from "@/lib/labels";
@@ -27,8 +28,9 @@ import { getCampaign } from "./queries/campaigns";
 import { getChurch } from "./queries/church";
 import { getEvent } from "./queries/events";
 import { getGroup } from "./queries/groups-notes";
-import { generateReportText } from "./queries/stats";
-import { loadStatistics } from "./queries/statistics";
+import { reportSource, reportTextOf } from "./queries/stats";
+import { statisticsFrom } from "./queries/statistics";
+import { loadCategoryInput } from "./queries/categories";
 import { requireCtx, type Ctx } from "./session";
 import { hasStepUp } from "./step-up";
 
@@ -49,6 +51,11 @@ export interface LoadedSource {
   backHref: string;
   /** An official act's person (the registered document's `persoana` / `catre`). */
   person?: { id: string; name: string };
+  /**
+   * GENERATED-HASH-STABLE: the data the document is made of, as read from the database (never the
+   * date of printing): its fingerprint tells whether a saved version is still current.
+   */
+  data: unknown;
 }
 
 const yearOf = (raw: string | null) => {
@@ -63,6 +70,21 @@ const sorted = (sp: URLSearchParams) => ({ sort: sp.get("sort"), dir: sp.get("di
 
 const FILTERS = ["filtru", "categorie", "sub", "q"] as const;
 
+/** The church's details a document prints (letterhead, signatures, the Comunitate). */
+const churchData = (c: Awaited<ReturnType<typeof getChurch>>) => ({
+  nume: c.nume,
+  adresa: c.adresa,
+  codPostal: c.codPostal,
+  localitate: c.localitate,
+  orgNr: c.orgNr,
+  telefon: c.telefon,
+  email: c.email,
+  pastor: c.pastor,
+  secretar: c.secretar,
+  comunitate: c.comunitate,
+  slug: c.slug,
+});
+
 type Loader = (ctx: Ctx, sp: URLSearchParams) => Promise<LoadedSource | null>;
 
 const LOADERS: Record<GeneratedKind, Loader> = {
@@ -71,8 +93,7 @@ const LOADERS: Record<GeneratedKind, Loader> = {
     if (!id) return null;
     const [e, church] = await Promise.all([getEvent(ctx, id), getChurch(ctx)]);
     if (!e) return null;
-    const spec = eventPrint(
-      {
+    const event = {
         titlu: e.titlu,
         data: e.data,
         ora: e.ora,
@@ -85,31 +106,41 @@ const LOADERS: Record<GeneratedKind, Loader> = {
         agapaResponsabil: e.agapaResponsabil,
         agapaPersoane: e.agapaPersoane,
         contributii: e.contributii,
-      },
-      church,
-    );
-    return { spec, key: generatedKey("eveniment", { id }), fileBase: `${e.data}-${e.titlu}`, backHref: `/calendar/${id}` };
+      };
+    const spec = eventPrint(event, church);
+    return { spec, key: generatedKey("eveniment", { id }), fileBase: `${e.data}-${e.titlu}`, backHref: `/calendar/${id}`, data: { event, church: churchData(church) } };
   },
   grup: async (ctx, sp) => {
     const id = validId(sp);
     if (!id) return null;
     const [g, church] = await Promise.all([getGroup(ctx, id), getChurch(ctx)]);
     if (!g) return null;
-    return { spec: groupPrint({ nume: g.nume, responsabil: g.responsabilName, membri: g.membri }, church), key: generatedKey("grup", { id }), fileBase: `grup-${g.nume}`, backHref: `/grupuri/${id}` };
+    const group = { nume: g.nume, responsabil: g.responsabilName, membri: g.membri };
+    return { spec: groupPrint(group, church), key: generatedKey("grup", { id }), fileBase: `grup-${g.nume}`, backHref: `/grupuri/${id}`, data: { group, church: churchData(church) } };
   },
   "dare-de-seama": async (ctx, sp) => {
     const year = yearOf(sp.get("an"));
-    const [text, church] = await Promise.all([generateReportText(ctx, year), getChurch(ctx)]);
-    return { spec: reportPrint(year, text, church), key: generatedKey("dare-de-seama", { an: year }), fileBase: `dare-de-seama-${year}`, backHref: `/?an=${year}` };
+    // The year is in the key; the data are the register's records (the current year's figures follow today).
+    const [source, church] = await Promise.all([reportSource(ctx, year), getChurch(ctx)]);
+    const spec = reportPrint(year, reportTextOf(source, todayIso()), church);
+    return { spec, key: generatedKey("dare-de-seama", { an: year }), fileBase: `dare-de-seama-${year}`, backHref: `/?an=${year}`, data: { source, church: churchData(church) } };
   },
   statistici: async (ctx, sp) => {
-    const [d, church] = await Promise.all([loadStatistics(ctx, requestedYear(sp.get("an"))), getChurch(ctx)]);
-    // The tables in the order the page shows them (?sort=<table>.<column>&dir=).
-    return { spec: statisticsPrint(d, church, sorted(sp)), key: generatedKey("statistici", { an: d.year }), fileBase: `statistici-${d.year}`, backHref: `/statistici?an=${d.year}` };
+    const [input, church] = await Promise.all([loadCategoryInput(ctx), getChurch(ctx)]);
+    const d = statisticsFrom(input, requestedYear(sp.get("an")), todayIso());
+    // The tables in the order the page shows them (?sort=<table>.<column>&dir=); the year is in the key.
+    return {
+      spec: statisticsPrint(d, church, sorted(sp)),
+      key: generatedKey("statistici", { an: d.year }),
+      fileBase: `statistici-${d.year}`,
+      backHref: `/statistici?an=${d.year}`,
+      // The register's records without the day of printing (`today` stays out of the fingerprint).
+      data: { year: d.year, input: { ...input, today: undefined }, church: churchData(church) },
+    };
   },
   neamuri: async (ctx, sp) => {
     const [kin, church] = await Promise.all([loadKinship(ctx.db), getChurch(ctx)]);
-    return { spec: neamPrint(kin.neamuri, church, sorted(sp)), key: generatedKey("neamuri", {}), fileBase: "neamuri", backHref: "/statistici/neamuri" };
+    return { spec: neamPrint(kin.neamuri, church, sorted(sp)), key: generatedKey("neamuri", {}), fileBase: "neamuri", backHref: "/statistici/neamuri", data: { neamuri: kin.neamuri, families: kin.families, church: churchData(church) } };
   },
   patrimoniu: async (ctx, sp) => {
     const today = todayIso();
@@ -124,6 +155,8 @@ const LOADERS: Record<GeneratedKind, Loader> = {
       key: withPhotos ? null : generatedKey("patrimoniu", Object.fromEntries(FILTERS.map((k) => [k, sp.get(k)]))),
       fileBase: `inventar-${today}${withPhotos ? "-cu-poze" : ""}`,
       backHref: `/patrimoniu${back.toString() ? `?${back}` : ""}`,
+      // The goods (not the inventory's date: the list does not depend on it), in a stable order.
+      data: { rows: [...rows].sort((a, b) => a.nrInventar - b.nrInventar), church: churchData(church) },
     };
   },
   corespondenta: async (ctx, sp) => {
@@ -133,18 +166,17 @@ const LOADERS: Record<GeneratedKind, Loader> = {
       key: generatedKey("corespondenta", { an, filtru: sp.get("filtru"), q: sp.get("q") }),
       fileBase: `registru-intrare-iesire-${an}`,
       backHref: `/corespondenta?an=${an}`,
+      data: { an, rows, church: churchData(church) },
     };
   },
-  "formular-acorduri": async (ctx) => ({
-    spec: consentFormPrint(await getChurch(ctx)),
-    key: generatedKey("formular-acorduri", {}),
-    fileBase: "formular-acorduri",
-    backHref: "/setari/actualizare-date",
-  }),
+  "formular-acorduri": async (ctx) => {
+    const church = await getChurch(ctx);
+    return { spec: consentFormPrint(church), key: generatedKey("formular-acorduri", {}), fileBase: "formular-acorduri", backHref: "/setari/actualizare-date", data: { church: churchData(church) } };
+  },
   "afis-cerere": async (ctx) => {
     const church = await getChurch(ctx);
     const url = await applicationUrl(church.slug);
-    return { spec: printApplicationPoster(church, url, await applicationQrPng(url, 800)), key: generatedKey("afis-cerere", {}), fileBase: `afis-cerere-${church.slug}`, backHref: "/setari#cerere" };
+    return { spec: printApplicationPoster(church, url, await applicationQrPng(url, 800)), key: generatedKey("afis-cerere", {}), fileBase: `afis-cerere-${church.slug}`, backHref: "/setari#cerere", data: { url, church: churchData(church) } };
   },
   "afis-actualizare": async (ctx, sp) => {
     const id = validId(sp);
@@ -155,7 +187,7 @@ const LOADERS: Record<GeneratedKind, Loader> = {
       title: "Actualizarea datelor",
       line: "Scanați codul cu telefonul pentru a vă verifica datele din evidența bisericii.",
     });
-    return { spec, key: generatedKey("afis-actualizare", { id }), fileBase: `afis-actualizare-${church.slug}`, backHref: `/setari/actualizare-date/${id}` };
+    return { spec, key: generatedKey("afis-actualizare", { id }), fileBase: `afis-actualizare-${church.slug}`, backHref: `/setari/actualizare-date/${id}`, data: { url: c.generalUrl, church: churchData(church) } };
   },
   "disciplina-convocare": async (ctx, sp) => {
     const id = validId(sp);
@@ -163,8 +195,16 @@ const LOADERS: Record<GeneratedKind, Loader> = {
     const m = await loadMeasureForPrint(ctx, id);
     if (!m || !m.audiereLa) return null;
     const church = await getChurch(ctx);
-    const spec = hearingConvocationPrint({ person: m.person, data: fromDbDate(m.audiereLa)!, ora: m.audiereOra, loc: m.audiereLoc, today: todayIso() }, church);
-    return { spec, key: generatedKey("disciplina-convocare", { id }), fileBase: `convocare-audiere-${m.person.nume}`, backHref: `/persoane/${m.personId}/disciplina`, person: { id: m.personId, name: memberName(m.person) } };
+    const hearing = { person: m.person, data: fromDbDate(m.audiereLa)!, ora: m.audiereOra, loc: m.audiereLoc };
+    const spec = hearingConvocationPrint({ ...hearing, today: todayIso() }, church);
+    return {
+      spec,
+      key: generatedKey("disciplina-convocare", { id }),
+      fileBase: `convocare-audiere-${m.person.nume}`,
+      backHref: `/persoane/${m.personId}/disciplina`,
+      person: { id: m.personId, name: memberName(m.person) },
+      data: { hearing, church: churchData(church) },
+    };
   },
   "disciplina-comunicare": async (ctx, sp) => {
     const id = validId(sp);
@@ -172,18 +212,17 @@ const LOADERS: Record<GeneratedKind, Loader> = {
     const m = await loadMeasureForPrint(ctx, id);
     if (!m || m.stare !== "APLICATA") return null;
     const church = await getChurch(ctx);
-    const spec = sanctionNoticePrint(
-      {
-        person: m.person,
-        sanctiune: DISCIPLINARY_FORM_LABEL[m.forma],
-        sedinta: m.pv,
-        temei: m.temei,
-        comunicatLa: fromDbDate(m.comunicatLa) ?? todayIso(),
-        comunitate: church.comunitate,
-      },
-      church,
-    );
-    return { spec, key: generatedKey("disciplina-comunicare", { id }), fileBase: `comunicare-sanctiune-${m.person.nume}`, backHref: `/persoane/${m.personId}/disciplina`, person: { id: m.personId, name: memberName(m.person) } };
+    // Not communicated yet: today's date is printed, the data keep the empty date.
+    const notice = { person: m.person, sanctiune: DISCIPLINARY_FORM_LABEL[m.forma], sedinta: m.pv, temei: m.temei, comunicatLa: fromDbDate(m.comunicatLa), comunitate: church.comunitate };
+    const spec = sanctionNoticePrint({ ...notice, comunicatLa: notice.comunicatLa ?? todayIso() }, church);
+    return {
+      spec,
+      key: generatedKey("disciplina-comunicare", { id }),
+      fileBase: `comunicare-sanctiune-${m.person.nume}`,
+      backHref: `/persoane/${m.personId}/disciplina`,
+      person: { id: m.personId, name: memberName(m.person) },
+      data: { notice, church: churchData(church) },
+    };
   },
   "disciplina-informare": async (ctx, sp) => {
     const id = validId(sp);
@@ -198,17 +237,16 @@ const LOADERS: Record<GeneratedKind, Loader> = {
     if (!m || m.forma !== "EXCLUDERE") return null;
     const church = await getChurch(ctx);
     const pv = m.meeting ? `${m.meeting.nr !== null ? `PV nr. ${m.meeting.nr}/${m.meeting.anRegistru}` : "procesul-verbal"} din ${fmtL(fromDbDate(m.meeting.data)!)}` : "";
-    const spec = exclusionNoticePrint(
-      {
-        person: { ...m.person, dataNasterii: fromDbDate(m.person.dataNasterii) },
-        data: fromDbDate(m.dataInceput)!,
-        procesVerbal: pv,
-        today: todayIso(),
-        comunitate: church.comunitate,
-      },
-      church,
-    );
-    return { spec, key: generatedKey("disciplina-informare", { id }), fileBase: `informare-excludere-${m.person.nume}`, backHref: `/persoane/${m.personId}/disciplina`, person: { id: m.personId, name: memberName(m.person) } };
+    const exclusion = { person: { ...m.person, dataNasterii: fromDbDate(m.person.dataNasterii) }, data: fromDbDate(m.dataInceput)!, procesVerbal: pv, comunitate: church.comunitate };
+    const spec = exclusionNoticePrint({ ...exclusion, today: todayIso() }, church);
+    return {
+      spec,
+      key: generatedKey("disciplina-informare", { id }),
+      fileBase: `informare-excludere-${m.person.nume}`,
+      backHref: `/persoane/${m.personId}/disciplina`,
+      person: { id: m.personId, name: memberName(m.person) },
+      data: { exclusion, church: churchData(church) },
+    };
   },
   "disciplina-proces-verbal": async (ctx, sp) => {
     const id = validId(sp);
@@ -216,8 +254,7 @@ const LOADERS: Record<GeneratedKind, Loader> = {
     const m = await loadMeasureForPrint(ctx, id);
     if (!m || m.stare === "CERCETARE" || !m.meetingId) return null;
     const church = await getChurch(ctx);
-    const spec = disciplinaryMinutesPrint(
-      {
+    const minutes = {
         person: m.person,
         sedinta: m.pv,
         abatere: m.abatere,
@@ -227,10 +264,16 @@ const LOADERS: Record<GeneratedKind, Loader> = {
         incadrare: m.incadrare,
         temei: m.temei,
         comunitate: church.comunitate,
-      },
-      church,
-    );
-    return { spec, key: generatedKey("disciplina-proces-verbal", { id }), fileBase: `pv-disciplinar-${m.person.nume}`, backHref: `/persoane/${m.personId}/disciplina`, person: { id: m.personId, name: memberName(m.person) } };
+      };
+    const spec = disciplinaryMinutesPrint(minutes, church);
+    return {
+      spec,
+      key: generatedKey("disciplina-proces-verbal", { id }),
+      fileBase: `pv-disciplinar-${m.person.nume}`,
+      backHref: `/persoane/${m.personId}/disciplina`,
+      person: { id: m.personId, name: memberName(m.person) },
+      data: { minutes, church: churchData(church) },
+    };
   },
 };
 
@@ -239,10 +282,39 @@ export function loadSource(ctx: Ctx, kind: GeneratedKind, sp: URLSearchParams): 
   return LOADERS[kind](ctx, kindParams(kind, sp));
 }
 
-/** The fingerprint of the generated data (sha256 of its blocks): a saved version older than the data shows a notice. */
-export function sourceHash(spec: PrintSpec): string {
-  return createHash("sha256").update(blocksFingerprintText(spec.blocks)).digest("hex");
+/**
+ * GENERATED-HASH-STABLE: the fingerprint of a source's DATA (sha256 of its stable JSON): the same
+ * data give the same fingerprint whatever the day it is printed; a saved version with another
+ * fingerprint shows „Datele s-au schimbat de la editare”.
+ */
+export function sourceHash(src: Pick<LoadedSource, "data">): string {
+  return createHash("sha256").update(stableJson(src.data)).digest("hex");
 }
+
+/** The fingerprint the versions saved before kept: the printed text, today's date written back as `savedDay`. */
+function legacyTextHash(spec: PrintSpec, savedDay: string): string {
+  return createHash("sha256").update(asOfDay(blocksFingerprintText(spec.blocks), todayIso(), savedDay)).digest("hex");
+}
+
+/** A fingerprint that never equals a data fingerprint: a version whose data had already changed. */
+export const CHANGED_BEFORE = "schimbat-inainte-de-amprenta-noua";
+
+/**
+ * A version saved with the text's fingerprint (hashVersion 1), checked once and moved to the data's
+ * fingerprint: unchanged (the text as of its day is the same) → the current data's fingerprint, so
+ * the notice goes; changed → a mark that keeps the notice. Idempotent: only versions still on 1.
+ * Returns the version's current fingerprint.
+ */
+export async function upgradeHash(ctx: Ctx, src: LoadedSource, saved: { id: string; sourceHash: string; hashVersion: number; updatedAt: Date }): Promise<string> {
+  if (saved.hashVersion >= HASH_VERSION) return saved.sourceHash;
+  const unchanged = legacyTextHash(src.spec, todayIso(undefined, saved.updatedAt)) === saved.sourceHash;
+  const next = unchanged ? sourceHash(src) : CHANGED_BEFORE;
+  await ctx.db.generatedDocument.updateMany({ where: { id: saved.id, hashVersion: saved.hashVersion }, data: { sourceHash: next, hashVersion: HASH_VERSION } });
+  return next;
+}
+
+/** The fingerprint's version: 1 = the printed text (before GENERATED-HASH-STABLE), 2 = the source's data. */
+export const HASH_VERSION = 2;
 
 export type SavedVersion = NonNullable<Awaited<ReturnType<typeof savedVersion>>>;
 

@@ -54,21 +54,30 @@ export async function loadStats(ctx: Ctx, year?: number): Promise<StatsBundle> {
 }
 
 /** Textul dării de seamă pentru anul dat. */
-export async function generateReportText(ctx: Ctx, year: number): Promise<string> {
-  const today = todayIso();
-  const [persons, events, activity, church] = await Promise.all([
+/** GENERATED-HASH-STABLE: what the year's report is built from (read from the database, no date of printing). */
+export async function reportSource(ctx: Ctx, year: number) {
+  const end = toDbDate(`${year}-12-31`)!;
+  const [persons, events, activity, church, goods] = await Promise.all([
     loadPersonRecords(ctx),
     loadStatEvents(ctx),
     yearActivity(ctx, year),
     getChurch(ctx),
+    ctx.db.asset.count({
+      where: { OR: [{ dataIntrarii: null }, { dataIntrarii: { lte: end } }], AND: [{ OR: [{ dataIesirii: null }, { dataIesirii: { gt: end } }] }] },
+    }),
   ]);
-  const text = buildReportText(year, computeStats(persons, events, { year, today }), activity, church.nume);
+  return { year, persons, events, activity, churchName: church.nume, goods };
+}
+
+/** The report's text from its source, as of `today` (the current year's figures are those of today). */
+export function reportTextOf(src: Awaited<ReturnType<typeof reportSource>>, today: string): string {
+  const text = buildReportText(src.year, computeStats(src.persons, src.events, { year: src.year, today }), src.activity, src.churchName);
   // PATRIMONY: an optional line after the parity-tested text (no values), only when goods are in the inventory.
-  const end = toDbDate(`${year}-12-31`)!;
-  const goods = await ctx.db.asset.count({
-    where: { OR: [{ dataIntrarii: null }, { dataIntrarii: { lte: end } }], AND: [{ OR: [{ dataIesirii: null }, { dataIesirii: { gt: end } }] }] },
-  });
-  const line = patrimonyLine(goods);
+  const line = patrimonyLine(src.goods);
   return line ? `${text}
 ${line}` : text;
+}
+
+export async function generateReportText(ctx: Ctx, year: number): Promise<string> {
+  return reportTextOf(await reportSource(ctx, year), todayIso());
 }

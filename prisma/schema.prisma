@@ -1699,6 +1699,8 @@ model GeneratedDocument {
   blocks      Json
   layout      Json?
   sourceHash  String
+  /// GENERATED-HASH-STABLE: 1 = the fingerprint of the printed text (older versions, checked once), 2 = of the source's data.
+  hashVersion Int       @default(2)
   /// A registered official act (disciplinary convocation…): the numbered document; the version is then read-only.
   documentId  String?
   document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)

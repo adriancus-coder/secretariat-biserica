@@ -10,7 +10,7 @@ import { pageLayoutInput, pageLayoutSchema, type PageLayout } from "@/lib/page-l
 import { richToPlain } from "@/lib/rich-text";
 import { writeAudit } from "../audit";
 import { lockDocumentRegister, nextFreeNumber } from "../doc-numbering";
-import { loadSource, sourceHash } from "../generated";
+import { HASH_VERSION, loadSource, sourceHash } from "../generated";
 import { hasActivePastor } from "../pastor-approval";
 import { actionCtx, ActionError, type Ctx } from "../session";
 import { hasStepUp } from "../step-up";
@@ -54,7 +54,7 @@ async function write(o: Awaited<ReturnType<typeof open>>, blocks: StoredBlock[],
   const { ctx, kind, src, key } = o;
   const existing = await ctx.db.generatedDocument.findFirst({ where: { sourceKey: key }, select: { id: true, documentId: true } });
   if (existing?.documentId) throw new ActionError("Actul este înregistrat; se modifică din Documente.");
-  const data = { kind, titlu: src.spec.title.slice(0, 300), blocks: blocks as object, layout: layout ?? undefined, sourceHash: sourceHash(src.spec), updatedById: ctx.user.id };
+  const data = { kind, titlu: src.spec.title.slice(0, 300), blocks: blocks as object, layout: layout ?? undefined, sourceHash: sourceHash(src), hashVersion: HASH_VERSION, updatedById: ctx.user.id };
   return ctx.db.$transaction(async (tx) => {
     const row = existing
       ? await tx.generatedDocument.update({ where: { id: existing.id }, data: { ...data, layout: layout ?? null } as never })

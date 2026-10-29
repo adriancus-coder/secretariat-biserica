@@ -19,8 +19,11 @@ export interface StatisticsData {
 
 /** The "Statistici" page: ten years ending with the selected one, its months, and the structure at its end. */
 export async function loadStatistics(ctx: Ctx, requested?: number): Promise<StatisticsData> {
-  const input = await loadCategoryInput(ctx);
-  const today = todayIso();
+  return statisticsFrom(await loadCategoryInput(ctx), requested, todayIso());
+}
+
+/** GENERATED-HASH-STABLE: the statistics from the register's data (`input`), as of `today`. */
+export function statisticsFrom(input: Awaited<ReturnType<typeof loadCategoryInput>>, requested: number | undefined, today: string): StatisticsData {
   const current = Number(today.slice(0, 4));
   const year = requested && requested <= current ? requested : current;
   const an = year === current ? undefined : year;

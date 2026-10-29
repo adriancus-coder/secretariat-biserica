@@ -1413,7 +1413,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             continue;
           }
           const documentId = g.document ? (docs.map.get(g.document) ?? null) : null;
-          const data = { kind: g.tip, titlu: g.titlu, blocks: g.blocuri as object, layout: g.asezare ? (g.asezare as object) : Prisma.DbNull, sourceHash: g.amprenta, documentId, updatedById: ctx.user.id };
+          const data = { kind: g.tip, titlu: g.titlu, blocks: g.blocuri as object, layout: g.asezare ? (g.asezare as object) : Prisma.DbNull, sourceHash: g.amprenta, hashVersion: g.versiuneAmprenta, documentId, updatedById: ctx.user.id };
           const existing = await tx.generatedDocument.findFirst({ where: { sourceKey: key }, select: { id: true } });
           if (existing) await tx.generatedDocument.update({ where: { id: existing.id }, data });
           else await tx.generatedDocument.create({ data: { ...data, sourceKey: key, churchId, createdById: ctx.user.id } });

@@ -134,3 +134,16 @@ const KEY_PARAMS: Record<GeneratedKind, readonly string[]> = {
 export function generatedKey(kind: GeneratedKind, p: Record<string, string | number | null | undefined>): string {
   return [kind, ...KEY_PARAMS[kind].map((k) => String(p[k] ?? ""))].join(":");
 }
+
+/** The source's parameters read back from a version's key (the inverse of generatedKey). */
+export function keyParams(kind: GeneratedKind, key: string): URLSearchParams {
+  const names = KEY_PARAMS[kind];
+  const parts = key.split(":").slice(1);
+  // A value holding ":" (a search) keeps the rest of the key.
+  const values = names.length ? [...parts.slice(0, names.length - 1), parts.slice(names.length - 1).join(":")] : [];
+  const out = new URLSearchParams();
+  names.forEach((n, i) => {
+    if (values[i]) out.set(n, values[i]);
+  });
+  return out;
+}
