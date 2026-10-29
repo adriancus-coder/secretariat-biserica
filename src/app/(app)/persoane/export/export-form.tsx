@@ -7,6 +7,7 @@ import { MIME } from "@/lib/download";
 import { CATEGORIES, CATEGORY_GROUPS } from "@/domain/categories";
 import { EXPORT_COLUMNS, EXPORT_SORT_LABEL, EXPORT_SORTS, type ExportColumn, type ExportSort } from "@/lib/person-export";
 import { exportCountAction } from "@/server/actions/person-export";
+import type { AgeFilter, GenderFilter } from "@/domain/categories";
 
 /** "1 persoană", "5 persoane", "41 de persoane". */
 const persons = (n: number) => (n === 1 ? "1 persoană" : n % 100 >= 1 && n % 100 <= 19 ? `${n} persoane` : `${n} de persoane`);
@@ -18,7 +19,7 @@ export function ExportForm({
   needPassword,
   error,
 }: {
-  initial: { categorie: string[]; mod: "oricare" | "toate"; an: string; functie: string; coloane: ExportColumn[]; ordine: ExportSort };
+  initial: { categorie: string[]; mod: "oricare" | "toate"; an: string; functie: string; gen: GenderFilter; varsta: AgeFilter; coloane: ExportColumn[]; ordine: ExportSort };
   years: number[];
   roles: { id: string; nume: string; group: string }[];
   needPassword: boolean;
@@ -100,6 +101,26 @@ export function ExportForm({
               </label>
             ))}
           </fieldset>
+          {/* GENDER-AGE-FILTERS: the list's gender and age filters. */}
+          <div className="row2">
+            <label>
+              <span className="font-medium block mb-1">Gen</span>
+              <select name="gen" defaultValue={initial.gen}>
+                <option value="toti">Toți</option>
+                <option value="M">Bărbați</option>
+                <option value="F">Femei</option>
+                <option value="fara">Fără gen completat</option>
+              </select>
+            </label>
+            <label>
+              <span className="font-medium block mb-1">Vârstă</span>
+              <select name="varsta" defaultValue={initial.varsta}>
+                <option value="toti">Toți</option>
+                <option value="adulti">Adulți</option>
+                <option value="minori">Minori</option>
+              </select>
+            </label>
+          </div>
           <label>
             <span className="font-medium block mb-1">Anul de referință</span>
             <select name="an" defaultValue={initial.an}>

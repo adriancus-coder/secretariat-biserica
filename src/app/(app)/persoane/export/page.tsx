@@ -12,6 +12,7 @@ import { requireCtx } from "@/server/session";
 import { hasStepUp, stepUpMethod } from "@/server/step-up";
 import { StepUpGate } from "@/components/passkey/step-up-gate";
 import { ExportForm } from "./export-form";
+import { parseGenderAge } from "@/lib/category-params";
 
 export const metadata: Metadata = { title: "Exportă persoane" };
 
@@ -46,6 +47,7 @@ export default async function PersonExportPage({ searchParams }: PageProps<"/per
           mod: sp.mod === "toate" ? "toate" : "oricare",
           an: sel.year ? String(sel.year) : "",
           functie: sel.functie,
+          ...parseGenderAge((k) => sp[k]),
           coloane: coloane.length ? coloane : DEFAULT_EXPORT_COLUMNS,
           ordine,
         }}

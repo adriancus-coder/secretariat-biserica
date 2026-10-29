@@ -8,7 +8,9 @@ import { COMMITTEE_FILTER, NO_FAMILY_FILTER } from "@/lib/roles";
 import { searchTerms, compareRo } from "@/lib/text";
 import type { PersonStatusKey } from "@/lib/labels";
 import { kinshipRank } from "@/lib/kinship";
-import { parseCategorySelection, type CategorySelection } from "@/lib/category-params";
+import { parseCategorySelection, parseGenderAge, type CategorySelection } from "@/lib/category-params";
+import { filterGenderAge, isGenderAgeActive, NO_GENDER_AGE, type GenderAge, type GenderAgePerson } from "@/domain/categories";
+import { statsEndDate } from "@/domain/stats";
 import { ActionError, type Ctx } from "../session";
 import { selectionIds } from "./categories";
 
@@ -113,6 +115,18 @@ function listWhere({ filter, q, functie = "", ids }: Pick<ListParams, "filter" |
   return { AND: [ids ? { id: { in: ids } } : filterWhere(filter), searchWhere(q), roleWhere(functie)] };
 }
 
+/**
+ * GENDER-AGE-FILTERS: the list's persons with only what the gender and age filters read (id, gender,
+ * birth date), for the filter buttons' numbers and the filtered ids.
+ */
+export async function genderAgeRows(ctx: Ctx, params: Pick<ListParams, "filter" | "q" | "functie" | "ids">): Promise<GenderAgePerson[]> {
+  const rows = await ctx.db.person.findMany({ where: listWhere(params), orderBy: ORDER, select: { id: true, gen: true, dataNasterii: true } });
+  return rows.map((r) => ({ id: r.id, gen: r.gen, dataNasterii: fromDbDate(r.dataNasterii) }));
+}
+
+/** The reference date of the age filter: the statistics' date of the chosen year, else today. */
+export const genderAgeRefDate = (year: number | undefined) => statsEndDate(todayIso(), year);
+
 export async function listPersons(ctx: Ctx, { filter, q, page, functie = "", ids }: ListParams) {
   const where = listWhere({ filter, q, functie, ids });
   const [total, inRecord, anyPerson] = await Promise.all([
@@ -209,6 +223,8 @@ export interface PersonListSpec {
   functie: string;
   /** Category selection of the list (`categorie`, `an`), if any. */
   categories: CategorySelection;
+  /** GENDER-AGE-FILTERS: `gen`, `varsta`. */
+  genderAge?: GenderAge;
 }
 
 const ALL_PERSONS: PersonListSpec = { filter: null, byFamily: false, q: "", functie: "", categories: { keys: [], functie: "" } };
@@ -225,12 +241,19 @@ export function parseListSpec(din: string | undefined): PersonListSpec {
     q: (sp.get("q") ?? "").slice(0, 100),
     functie: functie === COMMITTEE_FILTER || functie === NO_FAMILY_FILTER || /^[A-Za-z0-9_-]{1,64}$/.test(functie) ? functie : "",
     categories: parseCategorySelection((k) => sp.getAll(k), Number(todayIso().slice(0, 4))),
+    genderAge: parseGenderAge((k) => sp.get(k)),
   };
 }
 
 /** The ids of the list, in the order it shows them (alphabetical, or by family then kinship). */
 export async function personOrder(ctx: Ctx, spec: PersonListSpec, rudenieOrder: string[]): Promise<string[]> {
-  const ids = spec.categories.keys.length ? await selectionIds(ctx, spec.categories) : null;
+  const categoryIds = spec.categories.keys.length ? await selectionIds(ctx, spec.categories) : null;
+  // The gender and age filters of the list, as the list applied them.
+  const ga = spec.genderAge ?? NO_GENDER_AGE;
+  const ids =
+    spec.filter && isGenderAgeActive(ga)
+      ? filterGenderAge(await genderAgeRows(ctx, { filter: spec.filter, q: spec.q, functie: spec.functie, ids: categoryIds }), ga, genderAgeRefDate(categoryIds ? spec.categories.year : undefined)).map((p) => p.id)
+      : categoryIds;
   const where: Prisma.PersonWhereInput = spec.filter ? listWhere({ filter: spec.filter, q: spec.q, functie: spec.functie, ids }) : {};
   const rows = await ctx.db.person.findMany({ where, orderBy: ORDER, select: { id: true, familyId: true, rudenie: true } });
   if (!spec.byFamily) return rows.map((r) => r.id);

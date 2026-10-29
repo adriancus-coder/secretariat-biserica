@@ -334,21 +334,18 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
         </div>
       ) : null}
       <div className="stats">
-        {/* The men / women split under the total, so every row keeps three cards. */}
-        <div className="stat stat-families">
+        {/* GENDER-AGE-FILTERS: the men / women split under the total, one line each, to the filtered list. */}
+        <div className="stat stat-families stat-record">
           <Link href={cat("toti")} className="stat-main">
             <b>{s.ev.length}</b>
             <span>persoane în evidență</span>
           </Link>
-          <span className="stat-more">
-            <Link href={cat("barbati")} aria-label={`${s.gen.M} bărbați — vezi lista`}>
-              {s.gen.M} bărbați
-            </Link>
-            <span aria-hidden="true">·</span>
-            <Link href={cat("femei")} aria-label={`${s.gen.F} femei — vezi lista`}>
-              {s.gen.F} femei
-            </Link>
-          </span>
+          <Link href={categoryHref("toti", year, { gen: "M" })} className="stat-line" aria-label={`${s.gen.M} bărbați — vezi lista`}>
+            {s.gen.M} bărbați
+          </Link>
+          <Link href={categoryHref("toti", year, { gen: "F" })} className="stat-line" aria-label={`${s.gen.F} femei — vezi lista`}>
+            {s.gen.F} femei
+          </Link>
         </div>
         <Stat value={s.membri.length} label={`membri · ${percentOf(s.membri.length, s.ev.length)}%`} href={cat("membri")} />
         <ChurchFamiliesStat count={s.fams} others={s.famsFaraMembri} />

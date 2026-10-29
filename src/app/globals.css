@@ -1657,6 +1657,32 @@
     min-height: 2.75rem;
     color: var(--link);
   }
+  /* GENDER-AGE-FILTERS: „persoane în evidență” with one line per gender, compact (the row keeps one height). */
+  .stat-record .stat-main {
+    flex: 0 0 auto;
+    padding-bottom: 0;
+  }
+  .stat-record .stat-line {
+    display: flex;
+    align-items: center;
+    /* Two stacked lines sharing the 2.75rem band of the families card's link: the row keeps one height. */
+    min-height: 1.375rem;
+    padding: 0 clamp(6px, 1.6vw, 12px);
+    font-size: clamp(13px, 3.4vw, 0.875rem);
+    line-height: 1.2;
+    color: var(--link);
+    text-decoration: underline;
+  }
+  .stat-record .stat-line:last-child {
+    margin-bottom: 6px;
+  }
+  /* The cards of a row share its height: their content sits in the middle, so no tall gap under it. */
+  .stats > .stat:not(.stat-families) {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
   /* PWA-DOWNLOADS: a download inside running text looks like a link (underlined). */
   .link-inline {
     display: inline;
@@ -2056,6 +2082,25 @@
     color: var(--ink);
     font-weight: 600;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* GENDER-AGE-FILTERS: the two filter groups (wrap on phones; the chosen one in the accent colour). */
+  .ga-filters .segs {
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .ga-filters .segs a {
+    flex: 1 1 auto;
+  }
+  .ga-filters .segs a[aria-current="true"] {
+    color: var(--accent);
+  }
+  .ga-label {
+    padding: 0 6px;
+    font-size: 0.8438rem;
+    font-weight: 600;
+    color: var(--ink-2);
   }
 
   /* Bare (statistici) */

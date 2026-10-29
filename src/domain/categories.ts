@@ -264,3 +264,83 @@ export function combineCategories(ctx: CategoryContext, persons: PersonRecord[],
   const keep = (id: string) => (mode === "toate" ? sets.every((s) => s.has(id)) : sets.some((s) => s.has(id)));
   return persons.filter((p) => keep(p.id)).map((p) => p.id);
 }
+
+// ---------- GENDER-AGE-FILTERS: gender and age over any list ----------
+
+/** `gen`: everybody, men, women, or (the link „fără gen completat”) those without a gender. */
+export const GENDER_FILTERS = ["toti", "M", "F", "fara"] as const;
+export type GenderFilter = (typeof GENDER_FILTERS)[number];
+export const AGE_FILTERS = ["toti", "adulti", "minori"] as const;
+export type AgeFilter = (typeof AGE_FILTERS)[number];
+
+export interface GenderAge {
+  gen: GenderFilter;
+  varsta: AgeFilter;
+}
+export const NO_GENDER_AGE: GenderAge = { gen: "toti", varsta: "toti" };
+export const isGenderAgeActive = (f: GenderAge) => f.gen !== "toti" || f.varsta !== "toti";
+
+/** What the filters read of a person. */
+export interface GenderAgePerson {
+  id: string;
+  gen: string | null;
+  dataNasterii: string | null;
+}
+
+/** A minor at the reference date: under 18; without a birth date, an adult (the register's rule). */
+export function isMinorAt(p: Pick<GenderAgePerson, "dataNasterii">, refDate: string): boolean {
+  return p.dataNasterii ? ageAt(p.dataNasterii, refDate) < 18 : false;
+}
+
+const genderOf = (p: GenderAgePerson): "M" | "F" | "fara" => (p.gen === "M" || p.gen === "F" ? p.gen : "fara");
+
+function matchesGender(p: GenderAgePerson, gen: GenderFilter): boolean {
+  return gen === "toti" || genderOf(p) === gen;
+}
+function matchesAge(p: GenderAgePerson, varsta: AgeFilter, refDate: string): boolean {
+  return varsta === "toti" || (varsta === "minori") === isMinorAt(p, refDate);
+}
+
+/** The persons of a list (in its order) that pass both filters; those without a gender only under „Toți”. */
+export function filterGenderAge<T extends GenderAgePerson>(list: readonly T[], f: GenderAge, refDate: string): T[] {
+  return list.filter((p) => matchesGender(p, f.gen) && matchesAge(p, f.varsta, refDate));
+}
+
+export interface GenderAgeCounts {
+  /** The gender buttons' numbers, under the chosen age filter („toti” includes those without a gender). */
+  gen: Record<"toti" | "M" | "F", number>;
+  /** Without a gender, under the chosen age filter („fără gen completat: N”). */
+  faraGen: number;
+  /** The age buttons' numbers, under the chosen gender filter. */
+  varsta: Record<AgeFilter, number>;
+}
+
+/** The numbers beside each filter button: each group counts under the other group's choice. */
+export function genderAgeCounts(list: readonly GenderAgePerson[], f: GenderAge, refDate: string): GenderAgeCounts {
+  const byAge = list.filter((p) => matchesAge(p, f.varsta, refDate));
+  const byGender = list.filter((p) => matchesGender(p, f.gen));
+  return {
+    gen: { toti: byAge.length, M: byAge.filter((p) => genderOf(p) === "M").length, F: byAge.filter((p) => genderOf(p) === "F").length },
+    faraGen: byAge.filter((p) => genderOf(p) === "fara").length,
+    varsta: { toti: byGender.length, adulti: byGender.filter((p) => !isMinorAt(p, refDate)).length, minori: byGender.filter((p) => isMinorAt(p, refDate)).length },
+  };
+}
+
+export interface GenderAgeRow {
+  gen: "M" | "F" | "fara";
+  adulti: number;
+  minori: number;
+  total: number;
+}
+
+/** „Gen și vârstă”: men, women and (only when there are any) persons without a gender × adults / minors. */
+export function genderAgeTable(list: readonly GenderAgePerson[], refDate: string): { rows: GenderAgeRow[]; total: Omit<GenderAgeRow, "gen"> } {
+  const row = (gen: GenderAgeRow["gen"]): GenderAgeRow => {
+    const ps = list.filter((p) => genderOf(p) === gen);
+    const minori = ps.filter((p) => isMinorAt(p, refDate)).length;
+    return { gen, adulti: ps.length - minori, minori, total: ps.length };
+  };
+  const rows = [row("M"), row("F"), row("fara")].filter((r) => r.gen !== "fara" || r.total > 0);
+  const minori = list.filter((p) => isMinorAt(p, refDate)).length;
+  return { rows, total: { adulti: list.length - minori, minori, total: list.length } };
+}

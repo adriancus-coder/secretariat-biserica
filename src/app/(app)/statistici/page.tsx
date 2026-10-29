@@ -11,7 +11,7 @@ import { EVOLUTION_KEYS } from "@/domain/evolution";
 import { categoryHref } from "@/lib/category-params";
 import { MONTHS_L } from "@/lib/format";
 import { requestedYear } from "@/lib/statistics-params";
-import { bandLabel, statisticsTableDefs, statisticsWhen } from "@/lib/statistics-report";
+import { bandLabel, GENDER_ROW_LABEL, statisticsTableDefs, statisticsWhen } from "@/lib/statistics-report";
 import { DataTable } from "@/components/ui/data-table";
 import { SortAwareDownload } from "@/components/ui/download";
 import { MIME } from "@/lib/download";
@@ -44,7 +44,7 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
   const both = (a: string, b: string, an: number | undefined) => categoryHref([a, b], an, { mod: "toate" });
   // Charts stay chronological (left = oldest) whatever the tables' sort.
   const labels = d.rows.map((r) => String(r.year));
-  const [evo, , ages, status] = statisticsTableDefs(d);
+  const [evo, , ages, status, genderAge] = statisticsTableDefs(d);
   const missing = (
     <p className="hint">
       <Link href={cat("fara-data-nasterii", d.an)}>{st.withoutBirthDate} persoane fără dată de naștere</Link> nu sunt incluse
@@ -203,6 +203,34 @@ export default async function StatisticsPage({ searchParams }: PageProps<"/stati
               r.key === "copii-minori" ? "—" : <N key="n" n={r.necasatoriti} href={both(r.key, "necasatoriti", d.an)} />,
             ],
           }))}
+        />
+        {/* GENDER-AGE-FILTERS: every number opens the persons in the record with that gender and age. */}
+        <DataTable
+          id={genderAge.id}
+          caption="Gen și vârstă"
+          columns={genderAge.columns}
+          rows={st.genderAge.rows.map((r, i) => ({
+            key: r.gen,
+            sort: genderAge.rows[i].sort,
+            cells: [
+              GENDER_ROW_LABEL[r.gen],
+              <N key="a" n={r.adulti} href={cat("toti", d.an, { gen: r.gen, varsta: "adulti" })} />,
+              <N key="m" n={r.minori} href={cat("toti", d.an, { gen: r.gen, varsta: "minori" })} />,
+              <N key="t" n={r.total} href={cat("toti", d.an, { gen: r.gen })} />,
+            ],
+          }))}
+          footer={[
+            {
+              key: "total",
+              sort: [],
+              cells: [
+                "Total",
+                <N key="a" n={st.genderAge.total.adulti} href={cat("toti", d.an, { varsta: "adulti" })} />,
+                <N key="m" n={st.genderAge.total.minori} href={cat("toti", d.an, { varsta: "minori" })} />,
+                <N key="t" n={st.genderAge.total.total} href={cat("toti", d.an)} />,
+              ],
+            },
+          ]}
         />
       </section>
 

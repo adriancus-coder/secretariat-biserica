@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { categoryDef } from "@/domain/categories";
 import { EXPORT_COLUMN_KEYS, EXPORT_FORMATS, EXPORT_SORTS, type ExportColumn } from "../person-export";
+import { AGE_FILTERS, GENDER_FILTERS } from "@/domain/categories";
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -19,6 +20,9 @@ export const personExportSchema = z.object({
     .refine((l) => l.length > 0, "Alegeți cel puțin o coloană."),
   ordine: z.enum(EXPORT_SORTS).catch("alfabetic"),
   format: z.enum(EXPORT_FORMATS).catch("xlsx"),
+  // GENDER-AGE-FILTERS: the list's filters (anything else = everybody).
+  gen: z.enum(GENDER_FILTERS).catch("toti"),
+  varsta: z.enum(AGE_FILTERS).catch("toti"),
 });
 export type PersonExportInput = z.output<typeof personExportSchema>;
 
@@ -31,5 +35,7 @@ export function personExportInput(source: FormData | URLSearchParams) {
     coloane: source.getAll("coloane").map(String),
     ordine: source.get("ordine") ?? undefined,
     format: source.get("format") ?? undefined,
+    gen: source.get("gen") ?? undefined,
+    varsta: source.get("varsta") ?? undefined,
   };
 }

@@ -30,6 +30,14 @@ const report: StatisticsReport = {
     marital: { adulti: 50, casatoriti: 30, necasatoriti: 8, necompletat: 12 },
     children: { total: 7, members: 5, others: 2 },
     families: { count: 10, withoutMembers: 1, avgSize: 3.2, withMinors: 4, alone: 2, withoutFamily: 5 },
+    genderAge: {
+      rows: [
+        { gen: "M", adulti: 18, minori: 3, total: 21 },
+        { gen: "F", adulti: 19, minori: 4, total: 23 },
+        { gen: "fara", adulti: 1, minori: 0, total: 1 },
+      ],
+      total: { adulti: 38, minori: 7, total: 45 },
+    },
   },
 };
 
@@ -45,7 +53,7 @@ describe("statistics report", () => {
   });
 
   it("builds the tables with the same numbers as the page", () => {
-    const [evo, months, ages, , fam] = statisticsTables(report);
+    const [evo, months, ages, , , fam] = statisticsTables(report);
     // Year tables: newest first by default.
     expect(evo.rows.map((r) => r[0])).toEqual([2025, 2024]);
     expect(evo.rows[0].slice(0, 3)).toEqual([2025, 41, 2]);
@@ -72,11 +80,23 @@ describe("statistics report", () => {
   });
 
   it("the status table has the married / unmarried columns and the families table the adults by marital status", () => {
-    const [, , , status, families] = statisticsTables(report);
+    const [, , , status, , families] = statisticsTables(report);
     expect(status.columns).toEqual(["Statut", "Bărbați", "Femei", "Total", "Căsătoriți", "Necăsătoriți"]);
     expect(status.rows[0]).toEqual(["Membri", 20, 21, 41, 30, 5]);
     const row = (label: string) => families.rows.find((r) => r[0] === label)?.[1];
     expect([row("Adulți în evidență"), row("Adulți căsătoriți"), row("Adulți necăsătoriți"), row("Adulți cu starea civilă necompletată")]).toEqual([50, 30, 8, 12]);
   });
-});
 
+  it("GENDER-AGE-FILTERS: „Gen și vârstă” in the PDF and Excel tables, the total last whatever the sort", () => {
+    const t = statisticsTables(report, { sort: "gen-varsta.total", dir: "asc" })[4];
+    expect(t.name).toBe("Gen și vârstă");
+    expect(t.columns).toEqual(["Gen", "Adulți", "Minori", "Total"]);
+    expect(t.rows).toEqual([
+      ["Fără gen completat", 1, 0, 1],
+      ["Bărbați", 18, 3, 21],
+      ["Femei", 19, 4, 23],
+      ["Total", 38, 7, 45],
+    ]);
+    expect(printToText(statisticsPrint(report, { nume: "Test" } as never))).toContain("Gen și vârstă");
+  });
+});

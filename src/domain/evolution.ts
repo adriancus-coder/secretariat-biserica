@@ -1,5 +1,5 @@
 import { ageAt, inYear } from "@/lib/dates";
-import { CATEGORY_AGE_BANDS, categoryContext, type CategoryInput } from "./categories";
+import { CATEGORY_AGE_BANDS, categoryContext, genderAgeTable, type CategoryInput } from "./categories";
 import type { PersonRecord } from "./types";
 import { PRIETENI_TITLE } from "@/lib/labels";
 
@@ -103,6 +103,8 @@ export interface Structure {
   /** Only the families of the church (FAMILIES-WITH-MEMBERS); `withoutMembers` = the others. */
   children: { total: number; members: number; others: number };
   families: { count: number; withoutMembers: number; avgSize: number | null; withMinors: number; alone: number; withoutFamily: number };
+  /** GENDER-AGE-FILTERS: the persons in the record by gender × adults / minors at the reference date. */
+  genderAge: ReturnType<typeof genderAgeTable>;
 }
 
 export function structure(input: CategoryInput): Structure {
@@ -133,6 +135,7 @@ export function structure(input: CategoryInput): Structure {
   const church = new Set(s.churchFamilies);
   const famLists = [...famMembers].filter(([id]) => church.has(id)).map(([, l]) => l);
   return {
+    genderAge: genderAgeTable(s.ev, s.endDate),
     pyramid: CATEGORY_AGE_BANDS.map(([min, max]) => ({
       min,
       max,

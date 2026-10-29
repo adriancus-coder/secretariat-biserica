@@ -13,6 +13,8 @@ import { listQuery } from "@/lib/person-nav";
 import { idSchema } from "@/lib/validation";
 import { getChurch } from "@/server/queries/church";
 import {
+  genderAgeRefDate,
+  genderAgeRows,
   listFamilies,
   listPersons,
   PERSON_FILTER_LABEL,
@@ -22,7 +24,9 @@ import {
 import { listRoleGroups } from "@/server/queries/roles";
 import { selectionIds } from "@/server/queries/categories";
 import { CATEGORIES, categoryDef } from "@/domain/categories";
-import { parseCategorySelection, selectionLabel } from "@/lib/category-params";
+import { genderAgeParams, genderAgeTitle, parseCategorySelection, parseGenderAge, selectionLabel } from "@/lib/category-params";
+import { filterGenderAge, genderAgeCounts, isGenderAgeActive } from "@/domain/categories";
+import { GenderAgeFilters } from "@/components/ui/gender-age-filters";
 import { requireCtx } from "@/server/session";
 import { PersonRow } from "./person-row";
 
@@ -49,6 +53,12 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
   // ?categorie=…&an=…: the persons behind a statistic (several categories = any of them).
   const selection = parseCategorySelection((k) => sp[k], Number(today.slice(0, 4)));
   const categoryIds = selection.keys.length ? await selectionIds(ctx, { ...selection, functie }) : null;
+  // GENDER-AGE-FILTERS: gender and age over the list (the category's, or the status filter's).
+  const genderAge = parseGenderAge((k) => sp[k]);
+  const refDate = genderAgeRefDate(categoryIds ? selection.year : undefined);
+  const gaRows = await genderAgeRows(ctx, { filter, q, functie, ids: categoryIds });
+  const gaCounts = genderAgeCounts(gaRows, genderAge, refDate);
+  const listIds = isGenderAgeActive(genderAge) ? filterGenderAge(gaRows, genderAge, refDate).map((p) => p.id) : categoryIds;
   const params = {
     filtru: filter === "membri" || categoryIds ? undefined : filter,
     vedere: byFamily ? "familii" : undefined,
@@ -57,19 +67,21 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
     categorie: selection.keys.join(",") || undefined,
     an: selection.keys.length && selection.year ? String(selection.year) : undefined,
     mod: selection.keys.length > 1 && selection.mode === "toate" ? "toate" : undefined,
+    ...genderAgeParams(genderAge),
   };
 
   // Person pages opened from here follow this list with "‹ Anterior" / "Următorul ›".
   const din = listQuery(params);
   const church = byFamily ? await getChurch(ctx) : null;
   const data = byFamily
-    ? await listFamilies(ctx, { filter, q, page, functie, ids: categoryIds }, church!.nomen.rudenie)
-    : await listPersons(ctx, { filter, q, page, functie, ids: categoryIds });
+    ? await listFamilies(ctx, { filter, q, page, functie, ids: listIds }, church!.nomen.rudenie)
+    : await listPersons(ctx, { filter, q, page, functie, ids: listIds });
   const exportQuery = new URLSearchParams();
   for (const k of selection.keys) exportQuery.append("categorie", k);
   if (selection.year) exportQuery.set("an", String(selection.year));
   if (selection.mode === "toate") exportQuery.set("mod", "toate");
   if (functie && /^[A-Za-z0-9_-]+$/.test(functie)) exportQuery.set("functie", functie);
+  for (const [k, v] of Object.entries(genderAgeParams(genderAge))) exportQuery.set(k, v);
   const exportHref = `/persoane/export?${exportQuery}`;
   const categoryOptions = CATEGORIES.map((c) => ({ value: c.key, label: c.label, group: c.group }));
   const roleOptions = [
@@ -92,7 +104,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
       {categoryIds ? (
         <div className="category-head">
           <h2>
-            {selectionLabel(selection)} ({categoryIds.length})
+            {genderAgeTitle(selectionLabel(selection), genderAge)} ({listIds?.length ?? categoryIds.length})
           </h2>
           <p className="hint !mt-0">
             {selection.keys.length === 1 && categoryDef(selection.keys[0])?.hint ? (
@@ -103,7 +115,7 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
             ) : null}
             {selection.year ? `Anul ${selection.year}` : "Situația la zi"}
             {q || functie ? " · filtrată și după căutare sau funcție" : ""} ·{" "}
-            <Link href={hrefWith("/persoane", params, { categorie: null, an: null, mod: null, pagina: null })}>Arată toată lista</Link>
+            <Link href={hrefWith("/persoane", params, { categorie: null, an: null, mod: null, gen: null, varsta: null, pagina: null })}>Arată toată lista</Link>
           </p>
           {permissions.export(ctx.user.role) ? (
             <Link href={exportHref} className="btn btn-sm mt-2">
@@ -124,6 +136,13 @@ export default async function PersonsPage({ searchParams }: PageProps<"/persoane
           ))}
         </nav>
       )}
+
+      {!categoryIds && isGenderAgeActive(genderAge) ? (
+        <h2 className="mb-2">
+          {genderAgeTitle(PERSON_FILTER_LABEL[filter], genderAge)} ({listIds?.length ?? 0})
+        </h2>
+      ) : null}
+      <GenderAgeFilters pathname="/persoane" params={params} current={genderAge} counts={gaCounts} />
 
       <div className="toolbar">
         <Suspense>

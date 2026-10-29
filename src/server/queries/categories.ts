@@ -6,6 +6,7 @@ import { todayIso, toDbDate } from "@/lib/dates";
 import type { CategorySelection } from "@/lib/category-params";
 import type { Ctx } from "../session";
 import { loadPersonRecords, loadStatEvents } from "./stats";
+import { filterGenderAge, isGenderAgeActive, type GenderAge } from "@/domain/categories";
 
 export interface LoadedCategories {
   ctx: CategoryContext;
@@ -36,6 +37,18 @@ export async function loadCategoryInput(ctx: Ctx): Promise<Omit<CategoryInput, "
 export async function loadCategories(ctx: Ctx, year?: number): Promise<LoadedCategories> {
   const input = await loadCategoryInput(ctx);
   return { persons: input.persons, ctx: categoryContext({ ...input, year }) };
+}
+
+/**
+ * GENDER-AGE-FILTERS: the ids of a selection, then only those of the chosen gender and age at the
+ * selection's reference date (the export and its count follow the list's filters).
+ */
+export async function filteredSelectionIds(ctx: Ctx, sel: CategorySelection, mode: CombineMode | undefined, ga: GenderAge): Promise<string[]> {
+  const loaded = await loadCategories(ctx, sel.year);
+  const ids = combineCategories(loaded.ctx, loaded.persons, sel.keys, mode ?? sel.mode ?? "oricare", sel.functie);
+  if (!isGenderAgeActive(ga)) return ids;
+  const keep = new Set(ids);
+  return filterGenderAge(loaded.persons.filter((p) => keep.has(p.id)), ga, loaded.ctx.stats.endDate).map((p) => p.id);
 }
 
 /** The ids of a selection of categories, in register order. */

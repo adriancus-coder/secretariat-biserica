@@ -31,6 +31,8 @@ export interface StatTableDef {
   name: string;
   columns: SortColumn[];
   rows: { key: string; values: (string | number)[]; sort: SortValue[] }[];
+  /** Rows kept under the others whatever the sort (totals). */
+  footer?: { key: string; values: (string | number)[] }[];
   defaultSort?: SortState;
 }
 
@@ -46,6 +48,8 @@ const dec = (n: number | null) => (n === null ? "—" : String(n).replace(".", "
 export function statisticsWhen(d: Pick<StatisticsReport, "an" | "year" | "today">): string {
   return d.an ? `Anul ${d.year} (situația la ${fmt(`${d.year}-12-31`)})` : `Situația la ${fmt(d.today)}`;
 }
+
+export const GENDER_ROW_LABEL: Record<"M" | "F" | "fara", string> = { M: "Bărbați", F: "Femei", fara: "Fără gen completat" };
 
 const col = (key: string, label: string, type: SortColumn["type"] = "number"): SortColumn => ({ key, label, type });
 
@@ -117,6 +121,14 @@ export function statisticsTableDefs(d: StatisticsReport): StatTableDef[] {
       ),
     },
     {
+      // GENDER-AGE-FILTERS: men / women (and, only when there are any, persons without a gender) × adults / minors.
+      id: "gen-varsta",
+      name: "Gen și vârstă",
+      columns: [col("gen", "Gen", "text"), col("adulti", "Adulți"), col("minori", "Minori"), col("total", "Total")],
+      rows: st.genderAge.rows.map((r) => plain(r.gen, [GENDER_ROW_LABEL[r.gen], r.adulti, r.minori, r.total])),
+      footer: [{ key: "total", values: ["Total", st.genderAge.total.adulti, st.genderAge.total.minori, st.genderAge.total.total] }],
+    },
+    {
       id: "familii",
       name: "Familii",
       columns: [col("indicator", "Indicator", "text"), col("valoare", "Valoare")],
@@ -147,7 +159,7 @@ export function statisticsTables(d: StatisticsReport, params: SortParams = {}): 
   return statisticsTableDefs(d).map((t) => ({
     name: t.name,
     columns: t.columns.map((c) => c.label),
-    rows: orderRows(t.rows, t.columns, parseSort(params.sort, params.dir, t.id, t.columns), t.defaultSort).map((r) => r.values),
+    rows: [...orderRows(t.rows, t.columns, parseSort(params.sort, params.dir, t.id, t.columns), t.defaultSort).map((r) => r.values), ...(t.footer ?? []).map((r) => r.values)],
   }));
 }
 
@@ -157,7 +169,7 @@ const heading = (text: string): Block => ({ type: "para", runs: [{ text, bold: t
 /** The Statistici PDF: the charts as vectors, each followed by its table. */
 export function statisticsPrint(d: StatisticsReport, church: ChurchInfo, params: SortParams = {}): PrintSpec {
   // The tables follow the screen's sort; the charts stay chronological (left = oldest).
-  const [evo, months, ages, status, families] = statisticsTables(d, params);
+  const [evo, months, ages, status, genderAge, families] = statisticsTables(d, params);
   const labels = d.rows.map((r) => String(r.year));
   const st = d.structure;
   return {
@@ -207,6 +219,8 @@ export function statisticsPrint(d: StatisticsReport, church: ChurchInfo, params:
       tableBlock(ages),
       heading("Statut și gen"),
       tableBlock(status),
+      heading("Gen și vârstă"),
+      tableBlock(genderAge),
       heading("Familii și vârste"),
       tableBlock(families),
     ],

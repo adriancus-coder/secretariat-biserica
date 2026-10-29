@@ -11,8 +11,9 @@ import { EXPORT_GRANT_COOKIE, grantCookieHeader, hasGrant } from "@/server/expor
 import { exportPdfSpec, exportXlsx, loadExportPersons } from "@/server/person-export";
 import { renderPdf } from "@/server/pdf/render";
 import { getChurch } from "@/server/queries/church";
-import { selectionIds } from "@/server/queries/categories";
 import { requireCtx } from "@/server/session";
+import { filteredSelectionIds } from "@/server/queries/categories";
+import { genderAgeTitle } from "@/lib/category-params";
 
 const TYPES = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -46,12 +47,12 @@ export async function POST(req: Request) {
     if (check !== "ok") return back(req, form, check === "device" ? "confirmare" : "parola");
     if (!granted) grant = grantCookieHeader(ctx.user.id, (process.env.APP_URL ?? "").startsWith("https://"));
   }
-  const { categorie, mod, an, functie, coloane, ordine, format } = parsed.data;
+  const { categorie, mod, an, functie, coloane, ordine, format, gen, varsta } = parsed.data;
   const today = todayIso();
-  const [ids, church] = await Promise.all([selectionIds(ctx, { keys: categorie, year: an, functie }, mod), getChurch(ctx)]);
+  const [ids, church] = await Promise.all([filteredSelectionIds(ctx, { keys: categorie, year: an, functie }, mod, { gen, varsta }), getChurch(ctx)]);
   const persons = sortForExport(await loadExportPersons(ctx, ids), ordine, kinshipRank(church.nomen.rudenie));
   const refDate = statsEndDate(today, an);
-  const title = selectionTitle(categorie, mod);
+  const title = genderAgeTitle(selectionTitle(categorie, mod), { gen, varsta });
   const doc = { church, title, when: an && refDate !== today ? `Anul ${an} (situația la ${fmt(refDate)})` : `Situația la ${fmt(today)}`, columns: coloane, persons, refDate };
   const body =
     format === "xlsx"
