@@ -3,6 +3,8 @@
  * printMeeting, printEvent, printGroup și docHtml din prototip. Funcții pure, testabile;
  * randarea efectivă se face în src/server/pdf/render.ts.
  */
+import { formatAddress } from "@/lib/address";
+import { eventPlace } from "@/lib/event-fields";
 import { fmtL, memberName } from "@/lib/format";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
@@ -281,7 +283,8 @@ export interface EventPrint {
 export function eventPrint(x: EventPrint, church: ChurchInfo): PrintSpec {
   const blocks: Block[] = [
     { type: "title", text: x.titlu },
-    para(b("Data:"), ` ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}`, ...(x.loc ? [" · ", b("Loc:"), ` ${x.loc}`] : [])),
+    // EVENT-FIELDS-BY-TYPE: an empty place is the church, with its address.
+    para(b("Data:"), ` ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}`, " · ", b("Loc:"), ` ${eventPlace(x.loc, formatAddress(church))}`),
   ];
   if (x.invitat) blocks.push(para(b("Invitat:"), ` ${x.invitat}`));
   if (x.responsabil) blocks.push(para(b("Responsabil:"), ` ${x.responsabil}`));

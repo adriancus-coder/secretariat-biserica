@@ -3055,6 +3055,17 @@ html[data-text-size] .btn {
     content: "oo:mm";
     color: var(--ink-3);
   }
+  /* EVENT-FIELDS-BY-TYPE: one line high like the other fields. An empty field shows only the
+     placeholder (the empty value box would add a second line under it). */
+  input[type="date"],
+  input[type="time"] {
+    height: 2.75rem;
+    line-height: 1.45;
+  }
+  input[type="date"][data-empty="true"]:not(:focus)::-webkit-date-and-time-value,
+  input[type="time"][data-empty="true"]:not(:focus)::-webkit-date-and-time-value {
+    display: none;
+  }
   input[type="date"][data-empty="true"]:focus::before,
   input[type="time"][data-empty="true"]:focus::before {
     content: none;

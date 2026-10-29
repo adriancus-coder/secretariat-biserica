@@ -82,5 +82,7 @@ export function eventFormInput(formData: FormData) {
     // Ca în prototip: rândurile complet goale se ignoră.
     .filter((c) => c.cine || c.ce);
   const fields = Object.fromEntries([...formData.entries()].filter(([k]) => !k.startsWith("contrib_")));
-  return { ...fields, agapaActiva: formData.get("agapaActiva") === "on", contributii };
+  // EVENT-FIELDS-BY-TYPE: without „Alt loc decât biserica” the event is at the church (the place is saved empty).
+  const loc = formData.get("altLoc") === "on" ? String(formData.get("loc") ?? "") : "";
+  return { ...fields, loc, agapaActiva: formData.get("agapaActiva") === "on", contributii };
 }

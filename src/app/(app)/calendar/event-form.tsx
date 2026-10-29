@@ -6,7 +6,8 @@ import { nomenOptions, SelectField, TextAreaField, TextField } from "@/component
 import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { OfficiantField } from "@/components/officiant-field";
-import { isOfficiatedEvent, type OfficiantOption } from "@/lib/officiants";
+import { visibleEventFields } from "@/lib/event-fields";
+import type { OfficiantOption } from "@/lib/officiants";
 import type { EventPersonInput } from "@/lib/event-persons";
 import { saveEventAction } from "@/server/actions/events";
 import type { EventFamilyOption, EventPersonOption } from "@/server/queries/event-persons";
@@ -58,6 +59,15 @@ export function EventForm({
       return t;
     });
   }, []);
+  // EVENT-FIELDS-BY-TYPE: the type's fields, plus those the saved event has a value in.
+  const shown = visibleEventFields(tip, {
+    ...initial,
+    agapaActiva: initial.agapaActiva === "on",
+    contributii: contributii.length,
+    persoane: persoane.length,
+  });
+  // „Alt loc decât biserica”: unticked = the event is at the church (the place is saved empty).
+  const [altLoc, setAltLoc] = useState(Boolean(initial.loc?.trim()) || Boolean(state.values?.loc));
   const [rows, setRows] = useState<Contribution[]>(() => contributii.map((c, i) => ({ key: i, ...c })));
 
   function addRow() {
@@ -77,29 +87,48 @@ export function EventForm({
         <SelectField name="tip" label="Tip" defaultValue={val("tip")} onChange={(ev) => setTip(ev.target.value)} error={e.tip} options={nomenOptions(tipuri, val("tip"))} />
         <TextField name="data" label="Data" type="date" defaultValue={val("data")} error={e.data} required />
       </div>
-      <EventPersonsField
-        tip={tip}
-        initialFamilyId={initial.familyId ?? ""}
-        initialPersons={persoane}
-        families={familyOptions}
-        persons={personOptions}
-        error={e.persoane ?? e.familyId}
-        onTitle={onTitle}
-      />
-      <div className="row2">
-        <TextField name="ora" label="Ora" type="time" defaultValue={val("ora")} error={e.ora} />
-        <TextField name="loc" label="Loc" defaultValue={val("loc")} error={e.loc} />
+      {/* EVENT-FIELDS-BY-TYPE: hidden fields stay in the form (hidden), so nothing typed is lost. */}
+      <div hidden={!shown.has("persoane")}>
+        <EventPersonsField
+          tip={tip}
+          initialFamilyId={initial.familyId ?? ""}
+          initialPersons={persoane}
+          families={familyOptions}
+          persons={personOptions}
+          error={e.persoane ?? e.familyId}
+          onTitle={onTitle}
+        />
       </div>
       <div className="row2">
-        <TextField name="invitat" label="Invitat / vorbitor" defaultValue={val("invitat")} error={e.invitat} />
-        <TextField name="responsabil" label="Responsabil" defaultValue={val("responsabil")} error={e.responsabil} />
+        <div hidden={!shown.has("ora")}>
+          <TextField name="ora" label="Ora (opțional)" type="time" placeholder="oo:mm" defaultValue={val("ora")} error={e.ora} />
+        </div>
+        <div>
+          <label className="check !border-0">
+            <input type="checkbox" name="altLoc" checked={altLoc} onChange={(ev) => setAltLoc(ev.target.checked)} />
+            Alt loc decât biserica
+          </label>
+          <div hidden={!altLoc}>
+            <TextField name="loc" label="Loc" defaultValue={val("loc")} error={e.loc} />
+          </div>
+        </div>
       </div>
-      {isOfficiatedEvent(tip) || val("oficiant") ? (
+      <div className="row2">
+        <div hidden={!shown.has("invitat")}>
+          <TextField name="invitat" label="Invitat / vorbitor" defaultValue={val("invitat")} error={e.invitat} />
+        </div>
+        <div hidden={!shown.has("responsabil")}>
+          <TextField name="responsabil" label="Responsabil" defaultValue={val("responsabil")} error={e.responsabil} />
+        </div>
+      </div>
+      <div hidden={!shown.has("oficiant")}>
         <OfficiantField name="oficiant" act={tip} defaultValue={val("oficiant")} options={officiants} error={e.oficiant} />
-      ) : null}
-      <TextAreaField name="descriere" label="Descriere / program" defaultValue={val("descriere")} error={e.descriere} />
+      </div>
+      <div hidden={!shown.has("descriere")}>
+        <TextAreaField name="descriere" label="Descriere / program" defaultValue={val("descriere")} error={e.descriere} />
+      </div>
 
-      <fieldset className="card">
+      <fieldset className="card" hidden={!shown.has("agapa")}>
         <label className="check !border-0 !pt-0">
           <input type="checkbox" name="agapaActiva" checked={agapa} onChange={(ev) => setAgapa(ev.target.checked)} />
           Cu agapă (masă comună)

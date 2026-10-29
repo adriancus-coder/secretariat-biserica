@@ -170,5 +170,16 @@ describe("documente tipărite", () => {
     );
     expect(e).toContain("Data: 4 octombrie 2026, ora 10:00 · Loc: Sala bisericii");
     expect(e).toContain("Agapă — responsabil: Lucia Avram — aprox. 120 persoane\n• Familia Pop: cozonac");
+
+    // EVENT-FIELDS-BY-TYPE: an empty place is the church, with its address; empty fields are left out.
+    const atChurch = printToText(
+      eventPrint(
+        { titlu: "Botez", data: "2026-10-04", ora: "", loc: "", invitat: "", responsabil: "", oficiant: "Daniel Mureșan", descriere: "", agapaActiva: false, agapaResponsabil: "", agapaPersoane: null, contributii: [] },
+        { ...church, codPostal: "4005", localitate: "Stavanger" },
+      ),
+    );
+    expect(atChurch).toContain("Data: 4 octombrie 2026 · Loc: la biserică, Kongsgårdbakken 1, 4005 Stavanger");
+    expect(atChurch).not.toContain("Invitat");
+    expect(atChurch).not.toContain("Responsabil");
   });
 });

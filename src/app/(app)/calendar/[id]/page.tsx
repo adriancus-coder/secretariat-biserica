@@ -7,6 +7,7 @@ import { BackLink, PageHead } from "@/components/ui/page-head";
 import { fmt } from "@/lib/format";
 import { permissions } from "@/lib/permissions";
 import { deleteEventAction } from "@/server/actions/events";
+import { eventPlace } from "@/lib/event-fields";
 import { EVENT_ROLE_LABEL } from "@/lib/event-persons";
 import { eventWithPersons } from "@/server/queries/event-persons";
 import { getEvent } from "@/server/queries/events";
@@ -51,12 +52,8 @@ export default async function EventPage({ params }: PageProps<"/calendar/[id]">)
         </dd>
         <dt>Tip</dt>
         <dd>{x.tip}</dd>
-        {x.loc ? (
-          <>
-            <dt>Loc</dt>
-            <dd>{x.loc}</dd>
-          </>
-        ) : null}
+        <dt>Loc</dt>
+        <dd>{eventPlace(x.loc)}</dd>
         {x.invitat ? (
           <>
             <dt>Invitat</dt>
