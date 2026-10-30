@@ -19,6 +19,7 @@ import {
 } from "docx";
 import { chartTable, type Block, type PrintSpec, type Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT, type PageLayout } from "@/lib/page-layout";
+import { docxKeeps } from "@/lib/pagination";
 import { richLines, TEXT_SIZE_DELTA, type Align, type RichRun } from "@/lib/rich-text";
 import { letterheadDetails } from "../pdf/render";
 import { churchTitle } from "@/lib/church-name";
@@ -81,7 +82,10 @@ function richRuns(r: RichRun, base: number): TextRun[] {
   );
 }
 
-function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
+function blockToDocx(block: Block, L: PageLayout, keep?: "all" | "last"): (Paragraph | Table)[] {
+  // FIT-TO-PAGE: kept with the next block (all its paragraphs, or only its last one), and never split.
+  const kn = (i = 0, n = 1) => (keep === "all" || (keep === "last" && i === n - 1) ? { keepNext: true, keepLines: true } : {});
+  const sp = (n: number) => Math.round(n * (L.paraSpacing ?? 1));
   // Body text in the layout's size; line spacing in 240ths of a line.
   const t = (s: string, o: Parameters<typeof text>[1] = {}) => text(s, { ...o, size: o.size ?? L.fontSize });
   const ln = (s: string) => lines(s, { size: L.fontSize });
@@ -89,12 +93,13 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
   const body = L.align === "justify" ? AlignmentType.JUSTIFIED : AlignmentType.LEFT;
   switch (block.type) {
     case "nr":
-      return [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 240 }, children: [t(block.text)] })];
+      return [new Paragraph({ ...kn(), alignment: AlignmentType.RIGHT, spacing: { after: sp(240) }, children: [t(block.text)] })];
     case "title":
       return [
         new Paragraph({
+          ...kn(),
           alignment: AlignmentType.CENTER,
-          spacing: { before: 120, after: 240 },
+          spacing: { before: 120, after: sp(240) },
           children: [t(block.text, { bold: true, size: L.fontSize + 4, allCaps: !block.asWritten })],
         }),
       ];
@@ -104,13 +109,14 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
         const all = block.runs.map((r) => r.text).join("").split("\n");
         return all.map(
           (line, i) =>
-            new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...lineSpacing, after: i === all.length - 1 ? 120 : 0 }, children: [t(line)] }),
+            new Paragraph({ ...kn(i, all.length), alignment: AlignmentType.LEFT, spacing: { ...lineSpacing, after: i === all.length - 1 ? sp(120) : 0 }, children: [t(line)] }),
         );
       }
       return [
         new Paragraph({
+          ...kn(),
           alignment: body,
-          spacing: { ...lineSpacing, after: 120 },
+          spacing: { ...lineSpacing, after: sp(120) },
           children: block.runs.map((r) => t(r.text, { bold: r.bold })),
         }),
       ];
@@ -122,8 +128,9 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
         const level = line.level + (block.marker ? 1 : 0);
         const marker = block.marker && i === 0 ? block.marker : line.marker;
         return new Paragraph({
+          ...kn(i, lines.length),
           alignment: line.align ? ALIGNMENT[line.align] : body,
-          spacing: { ...lineSpacing, after: i === lines.length - 1 ? 120 : 0 },
+          spacing: { ...lineSpacing, after: i === lines.length - 1 ? sp(120) : 0 },
           indent: level ? { left: step * level, ...(marker ? { hanging: convertMillimetersToTwip(6) } : {}) } : undefined,
           tabStops: level ? [{ type: "left", position: step * level }] : undefined,
           children: [...(marker ? [t(`${marker}\t`)] : []), ...line.runs.flatMap((r) => richRuns(r, L.fontSize))],
@@ -134,8 +141,9 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
       return block.items.map(
         (item, i) =>
           new Paragraph({
+            ...kn(i, block.items.length),
             alignment: body,
-            spacing: { ...lineSpacing, after: 60 },
+            spacing: { ...lineSpacing, after: sp(60) },
             indent: { left: convertMillimetersToTwip(8), hanging: convertMillimetersToTwip(6) },
             children: [t(`${block.ordered ? `${(block.start ?? 1) + i}.` : "•"}\t`), ...ln(item)],
             tabStops: [{ type: "left", position: convertMillimetersToTwip(8) }],
@@ -185,7 +193,7 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
             ],
           }),
       );
-      return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }), new Paragraph({ spacing: { after: 120 }, children: [] })];
+      return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }), new Paragraph({ spacing: { after: sp(120) }, children: [] })];
     }
     case "table": {
       const line = { style: BorderStyle.SINGLE, size: 4, color: "999999" } as const;
@@ -198,18 +206,18 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
         });
       return [
         new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [row(block.columns, true, true), ...block.rows.map((r, i) => row(r, block.bold?.[i] ?? false))] }),
-        new Paragraph({ spacing: { after: 120 }, children: [] }),
+        new Paragraph({ spacing: { after: sp(120) }, children: [] }),
       ];
     }
     case "chart":
       return [
-        new Paragraph({ spacing: { before: 120, after: 60 }, children: [t(block.title, { bold: true })] }),
+        new Paragraph({ spacing: { before: 120, after: sp(60) }, children: [t(block.title, { bold: true })] }),
         ...blockToDocx({ type: "table", columns: chartTable(block)[0], rows: chartTable(block).slice(1) }, L),
       ];
     case "centered":
-      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [t(block.text, { bold: block.bold, size: block.size })] })];
+      return [new Paragraph({ ...kn(), alignment: AlignmentType.CENTER, spacing: { after: sp(200) }, children: [t(block.text, { bold: block.bold, size: block.size })] })];
     case "image":
-      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [image(block.png, Math.round(block.width * 1.333), Math.round(block.width * 1.333))] })];
+      return [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: sp(200) }, children: [image(block.png, Math.round(block.width * 1.333), Math.round(block.width * 1.333))] })];
   }
 }
 
@@ -219,6 +227,7 @@ export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
   const base = PAGE_MM[L.format];
   const page = spec.landscape ? { width: base.height, height: base.width } : base;
   const details = letterheadDetails(spec.church);
+  const keeps = docxKeeps(spec);
   const letterhead = !L.letterhead ? [] : [
     new Paragraph({ children: [text(churchTitle(spec.church.nume), { bold: true, size: 18 })] }),
     ...(details ? [new Paragraph({ children: [text(details, { size: 10.5, color: "333333" })] })] : []),
@@ -257,7 +266,7 @@ export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
         ...(spec.watermark
           ? { headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [text(spec.watermark, { size: 20, bold: true, color: "C0392B" })] })] }) } }
           : {}),
-        children: [...letterhead, ...spec.blocks.flatMap((b) => blockToDocx(b, L))],
+        children: [...letterhead, ...spec.blocks.flatMap((b, i) => blockToDocx(b, L, keeps[i]))],
       },
     ],
   });

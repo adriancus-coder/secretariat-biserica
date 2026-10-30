@@ -6,7 +6,9 @@ import { FormMessage } from "@/components/ui/form-bits";
 import { useActionForm } from "@/components/ui/use-action-form";
 import { blockToRich, type StoredBlock } from "@/lib/generated-blocks";
 import type { GeneratedKind } from "@/lib/generated-kinds";
-import { FONT_MAX, FONT_MIN, LINE_HEIGHTS, MARGIN_MAX, MARGIN_MIN, type PageLayout } from "@/lib/page-layout";
+import { FONT_MAX, FONT_MIN, LINE_HEIGHTS, MARGIN_MAX, MARGIN_MIN, PARA_SPACING_LABEL, PARA_SPACINGS, type PageLayout } from "@/lib/page-layout";
+import { FitPages } from "@/components/fit-pages";
+import { useRouter } from "next/navigation";
 import { emptyRich, type RichDoc } from "@/lib/rich-text";
 import { resetGeneratedAction, saveGeneratedAction } from "@/server/actions/generated";
 
@@ -55,6 +57,7 @@ export function GeneratedEditor({
   canSave: boolean;
   official: boolean;
 }) {
+  const router = useRouter();
   const nextKey = useRef(initial.length);
   const [items, setItems] = useState<Item[]>(() => initial.map((block, key) => ({ key, block, start: rich(block) })));
   const [ownLayout, setOwnLayout] = useState(Boolean(layout));
@@ -120,6 +123,21 @@ export function GeneratedEditor({
         ))}
       </div>
 
+      {/* FIT-TO-PAGE: the page count and „Potrivește pe mai puține pagini” for the text and layout shown. */}
+      <FitPages
+        build={() => {
+          const fd = new FormData(form.current!);
+          fd.set("tinta", "generat");
+          return fd;
+        }}
+        watch={`${json}|${ownLayout}|${JSON.stringify(lay)}`}
+        hadOwn={ownLayout}
+        onLayout={(l, saved) => {
+          setOwnLayout(Boolean(l));
+          setLay(l ?? defaultLayout);
+          if (saved) router.refresh();
+        }}
+      />
       <div className="gen-columns">
         <div className="gen-edit" hidden={!wide && mode !== "editare"}>
           {readOnly ? <p className="hint">Versiunea înregistrată nu se mai modifică aici.</p> : null}
@@ -186,6 +204,16 @@ export function GeneratedEditor({
                     {LINE_HEIGHTS.map((h) => (
                       <option key={h} value={String(h)}>
                         {String(h).replace(".", ",")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Spațiu între paragrafe
+                  <select name="paraSpacing" value={String(lay.paraSpacing ?? 1)} onChange={(e) => setL("paraSpacing", Number(e.target.value))}>
+                    {[...PARA_SPACINGS].reverse().map((v) => (
+                      <option key={v} value={String(v)}>
+                        {PARA_SPACING_LABEL[v]}
                       </option>
                     ))}
                   </select>

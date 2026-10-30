@@ -2500,6 +2500,16 @@
   .layout-frame {
     display: none;
   }
+  /* FIT-TO-PAGE: the page count and „Potrivește pe mai puține pagini” beside a preview. */
+  .fit-pages {
+    margin-bottom: 8px;
+  }
+  .fit-pages-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
   @media (min-width: 1024px) {
     .layout-editor {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

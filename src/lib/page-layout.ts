@@ -6,6 +6,9 @@ export type PageFormat = (typeof PAGE_FORMATS)[number];
 export const TEXT_ALIGNS = ["justify", "left"] as const;
 export type TextAlign = (typeof TEXT_ALIGNS)[number];
 export const LINE_HEIGHTS = [1, 1.15, 1.3, 1.55, 1.8, 2] as const;
+/** FIT-TO-PAGE: the space between paragraphs and points, as a share of the usual (1 = usual, 0.5 = half). */
+export const PARA_SPACINGS = [0.5, 0.75, 1] as const;
+export const PARA_SPACING_LABEL: Record<(typeof PARA_SPACINGS)[number], string> = { 1: "obișnuit", 0.75: "redus", 0.5: "foarte redus (jumătate)" };
 
 export interface PageLayout {
   format: PageFormat;
@@ -21,6 +24,8 @@ export interface PageLayout {
   align: TextAlign;
   /** Print the church letterhead (off for paper with a printed letterhead: raise the top margin to leave its room). */
   letterhead: boolean;
+  /** FIT-TO-PAGE: the space between paragraphs and points, a share of the usual one (`PARA_SPACINGS`). */
+  paraSpacing: number;
 }
 
 /** The layout the minutes had before it became adjustable. */
@@ -34,6 +39,7 @@ export const DEFAULT_LAYOUT: PageLayout = {
   lineHeight: 1.55,
   align: "justify",
   letterhead: true,
+  paraSpacing: 1,
 };
 
 export const MARGIN_MIN = 8;
@@ -65,6 +71,11 @@ export const pageLayoutSchema = z.object({
     .refine((n) => (LINE_HEIGHTS as readonly number[]).includes(n), "Alegeți spațierea dintre rânduri."),
   align: z.enum(TEXT_ALIGNS, { message: "Alegeți alinierea." }),
   letterhead: z.preprocess((v) => v === true || v === "on" || v === "1" || v === "true", z.boolean()),
+  // Older forms, links and stored layouts have no spacing: the usual one.
+  paraSpacing: z.preprocess(
+    (v) => (v === undefined || v === null || v === "" ? 1 : v),
+    z.coerce.number().refine((n) => (PARA_SPACINGS as readonly number[]).includes(n), "Alegeți spațiul dintre paragrafe."),
+  ),
 });
 
 export const PAGE_LAYOUT_FIELDS = Object.keys(DEFAULT_LAYOUT) as (keyof PageLayout)[];
@@ -106,5 +117,6 @@ export function layoutSummary(l: PageLayout): string {
     `rânduri ${String(l.lineHeight).replace(".", ",")}`,
     l.align === "justify" ? "aliniat stânga-dreapta" : "aliniat la stânga",
     l.letterhead ? "cu antet" : "fără antet",
+    ...(l.paraSpacing !== 1 ? [`spațiu între paragrafe ${PARA_SPACING_LABEL[l.paraSpacing as (typeof PARA_SPACINGS)[number]] ?? String(l.paraSpacing)}`] : []),
   ].join(" · ");
 }

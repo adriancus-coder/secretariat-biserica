@@ -3,6 +3,7 @@ import path from "node:path";
 import PDFDocument from "pdfkit";
 import type { Block, PrintSpec, Signature } from "@/domain/print";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
+import { EMPTY_PLAN, lastPageInfo, planPages, samePlan, type BlockBox, type PageGeometry, type PagePlan } from "@/lib/pagination";
 import { richLines, TEXT_SIZE_DELTA, type RichRun } from "@/lib/rich-text";
 import type { ChurchInfo } from "@/domain/types";
 import { formatAddress } from "@/lib/address";
@@ -126,12 +127,51 @@ function drawChart(doc: PDFKit.PDFDocument, block: Extract<Block, { type: "chart
   doc.y = top + total;
 }
 
+/** A rendered PDF with what FIT-TO-PAGE needs: the page count and how full the last page is. */
+export interface RenderedPdf {
+  pdf: Buffer;
+  pages: number;
+  /** The last page's share of content (0–1). */
+  lastPageFill: number;
+  /** The last page holds only the closing (formula, „Întocmit,”, signatures). */
+  onlyTailOnLast: boolean;
+  /** Where each block landed (tests). */
+  boxes: BlockBox[];
+}
+
 export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
+  return (await renderPdfInfo(spec)).pdf;
+}
+
+/**
+ * Lays the document out, checks where the blocks landed (src/lib/pagination.ts) and lays it out again
+ * with the breaks that keep groups together, until nothing moves (at most a few passes).
+ */
+export async function renderPdfInfo(spec: PrintSpec, opts: { measure?: boolean; keep?: boolean } = {}): Promise<RenderedPdf> {
+  let plan: PagePlan = EMPTY_PLAN;
+  for (let pass = 0; ; pass++) {
+    const laid = layoutPdf(spec, plan);
+    // `keep: false` (tests only) lays the document out without the keep rules, as before FIT-TO-PAGE.
+    const next = pass < 5 && opts.keep !== false ? planPages(spec, laid.boxes, laid.geometry, plan) : plan;
+    if (samePlan(next, plan)) {
+      const info = lastPageInfo(spec, laid.boxes, laid.geometry, laid.pages);
+      // `measure`: only the pages are wanted (FIT-TO-PAGE), the file is not written out.
+      const pdf = opts.measure ? Buffer.alloc(0) : await laid.finish();
+      return { pdf, pages: laid.pages, lastPageFill: info.fill, onlyTailOnLast: info.onlyTail, boxes: laid.boxes };
+    }
+    plan = next;
+  }
+}
+
+/** One layout pass: the document drawn with `plan`'s breaks and page limits, and where each block landed. */
+function layoutPdf(spec: PrintSpec, plan: PagePlan) {
   // Page layout: the spec's (minutes), else the defaults; `size` alone is used by the poster.
   const layout = spec.layout ?? { ...DEFAULT_LAYOUT, format: spec.size ?? DEFAULT_LAYOUT.format };
   const MARGIN = { top: layout.marginTop * MM, bottom: layout.marginBottom * MM, left: layout.marginLeft * MM, right: layout.marginRight * MM };
   const BODY_SIZE = layout.fontSize;
   const LINE_HEIGHT = layout.lineHeight;
+  // FIT-TO-PAGE: the space between paragraphs and points (a share of the usual one).
+  const SP = layout.paraSpacing ?? 1;
   const doc = new PDFDocument({
     size: layout.format,
     layout: spec.landscape ? "landscape" : "portrait",
@@ -151,16 +191,32 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   doc.registerFont("Serif-Italic", FONTS.italic);
   doc.registerFont("Serif-BoldItalic", FONTS.boldItalic);
 
-  const chunks: Buffer[] = [];
-  const done = new Promise<Buffer>((resolve, reject) => {
-    doc.on("data", (c: Buffer) => chunks.push(c));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-  });
+  // Where each block lands: its start moves to the next page when a page is added before it drew anything.
+  const boxes: BlockBox[] = [];
+  let page = 0;
+  let current: BlockBox | null = null;
+  const addPage = doc.addPage.bind(doc);
+  let currentIndex = -1;
+  // A planned limit: the current block's text stops higher on that page (its last lines go to the next one).
+  const applyLimit = () => {
+    const limit = plan.limits[currentIndex];
+    if (limit && current && page === current.sp + limit.page) doc.page.margins.bottom = doc.page.height - limit.y;
+  };
+  doc.addPage = ((options?: PDFKit.PDFDocumentOptions) => {
+    const yBefore = doc.y;
+    addPage(options);
+    if (current && current.sp === page && Math.abs(current.sy - yBefore) < 0.01) {
+      current.sp = page + 1;
+      current.sy = doc.y;
+    }
+    page++;
+    applyLimit();
+    return doc;
+  }) as typeof doc.addPage;
 
   const left = MARGIN.left;
   const width = doc.page.width - MARGIN.left - MARGIN.right;
-  const bottomLimit = () => doc.page.height - MARGIN.bottom;
+  const bottomLimit = () => doc.page.maxY();
 
   /** The extra space between lines for the layout's line height. */
   const lineGap = (size: number) => {
@@ -185,11 +241,18 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
     doc.y = MARGIN.top;
   }
 
-  for (const block of spec.blocks) {
+  const contentTop = [doc.y];
+  const breaks = new Set(plan.breaks);
+  for (const [index, block] of spec.blocks.entries()) {
+    // A planned break: this block (and the ones kept with it) starts on the next page.
+    if (breaks.has(index) && doc.y > MARGIN.top + 1) doc.addPage();
+    current = { sp: page, sy: doc.y, ep: page, ey: doc.y };
+    currentIndex = index;
+    applyLimit();
     switch (block.type) {
       case "nr": {
         doc.font("Serif").fontSize(BODY_SIZE).text(block.text, left, doc.y, { width, align: "right" });
-        doc.y += 18;
+        doc.y += 18 * SP;
         break;
       }
       case "title": {
@@ -200,7 +263,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           align: "center",
           characterSpacing: block.asWritten ? 0 : titleSize * 0.06,
         });
-        doc.y += 18;
+        doc.y += 18 * SP;
         break;
       }
       case "para": {
@@ -217,7 +280,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
             continued: i < runs.length - 1,
           });
         });
-        doc.y += 10;
+        doc.y += 10 * SP;
         break;
       }
       case "rich": {
@@ -252,7 +315,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.x = left;
         });
         doc.x = left;
-        doc.y += 10;
+        doc.y += 10 * SP;
         break;
       }
       case "list": {
@@ -268,7 +331,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.text(item, left + indent + 4, y, { width: width - indent - 4, lineGap: gap });
         });
         doc.x = left;
-        doc.y += 10;
+        doc.y += 10 * SP;
         break;
       }
       case "signatures": {
@@ -332,7 +395,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
           doc.y = top + rowH + 2;
         }
         doc.x = left;
-        doc.y += 10;
+        doc.y += 10 * SP;
         break;
       }
       case "table": {
@@ -367,7 +430,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         drawRow(block.columns, "Serif-Bold", 0.8);
         block.rows.forEach((r, i) => drawRow(r, block.bold?.[i] ? "Serif-Bold" : "Serif", 0.3, imgs && block.imageRows?.[i] !== false ? (imgs[i] ?? null) : undefined));
         doc.x = left;
-        doc.y += 10;
+        doc.y += 10 * SP;
         break;
       }
       case "chart": {
@@ -377,7 +440,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
       case "centered": {
         doc.font(block.bold ? "Serif-Bold" : "Serif").fontSize(block.size ?? BODY_SIZE).fillColor("#000");
         doc.text(block.text, left, doc.y, { width, align: "center" });
-        doc.y += 12;
+        doc.y += 12 * SP;
         break;
       }
       case "image": {
@@ -429,12 +492,25 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         break;
       }
     }
+    current.ep = page;
+    current.ey = doc.y;
+    boxes.push(current);
+    current = null;
   }
+  for (let p = 1; p <= page; p++) contentTop[p] = MARGIN.top;
+  const geometry: PageGeometry = {
+    contentTop,
+    top: MARGIN.top,
+    bottom: doc.page.height - MARGIN.bottom,
+    line: BODY_SIZE * LINE_HEIGHT,
+  };
 
   // Numerotarea paginilor (doar pentru documentele de mai multe pagini) și subsolul (ex. „Proces-verbal închis la …”).
   const range = doc.bufferedPageRange();
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
+    // The footer sits in the bottom margin: without lifting the limit, pdfkit would start a new (blank) page.
+    doc.page.margins.bottom = 0;
     const y = doc.page.height - MARGIN.bottom / 2 - 5;
     doc.font("Serif").fontSize(9).fillColor("#555");
     if (spec.footer) doc.text(spec.footer, left, y - 12, { width, align: "center", lineBreak: false });
@@ -450,8 +526,17 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
       doc.restore();
     }
   }
-  doc.end();
-  return done;
+  const finish = () => {
+    const chunks: Buffer[] = [];
+    const done = new Promise<Buffer>((resolve, reject) => {
+      doc.on("data", (c: Buffer) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+    });
+    doc.end();
+    return done;
+  };
+  return { boxes, geometry, pages: page + 1, finish };
 }
 
 /** Nume de fișier sigur (fără diacritice și caractere speciale). */

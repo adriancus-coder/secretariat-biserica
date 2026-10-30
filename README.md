@@ -444,6 +444,15 @@ corecții deliberate:
     hârtie de: …”). Antetul (și textul documentelor) scrie „Biserica” o singură dată când numele din
     Setări începe deja cu „Biserica” (`churchTitle`). Testul `src/domain/print.test.ts` și
     `docs/samples/proces-verbal-model.md` au noul format.
+27. **Paginarea documentelor tipărite:** prototipul lăsa browserul să rupă paginile oriunde, așa că
+    semnăturile puteau rămâne singure pe ultima pagină. Acum, în PDF și Word, finalul procesului-verbal
+    (formula de încheiere, „Întocmit,” și semnăturile) nu se rupe între pagini și nu stă niciodată
+    singur: trece pe pagina următoare împreună cu ultimul punct (și rândul lui „Votat: …”); un punct
+    rămâne cu votul lui, iar titlurile și rândurile care se termină cu „:” nu rămân singure la capăt de
+    pagină. Același lucru pentru semnăturile documentelor și ale documentelor generate. Textul tipărit
+    nu se schimbă (procesele-verbale scurte rămân identice); doar locul unde se rupe pagina. „Potrivește
+    pe mai puține pagini” micșorează pe rând spațiul dintre paragrafe, interlinia, marginile și mărimea
+    literelor (cel puțin 10 pt) până scade numărul de pagini.
 
 ## Atribuiri
 

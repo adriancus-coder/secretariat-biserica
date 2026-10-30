@@ -37,6 +37,7 @@ export default async function DocumentLayoutPage({ params }: PageProps<"/documen
         hasOwn={doc.layout !== null}
         locked={false}
         canSetDefault={permissions.admin(ctx.user.role)}
+        fit={{ tinta: "document", id }}
       />
     </>
   );

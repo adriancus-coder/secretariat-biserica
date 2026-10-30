@@ -39,6 +39,7 @@ export default async function MeetingLayoutPage({ params }: PageProps<"/procese-
         hasOwn={m.layout !== null}
         locked={m.locked}
         canSetDefault={permissions.admin(ctx.user.role)}
+        fit={{ tinta: "pv", id }}
       />
     </>
   );

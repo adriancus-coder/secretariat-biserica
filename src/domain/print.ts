@@ -88,6 +88,16 @@ export interface PrintSpec {
   layout?: PageLayout;
   /** Landscape page (wide tables). */
   landscape?: boolean;
+  /**
+   * FIT-TO-PAGE (src/lib/pagination.ts): indexes of blocks kept on the same page as the next one (a
+   * point with its „Votat: …” line); titles and lines ending in „:” are kept with the next block anyway.
+   */
+  keepWithNext?: number[];
+  /**
+   * How many blocks at the end form the closing („formula de încheiere”, „Întocmit,”, the signatures),
+   * never split between pages and never alone on the last page; default: the final signature block.
+   */
+  keepTail?: number;
 }
 
 export const b = (text: string): Run => ({ text, bold: true });
@@ -187,17 +197,24 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   blocks.push(para("În cadrul ședinței s-au discutat și aprobat următoarele:"));
   const richPoints = x.puncteRich?.length === x.puncte.length && x.puncteRich.some(Boolean) ? x.puncteRich : null;
   const votes = x.voturi?.some(Boolean) ? x.voturi : null;
+  // A point stays on the page of its „Votat: …” line (FIT-TO-PAGE).
+  const keepWithNext: number[] = [];
   if (richPoints || votes) {
     x.puncte.forEach((p, i) => {
       const doc = richPoints?.[i];
       blocks.push(doc ? { type: "rich", doc, marker: `${i + 1}.` } : { type: "list", items: [p], ordered: true, start: i + 1 });
       const vote = votes?.[i];
-      if (vote) blocks.push(para(vote));
+      if (vote) {
+        keepWithNext.push(blocks.length - 1);
+        blocks.push(para(vote));
+      }
     });
   } else if (x.puncte.length) blocks.push({ type: "list", items: x.puncte, ordered: true });
   if (x.sedintaInchisa) blocks.push(para(CLOSED_SESSION_LINE));
   if (x.observatii || x.observatiiRich) blocks.push(para("Observații:"), x.observatiiRich ? { type: "rich", doc: x.observatiiRich } : pre(x.observatii));
   // With recorded votes the default "votate în unanimitate" would contradict them: it is left out.
+  // The closing: the formula (when printed), „Întocmit,” and the signatures stay together.
+  const tailFrom = blocks.length;
   if (!(votes && x.formulaIncheiere === DEFAULT_CLOSING)) blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
   blocks.push(para("Întocmit,"));
   const place = (rol: "SECRETAR" | "PASTOR", label: string, name: string): Signature => {
@@ -209,6 +226,8 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     title: `Proces verbal${x.nr !== null ? ` nr. ${x.nr}` : ""} ${fmtDot(x.data)}`,
     church,
     blocks,
+    keepTail: blocks.length - tailFrom,
+    ...(keepWithNext.length ? { keepWithNext } : {}),
     ...(x.inchisLa ? { footer: `Proces-verbal închis la ${x.inchisLa}` } : {}),
   };
 }

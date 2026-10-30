@@ -12,6 +12,9 @@ import {
   LINE_HEIGHTS,
   MARGIN_MAX,
   MARGIN_MIN,
+  PARA_SPACING_LABEL,
+  PARA_SPACINGS,
+  PAGE_LAYOUT_FIELDS,
   layoutQuery,
   layoutSummary,
   type PageLayout,
@@ -19,6 +22,8 @@ import {
 import type { FormState } from "@/lib/form-state";
 import { DownloadLink } from "@/components/ui/download";
 import { MIME } from "@/lib/download";
+import { FitPages } from "@/components/fit-pages";
+import { useRouter } from "next/navigation";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -52,6 +57,7 @@ export function LayoutEditor({
   hasOwn,
   locked,
   canSetDefault,
+  fit,
 }: {
   subject: LayoutSubject;
   /** The save action, bound to the record; the pressed button's `scop` is "pv" (own), "implicit" (admin) or "resetare". */
@@ -62,7 +68,10 @@ export function LayoutEditor({
   hasOwn: boolean;
   locked: boolean;
   canSetDefault: boolean;
+  /** FIT-TO-PAGE: what „Potrivește pe mai puține pagini” lays out. */
+  fit: { tinta: "pv" | "document"; id: string };
 }) {
+  const router = useRouter();
   const [layout, setLayout] = useState<PageLayout>(initial);
   const { state, pending, onSubmit } = useActionForm(action);
   const e = state.errors ?? {};
@@ -81,6 +90,13 @@ export function LayoutEditor({
     return () => clearTimeout(t);
   }, [query, valid]);
   const previewUrl = `${subject.pdfBase}?previzualizare=1&${previewQuery}`;
+  const buildFit = () => {
+    const fd = new FormData();
+    fd.set("tinta", fit.tinta);
+    fd.set("id", fit.id);
+    for (const k of PAGE_LAYOUT_FIELDS) fd.set(k, k === "letterhead" ? (layout.letterhead ? "on" : "") : String(layout[k]));
+    return fd;
+  };
 
   return (
     <div className="layout-editor">
@@ -141,6 +157,15 @@ export function LayoutEditor({
               value={Number.isNaN(layout.fontSize) ? "" : layout.fontSize}
               onChange={(ev) => set("fontSize", ev.target.valueAsNumber)}
             />
+          </Field>
+          <Field label="Spațiu între paragrafe" htmlFor="f-paraSpacing" error={e.paraSpacing}>
+            <select id="f-paraSpacing" name="paraSpacing" value={layout.paraSpacing} onChange={(ev) => set("paraSpacing", Number(ev.target.value))}>
+              {[...PARA_SPACINGS].reverse().map((v) => (
+                <option key={v} value={v}>
+                  {PARA_SPACING_LABEL[v]}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Spațiere între rânduri" htmlFor="f-lineHeight" error={e.lineHeight}>
             <select id="f-lineHeight" name="lineHeight" value={layout.lineHeight} onChange={(ev) => set("lineHeight", Number(ev.target.value))}>
@@ -208,7 +233,16 @@ export function LayoutEditor({
       </form>
 
       <div className="layout-preview">
-        <div className="flex flex-wrap gap-2 mb-2">
+        <FitPages
+          build={buildFit}
+          watch={previewQuery}
+          hadOwn={hasOwn}
+          onLayout={(l, saved) => {
+            setLayout(l ?? churchDefault);
+            if (saved) router.refresh();
+          }}
+        />
+        <div className="flex flex-wrap gap-2 mb-2 mt-2">
           <DownloadLink file={previewUrl} filename="previzualizare.pdf" mime={MIME.pdf} inline>
             Previzualizează (PDF)
           </DownloadLink>
