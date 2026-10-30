@@ -132,6 +132,14 @@ export async function anonymizePerson(ctx: Ctx, id: string): Promise<boolean> {
     await tx.note.deleteMany({ where: { personId: id } });
     // MeetingSignature has no churchId: the person was just found in this church.
     await tx.meetingSignature.deleteMany({ where: { personId: id } });
+    // MINUTES-IMPORT-ROBUST: an imported minutes' original Word file cannot be scrubbed: it goes for the
+    // minutes the person attended or whose text names them (the minutes themselves stay, scrubbed below).
+    await tx.meetingSourceFile.deleteMany({ where: { meeting: { prezenti: { some: { personId: id } } } } });
+    for (const n of needles.filter((x) => !x.includes("@") && !/^[+\d\s()-]+$/.test(x))) {
+      await tx.$executeRaw`DELETE FROM "meeting_source_files" f USING "meetings" m
+        WHERE f."meetingId" = m."id" AND m."churchId" = ${ctx.user.churchId} AND f."churchId" = ${ctx.user.churchId}
+          AND strpos(m."invitati" || ' ' || m."observatii" || ' ' || m."ordine" || ' ' || m."titlu" || ' ' || array_to_string(m."puncte", ' '), ${n}) > 0`;
+    }
     if (application) {
       await tx.application.update({
         where: { id: application.id },

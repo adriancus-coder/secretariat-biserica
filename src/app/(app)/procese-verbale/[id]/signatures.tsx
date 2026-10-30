@@ -45,7 +45,13 @@ export function Signatures({
   locked,
   canWrite,
   canUnlock,
+  paperOnly = false,
+  autoSign = false,
 }: {
+  /** MINUTES-IMPORT-ROBUST: an imported record copy is signed on paper only (no digital „Semnează”). */
+  paperOnly?: boolean;
+  /** Opened right after „Semnează” saved a new minutes: the first place to sign opens at once. */
+  autoSign?: boolean;
   meetingId: string;
   rows: SignatureRow[];
   roles: SignatureRow[];
@@ -56,7 +62,7 @@ export function Signatures({
   canUnlock: boolean;
 }) {
   const router = useRouter();
-  const [signing, setSigning] = useState<SignatureRow | null>(null);
+  const [signing, setSigning] = useState<SignatureRow | null>(() => (autoSign && canWrite && !locked ? ([...rows, ...roles].find((r) => !r.signed) ?? null) : null));
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -91,9 +97,11 @@ export function Signatures({
         <span className="flex gap-2 flex-wrap justify-end">
           {!r.signed ? (
             <>
-              <button type="button" className="btn btn-sm" onClick={() => setSigning(r)} disabled={pending}>
-                Semnează
-              </button>
+              {paperOnly ? null : (
+                <button type="button" className="btn btn-sm" onClick={() => setSigning(r)} disabled={pending}>
+                  Semnează
+                </button>
+              )}
               <button type="button" className="btn btn-sm" onClick={() => run(() => markPaperAction(meetingId, r.place))} disabled={pending}>
                 Semnat pe hârtie
               </button>
@@ -111,6 +119,7 @@ export function Signatures({
   return (
     <div className="card" id="semnaturi">
       <h3>Semnături</h3>
+      {paperOnly ? <p className="hint !mt-0 mb-2">Copie de evidență: originalul a fost semnat pe hârtie. Marcați „Semnat pe hârtie” pe fiecare rând.</p> : null}
       {open && unsigned.length ? (
         <div className="mb-2">
           <button type="button" className="btn btn-sm" disabled={pending} onClick={() => setConfirm({ kind: "all", names: unsigned })}>

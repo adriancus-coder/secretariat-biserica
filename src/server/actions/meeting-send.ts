@@ -48,6 +48,7 @@ export async function sendMinutesAction(meetingId: string, _prev: FormState, for
       dataLabel,
       note: input.nota,
       attachment,
+      copie: m.importat,
     });
     const sent = delivery.result === "sent";
     const label = `${m.nr != null ? `PV nr. ${m.nr}/${m.anRegistru} — ` : ""}${m.titlu || m.tip} (${m.data})`;

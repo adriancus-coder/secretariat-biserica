@@ -23,6 +23,8 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: P
   const spec = meetingPrint(
     {
       nr: m.nr,
+      nrVechi: m.nrVechi,
+      copie: m.importat,
       tip: m.tip,
       data: m.data,
       prezenti: byNumber ? [] : m.prezenti,

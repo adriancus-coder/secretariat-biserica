@@ -34,6 +34,10 @@ export interface MeetingExtra {
    * marks one signed on paper (no image, `semnatLa` = when it was marked).
    */
   semnaturi?: { persoanaId: string; imagine: string; semnatLa: string; peHartie?: true }[];
+  /** MINUTES-IMPORT-ROBUST: an imported record copy, its old number when taken, and its original Word file (only when asked for). */
+  importat?: true;
+  nrVechi?: number;
+  original?: { nume: string; date: string };
   /** The Secretar / Pastor signatures at the bottom (MINUTES-SIGNATURES): the name signed, drawn or on paper. */
   semnaturiRol?: { rol: "SECRETAR" | "PASTOR"; nume: string; imagine: string; semnatLa: string; peHartie?: true }[];
   /** Closed (read-only) minutes, with the closing time as ISO. */
@@ -89,6 +93,9 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.formulaRich) m.formulaRich = x.formulaRich;
     if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
     if (x.semnaturiRol?.length) m.semnaturiRol = x.semnaturiRol;
+    if (x.importat) m.importat = true;
+    if (x.nrVechi) m.nrVechi = x.nrVechi;
+    if (x.original) m.original = x.original;
     if (x.asezare) m.asezare = x.asezare;
     if (x.inchisLa) m.inchisLa = x.inchisLa;
     if (x.convocatLa) m.convocatLa = x.convocatLa;
@@ -166,6 +173,13 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
         );
       if (list.length) x.semnaturi = list;
     }
+    if (m.importat === true) x.importat = true;
+    if (Number.isInteger(m.nrVechi) && (m.nrVechi as number) >= 1 && (m.nrVechi as number) <= 9999) x.nrVechi = m.nrVechi as number;
+    if (typeof m.original === "object" && m.original !== null) {
+      const o = m.original as Record<string, unknown>;
+      // Base64 of at most 5 MB; the server checks the file again on import.
+      if (typeof o.nume === "string" && o.nume.length <= 200 && typeof o.date === "string" && o.date.length <= 7_000_000 && /^[A-Za-z0-9+/=]+$/.test(o.date)) x.original = { nume: o.nume, date: o.date };
+    }
     if (Array.isArray(m.semnaturiRol)) {
       const seen = new Set<string>();
       const list = m.semnaturiRol
@@ -207,6 +221,9 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
       x.formulaIncheiere ||
       x.semnaturi ||
       x.semnaturiRol ||
+      x.importat ||
+      x.nrVechi ||
+      x.original ||
       x.inchisLa ||
       x.asezare ||
       x.convocatLa ||

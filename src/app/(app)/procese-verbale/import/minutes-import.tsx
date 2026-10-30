@@ -25,15 +25,18 @@ interface FormProps {
  */
 export function MinutesImport(form: FormProps) {
   const [docx, docxAction, docxPending] = useActionState(importDocxMinutesAction, {} as DocxImportState);
+  // The files chosen: each is saved with its minutes as the original (MINUTES-IMPORT-ROBUST).
+  const [files, setFiles] = useState<File[]>([]);
   const drafts = docx.drafts ?? null;
 
-  if (drafts) return <Review drafts={drafts} skipped={docx.skipped ?? []} {...form} />;
+  if (drafts) return <Review drafts={drafts} skipped={docx.skipped ?? []} files={files} {...form} />;
   return (
     <form action={docxAction} className="card">
         <h3>Documente Word</h3>
         <p className="hint mb-3">
-          Procese-verbale scrise în Word după modelul bisericii. Numărul, data, tipul, prezenții și punctele completează formularul
-          ședinței, pe care îl verificați înainte de salvare. Fișierele nu se păstrează.
+          Procese-verbale vechi scrise în Word. Vedeți întâi ce s-a recunoscut (număr, dată, tip, prezenți, puncte, voturi), corectați
+          și importați. Textul nerecunoscut ajunge la Observații. Procesul-verbal importat este o copie de evidență (originalul semnat
+          rămâne pe hârtie), iar fișierul Word se păstrează la el.
         </p>
         <div className="field">
           <label htmlFor="fisiere">Fișiere .docx (cel mult 30, fiecare până la 5 MB, în total până la 25 MB)</label>
@@ -44,6 +47,7 @@ export function MinutesImport(form: FormProps) {
             multiple
             required
             accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
           />
         </div>
         <button type="submit" className="btn btn-primary" disabled={docxPending}>
@@ -70,7 +74,7 @@ function Skipped({ list }: { list: string[] }) {
   );
 }
 
-function Review({ drafts, skipped, ...form }: FormProps & { drafts: ImportDraft[]; skipped: string[] }) {
+function Review({ drafts, skipped, files, ...form }: FormProps & { drafts: ImportDraft[]; skipped: string[]; files: File[] }) {
   const [index, setIndex] = useState(0);
   const [saved, setSaved] = useState<Record<number, MeetingFormState>>({});
   const draft = drafts[index];
@@ -107,7 +111,14 @@ function Review({ drafts, skipped, ...form }: FormProps & { drafts: ImportDraft[
           </div>
         </div>
       ) : (
-        <ReviewOne key={index} draft={draft} onImported={onImported} onSkip={last ? undefined : () => setIndex(index + 1)} {...form} />
+        <ReviewOne
+          key={index}
+          draft={draft}
+          file={files.find((f) => f.name === draft.fileName)}
+          onImported={onImported}
+          onSkip={last ? undefined : () => setIndex(index + 1)}
+          {...form}
+        />
       )}
     </>
   );
@@ -115,17 +126,45 @@ function Review({ drafts, skipped, ...form }: FormProps & { drafts: ImportDraft[
 
 function ReviewOne({
   draft,
+  file,
   onImported,
   onSkip,
   people,
   ...form
-}: FormProps & { draft: ImportDraft; onImported: (s: MeetingFormState) => void; onSkip?: () => void }) {
+}: FormProps & { draft: ImportDraft; file?: File; onImported: (s: MeetingFormState) => void; onSkip?: () => void }) {
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [conflict, setConflict] = useState<"dublu" | "fara" | "">("");
   const { selected, invitati } = resolveImport(draft, choices);
   const byId = new Map(people.map((p) => [p.id, p]));
 
   return (
     <>
+      <Recognized draft={draft} />
+      {draft.conflict ? (
+        <div className="card">
+          <h3>Numărul este deja folosit</h3>
+          <p className="hint mb-2">
+            Numărul {draft.conflict.nr}/{draft.conflict.an} îl are deja „{draft.conflict.titlu}”. Numerele nu se schimbă automat; alegeți:
+          </p>
+          <fieldset className="choices">
+            <legend className="sr-only">Numărul vechi</legend>
+            {(
+              [
+                ["dublu", `Păstrează numărul ${draft.conflict.nr}, cu mențiunea „(număr dublu în evidența veche)”`],
+                ["fara", "Importă fără număr; numărul vechi se trece la Observații"],
+              ] as const
+            ).map(([v, label]) => (
+              <label key={v} className="choice">
+                <input type="radio" name="nrConflictAlegere" value={v} checked={conflict === v} onChange={() => setConflict(v)} />
+                <span className="tick" aria-hidden="true">
+                  <Icon name="bifa" className="size-[14px]" />
+                </span>
+                {label}
+              </label>
+            ))}
+          </fieldset>
+        </div>
+      ) : null}
       {draft.warnings.length ? (
         <div className="alert mb-4" role="status">
           Verificați datele citite din document:
@@ -197,6 +236,9 @@ function ReviewOne({
         cancelHref="/procese-verbale"
         onImported={onImported}
         pickedNames={pickedNames(draft, choices)}
+        votes={draft.votes}
+        extra={conflict ? { nrConflict: conflict } : undefined}
+        originalFile={file}
         {...form}
       />
       {onSkip ? (
@@ -207,5 +249,66 @@ function ReviewOne({
         </div>
       ) : null}
     </>
+  );
+}
+
+/** „Ce am recunoscut”: what the file gave, before the form below (where everything can be corrected). */
+function Recognized({ draft }: { draft: ImportDraft }) {
+  const i = draft.initial;
+  const r = draft.recognized;
+  const votes = draft.votes ?? [];
+  const voteText = (v: (typeof votes)[number]) => (v ? ` — votat: pentru ${v.pentru}, contra ${v.contra}, abțineri ${v.abtineri}` : "");
+  return (
+    <div className="card">
+      <h3>Ce am recunoscut</h3>
+      <dl className="detail">
+        <dt>Număr</dt>
+        <dd>{i.nr || "—"}</dd>
+        <dt>An</dt>
+        <dd>{(i.data ?? "").slice(0, 4) || "—"}</dd>
+        <dt>Data</dt>
+        <dd>{i.data ? i.data.split("-").reverse().join(".") : "—"}</dd>
+        <dt>Tip</dt>
+        <dd>{i.tip || "—"}</dd>
+        <dt>Prezenți</dt>
+        <dd>{r?.prezenti.length ? `${r.prezenti.length}: ${r.prezenti.join(", ")}` : r?.numarPrezenti != null ? `${r.numarPrezenti} (doar numărul)` : "—"}</dd>
+        {r?.ordine.length ? (
+          <>
+            <dt>Ordinea de zi</dt>
+            <dd>{r.ordine.length} puncte</dd>
+          </>
+        ) : null}
+        <dt>Puncte</dt>
+        <dd>
+          {draft.points.length ? (
+            <ol className="list-decimal pl-5">
+              {draft.points.map((p, k) => (
+                <li key={k} className="whitespace-pre-line">
+                  {p}
+                  {voteText(votes[k] ?? null)}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            "niciun punct recunoscut"
+          )}
+        </dd>
+        <dt>Încheiere</dt>
+        <dd>{i.formulaIncheiere || "—"}</dd>
+        <dt>Text nerecunoscut (merge la Observații)</dt>
+        <dd>
+          {r?.unrecognized.length ? (
+            <ul className="list-disc pl-5">
+              {r.unrecognized.map((t, k) => (
+                <li key={k}>{t}</li>
+              ))}
+            </ul>
+          ) : (
+            "nimic"
+          )}
+        </dd>
+      </dl>
+      <p className="hint mt-2">Corectați în formularul de mai jos, apoi apăsați „Importă”; „Renunță” nu salvează nimic.</p>
+    </div>
   );
 }

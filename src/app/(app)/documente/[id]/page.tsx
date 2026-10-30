@@ -27,7 +27,9 @@ import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Document" };
 
-export default async function DocumentPage({ params }: PageProps<"/documente/[id]">) {
+export default async function DocumentPage({ params, searchParams }: PageProps<"/documente/[id]">) {
+  // „Semnează” on a new document saved it and comes here to open the signature.
+  const autoSign = (await searchParams).semneaza === "1";
   const { id } = await params;
   const ctx = await requireCtx();
   const x = await getDocument(ctx, id);
@@ -161,6 +163,7 @@ export default async function DocumentPage({ params }: PageProps<"/documente/[id
         canUseSaved={passkeys > 0 && Boolean(me.signatureSavedAt)}
         savedHint={savedHint}
         freshOnly={freshSignatureRequired(church, x.tip)}
+        autoSign={autoSign}
       />
       {reportCats && x.anRaport ? (
         <div className="card">

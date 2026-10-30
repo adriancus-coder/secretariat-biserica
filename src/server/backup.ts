@@ -42,6 +42,8 @@ import { noteSearchText, personDerived } from "@/lib/person-derived";
 import { writeAudit } from "./audit";
 import { normalizeSignature } from "./signature-image";
 import type { Ctx } from "./session";
+import { zipUncompressedSize } from "./zip-size";
+import { DOCX_MAX_BYTES, DOCX_MAX_UNCOMPRESSED, DOCX_MIME } from "./minutes-import";
 
 type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
@@ -335,10 +337,14 @@ function richExtras(m: { puncte: string[]; puncteRich: unknown; observatiiRich: 
 }
 
 /** Meeting id → the fields beyond the prototype's format (absentees, numbering, points …), for the export. */
-export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingExtra>> {
+export async function loadMeetingExtras(ctx: Ctx, opts: { originals?: boolean } = {}): Promise<Map<string, MeetingExtra>> {
   const rows = await ctx.db.meeting.findMany({
     select: {
       id: true,
+      importat: true,
+      nrVechi: true,
+      // MINUTES-IMPORT-ROBUST: the original Word files only with „Include fișierele originale”.
+      ...(opts.originals ? { sourceFile: { select: { numeFisier: true, data: true } } } : {}),
       asteptati: true,
       numarPrezenti: true,
       nr: true,
@@ -392,6 +398,9 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
             }
           : {}),
         inchisLa: m.locked ? (m.lockedAt ?? new Date()).toISOString() : null,
+        ...(m.importat ? { importat: true as const } : {}),
+        ...(m.nrVechi ? { nrVechi: m.nrVechi } : {}),
+        ...("sourceFile" in m && m.sourceFile ? { original: { nume: m.sourceFile.numeFisier, date: Buffer.from(m.sourceFile.data).toString("base64") } } : {}),
         ...(m.layout ? { asezare: storedLayout(m.layout) } : {}),
         ...(m.convocatLa ? { convocatLa: fromDbDate(m.convocatLa)! } : {}),
         ...(m.convocareText ? { convocareText: m.convocareText } : {}),
@@ -843,6 +852,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
       );
       const unnumbered: string[] = [];
       let badSignatures = 0;
+      let badOriginals = 0;
       for (const m of backup.meetings) {
         const id = meet.map.get(m.id)!;
         const extra = extras.meetings?.get(m.id);
@@ -878,6 +888,8 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
           numarPrezenti: extra?.numarPrezenti ?? null,
           locked: Boolean(extra?.inchisLa),
           lockedAt: extra?.inchisLa ? new Date(extra.inchisLa) : null,
+          importat: extra?.importat === true,
+          nrVechi: extra?.nrVechi ?? null,
           ...(extra?.asezare ? { layout: { ...extra.asezare } as Prisma.InputJsonObject } : {}),
           convocatLa: toDbDate(extra?.convocatLa ?? null),
           convocareText: extra?.convocareText ?? "",
@@ -936,6 +948,15 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
             data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows }, signatures: { create: signatures }, roleSignatures: { create: roleSignatures } },
           });
         }
+        // MINUTES-IMPORT-ROBUST: the original Word file, checked like an upload (≤ 5 MB, a valid .docx).
+        if (extra?.original) {
+          const bytes = Buffer.from(extra.original.date, "base64");
+          const unpacked = zipUncompressedSize(bytes);
+          if (bytes.length <= DOCX_MAX_BYTES && unpacked !== null && unpacked <= DOCX_MAX_UNCOMPRESSED) {
+            await tx.meetingSourceFile.deleteMany({ where: { meetingId: id } });
+            await tx.meetingSourceFile.create({ data: { churchId, meetingId: id, numeFisier: extra.original.nume, mime: DOCX_MIME, bytes: bytes.length, data: new Uint8Array(bytes) } });
+          } else badOriginals++;
+        }
       }
 
       // The committee's mandate (Statut art. 45), with the election's minutes when imported too.
@@ -947,6 +968,7 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         });
       }
 
+      if (badOriginals) warnings.push(`${badOriginals} fișiere originale ale proceselor-verbale importate nu erau documente Word valide și nu au fost importate.`);
       if (badSignatures) warnings.push(`${badSignatures} semnături nu erau imagini valide și nu au fost importate.`);
       if (unnumbered.length) warnings.push(`Procese-verbale rămase fără număr (numărul era deja folosit): ${unnumbered.join(", ")}.`);
 

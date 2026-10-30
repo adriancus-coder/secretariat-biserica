@@ -294,6 +294,21 @@ describe.skipIf(!hasTestDb)("izolarea datelor între biserici", () => {
     expect(await prisma.assetPhoto.findUnique({ where: { id: p.id } })).toBeNull();
   });
 
+  it("the original Word files of imported minutes are isolated per church and go with their minutes", async () => {
+    const a = scopeToChurch(prisma, churchA);
+    const b = scopeToChurch(prisma, churchB);
+    const m = await a.meeting.create({ data: { tip: "Comitet", data: new Date("2025-03-12T00:00:00Z"), importat: true } as never });
+    const f = await a.meetingSourceFile.create({ data: { meetingId: m.id, numeFisier: "pv.docx", mime: "application/zip", bytes: 3, data: new Uint8Array([0x50, 0x4b, 3]) } as never });
+    expect(f.churchId).toBe(churchA);
+    expect(await b.meetingSourceFile.findUnique({ where: { id: f.id } })).toBeNull();
+    expect(await b.meetingSourceFile.findFirst({ where: { meetingId: m.id } })).toBeNull();
+    expect(await b.meetingSourceFile.count()).toBe(0);
+    expect((await b.meetingSourceFile.deleteMany({})).count).toBe(0);
+    await expect(b.meetingSourceFile.delete({ where: { id: f.id } })).rejects.toMatchObject({ code: "P2025" });
+    await a.meeting.delete({ where: { id: m.id } });
+    expect(await prisma.meetingSourceFile.findUnique({ where: { id: f.id } })).toBeNull();
+  });
+
   it("asset subcategories are isolated per church", async () => {
     const a = scopeToChurch(prisma, churchA);
     const b = scopeToChurch(prisma, churchB);

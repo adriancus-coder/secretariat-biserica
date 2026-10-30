@@ -7,7 +7,7 @@ import { DeleteButton } from "@/components/ui/delete-button";
 import { BackLink, PageHead } from "@/components/ui/page-head";
 import { isGeneralAssembly, minutesAttendance, AG_KIND_LABEL } from "@/lib/general-assembly";
 import { fmt } from "@/lib/format";
-import { minutesNumber } from "@/lib/minutes";
+import { minutesNumber, RECORD_COPY_LABEL } from "@/lib/minutes";
 import { permissions } from "@/lib/permissions";
 import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
 import { dotDateTime } from "@/lib/dates";
@@ -28,8 +28,10 @@ import { MIME } from "@/lib/download";
 
 export const metadata: Metadata = { title: "Proces-verbal" };
 
-export default async function MeetingPage({ params }: PageProps<"/procese-verbale/[id]">) {
+export default async function MeetingPage({ params, searchParams }: PageProps<"/procese-verbale/[id]">) {
   const { id } = await params;
+  // „Semnează” on a new minutes saved it and comes here to open the signature.
+  const autoSign = (await searchParams).semneaza === "1";
   const ctx = await requireCtx();
   const [x, church] = await Promise.all([getMeeting(ctx, id), getChurch(ctx)]);
   if (!x) notFound();
@@ -55,6 +57,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
           <>
             {numberLabel ?? <span className="tag tag-warn">fără număr</span>} · {x.tip}
             {x.locked ? <span className="tag tag-ok ml-1.5">închis{x.lockedAt ? ` la ${dotDateTime(x.lockedAt)}` : ""}</span> : null}
+            {x.importat ? <span className="tag ml-1.5">{RECORD_COPY_LABEL}</span> : null}
           </>
         }
       >
@@ -76,7 +79,7 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
             configured={isEmailConfigured()}
             recipients={recipients}
             subject={defaultSendSubject({ ...x, dataLabel }, church.nume)}
-            frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true }).join(" ")}`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
+            frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true, copie: x.importat }).join(" ")}`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
           />
         ) : null}
         {canWrite && ag ? (
@@ -205,8 +208,20 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         <ExcusedForm meetingId={x.id} absent={x.absenti.map((p) => ({ id: p.id, name: p.name, motivat: p.motivat }))} />
       ) : null}
 
+      {x.sourceFile ? (
+        <div className="card">
+          <h3>Originalul importat</h3>
+          <p className="hint !mt-0 mb-2">Fișierul Word din care a fost importat procesul-verbal ({Math.max(1, Math.round(x.sourceFile.bytes / 1024))} KB).</p>
+          <DownloadLink file={`/api/procese-verbale/${x.id}/original`} filename={x.sourceFile.numeFisier} mime={MIME.docx}>
+            Originalul importat: {x.sourceFile.numeFisier}
+          </DownloadLink>
+        </div>
+      ) : null}
+
       <Signatures
         meetingId={x.id}
+        paperOnly={x.importat}
+        autoSign={autoSign && !x.importat}
         locked={x.locked}
         canWrite={canWrite}
         canUnlock={permissions.admin(ctx.user.role)}

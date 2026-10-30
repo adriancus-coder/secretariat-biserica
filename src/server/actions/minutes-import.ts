@@ -1,9 +1,9 @@
 "use server";
 
-import { parseMinutesText } from "@/domain/minutes-parse";
+import { parseMinutesParas } from "@/domain/minutes-parse";
 import type { FormState } from "@/lib/form-state";
 import type { ImportDraft } from "@/lib/minutes-import";
-import { DOCX_MAX_FILES, docxText, DocxError, reviewDraft } from "../minutes-import";
+import { DOCX_MAX_FILES, readDocx, DocxError, reviewDraft } from "../minutes-import";
 import { actionCtx, ActionError } from "../session";
 import { runFormAction } from "./run";
 
@@ -16,7 +16,7 @@ export interface DocxImportState extends FormState {
 /**
  * "Importă din Word": one or more .docx minutes (≤ 5 MB each, ≤ 30 per batch), read in memory
  * with mammoth and parsed locally (no network). Nothing is saved here: each draft is reviewed
- * and saved with the meeting form.
+ * („Ce am recunoscut”) and saved with the meeting form, the original file sent along with it.
  */
 export async function importDocxMinutesAction(_prev: DocxImportState, formData: FormData): Promise<DocxImportState> {
   const drafts: ImportDraft[] = [];
@@ -28,7 +28,7 @@ export async function importDocxMinutesAction(_prev: DocxImportState, formData: 
     if (files.length > DOCX_MAX_FILES) throw new ActionError(`Cel mult ${DOCX_MAX_FILES} de fișiere odată.`);
     for (const file of files) {
       try {
-        const { draft, warnings } = parseMinutesText(await docxText(file));
+        const { draft, warnings } = parseMinutesParas((await readDocx(file)).paras);
         drafts.push(await reviewDraft(ctx, file.name, draft, warnings));
       } catch (e) {
         if (!(e instanceof DocxError)) throw e;

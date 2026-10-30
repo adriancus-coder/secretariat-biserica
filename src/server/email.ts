@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { churchTitle } from "@/lib/church-name";
+import { RECORD_COPY_LABEL } from "@/lib/minutes";
 
 export const DEFAULT_EMAIL_FROM = "Secretariat Biserică <secretariat@sanctuaryvoice.com>";
 
@@ -362,8 +363,13 @@ export function framedEmail(p: { subject: string; churchName: string; lines: str
 }
 
 /** The fixed lines of the minutes e-mail. */
-export function minutesLines(p: { tip: string; dataLabel: string; withPdf: boolean }): string[] {
-  return [`Vă transmitem procesul-verbal al ședinței (${p.tip}) din ${p.dataLabel}.`, ...(p.withPdf ? ["Îl găsiți atașat, în format PDF."] : [])];
+export function minutesLines(p: { tip: string; dataLabel: string; withPdf: boolean; copie?: boolean }): string[] {
+  return [
+    `Vă transmitem procesul-verbal al ședinței (${p.tip}) din ${p.dataLabel}.`,
+    // MINUTES-IMPORT-ROBUST: an imported minutes is a record copy of the paper original.
+    ...(p.copie ? [`${RECORD_COPY_LABEL}.`] : []),
+    ...(p.withPdf ? ["Îl găsiți atașat, în format PDF."] : []),
+  ];
 }
 
 /**
@@ -379,13 +385,14 @@ export async function sendMinutesEmail(p: {
   dataLabel: string;
   note: string;
   attachment?: Attachment;
+  copie?: boolean;
 }): Promise<Delivery> {
   const config = emailConfig();
   if (!config) return { result: disabled() };
   const to = dedupeRecipients(p.to);
   if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
   if (p.attachment && p.attachment.content.length > MAX_ATTACHMENT_BYTES) return { result: "failed", error: "attachment_too_large" };
-  const content = framedEmail({ subject: p.subject, churchName: p.churchName, lines: minutesLines({ tip: p.tip, dataLabel: p.dataLabel, withPdf: Boolean(p.attachment) }), note: p.note });
+  const content = framedEmail({ subject: p.subject, churchName: p.churchName, lines: minutesLines({ tip: p.tip, dataLabel: p.dataLabel, withPdf: Boolean(p.attachment), copie: p.copie }), note: p.note });
   return send(config, "minutes", to, content, to, p.attachment ? [p.attachment] : undefined);
 }
 

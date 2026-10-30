@@ -34,7 +34,13 @@ export function MeetingForm({
   cancelHref,
   onImported,
   pickedNames,
+  extra,
+  originalFile,
 }: {
+  /** Import review: extra hidden fields (the number conflict's choice). */
+  extra?: Record<string, string>;
+  /** Import review: the Word file read, saved with the minutes as its original. */
+  originalFile?: File;
   /** Import review: the "Nepotriviți" names matched by hand, remembered as aliases on save. */
   pickedNames?: PickedName[];
   id: string | null;
@@ -125,6 +131,19 @@ export function MeetingForm({
     if (confirmed) formRef.current?.requestSubmit();
   }, [confirmed]);
 
+  // The original Word file travels with the import's save (a file input filled from the file chosen before).
+  const originalInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!originalFile || !originalInput.current) return;
+    try {
+      const dt = new DataTransfer();
+      dt.items.add(originalFile);
+      originalInput.current.files = dt.files;
+    } catch {
+      // Without DataTransfer the minutes are imported without their original.
+    }
+  }, [originalFile]);
+
   const previewHost = `preview-${id ?? "nou"}`;
   // Built once: the editors keep their own state afterwards (also across validation errors).
   const [observatiiDoc] = useState(() => rich?.observatii ?? plainToRich(initial.observatii ?? ""));
@@ -136,6 +155,10 @@ export function MeetingForm({
       {id ? <input type="hidden" name="previewId" value={id} /> : null}
       {onImported ? <input type="hidden" name="import" value="1" /> : null}
       {pickedNames?.length ? <input type="hidden" name="aliasuri" value={JSON.stringify(pickedNames)} /> : null}
+      {Object.entries(extra ?? {}).map(([k, v]) => (
+        <input key={k} type="hidden" name={k} value={v} />
+      ))}
+      {originalFile ? <input ref={originalInput} type="file" name="original" hidden tabIndex={-1} aria-hidden="true" /> : null}
       <div className="row2">
         <TextField
           name="nr"
@@ -310,8 +333,14 @@ export function MeetingForm({
         </Link>
         <div className="spacer" />
         <PreviewButton action="/pdf/proces-verbal/previzualizare" frameHostId={previewHost} />
+        {/* A new minutes can be signed at once: „Semnează” saves it first (only the date and the type are required). */}
+        {id === null && !onImported ? (
+          <button type="submit" name="dupa" value="semneaza" className="btn" disabled={pending}>
+            Semnează
+          </button>
+        ) : null}
         <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Se salvează…" : "Salvează"}
+          {pending ? "Se salvează…" : onImported ? "Importă" : "Salvează"}
         </button>
       </div>
       </div>

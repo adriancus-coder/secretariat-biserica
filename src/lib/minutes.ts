@@ -40,9 +40,17 @@ export function pointsText(puncte: readonly string[]): string {
 }
 
 /** "PV nr. 16/2026", or null for a meeting without a number. */
-export function minutesNumber(m: { nr: number | null; anRegistru: number | null }): string | null {
-  return m.nr !== null && m.anRegistru !== null ? `PV nr. ${m.nr}/${m.anRegistru}` : null;
+export function minutesNumber(m: { nr: number | null; anRegistru: number | null; nrVechi?: number | null }): string | null {
+  if (m.nr !== null && m.anRegistru !== null) return `PV nr. ${m.nr}/${m.anRegistru}`;
+  // MINUTES-IMPORT-ROBUST: an imported minutes whose old number was already taken keeps it, marked.
+  return m.nrVechi != null && m.anRegistru !== null ? `PV nr. ${m.nrVechi}/${m.anRegistru} ${DUPLICATE_NUMBER_NOTE}` : null;
 }
+
+/** After an imported minutes' old number that is taken in the register. */
+export const DUPLICATE_NUMBER_NOTE = "(număr dublu în evidența veche)";
+
+/** MINUTES-IMPORT-ROBUST: the label of an imported minutes (page, list, PDF / Word footer, e-mail). */
+export const RECORD_COPY_LABEL = "Copie de evidență — originalul pe hârtie";
 
 export interface MinutesRich {
   puncteRich: RichDoc[] | null;

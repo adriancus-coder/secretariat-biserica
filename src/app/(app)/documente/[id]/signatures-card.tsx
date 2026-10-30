@@ -19,7 +19,10 @@ export function SignaturesCard({
   canUseSaved,
   savedHint,
   freshOnly,
+  autoSign = false,
 }: {
+  /** Opened right after „Semnează” saved a new document: the secretary's pad opens at once. */
+  autoSign?: boolean;
   documentId: string;
   me: string;
   signatures: Partial<Record<"PASTOR" | "SECRETAR", DocSignatureView>>;
@@ -62,6 +65,7 @@ export function SignaturesCard({
                   savedHint={savedHint}
                   freshOnly={freshOnly}
                   onSign={step.sign}
+                  autoOpen={autoSign && !s && role === "SECRETAR"}
                 />
               ) : null}
             </div>

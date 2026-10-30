@@ -22,7 +22,10 @@ export function SignDocument({
   savedHint,
   freshOnly,
   onSign,
+  autoOpen = false,
 }: {
+  /** Open the drawing pad at once („Semnează” on a new document saved it and came here). */
+  autoOpen?: boolean;
   documentId: string;
   /** The signer's name, shown on the pad. */
   signer: string;
@@ -36,7 +39,7 @@ export function SignDocument({
   onSign: (choice: SignChoice) => Promise<FormState>;
 }) {
   const router = useRouter();
-  const [drawing, setDrawing] = useState(false);
+  const [drawing, setDrawing] = useState(autoOpen);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const done = (r: FormState) => {

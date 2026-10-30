@@ -5,7 +5,7 @@ import type { ImportDraft } from "@/lib/minutes-import";
 import { DEFAULT_CLOSING } from "@/lib/minutes";
 import { matchMeetingType, matchPersonName } from "@/lib/name-match";
 import { plainToRich } from "@/lib/rich-text";
-import type { MinutesDraft } from "@/domain/minutes-parse";
+import { htmlParas, UNRECOGNIZED_HEADING, type DocPara, type MinutesDraft } from "@/domain/minutes-parse";
 import { loadAliasMap } from "./person-aliases";
 import { getChurch } from "./queries/church";
 import { zipUncompressedSize } from "./zip-size";
@@ -19,8 +19,27 @@ const DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingm
 
 export class DocxError extends Error {}
 
-/** The raw text of a .docx, read in memory (nothing is written to disk, no network). */
-export async function docxText(file: File): Promise<string> {
+/** The paragraphs of a .docx (lists and tables kept, pictures dropped), read in memory with mammoth. */
+export async function docxParas(buffer: Buffer): Promise<DocPara[]> {
+  const { value } = await mammoth.convertToHtml({ buffer }, { convertImage: mammoth.images.imgElement(async () => ({ src: "" })) });
+  return htmlParas(value);
+}
+
+/**
+ * A .docx checked and read in memory (nothing is written to disk, no network): its paragraphs and the
+ * file itself (kept with the imported minutes).
+ */
+export async function readDocx(file: File): Promise<{ paras: DocPara[]; data: Buffer }> {
+  const buffer = await checkedDocx(file);
+  try {
+    return { paras: await docxParas(buffer), data: buffer };
+  } catch {
+    throw new DocxError(`„${file.name}” nu a putut fi citit. Salvați-l din nou ca .docx și reîncercați.`);
+  }
+}
+
+/** The bytes of a Word file within the import's limits (name, type, 5 MB, 50 MB unpacked). */
+export async function checkedDocx(file: File): Promise<Buffer> {
   if (!/\.docx$/i.test(file.name) || (file.type && file.type !== DOCX_TYPE && file.type !== "application/octet-stream")) {
     throw new DocxError(`„${file.name}” nu este un document Word (.docx).`);
   }
@@ -30,12 +49,10 @@ export async function docxText(file: File): Promise<string> {
   const expanded = zipUncompressedSize(buffer);
   if (expanded === null) throw new DocxError(`„${file.name}” nu este un document Word valid. Salvați-l din nou ca .docx și reîncercați.`);
   if (expanded > DOCX_MAX_UNCOMPRESSED) throw new DocxError(`„${file.name}” este prea mare după despachetare (peste 50 MB).`);
-  try {
-    return (await mammoth.extractRawText({ buffer })).value;
-  } catch {
-    throw new DocxError(`„${file.name}” nu a putut fi citit. Salvați-l din nou ca .docx și reîncercați.`);
-  }
+  return buffer;
 }
+
+export const DOCX_MIME = DOCX_TYPE;
 
 /**
  * A parsed minutes draft (from a Word file) → the review draft: names matched to the church's
@@ -60,12 +77,22 @@ export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraf
   }
   const tipuri = church.nomen.tipuriSedinte;
   const fallbackType = tipuri.find((t) => t === "Comitet") ?? tipuri[0] ?? "Comitet";
+  // MINUTES-IMPORT-ROBUST: what no field took goes to „Observații”, after a line that says so.
+  const observatii = [...draft.observatii, ...(draft.nerecunoscut.length ? [UNRECOGNIZED_HEADING, ...draft.nerecunoscut] : [])].join("\n");
+  const data = draft.data ?? todayIso();
+  const year = Number(data.slice(0, 4));
+  const taken = draft.nr ? await ctx.db.meeting.findFirst({ where: { anRegistru: year, nr: draft.nr }, select: { titlu: true, tip: true, data: true } }) : null;
   return {
     fileName,
+    votes: draft.voturi,
+    conflict: taken && draft.nr ? { nr: draft.nr, an: year, titlu: `${taken.titlu || taken.tip} din ${taken.data.toISOString().slice(0, 10)}` } : null,
+    recognized: { ordine: draft.ordine, unrecognized: draft.nerecunoscut, numarPrezenti: draft.numarPrezenti, prezenti: draft.prezenti },
     initial: {
       nr: draft.nr ? String(draft.nr) : "",
       tip: matchMeetingType(draft.tip, tipuri, fallbackType),
-      data: draft.data ?? todayIso(),
+      data,
+      ...(observatii ? { observatii } : {}),
+      ...(draft.ordine.length ? { ordine: draft.ordine.map((o, i) => `${i + 1}. ${o}`).join("\n") } : {}),
       presedinte: draft.pastor ?? church.pastor,
       invitati: draft.invitati.join(", "),
       formulaIncheiere: draft.formulaIncheiere ?? DEFAULT_CLOSING,
@@ -74,7 +101,7 @@ export async function reviewDraft(ctx: Ctx, fileName: string, draft: MinutesDraf
     },
     points: draft.puncte,
     // The review form edits rich text: Word minutes arrive as plain text, one paragraph per line.
-    rich: { puncte: draft.puncte.map(plainToRich), observatii: null, formula: plainToRich(draft.formulaIncheiere ?? DEFAULT_CLOSING) },
+    rich: { puncte: draft.puncte.map(plainToRich), observatii: observatii ? plainToRich(observatii) : null, formula: plainToRich(draft.formulaIncheiere ?? DEFAULT_CLOSING) },
     selected: [...selected],
     approx,
     unmatched,

@@ -149,6 +149,8 @@ export async function saveDocumentAction(id: string | null, _prev: FormState, fo
   });
   if (!savedId) return state;
   revalidatePath("/", "layout");
+  // „Semnează” on a new document: saved first, then the page opens the secretary's signature.
+  if (formData.get("dupa") === "semneaza") redirect(`/documente/${savedId}?inregistrat=1&semneaza=1`);
   redirect(`/documente/${savedId}?inregistrat=1`);
 }
 

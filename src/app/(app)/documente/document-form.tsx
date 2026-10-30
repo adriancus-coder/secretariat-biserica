@@ -281,6 +281,12 @@ export function DocumentForm({
         </Link>
         <div className="spacer" />
         <PreviewButton action="/pdf/document/previzualizare" frameHostId={previewHost} />
+        {/* A new document can be signed at once: „Semnează” saves it first, then opens the secretary's signature. */}
+        {id === null ? (
+          <button type="submit" name="dupa" value="semneaza" className="btn" disabled={pending || generating}>
+            Semnează
+          </button>
+        ) : null}
         <button type="submit" className="btn btn-primary" disabled={pending || generating}>
           {pending ? "Se salvează…" : "Salvează"}
         </button>

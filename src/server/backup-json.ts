@@ -45,7 +45,7 @@ import type { Ctx } from "./session";
  * The church's full JSON backup (the prototype's format plus the app's own collections and fields),
  * as POST /api/export sends it; shared with the tests. Returns the object and the church's name.
  */
-export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {}): Promise<{ data: Record<string, unknown>; churchName: string }> {
+export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean; originals?: boolean } = {}): Promise<{ data: Record<string, unknown>; churchName: string }> {
   // The Church row is not a tenant model: read by the session's church id.
   const c = await prisma.church.findUnique({
     where: { id: ctx.user.churchId },
@@ -56,7 +56,7 @@ export async function buildExportJson(ctx: Ctx, opts: { photos?: boolean } = {})
     loadBackup(ctx),
     loadApplications(ctx),
     loadRoles(ctx),
-    loadMeetingExtras(ctx),
+    loadMeetingExtras(ctx, { originals: opts.originals }),
     loadFamilies(ctx),
     loadBaptism(ctx),
     loadAliases(ctx),

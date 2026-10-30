@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import sharp from "sharp";
 import { crc32 } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { docxText, DOCX_MAX_UNCOMPRESSED } from "./minutes-import";
+import { readDocx, DOCX_MAX_UNCOMPRESSED } from "./minutes-import";
 import { normalizeSignature } from "./signature-image";
 import { zipUncompressedSize } from "./zip-size";
 
@@ -36,7 +36,7 @@ describe("input limits", () => {
     expect(zipUncompressedSize(bomb)).toBe(60 * 1024 * 1024);
     expect(zipUncompressedSize(bomb)!).toBeGreaterThan(DOCX_MAX_UNCOMPRESSED);
     const file = new File([new Uint8Array(bomb)], "pv.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    await expect(docxText(file)).rejects.toThrow("peste 50 MB");
+    await expect(readDocx(file)).rejects.toThrow("peste 50 MB");
     expect(zipUncompressedSize(Buffer.from("not a zip at all, just text"))).toBeNull();
   });
 });

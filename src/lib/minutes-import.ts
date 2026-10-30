@@ -27,8 +27,22 @@ export function pickedNames(draft: ImportDraft, choices: Readonly<Record<string,
   return draft.unmatched.filter((u) => choices[u.name]).map((u) => ({ name: u.name, personId: choices[u.name] }));
 }
 
+/** The vote under a point, as the meeting form takes it. */
+export interface DraftVoteValue {
+  pentru: number;
+  contra: number;
+  abtineri: number;
+  secret: boolean;
+}
+
 export interface ImportDraft {
   fileName: string;
+  /** MINUTES-IMPORT-ROBUST: the votes under the points (aligned with `points`). */
+  votes?: (DraftVoteValue | null)[];
+  /** The old number is already taken in the register of its year. */
+  conflict?: { nr: number; an: number; titlu: string } | null;
+  /** „Ce am recunoscut”: what each part of the document became. */
+  recognized?: { ordine: string[]; unrecognized: string[]; numarPrezenti: number | null; prezenti: string[] };
   /** Meeting form values; `invitati` holds only the guests written as such. */
   initial: Record<string, string>;
   points: string[];

@@ -7,14 +7,53 @@ import { permissions } from "@/lib/permissions";
 import { storedRich, storedRichList } from "@/lib/schemas/rich-text";
 import type { ChecklistOption } from "@/components/person-checklist";
 import type { Ctx } from "../session";
+import type { Prisma } from "@/generated/prisma/client";
+import { unsignedPlaces } from "@/lib/minutes-signatures";
+import { getChurch } from "./church";
 
 export const MEETINGS_PAGE_SIZE = 30;
 
-export async function listMeetings(ctx: Ctx, page: number) {
-  const total = await ctx.db.meeting.count();
+/** The list's filters (MINUTES-IMPORT-ROBUST): every minutes, the imported ones, the imported ones with unmarked signatures. */
+export const MEETING_FILTERS = ["toate", "importate", "nemarcate"] as const;
+export type MeetingFilter = (typeof MEETING_FILTERS)[number];
+export const MEETING_FILTER_LABEL: Record<MeetingFilter, string> = { toate: "Toate", importate: "Importate", nemarcate: "Importate · semnături nemarcate" };
+
+const signatureState = {
+  importat: true,
+  locked: true,
+  nrVechi: true,
+  prezenti: { where: { status: "PRESENT" as const }, select: { person: { select: { id: true, nume: true, prenume: true } } } },
+  signatures: { select: { personId: true } },
+  roleSignatures: { select: { rol: true } },
+};
+
+/** An imported, open minutes with a place neither signed nor marked on paper. */
+function unmarked(
+  m: { importat: boolean; locked: boolean; prezenti: { person: { id: string; nume: string; prenume: string } }[]; signatures: { personId: string }[]; roleSignatures: { rol: string }[] },
+  church: { secretar: string; pastor: string },
+): boolean {
+  if (!m.importat || m.locked) return false;
+  return unsignedPlaces(
+    m.prezenti.map((p) => p.person),
+    new Set(m.signatures.map((s) => s.personId)),
+    new Set(m.roleSignatures.map((r) => r.rol)),
+    church,
+  ).length > 0;
+}
+
+export async function listMeetings(ctx: Ctx, page: number, filter: MeetingFilter = "toate") {
+  const church = await getChurch(ctx);
+  let where: Prisma.MeetingWhereInput = filter === "toate" ? {} : { importat: true };
+  if (filter === "nemarcate") {
+    // Computed from the signatures: the imported open minutes, then those with a place unmarked.
+    const open = await ctx.db.meeting.findMany({ where: { importat: true, locked: false }, select: { id: true, ...signatureState } });
+    where = { id: { in: open.filter((m) => unmarked(m, church)).map((m) => m.id) } };
+  }
+  const total = await ctx.db.meeting.count({ where });
   const pages = Math.max(1, Math.ceil(total / MEETINGS_PAGE_SIZE));
   const current = Math.min(Math.max(1, page), pages);
   const rows = await ctx.db.meeting.findMany({
+    where,
     orderBy: [{ data: "desc" }, { ora: "desc" }, { createdAt: "desc" }],
     skip: (current - 1) * MEETINGS_PAGE_SIZE,
     take: MEETINGS_PAGE_SIZE,
@@ -28,6 +67,7 @@ export async function listMeetings(ctx: Ctx, page: number) {
       puncte: true,
       numarPrezenti: true,
       _count: { select: { prezenti: { where: { status: "PRESENT" } } } },
+      ...signatureState,
     },
   });
   return {
@@ -41,6 +81,9 @@ export async function listMeetings(ctx: Ctx, page: number) {
       puncte: m.puncte.length,
       nr: m.nr,
       anRegistru: m.anRegistru,
+      nrVechi: m.nrVechi,
+      importat: m.importat,
+      unmarked: unmarked(m, church),
     })),
     total,
     page: current,
@@ -55,6 +98,7 @@ export async function getMeeting(ctx: Ctx, id: string) {
       prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true, email: true } } } },
       signatures: { select: { personId: true, signedAt: true, imagePng: true, peHartie: true, signedBy: { select: { name: true } } } },
       roleSignatures: { select: { rol: true, nume: true, signedAt: true, imagePng: true, peHartie: true, signedBy: { select: { name: true } } } },
+      sourceFile: { select: { numeFisier: true, bytes: true } },
       sends: { orderBy: { sentAt: "desc" }, take: 20, include: { sentBy: { select: { name: true } } } },
     },
   });

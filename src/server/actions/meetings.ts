@@ -15,6 +15,8 @@ import { writeAudit } from "../audit";
 import { rememberAliases } from "../person-aliases";
 import { pickedNamesInput, pickedNamesSchema } from "@/lib/schemas/person-alias";
 import { lockMeetingRegister, nextFreeMeetingNumber } from "../doc-numbering";
+import { checkedDocx, DOCX_MIME, DocxError } from "../minutes-import";
+import { plainToRich } from "@/lib/rich-text";
 import { expectedAttendees } from "../queries/attendance";
 import { getChurch } from "../queries/church";
 import { assertPersonsInChurch } from "../queries/persons";
@@ -74,8 +76,10 @@ export interface MeetingFormState extends FormState {
 
 export async function saveMeetingAction(id: string | null, _prev: MeetingFormState, formData: FormData): Promise<MeetingFormState> {
   let savedId: string | undefined;
-  // Import review (hidden field "import"): a taken number falls back to the next free one with a notice.
+  // Import review (hidden field "import", MINUTES-IMPORT-ROBUST): a record copy of an old paper minutes; it
+  // keeps the old document's number (never renumbered: a taken one is kept as „număr dublu” or left out, as chosen).
   const importing = id === null && formData.get("import") === "1";
+  const conflictChoice = String(formData.get("nrConflict") ?? "");
   let savedNr = "";
   let notice = "";
   const state = await runFormAction(formData, async () => {
@@ -101,28 +105,53 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
     // Excused absences ticked in the form (only absentees count); without the field the saved ones stay.
     const excusedInForm = formData.get("motivatiForm") === "1" ? new Set(formData.getAll("motivati").map(String)) : null;
     const year = Number(fields.data.slice(0, 4));
+    // The original Word file of an imported minutes, kept with it (the import's limits).
+    const original = importing ? formData.get("original") : null;
+    let originalFile: { name: string; data: Buffer } | null = null;
+    if (original instanceof File && original.size > 0) {
+      try {
+        originalFile = { name: original.name.slice(0, 200), data: await checkedDocx(original) };
+      } catch (e) {
+        if (e instanceof DocxError) throw new ActionError(e.message);
+        throw e;
+      }
+    }
 
     savedId = await ctx.db.$transaction(async (tx) => {
       // Like the document register: the year of the meeting date, numbers serialized per (church, year).
       await lockMeetingRegister(tx, ctx.user.churchId, year);
-      const previous = id ? await tx.meeting.findUnique({ where: { id }, select: { nr: true, anRegistru: true, locked: true } }) : null;
+      const previous = id ? await tx.meeting.findUnique({ where: { id }, select: { nr: true, anRegistru: true, locked: true, importat: true } }) : null;
       if (id && !previous) throw new ActionError("Procesul-verbal nu mai există.");
       if (previous?.locked) throw new ActionError(LOCKED);
-      let nr: number;
+      let nr: number | null;
+      let nrVechi: number | null | undefined;
       if (wantedNr !== null) {
         const clash = await tx.meeting.findFirst({
           where: { anRegistru: year, nr: wantedNr, ...(id ? { id: { not: id } } : {}) },
           select: { id: true },
         });
-        if (clash && importing) {
-          nr = await nextFreeMeetingNumber(tx, ctx.user.churchId, year);
-          notice = `Numărul ${wantedNr}/${year} era deja folosit; procesul-verbal a primit numărul ${nr}/${year}.`;
+        if (clash && importing && conflictChoice === "dublu") {
+          // „Păstrează numărul (număr dublu în evidența veche)”: shown, but not in the register's sequence.
+          nr = null;
+          nrVechi = wantedNr;
+          notice = `Procesul-verbal a fost importat cu numărul ${wantedNr}/${year} (număr dublu în evidența veche).`;
+        } else if (clash && importing && conflictChoice === "fara") {
+          // „Fără număr”: the old number goes to the observations.
+          nr = null;
+          const line = `Număr în evidența veche: ${wantedNr}/${year}.`;
+          fields.observatii = `${line}\n${fields.observatii}`.trim();
+          rich.observatiiRich = plainToRich(fields.observatii) as unknown as Prisma.InputJsonObject;
+          notice = `Procesul-verbal a fost importat fără număr; numărul vechi ${wantedNr}/${year} este trecut la Observații.`;
+        } else if (clash && importing) {
+          throw new ValidationError({ nr: `Numărul ${wantedNr}/${year} este deja folosit. Alegeți mai sus: păstrați numărul ca „număr dublu” sau importați fără număr.` });
         } else if (clash) throw new ValidationError({ nr: `Numărul ${wantedNr}/${year} este deja folosit de alt proces-verbal.` });
         else nr = wantedNr;
       } else if (previous?.nr != null && previous.anRegistru === year) nr = previous.nr;
+      // An imported minutes without a number keeps none (never numbered automatically).
+      else if (importing || (previous?.importat && previous.nr === null)) nr = null;
       else nr = await nextFreeMeetingNumber(tx, ctx.user.churchId, year);
-      savedNr = `${nr}/${year}`;
-      const data = { ...fields, ...rich, data: toDbDate(fields.data)!, asteptati, nr, anRegistru: year };
+      savedNr = nr !== null ? `${nr}/${year}` : "";
+      const data = { ...fields, ...rich, data: toDbDate(fields.data)!, asteptati, nr, anRegistru: year, ...(nrVechi !== undefined ? { nrVechi } : {}) };
 
       if (id) {
         const before = await auditView(tx, id);
@@ -151,8 +180,18 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
         return id;
       }
       const created = await tx.meeting.create({
-        data: { ...data, churchId: ctx.user.churchId, prezenti: { create: rows.map((r) => ({ ...r, motivat: r.status === "ABSENT" && Boolean(excusedInForm?.has(r.personId)) })) } },
+        data: {
+          ...data,
+          churchId: ctx.user.churchId,
+          ...(importing ? { importat: true } : {}),
+          prezenti: { create: rows.map((r) => ({ ...r, motivat: r.status === "ABSENT" && Boolean(excusedInForm?.has(r.personId)) })) },
+        },
       });
+      if (originalFile) {
+        await tx.meetingSourceFile.create({
+          data: { churchId: ctx.user.churchId, meetingId: created.id, numeFisier: originalFile.name, mime: DOCX_MIME, bytes: originalFile.data.length, data: new Uint8Array(originalFile.data) },
+        });
+      }
       await writeAudit(tx, ctx.user, {
         entity: "MEETING",
         entityId: created.id,
@@ -167,7 +206,9 @@ export async function saveMeetingAction(id: string | null, _prev: MeetingFormSta
   });
   if (!savedId) return state;
   revalidatePath("/", "layout");
-  if (importing) return { ok: true, savedId, message: notice || `Procesul-verbal nr. ${savedNr} a fost salvat.` };
+  if (importing) return { ok: true, savedId, message: notice || (savedNr ? `Procesul-verbal nr. ${savedNr} a fost importat.` : "Procesul-verbal a fost importat fără număr.") };
+  // „Semnează” on a new minutes: saved first, then the page opens the signature.
+  if (formData.get("dupa") === "semneaza") redirect(`/procese-verbale/${savedId}?salvat=1&semneaza=1#semnaturi`);
   redirect(`/procese-verbale/${savedId}?salvat=1`);
 }
 

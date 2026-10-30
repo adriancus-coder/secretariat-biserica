@@ -74,3 +74,17 @@ export function signatureState(s: { paper: boolean; at: string; by?: string | nu
   if (s.paper) return `semnat pe hârtie ${s.at}${s.by ? ` · marcat de ${s.by}` : ""}`;
   return `semnat ${s.at}`;
 }
+
+/**
+ * MINUTES-IMPORT-ROBUST: the places still unsigned (neither drawn nor marked on paper) — those present who
+ * sign in the table and the bottom places named in Setări. An imported minutes with any is listed as
+ * „semnături nemarcate”.
+ */
+export function unsignedPlaces(
+  present: readonly { id: string; nume: string; prenume: string }[],
+  signed: ReadonlySet<string>,
+  signedRoles: ReadonlySet<string>,
+  church: { secretar: string; pastor: string },
+): string[] {
+  return [...tableSigners(present, church).filter((p) => !signed.has(p.id)).map(memberName), ...roleSigners(church).filter((r) => !signedRoles.has(r.rol)).map(placeLabel)];
+}

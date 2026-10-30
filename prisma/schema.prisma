@@ -130,6 +130,7 @@ model Church {
   correspondence        Correspondence[]
   assets                Asset[]
   assetPhotos           AssetPhoto[]
+  meetingSourceFiles    MeetingSourceFile[]
   assetSubcategories    AssetSubcategory[]
   eventPersons          EventPerson[]
   generatedDocuments    GeneratedDocument[]
@@ -811,10 +812,18 @@ model Meeting {
   locked   Boolean   @default(false)
   lockedAt DateTime?
 
+  /// MINUTES-IMPORT-ROBUST: imported from an old Word file — a record copy, the original is on paper
+  /// (signed there; the signatures are only marked „Semnat pe hârtie”).
+  importat Boolean @default(false)
+  /// The old document's number when it is already taken in the register (shown as „nr. N (număr dublu în
+  /// evidența veche)”); `nr` stays empty then, so the register's numbers stay unique.
+  nrVechi  Int?
+
   prezenti       MeetingAttendee[]
   signatures     MeetingSignature[]
   roleSignatures MeetingRoleSignature[]
   sends          MeetingSend[]
+  sourceFile     MeetingSourceFile?
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
@@ -1740,4 +1749,22 @@ model GeneratedDocument {
   @@index([churchId])
   @@index([documentId])
   @@map("generated_documents")
+}
+
+/// MINUTES-IMPORT-ROBUST: the Word file an imported minutes was read from, kept with it (≤ 5 MB,
+/// deleted with the meeting). Downloaded from the minutes' page; in the backup only when asked for.
+model MeetingSourceFile {
+  id         String   @id @default(cuid())
+  churchId   String
+  church     Church   @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  meetingId  String   @unique
+  meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  numeFisier String
+  mime       String
+  bytes      Int
+  data       Bytes
+  createdAt  DateTime @default(now())
+
+  @@index([churchId])
+  @@map("meeting_source_files")
 }

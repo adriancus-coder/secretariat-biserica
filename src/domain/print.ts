@@ -6,7 +6,7 @@
 import { formatAddress } from "@/lib/address";
 import { eventPlace } from "@/lib/event-fields";
 import { fmtL, memberName } from "@/lib/format";
-import { DEFAULT_CLOSING } from "@/lib/minutes";
+import { DEFAULT_CLOSING, DUPLICATE_NUMBER_NOTE, RECORD_COPY_LABEL } from "@/lib/minutes";
 import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
 import type { PageLayout } from "@/lib/page-layout";
 import { ALIGN_LABEL, richLines, type RichDoc, type RichLine } from "@/lib/rich-text";
@@ -157,6 +157,10 @@ export interface MeetingPrint {
   semnatari?: Partial<Record<"SECRETAR" | "PASTOR", { name: string; image: Uint8Array | null; note: string }>>;
   /** "11.09.2026 14:03" when the minutes were closed. */
   inchisLa?: string | null;
+  /** MINUTES-IMPORT-ROBUST: the old number of an imported minutes, when the register already has it. */
+  nrVechi?: number | null;
+  /** An imported record copy: „Copie de evidență — originalul pe hârtie” at the bottom of every page. */
+  copie?: boolean;
 }
 
 
@@ -174,7 +178,11 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   const n = x.prezenti.length;
   const byNumber = x.numarPrezenti != null;
   const blocks: Block[] = [
-    { type: "title", text: x.nr !== null ? `Proces verbal nr. ${x.nr}` : "Proces verbal", asWritten: true },
+    {
+      type: "title",
+      text: x.nr !== null ? `Proces verbal nr. ${x.nr}` : x.nrVechi != null ? `Proces verbal nr. ${x.nrVechi} ${DUPLICATE_NUMBER_NOTE}` : "Proces verbal",
+      asWritten: true,
+    },
     para(`Încheiat azi, ${fmtDot(x.data)}, cu ocazia ședinței de ${x.tip.toLocaleLowerCase("ro-RO")}.`),
   ];
   if (byNumber) {
@@ -228,7 +236,9 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     blocks,
     keepTail: blocks.length - tailFrom,
     ...(keepWithNext.length ? { keepWithNext } : {}),
-    ...(x.inchisLa ? { footer: `Proces-verbal închis la ${x.inchisLa}` } : {}),
+    ...(x.inchisLa || x.copie
+      ? { footer: [x.copie ? RECORD_COPY_LABEL : "", x.inchisLa ? `Proces-verbal închis la ${x.inchisLa}` : ""].filter(Boolean).join(" · ") }
+      : {}),
   };
 }
 

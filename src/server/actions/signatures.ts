@@ -16,6 +16,7 @@ type Tx = Parameters<Parameters<Ctx["db"]["$transaction"]>[0]>[0];
 
 const SIGNATURE_FIELDS = ["semnaturi", "inchis"] as const;
 const LOCKED = "Procesul-verbal este închis. Doar administratorul îl poate redeschide.";
+const PAPER_ONLY = "Procesul-verbal importat este o copie de evidență: semnăturile se marchează „Semnat pe hârtie”.";
 
 /** The meeting (church-scoped) with who signed (drawn or on paper), for the audit log. */
 async function signatureView(tx: Tx, meetingId: string) {
@@ -29,6 +30,7 @@ async function signatureView(tx: Tx, meetingId: string) {
       anRegistru: true,
       data: true,
       locked: true,
+      importat: true,
       signatures: { select: { peHartie: true, person: { select: { nume: true, prenume: true } } } },
       roleSignatures: { select: { rol: true, nume: true, peHartie: true } },
     },
@@ -120,6 +122,7 @@ export async function signMeetingAction(meetingId: string, personId: string, ima
     await ctx.db.$transaction(async (tx) => {
       const before = await signatureView(tx, meetingId);
       if (before.meeting.locked) throw new ActionError(LOCKED);
+      if (before.meeting.importat) throw new ActionError(PAPER_ONLY);
       // The meeting is church-scoped above; the attendee row ties the person to it.
       const present = await tx.meetingAttendee.findUnique({ where: { meetingId_personId: { meetingId, personId } }, select: { status: true } });
       if (present?.status !== "PRESENT") throw new ActionError("Doar persoanele prezente la ședință pot semna.");
@@ -279,6 +282,7 @@ export async function signRoleAction(meetingId: string, rol: string, image: stri
     await ctx.db.$transaction(async (tx) => {
       const before = await signatureView(tx, meetingId);
       if (before.meeting.locked) throw new ActionError(LOCKED);
+      if (before.meeting.importat) throw new ActionError(PAPER_ONLY);
       const data = { nume: r.name, imagePng: new Uint8Array(png), peHartie: false, signedAt: new Date(), signedByUserId: ctx.user.id };
       await tx.meetingRoleSignature.upsert({ where: { meetingId_rol: { meetingId, rol: target.rol } }, create: { meetingId, rol: target.rol, ...data }, update: data });
       await audit(tx, ctx, meetingId, before, { semnatura: `adăugată: ${placeLabel(r)}` });

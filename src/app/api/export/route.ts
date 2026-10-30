@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   const ctx = { user, db: tenantDb(user.churchId) };
   // PATRIMONY-PHOTOS: the photos of the goods only when "Include pozele patrimoniului" is ticked.
   const withPhotos = form?.get("poze") === "on";
-  const { data, churchName } = await buildExportJson(ctx, { photos: withPhotos });
+  // MINUTES-IMPORT-ROBUST: the original Word files of the imported minutes only with „Include fișierele originale”.
+  const { data, churchName } = await buildExportJson(ctx, { photos: withPhotos, originals: form?.get("originale") === "on" });
   const json = JSON.stringify(data, null, 2);
   // Numele de fișier din prototip: secretariat-<nume-biserica>-<data>.json
   const slug = (churchName || "biserica")
