@@ -29,8 +29,13 @@ export interface MeetingExtra {
   puncteRich?: RichDoc[];
   observatiiRich?: RichDoc;
   formulaRich?: RichDoc;
-  /** Drawn signatures of persons present: PNG as base64, signing time as ISO. */
-  semnaturi?: { persoanaId: string; imagine: string; semnatLa: string }[];
+  /**
+   * Signatures of persons present: PNG as base64, signing time as ISO. MINUTES-SIGNATURES: `peHartie`
+   * marks one signed on paper (no image, `semnatLa` = when it was marked).
+   */
+  semnaturi?: { persoanaId: string; imagine: string; semnatLa: string; peHartie?: true }[];
+  /** The Secretar / Pastor signatures at the bottom (MINUTES-SIGNATURES): the name signed, drawn or on paper. */
+  semnaturiRol?: { rol: "SECRETAR" | "PASTOR"; nume: string; imagine: string; semnatLa: string; peHartie?: true }[];
   /** Closed (read-only) minutes, with the closing time as ISO. */
   inchisLa?: string | null;
   /** The meeting's own page layout (src/lib/page-layout.ts); absent = the church's default. */
@@ -83,6 +88,7 @@ export function addMeetingExtras(meetings: Record<string, Record<string, unknown
     if (x.observatiiRich) m.observatiiRich = x.observatiiRich;
     if (x.formulaRich) m.formulaRich = x.formulaRich;
     if (x.semnaturi?.length) m.semnaturi = x.semnaturi;
+    if (x.semnaturiRol?.length) m.semnaturiRol = x.semnaturiRol;
     if (x.asezare) m.asezare = x.asezare;
     if (x.inchisLa) m.inchisLa = x.inchisLa;
     if (x.convocatLa) m.convocatLa = x.convocatLa;
@@ -148,9 +154,9 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
     if (Array.isArray(m.semnaturi)) {
       const list = m.semnaturi
         .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
-        .map((s) => ({ persoanaId: s.persoanaId, imagine: s.imagine, semnatLa: s.semnatLa }))
+        .map((s) => ({ persoanaId: s.persoanaId, imagine: s.peHartie === true ? "" : s.imagine, semnatLa: s.semnatLa, ...(s.peHartie === true ? { peHartie: true as const } : {}) }))
         .filter(
-          (s): s is { persoanaId: string; imagine: string; semnatLa: string } =>
+          (s): s is { persoanaId: string; imagine: string; semnatLa: string; peHartie?: true } =>
             typeof s.persoanaId === "string" &&
             ID_RE.test(s.persoanaId) &&
             typeof s.imagine === "string" &&
@@ -159,6 +165,24 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
             !Number.isNaN(Date.parse(s.semnatLa)),
         );
       if (list.length) x.semnaturi = list;
+    }
+    if (Array.isArray(m.semnaturiRol)) {
+      const seen = new Set<string>();
+      const list = m.semnaturiRol
+        .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+        .map((s) => ({ rol: s.rol, nume: str(s.nume, 200), imagine: s.peHartie === true ? "" : s.imagine, semnatLa: s.semnatLa, ...(s.peHartie === true ? { peHartie: true as const } : {}) }))
+        .filter(
+          (s): s is { rol: "SECRETAR" | "PASTOR"; nume: string; imagine: string; semnatLa: string; peHartie?: true } =>
+            (s.rol === "SECRETAR" || s.rol === "PASTOR") &&
+            !seen.has(s.rol) &&
+            Boolean(seen.add(s.rol)) &&
+            typeof s.imagine === "string" &&
+            s.imagine.length <= 200_000 &&
+            (s.peHartie === true || s.imagine.length > 0) &&
+            typeof s.semnatLa === "string" &&
+            !Number.isNaN(Date.parse(s.semnatLa)),
+        );
+      if (list.length) x.semnaturiRol = list;
     }
     if (typeof m.inchisLa === "string" && !Number.isNaN(Date.parse(m.inchisLa))) x.inchisLa = m.inchisLa;
     if (typeof m.asezare === "object" && m.asezare !== null) x.asezare = storedLayout(m.asezare);
@@ -182,6 +206,7 @@ export function parseMeetingExtras(root: unknown): Map<string, MeetingExtra> {
       x.observatii !== undefined ||
       x.formulaIncheiere ||
       x.semnaturi ||
+      x.semnaturiRol ||
       x.inchisLa ||
       x.asezare ||
       x.convocatLa ||

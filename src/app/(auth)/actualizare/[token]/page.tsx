@@ -11,6 +11,7 @@ import { IdentityForm } from "../identity-form";
 import { churchForCampaign, InvalidLink, LockedLink } from "../shared";
 import { UpdateForm, type ChildState } from "../update-form";
 import { answersForFamily } from "@/lib/prayer";
+import { churchTitle } from "@/lib/church-name";
 
 export const metadata: Metadata = { title: "Actualizarea datelor", robots: { index: false } };
 
@@ -28,7 +29,7 @@ export default async function PersonalUpdatePage({ params }: PageProps<"/actuali
     <>
       <h2 className="text-2xl mb-1">Actualizarea datelor</h2>
       <p className="hint mb-4">
-        Biserica {church.nume} · până la {fmt(r.campaign.deadline)}
+        {churchTitle(church.nume)} · până la {fmt(r.campaign.deadline)}
       </p>
     </>
   );

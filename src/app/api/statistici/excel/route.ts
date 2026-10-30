@@ -4,6 +4,7 @@ import { statisticsTables, statisticsWhen } from "@/lib/statistics-report";
 import { getChurch } from "@/server/queries/church";
 import { loadStatistics } from "@/server/queries/statistics";
 import { requireCtx } from "@/server/session";
+import { churchTitle } from "@/lib/church-name";
 
 /**
  * The Statistici tables as an Excel workbook, one sheet per table. Aggregate numbers only (no names
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   // The rows in the order the page shows them (?sort=<table>.<column>&dir=).
   for (const t of statisticsTables(d, { sort: sp.get("sort"), dir: sp.get("dir") })) {
     const ws = wb.addWorksheet(t.name.slice(0, 31), { views: [{ state: "frozen", ySplit: 2 }] });
-    ws.addRow([`Biserica ${church.nume} — ${t.name} — ${statisticsWhen(d)}`]).font = { bold: true, size: 12 };
+    ws.addRow([`${churchTitle(church.nume)} — ${t.name} — ${statisticsWhen(d)}`]).font = { bold: true, size: 12 };
     ws.addRow(t.columns).font = { bold: true };
     for (const r of t.rows) ws.addRow(r);
     ws.columns.forEach((c, i) => (c.width = i === 0 ? Math.max(12, ...t.rows.map((r) => String(r[0]).length + 2)) : Math.max(10, t.columns[i].length + 2)));

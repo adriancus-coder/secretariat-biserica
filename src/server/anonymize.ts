@@ -36,6 +36,9 @@ export async function scrubPersonTraces(tx: Tx, churchId: string, needles: reado
         "titlu" = replace("titlu", ${n}, ${r}),
         "puncte" = ARRAY(SELECT replace(x, ${n}, ${r}) FROM unnest("puncte") AS x)
       WHERE "churchId" = ${churchId} AND (strpos("presedinte" || "invitati" || "ordine" || "observatii" || "titlu" || array_to_string("puncte", ' '), ${n}) > 0)`;
+    // MINUTES-SIGNATURES: the name signed at the bottom (Secretar / Pastor), through the church's meetings.
+    await tx.$executeRaw`UPDATE "meeting_role_signatures" s SET "nume" = replace(s."nume", ${n}, ${r})
+      FROM "meetings" m WHERE m."id" = s."meetingId" AND m."churchId" = ${churchId} AND strpos(s."nume", ${n}) > 0`;
     await tx.$executeRaw`UPDATE "meeting_sends" s SET "to" = array_remove(s."to", ${n.toLowerCase()})
       FROM "meetings" m WHERE m."id" = s."meetingId" AND m."churchId" = ${churchId} AND ${n.toLowerCase()} = ANY(s."to")`;
     await tx.$executeRaw`UPDATE "events" SET

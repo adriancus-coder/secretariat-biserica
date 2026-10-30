@@ -434,6 +434,16 @@ corecții deliberate:
     darea de seamă devine „- Copii minori: N (din care copii ai membrilor: X, copii din alte familii:
     Y)”; prototipul nu avea partea a doua. Cardul apare pe Acasă și în Statistici (și la 0), iar
     tabelul „Familii” din PDF / Excel Statistici are rândurile copiilor.
+26. **Semnăturile procesului-verbal și antetul:** prototipul scria numele „Prenume Nume” și punea toți
+    prezenții în tabelul de semnături, inclusiv secretarul și pastorul care semnează și jos, la
+    „Întocmit”. Acum numele urmează ordinea din aplicație („Nume Prenume”) în lista prezenților, în
+    tabel și la absenți; secretarul și pastorul din Setări (potriviți după nume în orice ordine, fără
+    diacritice și titluri) rămân în lista și numărul prezenților, dar semnează doar jos. Blocul de jos
+    are funcția pe un rând, numele complet sub ea (pe mai multe rânduri când e lung), apoi „Semnătura”
+    și linia. Fiecare loc se poate marca „Semnat pe hârtie” (linia rămâne goală, sub tabel „Semnat pe
+    hârtie de: …”). Antetul (și textul documentelor) scrie „Biserica” o singură dată când numele din
+    Setări începe deja cu „Biserica” (`churchTitle`). Testul `src/domain/print.test.ts` și
+    `docs/samples/proces-verbal-model.md` au noul format.
 
 ## Atribuiri
 

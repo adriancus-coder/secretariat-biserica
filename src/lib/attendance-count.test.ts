@@ -63,7 +63,7 @@ describe("ATTENDANCE-COUNT", () => {
     // By name: unchanged.
     const named = printToText(meetingPrint({ ...base, tip: "Comitet", prezenti: [{ nume: "Pop", prenume: "Ana" }], absenti: [{ nume: "Rusu", prenume: "Dan" }] }, church));
     expect(named).toContain("La ședință au fost prezenți: 1 membru.");
-    expect(named).toContain("Absenți: Dan Rusu");
+    expect(named).toContain("Absenți: Rusu Dan");
   });
 
   it("the form's schema: by number the names are dropped and the number is required", () => {

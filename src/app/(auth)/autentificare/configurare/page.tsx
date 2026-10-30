@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { isEmailConfigured } from "@/server/email";
 import { currentChallenge } from "@/server/two-factor";
 import { SetupForm } from "./setup-form";
+import { churchTitle } from "@/lib/church-name";
 
 export const metadata: Metadata = { title: "Autentificare în doi pași" };
 
@@ -15,7 +16,7 @@ export default async function SetupPage() {
     <>
       <h2 className="text-2xl mb-1">Autentificare în doi pași</h2>
       <p className="hint mb-5">
-        Biserica {challenge.user.church.nume} cere, pe lângă parolă, un cod la fiecare autentificare. Alegeți cum îl primiți.
+        {churchTitle(challenge.user.church.nume)} cere, pe lângă parolă, un cod la fiecare autentificare. Alegeți cum îl primiți.
       </p>
       <SetupForm canEmail={isEmailConfigured()} />
     </>

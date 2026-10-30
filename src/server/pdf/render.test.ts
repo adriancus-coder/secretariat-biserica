@@ -1,6 +1,6 @@
 import { inflateSync } from "node:zlib";
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { documentPrint, meetingPrint, printToText } from "@/domain/print";
 import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { richToPlain, type RichDoc } from "@/lib/rich-text";
@@ -217,3 +217,42 @@ describe("tables in the PDF", () => {
   });
 });
 
+
+describe("MINUTES-SIGNATURES: the „Întocmit” block and the letterhead", () => {
+  it("a 40-character name wraps under the role and never overlaps „Semnătura”; the church name is written once", async () => {
+    const PDFDocument = (await import("pdfkit")).default;
+    // Every text drawn, with its position and its real height (measured with the font in use).
+    const calls: { text: string; x: number; y: number; h: number }[] = [];
+    const original = PDFDocument.prototype.text;
+    const spy = vi.spyOn(PDFDocument.prototype, "text").mockImplementation(function (this: PDFKit.PDFDocument, ...args: unknown[]) {
+      const [text, x, y, opts] = args as [string, number | undefined, number | undefined, PDFKit.Mixins.TextOptions | undefined];
+      if (typeof text === "string" && typeof x === "number" && typeof y === "number") calls.push({ text, x, y, h: this.heightOfString(text, opts ?? {}) });
+      return (original as (...a: unknown[]) => PDFKit.PDFDocument).apply(this, args);
+    });
+    try {
+      const longName = "Adrian Emanuel Cusniriuc-Vasilescu Popa A";
+      expect(longName).toHaveLength(41);
+      const spec = meetingPrint(
+        { nr: 555, tip: "Comitet", data: "2026-10-30", prezenti: [], absenti: [], invitati: "", ordine: "", puncte: ["Unu"], observatii: "", formulaIncheiere: "Gata." },
+        { ...church, nume: "Biserica Penticostală Maranata Stavanger", secretar: longName, pastor: "Dumitru Ciobanu" },
+      );
+      await renderPdf({ ...spec, layout: { ...DEFAULT_LAYOUT, format: "A5", fontSize: 14 } });
+      expect(calls[0].text).toBe("Biserica Penticostală Maranata Stavanger");
+      expect(calls.some((c) => /biserica\s+biserica/i.test(c.text))).toBe(false);
+      for (const label of ["Secretar", "Pastor"]) {
+        const at = calls.findLastIndex((c) => c.text === label);
+        const role = calls[at];
+        const [name, sign] = calls.slice(at + 1).filter((c) => c.x === role.x);
+        expect(sign.text).toBe("Semnătura");
+        expect(name.y).toBeGreaterThanOrEqual(role.y + role.h - 0.01);
+        expect(sign.y).toBeGreaterThanOrEqual(name.y + name.h - 0.01);
+      }
+      // The long name really wraps (more than one line in its column).
+      const secretary = calls.find((c) => c.text === longName)!;
+      const pastor = calls.find((c) => c.text === "Dumitru Ciobanu")!;
+      expect(secretary.h).toBeGreaterThan(pastor.h * 1.5);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

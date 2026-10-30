@@ -1,5 +1,7 @@
 import "server-only";
-import { meetingPrint, type PrintSpec } from "@/domain/print";
+import { meetingPrint, type MeetingPrint, type PrintSpec, type SignatureCell } from "@/domain/print";
+import { memberName } from "@/lib/format";
+import { roleSigners, tableSigners } from "@/lib/minutes-signatures";
 import { shownAbsentees } from "@/lib/attendance";
 import { minutesAttendance } from "@/lib/general-assembly";
 import { dotDateTime } from "@/lib/dates";
@@ -36,16 +38,43 @@ export function meetingSpec(m: MeetingRecord, church: ChurchSettings, layout?: P
       formulaRich: m.formulaRich,
       ...lines,
       sedintaInchisa: m.sedintaInchisa,
-      semnaturi: m.prezenti.map((p) => ({
-        name: `${p.prenume} ${p.nume}`.trim(),
-        image: p.signature ? new Uint8Array(p.signature.png) : null,
-        signedAt: p.signature ? dotDateTime(p.signature.signedAt) : null,
-      })),
+      ...minutesSignatures(m.prezenti, m.roleSignatures, church),
       inchisLa: m.locked && m.lockedAt ? dotDateTime(m.lockedAt) : null,
     },
     church,
   );
   return { ...spec, layout: layout ?? resolveLayout(church.pvLayout, m.layout) };
+}
+
+type SignatureRecord = { signedAt: Date; png: Buffer | null; paper: boolean };
+
+/**
+ * MINUTES-SIGNATURES: the signature table (those present, without the Secretar and the Pastor of the
+ * „Întocmit” block, `tableSigners`) and the bottom places as signed in the app. Shared by the PDF, Word,
+ * e-mail and the preview of unsaved minutes.
+ */
+export function minutesSignatures(
+  present: readonly { nume: string; prenume: string; signature?: SignatureRecord | null }[],
+  roles: Partial<Record<"SECRETAR" | "PASTOR", SignatureRecord & { nume: string }>>,
+  church: { secretar: string; pastor: string },
+): Pick<MeetingPrint, "semnaturi" | "semnatari"> {
+  const semnaturi: SignatureCell[] = tableSigners(present, church).map((p) => ({
+    name: memberName(p),
+    image: p.signature?.png ? new Uint8Array(p.signature.png) : null,
+    signedAt: p.signature && !p.signature.paper ? dotDateTime(p.signature.signedAt) : null,
+    ...(p.signature?.paper ? { paper: true } : {}),
+  }));
+  const semnatari: MeetingPrint["semnatari"] = {};
+  for (const r of roleSigners(church)) {
+    const s = roles[r.rol];
+    if (!s) continue;
+    semnatari[r.rol] = {
+      name: s.nume || r.name,
+      image: s.png && !s.paper ? new Uint8Array(s.png) : null,
+      note: s.paper ? "semnat pe hârtie" : `semnat ${dotDateTime(s.signedAt)}`,
+    };
+  }
+  return { semnaturi, semnatari };
 }
 
 /** The minutes PDF, as served by /pdf/proces-verbal/[id] and attached to e-mails. */

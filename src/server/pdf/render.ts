@@ -6,6 +6,7 @@ import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import { richLines, TEXT_SIZE_DELTA, type RichRun } from "@/lib/rich-text";
 import type { ChurchInfo } from "@/domain/types";
 import { formatAddress } from "@/lib/address";
+import { churchTitle } from "@/lib/church-name";
 
 /**
  * Generarea PDF-urilor pe server (pdfkit), reproducând macheta de tipărire din prototip:
@@ -138,7 +139,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
     bufferPages: true,
     info: {
       Title: spec.title,
-      Author: `Biserica ${spec.church.nume}`.trim(),
+      Author: churchTitle(spec.church.nume),
       Creator: "Secretariat Biserică",
     },
     lang: "ro-RO",
@@ -170,7 +171,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
   // Antetul bisericii (left out for paper with a printed letterhead: the top margin leaves its room)
   if (layout.letterhead) {
     doc.fillColor("#000").font("Serif-SemiBold").fontSize(18);
-    doc.text(`Biserica ${spec.church.nume}`.trim(), left, MARGIN.top, { width });
+    doc.text(churchTitle(spec.church.nume), left, MARGIN.top, { width });
     const details = letterheadDetails(spec.church);
     if (details) {
       doc.moveDown(0.15).font("Serif").fontSize(10.5).fillColor("#333").text(details, { width });
@@ -298,7 +299,7 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         const nameW = width * 0.5;
         const sigX = left + nameW + 12;
         const sigW = width - nameW - 12;
-        const rowH = 52;
+        const minRowH = 52;
         const header = () => {
           doc.font("Serif-SemiBold").fontSize(11).fillColor("#000");
           const y = doc.y;
@@ -311,12 +312,15 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         doc.y += 4;
         header();
         for (const row of block.rows) {
+          // A long name wraps (never cut); the row grows with it.
+          doc.font("Serif").fontSize(BODY_SIZE);
+          const rowH = Math.max(minRowH, doc.heightOfString(row.name, { width: nameW }) + 28);
           if (doc.y + rowH > bottomLimit()) {
             doc.addPage();
             header();
           }
           const top = doc.y;
-          doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000").text(row.name, left, top + 14, { width: nameW, lineBreak: false, ellipsis: true });
+          doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000").text(row.name, left, top + 14, { width: nameW });
           if (row.image) {
             doc.image(Buffer.from(row.image), sigX, top + 2, { fit: [sigW * 0.8, rowH - 16] });
             doc.font("Serif").fontSize(8).fillColor("#555").text(`semnat ${row.signedAt ?? ""}`, sigX, top + rowH - 13, { width: sigW, lineBreak: false });
@@ -385,25 +389,43 @@ export async function renderPdf(spec: PrintSpec): Promise<Buffer> {
         break;
       }
       case "signed": {
-        // "Secretar, <nume>" / "Pastor, <nume>", then "Semnătura" with room to sign, in two columns.
-        const blockHeight = 24 + 2 * BODY_SIZE * LINE_HEIGHT + 40;
-        if (doc.y + blockHeight > bottomLimit()) doc.addPage();
+        // Per column: the role, the full name (wrapping), „Semnătura”, room to sign and the line, then the
+        // note („semnat …” / „semnat pe hârtie”). Every height is measured, so a long name never overlaps.
         const colW = width * 0.45;
-        const top = doc.y + 18;
+        const gap = lineGap(BODY_SIZE);
+        const SIGN_ROOM = 34;
         const cols: [Signature, number][] = [
           [block.left, left],
           [block.right, left + width - colW],
         ];
-        for (const [sig, x] of cols) {
+        const measure = (sig: Signature) => {
+          doc.font("Serif").fontSize(BODY_SIZE);
+          const labelH = doc.heightOfString(sig.label || " ", { width: colW, lineGap: gap });
+          const nameH = sig.name ? doc.heightOfString(sig.name, { width: colW, lineGap: gap }) : 0;
+          const signH = doc.heightOfString("Semnătura", { width: colW, lineGap: gap });
+          doc.fontSize(8);
+          const noteH = sig.note ? doc.heightOfString(sig.note, { width: colW }) + 3 : 0;
+          return { labelH, nameH, signH, noteH, total: labelH + nameH + 4 + signH + SIGN_ROOM + noteH };
+        };
+        const sizes = cols.map(([sig]) => measure(sig));
+        const blockHeight = 18 + Math.max(...sizes.map((m) => m.total)) + 8;
+        if (doc.y + blockHeight > bottomLimit()) doc.addPage();
+        const top = doc.y + 18;
+        cols.forEach(([sig, x], i) => {
+          const m = sizes[i];
           doc.font("Serif").fontSize(BODY_SIZE).fillColor("#000");
-          doc.text(`${sig.label}, ${sig.name}`.replace(/, $/, ","), x, top, { width: colW });
-          const sy = top + BODY_SIZE * LINE_HEIGHT + 6;
-          doc.text("Semnătura", x, sy, { width: colW });
-          const ly = sy + BODY_SIZE * LINE_HEIGHT + 28;
+          doc.text(sig.label || " ", x, top, { width: colW, lineGap: gap });
+          if (sig.name) doc.text(sig.name, x, top + m.labelH, { width: colW, lineGap: gap });
+          const sy = top + m.labelH + m.nameH + 4;
+          doc.text("Semnătura", x, sy, { width: colW, lineGap: gap });
+          const ly = sy + m.signH + SIGN_ROOM;
+          // A signature given in the app: the drawn image above the line (a paper one leaves it empty).
+          if (sig.image) doc.image(Buffer.from(sig.image), x, ly - SIGN_ROOM + 2, { fit: [colW * 0.8, SIGN_ROOM - 4], valign: "bottom" });
           doc.moveTo(x, ly).lineTo(x + colW * 0.8, ly).lineWidth(0.7).strokeColor("#000").stroke();
-        }
+          if (sig.note) doc.fontSize(8).fillColor("#555").text(sig.note, x, ly + 3, { width: colW });
+        });
         doc.x = left;
-        doc.y = top + blockHeight;
+        doc.y = top + blockHeight - 18;
         break;
       }
     }

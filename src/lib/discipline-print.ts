@@ -3,6 +3,7 @@ import type { ChurchInfo } from "@/domain/types";
 import { formatAddress } from "./address";
 import { addDays } from "./dates";
 import { fmtL, memberName } from "./format";
+import { churchTitle } from "@/lib/church-name";
 
 /** The default addressee when the church has not set its Comunitate (Setări → Organizația). */
 export const COMMUNITY_PLACEHOLDER = "Comunitatea de care aparține biserica";
@@ -32,7 +33,7 @@ export function exclusionNoticePrint(x: ExclusionNotice, church: ChurchInfo): Pr
       { type: "title", text: "Informare privind excluderea" },
       para(`Către ${x.comunitate || COMMUNITY_PLACEHOLDER},`),
       para(
-        `Biserica ${church.nume} vă informează că, prin hotărârea din ${fmtL(x.data)}${pv}, ${f ? "sora" : "fratele"} ${memberName(x.person)}${born}, a fost exclus${f ? "ă" : ""} din calitatea de membru al bisericii, conform Statutului Cultului Creștin Penticostal (art. 27 alin. 3 lit. e și alin. 13).`,
+        `${churchTitle(church.nume)} vă informează că, prin hotărârea din ${fmtL(x.data)}${pv}, ${f ? "sora" : "fratele"} ${memberName(x.person)}${born}, a fost exclus${f ? "ă" : ""} din calitatea de membru al bisericii, conform Statutului Cultului Creștin Penticostal (art. 27 alin. 3 lit. e și alin. 13).`,
       ),
       para(
         `Potrivit art. 27 alin. 5, excluderea produce efecte de la data prezentei informări. Persoana a fost înștiințată de dreptul de a contesta hotărârea la Comunitate în termen de 15 zile de la comunicare (art. 27 alin. 11).`,

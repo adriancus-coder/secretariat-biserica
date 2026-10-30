@@ -3,6 +3,7 @@ import { fmtL, memberName } from "@/lib/format";
 import { churchName } from "@/lib/baptism";
 import { DOCUMENT_TYPE_LABEL, PARENT_RELATIONS, type DocumentTypeKey, type GenderKey } from "@/lib/labels";
 import type { ChurchInfo } from "./types";
+import { churchTitle } from "@/lib/church-name";
 
 /** Datele unei persoane necesare șabloanelor de documente. */
 export interface DocPerson {
@@ -72,7 +73,7 @@ export function generateDocumentText({
   const f = m?.gen === "F";
   const nume = m ? memberName(m) : BLANK_NAME;
   const nascut = m?.dataNasterii ? `, născut${f ? "ă" : ""} la data de ${fmtL(m.dataNasterii)}` : "";
-  const bis = `Biserica ${c.nume || BLANK}`;
+  const bis = c.nume.trim() ? churchTitle(c.nume) : `Biserica ${BLANK}`;
   // The parents are the family's head and spouse (the prototype also took rudenie "Părinte", by family name).
   const fromFamily =
     m && m.familyId

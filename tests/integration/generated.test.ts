@@ -122,6 +122,20 @@ describe.skipIf(!hasTestDb)("generated documents", () => {
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(500);
   });
 
+  it("MINUTES-SIGNATURES: a church named „Biserica …” is written once in every generated document", async () => {
+    current = pastor;
+    await prisma.church.update({ where: { id: churchId }, data: { nume: "Biserica Penticostală Maranata" } });
+    try {
+      for (const kind of GENERATED_KINDS) {
+        const text = printToText((await loadSource(pastor, kind, paramsOf(kind)))!.spec);
+        expect(text.split("\n")[0], kind).toBe("Biserica Penticostală Maranata");
+        expect(text, kind).not.toMatch(/biserica\s+biserica/i);
+      }
+    } finally {
+      await prisma.church.update({ where: { id: churchId }, data: { nume: "Maranata" } });
+    }
+  });
+
   it("an event: save an edited paragraph, reopen it, the route serves it; changed data shows; remake from data", async () => {
     current = secretar;
     const p = paramsOf("eveniment");

@@ -21,6 +21,7 @@ import { chartTable, type Block, type PrintSpec, type Signature } from "@/domain
 import { DEFAULT_LAYOUT, type PageLayout } from "@/lib/page-layout";
 import { richLines, TEXT_SIZE_DELTA, type Align, type RichRun } from "@/lib/rich-text";
 import { letterheadDetails } from "../pdf/render";
+import { churchTitle } from "@/lib/church-name";
 
 /**
  * The same printed documents as src/server/pdf/render.ts, as an editable Word file (.docx): the
@@ -150,10 +151,14 @@ function blockToDocx(block: Block, L: PageLayout): (Paragraph | Table)[] {
       return [twoColumns(col(block.left), col(block.right))];
     }
     case "signed": {
+      // The role, the full name under it, „Semnătura”, the drawn signature (if any) above the line, the note.
       const col = (s: Signature) => [
-        new Paragraph({ spacing: { before: 240 }, children: [t(`${s.label}, ${s.name}`.replace(/, $/, ","))] }),
-        new Paragraph({ spacing: { before: 120, after: 600 }, children: [t("Semnătura")] }),
+        new Paragraph({ spacing: { before: 240 }, children: [t(s.label)] }),
+        ...(s.name ? [new Paragraph({ children: [t(s.name)] })] : []),
+        new Paragraph({ spacing: { before: 120, after: s.image ? 60 : 600 }, children: [t("Semnătura")] }),
+        ...(s.image ? [new Paragraph({ children: [image(s.image, 160, 40)] })] : []),
         new Paragraph({ border: { top: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 1 } }, children: [] }),
+        ...(s.note ? [new Paragraph({ children: [t(s.note, { size: 8, color: "555555" })] })] : []),
       ];
       return [twoColumns(col(block.left), col(block.right))];
     }
@@ -215,7 +220,7 @@ export async function renderDocx(spec: PrintSpec): Promise<Buffer> {
   const page = spec.landscape ? { width: base.height, height: base.width } : base;
   const details = letterheadDetails(spec.church);
   const letterhead = !L.letterhead ? [] : [
-    new Paragraph({ children: [text(`Biserica ${spec.church.nume}`.trim(), { bold: true, size: 18 })] }),
+    new Paragraph({ children: [text(churchTitle(spec.church.nume), { bold: true, size: 18 })] }),
     ...(details ? [new Paragraph({ children: [text(details, { size: 10.5, color: "333333" })] })] : []),
     new Paragraph({ spacing: { after: 360 }, border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: "000000", space: 4 } }, children: [] }),
   ];

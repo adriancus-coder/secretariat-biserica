@@ -5,6 +5,7 @@ import { generalIdentity, resolveGeneralLink } from "@/server/data-update";
 import { IdentityForm } from "../../identity-form";
 import { churchForCampaign, InvalidLink } from "../../shared";
 import { UpdateForm } from "../../update-form";
+import { churchTitle } from "@/lib/church-name";
 
 export const metadata: Metadata = { title: "Actualizarea datelor", robots: { index: false } };
 
@@ -22,7 +23,7 @@ export default async function GeneralUpdatePage({ params }: PageProps<"/actualiz
     <>
       <h2 className="text-2xl mb-1">Actualizarea datelor</h2>
       <p className="hint mb-4">
-        Biserica {church.nume} · până la {fmt(r.campaign.deadline)}
+        {churchTitle(church.nume)} · până la {fmt(r.campaign.deadline)}
       </p>
       {confirmed ? (
         <UpdateForm action={submitGeneralUpdateAction.bind(null, token)} self={{}} childrenInitial={[]} consents={{}} privacyText={church.notice} />

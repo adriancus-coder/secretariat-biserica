@@ -1,4 +1,5 @@
 /** Water baptism details as one sentence. Pure. */
+import { churchTitle } from "./church-name";
 
 export interface BaptismDetails {
   /** Already formatted for display ("15 iun. 2008"), or empty. */
@@ -12,8 +13,7 @@ export interface BaptismDetails {
 
 /** "Biserica Betel" stays as written; "Betel" becomes "Biserica Betel". */
 export function churchName(name: string): string {
-  const n = name.trim();
-  return /^biseric/i.test(n) ? n : `Biserica ${n}`;
+  return churchTitle(name);
 }
 
 /**

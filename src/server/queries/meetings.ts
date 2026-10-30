@@ -53,14 +53,22 @@ export async function getMeeting(ctx: Ctx, id: string) {
     where: { id },
     include: {
       prezenti: { include: { person: { select: { id: true, nume: true, prenume: true, sortKey: true, email: true } } } },
-      signatures: { select: { personId: true, signedAt: true, imagePng: true } },
+      signatures: { select: { personId: true, signedAt: true, imagePng: true, peHartie: true, signedBy: { select: { name: true } } } },
+      roleSignatures: { select: { rol: true, nume: true, signedAt: true, imagePng: true, peHartie: true, signedBy: { select: { name: true } } } },
       sends: { orderBy: { sentAt: "desc" }, take: 20, include: { sentBy: { select: { name: true } } } },
     },
   });
   if (!m) return null;
   // Whether a disciplinary matter was decided in this meeting: the ordinary minutes say only that.
   const closed = await ctx.db.disciplinaryMeasure.count({ where: { OR: [{ meetingId: id, stare: { not: "CERCETARE" } }, { repunereMeetingId: id }] } });
-  const signed = new Map(m.signatures.map((s) => [s.personId, { signedAt: s.signedAt, png: Buffer.from(s.imagePng) }]));
+  // MINUTES-SIGNATURES: a signature is drawn (png) or marked on paper (png null), with who marked it.
+  const sig = (s: { signedAt: Date; imagePng: Uint8Array | null; peHartie: boolean; signedBy: { name: string } | null }) => ({
+    signedAt: s.signedAt,
+    png: s.imagePng && !s.peHartie ? Buffer.from(s.imagePng) : null,
+    paper: s.peHartie,
+    by: s.signedBy?.name ?? null,
+  });
+  const signed = new Map(m.signatures.map((s) => [s.personId, sig(s)]));
   const list = (status: "PRESENT" | "ABSENT") =>
     m.prezenti
       .filter((p) => p.status === status)
@@ -85,6 +93,9 @@ export async function getMeeting(ctx: Ctx, id: string) {
     convocatLa: fromDbDate(m.convocatLa),
     voturi: storedVotes(m.voturi),
     sedintaInchisa: closed > 0,
+    roleSignatures: Object.fromEntries(m.roleSignatures.map((s) => [s.rol, { ...sig(s), nume: s.nume }])) as Partial<
+      Record<"SECRETAR" | "PASTOR", ReturnType<typeof sig> & { nume: string }>
+    >,
   };
 }
 

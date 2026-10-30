@@ -12,7 +12,8 @@ import { permissions } from "@/lib/permissions";
 import { assignMeetingNumberAction, deleteMeetingAction } from "@/server/actions/meetings";
 import { dotDateTime } from "@/lib/dates";
 import { CLOSED_SESSION_LINE, fmtDot } from "@/domain/print";
-import { Signatures } from "./signatures";
+import { Signatures, type SignatureRow } from "./signatures";
+import { roleSigners, signatureState, tableSigners } from "@/lib/minutes-signatures";
 import { ExcusedForm } from "./excused";
 import { SendMinutesButton, ShareMinutesButton, type Recipient } from "./send-minutes";
 import { defaultSendSubject } from "@/lib/schemas/meeting-send";
@@ -210,12 +211,11 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
         canWrite={canWrite}
         canUnlock={permissions.admin(ctx.user.role)}
         emptyText={x.numarPrezenti != null ? "Prezența a fost consemnată doar ca număr: nu se adună semnăturile celor prezenți." : undefined}
-        rows={x.prezenti.map((p) => ({
-          id: p.id,
-          name: p.name,
-          image: p.signature ? `data:image/png;base64,${p.signature.png.toString("base64")}` : null,
-          signedAt: p.signature ? dotDateTime(p.signature.signedAt) : null,
-        }))}
+        rows={tableSigners(x.prezenti, church).map((p) => signatureRow(`p:${p.id}`, p.name, p.signature))}
+        roles={roleSigners(church).map((r) => {
+          const s = x.roleSignatures[r.rol] ?? null;
+          return { ...signatureRow(`r:${r.rol}`, s?.nume || r.name, s), role: r.label };
+        })}
       />
 
       {x.sends.length ? (
@@ -251,6 +251,18 @@ export default async function MeetingPage({ params }: PageProps<"/procese-verbal
       ) : null}
     </>
   );
+}
+
+/** A row of „Semnături”: drawn (image), on paper, or still to sign. */
+function signatureRow(place: string, name: string, s: { signedAt: Date; png: Buffer | null; paper: boolean; by: string | null } | null): SignatureRow {
+  return {
+    place,
+    name,
+    image: s?.png ? `data:image/png;base64,${s.png.toString("base64")}` : null,
+    signed: Boolean(s),
+    paper: Boolean(s?.paper),
+    state: signatureState(s ? { paper: s.paper, at: dotDateTime(s.signedAt), by: s.by } : null),
+  };
 }
 
 /** Pastor and Secretar (preselected) and the attendees with an e-mail address, without duplicates. */

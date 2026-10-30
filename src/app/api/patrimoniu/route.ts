@@ -4,6 +4,7 @@ import { ASSET_COLUMNS, ASSET_STATE_LABEL, categoryTotals, inventoryTitle, sorte
 import { exportAssets } from "@/server/assets-export";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
+import { churchTitle } from "@/lib/church-name";
 
 /** The inventory as an Excel workbook: the goods (the page's filter and sort, with „Subcategorie”) and the totals per category with subtotals per subcategory. */
 export async function GET(req: Request) {
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Secretariat Biserică";
   const ws = wb.addWorksheet("Inventar", { views: [{ state: "frozen", ySplit: 2 }] });
-  ws.addRow([`Biserica ${church.nume} — ${inventoryTitle(today)}`]).font = { bold: true, size: 12 };
+  ws.addRow([`${churchTitle(church.nume)} — ${inventoryTitle(today)}`]).font = { bold: true, size: 12 };
   ws.addRow(ASSET_COLUMNS.map((c) => c.label)).font = { bold: true };
   for (const a of sortedAssets(rows, { sort: sp.get("sort"), dir: sp.get("dir") })) ws.addRow([a.nrInventar, a.denumire, a.categorie, a.subcategorie, a.cantitate, a.valoare, a.loc, ASSET_STATE_LABEL[a.stare], a.dataIntrarii ? new Date(`${a.dataIntrarii}T00:00:00Z`) : null]);
   ws.columns.forEach((c, i) => (c.width = [10, 36, 22, 22, 10, 14, 22, 18, 14][i] ?? 14));

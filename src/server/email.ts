@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { churchTitle } from "@/lib/church-name";
 
 export const DEFAULT_EMAIL_FROM = "Secretariat Biserică <secretariat@sanctuaryvoice.com>";
 
@@ -391,7 +392,7 @@ export async function sendMinutesEmail(p: {
 // ---------- Public application link ----------
 
 export function applicationLinkSubject(churchName: string): string {
-  return churchName ? `Cerere de membru — Biserica ${churchName}` : "Cerere de membru";
+  return churchName ? `Cerere de membru — ${churchTitle(churchName)}` : "Cerere de membru";
 }
 
 /**

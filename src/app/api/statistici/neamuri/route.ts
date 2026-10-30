@@ -3,6 +3,7 @@ import { NEAM_COLUMNS, neamRows } from "@/lib/kinship-report";
 import { loadKinship } from "@/server/kinship";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
+import { churchTitle } from "@/lib/church-name";
 
 /** Statistici → Neamuri as an Excel sheet (the screen's sort). Every role that reads the register; not "Rugăciune". */
 export async function GET(req: Request) {
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Secretariat Biserică";
   const ws = wb.addWorksheet("Neamuri", { views: [{ state: "frozen", ySplit: 2 }] });
-  ws.addRow([`Biserica ${church.nume} — Neamuri`]).font = { bold: true, size: 12 };
+  ws.addRow([`${churchTitle(church.nume)} — Neamuri`]).font = { bold: true, size: 12 };
   ws.addRow(NEAM_COLUMNS.map((c) => c.label)).font = { bold: true };
   const rows = neamRows(kin.neamuri, { sort: sp.get("sort"), dir: sp.get("dir") });
   for (const r of rows) ws.addRow(r.sort);

@@ -70,9 +70,10 @@ describe("Word (.docx) generation", () => {
         prezenti: [p("Mihai", "Ionescu"), p("Petru", "Ștefănescu")],
         absenti: [],
         semnaturi: [
-          { name: "Mihai Ionescu", image: signature, signedAt: "11.09.2026 19:42" },
-          { name: "Petru Ștefănescu", image: null, signedAt: null },
+          { name: "Ionescu Mihai", image: signature, signedAt: "11.09.2026 19:42" },
+          { name: "Ștefănescu Petru", image: null, signedAt: null, paper: true },
         ],
+        semnatari: { PASTOR: { name: "Daniel Mureșan", image: null, note: "semnat pe hârtie" } },
         invitati: "",
         ordine: "",
         puncte: ["Ziua Recoltei va avea loc pe 4 octombrie.", "Conferința tinerilor se amână."],
@@ -91,12 +92,13 @@ describe("Word (.docx) generation", () => {
       "Proces verbal nr. 16",
       "Încheiat azi, 11.09.2026, cu ocazia ședinței de comitet.",
       "La ședință au fost prezenți: 2 membri.",
-      "Mihai Ionescu, Petru Ștefănescu",
+      "Ionescu Mihai, Ștefănescu Petru",
       "Nume",
       "Semnătura",
-      "Mihai Ionescu",
+      "Ionescu Mihai",
       "semnat 11.09.2026 19:42",
-      "Petru Ștefănescu",
+      "Ștefănescu Petru",
+      "Semnat pe hârtie de: Ștefănescu Petru.",
       "În cadrul ședinței s-au discutat și aprobat următoarele:",
       "1.\tZiua Recoltei va avea loc pe 4 octombrie.",
       "2.\tConferința tinerilor se amână.",
@@ -105,16 +107,19 @@ describe("Word (.docx) generation", () => {
       "Rând doi",
       "Toate punctele au fost votate în unanimitate de membrii prezenți.",
       "Întocmit,",
-      "Secretar, Ioana Pop",
+      "Secretar",
+      "Ioana Pop",
       "Semnătura",
-      "Pastor, Daniel Mureșan",
+      "Pastor",
+      "Daniel Mureșan",
       "Semnătura",
+      "semnat pe hârtie",
     ];
     expect(text).toEqual(expected);
     // The Word import reads the file back (number, date, type, attendees, points).
     const { value } = await mammoth.extractRawText({ buffer: docx });
     const back = parseMinutesText(value).draft;
-    expect(back).toMatchObject({ nr: 16, data: "2026-09-11", prezenti: ["Mihai Ionescu", "Petru Ștefănescu"] });
+    expect(back).toMatchObject({ nr: 16, data: "2026-09-11", prezenti: ["Ionescu Mihai", "Ștefănescu Petru"] });
     expect(back.puncte.slice(0, 2)).toEqual(["Ziua Recoltei va avea loc pe 4 octombrie.", "Conferința tinerilor se amână."]);
     // The drawn signature is embedded as an image.
     expect(docx.includes(Buffer.from("word/media/"))).toBe(true);

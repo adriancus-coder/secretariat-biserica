@@ -357,7 +357,8 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
       convocataDeComunitate: true,
       voturi: true,
       prezenti: { where: { status: "ABSENT" }, select: { personId: true, motivat: true } },
-      signatures: { select: { personId: true, imagePng: true, signedAt: true } },
+      signatures: { select: { personId: true, imagePng: true, signedAt: true, peHartie: true } },
+      roleSignatures: { select: { rol: true, nume: true, imagePng: true, signedAt: true, peHartie: true } },
     },
   });
   return new Map(
@@ -375,9 +376,21 @@ export async function loadMeetingExtras(ctx: Ctx): Promise<Map<string, MeetingEx
         ...richExtras(m),
         semnaturi: m.signatures.map((s) => ({
           persoanaId: s.personId,
-          imagine: Buffer.from(s.imagePng).toString("base64"),
+          imagine: s.imagePng && !s.peHartie ? Buffer.from(s.imagePng).toString("base64") : "",
           semnatLa: s.signedAt.toISOString(),
+          ...(s.peHartie ? { peHartie: true as const } : {}),
         })),
+        ...(m.roleSignatures.length
+          ? {
+              semnaturiRol: m.roleSignatures.map((s) => ({
+                rol: s.rol,
+                nume: s.nume,
+                imagine: s.imagePng && !s.peHartie ? Buffer.from(s.imagePng).toString("base64") : "",
+                semnatLa: s.signedAt.toISOString(),
+                ...(s.peHartie ? { peHartie: true as const } : {}),
+              })),
+            }
+          : {}),
         inchisLa: m.locked ? (m.lockedAt ?? new Date()).toISOString() : null,
         ...(m.layout ? { asezare: storedLayout(m.layout) } : {}),
         ...(m.convocatLa ? { convocatLa: fromDbDate(m.convocatLa)! } : {}),
@@ -885,8 +898,25 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         for (const s of extra?.semnaturi ?? []) {
           const personId = pid(s.persoanaId);
           if (!personId || !prezenti.includes(personId)) continue;
+          if (s.peHartie) {
+            signatures.push({ personId, imagePng: null, peHartie: true, signedAt: new Date(s.semnatLa) });
+            continue;
+          }
           try {
             signatures.push({ personId, imagePng: new Uint8Array(await normalizeSignature(s.imagine)), signedAt: new Date(s.semnatLa) });
+          } catch {
+            badSignatures++;
+          }
+        }
+        // MINUTES-SIGNATURES: the bottom Secretar / Pastor signatures, re-checked the same way.
+        const roleSignatures = [];
+        for (const s of extra?.semnaturiRol ?? []) {
+          if (s.peHartie) {
+            roleSignatures.push({ rol: s.rol, nume: s.nume, imagePng: null, peHartie: true, signedAt: new Date(s.semnatLa) });
+            continue;
+          }
+          try {
+            roleSignatures.push({ rol: s.rol, nume: s.nume, imagePng: new Uint8Array(await normalizeSignature(s.imagine)), signedAt: new Date(s.semnatLa) });
           } catch {
             badSignatures++;
           }
@@ -894,11 +924,16 @@ export async function importBackup(ctx: Ctx, backup: Backup, mode: ImportMode, e
         if (meet.existing.has(m.id)) {
           await tx.meeting.update({
             where: { id },
-            data: { ...data, prezenti: { deleteMany: {}, create: rows }, ...(extra?.semnaturi ? { signatures: { deleteMany: {}, create: signatures } } : {}) },
+            data: {
+              ...data,
+              prezenti: { deleteMany: {}, create: rows },
+              ...(extra?.semnaturi ? { signatures: { deleteMany: {}, create: signatures } } : {}),
+              ...(extra?.semnaturiRol ? { roleSignatures: { deleteMany: {}, create: roleSignatures } } : {}),
+            },
           });
         } else {
           await tx.meeting.create({
-            data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows }, signatures: { create: signatures } },
+            data: { ...data, id, churchId, createdAt: ts(m.createdAt), prezenti: { create: rows }, signatures: { create: signatures }, roleSignatures: { create: roleSignatures } },
           });
         }
       }

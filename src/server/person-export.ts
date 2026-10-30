@@ -9,6 +9,7 @@ import { columnLabel, exportRows, type ExportColumn, type ExportPerson } from "@
 import { rolesText } from "@/lib/roles";
 import { compareRo } from "@/lib/text";
 import type { Ctx } from "./session";
+import { churchTitle } from "@/lib/church-name";
 
 /** The persons of an export with every column's data, in the order of `ids`. */
 export async function loadExportPersons(ctx: Ctx, ids: string[]): Promise<ExportPerson[]> {
@@ -97,7 +98,7 @@ export async function exportXlsx(d: ExportDoc): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Secretariat Biserică";
   const ws = wb.addWorksheet("Persoane", { views: [{ state: "frozen", ySplit: 2 }] });
-  ws.addRow([`Biserica ${d.church.nume} — ${d.title} — ${d.when} (${d.persons.length} persoane)`]).font = { bold: true, size: 12 };
+  ws.addRow([`${churchTitle(d.church.nume)} — ${d.title} — ${d.when} (${d.persons.length} persoane)`]).font = { bold: true, size: 12 };
   const header = ws.addRow(d.columns.map(columnLabel));
   header.font = { bold: true };
   header.eachCell((c) => {

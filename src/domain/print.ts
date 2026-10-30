@@ -11,6 +11,8 @@ import { DOCUMENT_HEADING, type DocumentTypeKey } from "@/lib/labels";
 import type { PageLayout } from "@/lib/page-layout";
 import { ALIGN_LABEL, richLines, type RichDoc, type RichLine } from "@/lib/rich-text";
 import type { ChurchInfo } from "./types";
+import { churchTitle } from "@/lib/church-name";
+import { paperNote } from "@/lib/minutes-signatures";
 
 export type Run = { text: string; bold?: boolean };
 
@@ -30,7 +32,10 @@ export type Block =
   | { type: "para"; runs: Run[]; pre?: boolean }
   | { type: "list"; items: string[]; ordered?: boolean; start?: number }
   | { type: "signatures"; left: Signature; right: Signature }
-  /** "Secretar, Ioana Pop" with "Semnătura" and a line under it, in two columns (the minutes). */
+  /**
+   * The minutes' „Întocmit” block, in two columns: the role („Secretar”), the full name under it (wrapped
+   * when long), „Semnătura” and a line; a signature given in the app sits above the line, its note under it.
+   */
   | { type: "signed"; left: Signature; right: Signature }
   /** "Nume | Semnătura": one row per person, with the drawn signature (PNG) or an empty line to sign on paper. */
   | { type: "signatureTable"; rows: SignatureCell[] }
@@ -65,6 +70,8 @@ export interface SignatureCell {
   image: Uint8Array | null;
   /** "11.09.2026 14:03", shown under the image. */
   signedAt: string | null;
+  /** MINUTES-SIGNATURES: signed on paper: the line stays empty for the printed copy, the name goes in the note under the table. */
+  paper?: boolean;
 }
 
 export interface PrintSpec {
@@ -131,14 +138,17 @@ export interface MeetingPrint {
   voturi?: (string | null)[] | null;
   /** A disciplinary matter was handled in closed session: only this line, never its content (Statut art. 272). */
   sedintaInchisa?: boolean;
-  /** The signature table, one row per person present (in the order of `prezenti`). */
+  /**
+   * The signature table: one row per person present who does not sign at the bottom (MINUTES-SIGNATURES:
+   * the Secretar and the Pastor of „Întocmit” are left out, `tableSigners`), in the order of `prezenti`.
+   */
   semnaturi?: SignatureCell[];
+  /** The bottom places signed in the app (drawn, or marked on paper): the name signed and the note under the line. */
+  semnatari?: Partial<Record<"SECRETAR" | "PASTOR", { name: string; image: Uint8Array | null; note: string }>>;
   /** "11.09.2026 14:03" when the minutes were closed. */
   inchisLa?: string | null;
 }
 
-/** "Ioana Pop": the minutes write names first name first. */
-const firstLast = (p: { nume: string; prenume: string }) => `${p.prenume} ${p.nume}`.trim();
 
 /** "11.09.2026". */
 export function fmtDot(iso: string): string {
@@ -161,9 +171,14 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
     // Only the number (the General Assembly's line already carries it).
     if (!x.adunare) blocks.push(para(`Prezenți: ${x.numarPrezenti}`));
   } else {
-    blocks.push(para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`), para(x.prezenti.map(firstLast).join(", ") || "—"));
-    if (x.semnaturi?.length) blocks.push({ type: "signatureTable", rows: x.semnaturi });
-    if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(firstLast).join(", ")}`));
+    blocks.push(para(`La ședință au fost prezenți: ${n} ${n === 1 ? "membru" : "membri"}.`), para(x.prezenti.map(memberName).join(", ") || "—"));
+    if (x.semnaturi?.length) {
+      blocks.push({ type: "signatureTable", rows: x.semnaturi });
+      // Paper signatures leave their line empty (the printed copy carries them): named under the table.
+      const paper = x.semnaturi.filter((r) => r.paper).map((r) => r.name);
+      if (paper.length) blocks.push(para(paperNote(paper)));
+    }
+    if (x.absenti.length) blocks.push(para(`Absenți: ${x.absenti.map(memberName).join(", ")}`));
   }
   if (x.adunare) blocks.push(para(x.adunare));
   if (x.cvorum) blocks.push(para(`Cvorum: ${x.cvorum.replace(/^Prezenți/, "prezenți")}`));
@@ -185,11 +200,11 @@ export function meetingPrint(x: MeetingPrint, church: ChurchInfo): PrintSpec {
   // With recorded votes the default "votate în unanimitate" would contradict them: it is left out.
   if (!(votes && x.formulaIncheiere === DEFAULT_CLOSING)) blocks.push(x.formulaRich ? { type: "rich", doc: x.formulaRich } : para(x.formulaIncheiere));
   blocks.push(para("Întocmit,"));
-  blocks.push({
-    type: "signed",
-    left: { label: "Secretar", name: church.secretar },
-    right: { label: "Pastor", name: church.pastor },
-  });
+  const place = (rol: "SECRETAR" | "PASTOR", label: string, name: string): Signature => {
+    const s = x.semnatari?.[rol];
+    return s ? { label, name: s.name || name, image: s.image, note: s.note } : { label, name };
+  };
+  blocks.push({ type: "signed", left: place("SECRETAR", "Secretar", church.secretar), right: place("PASTOR", "Pastor", church.pastor) });
   return {
     title: `Proces verbal${x.nr !== null ? ` nr. ${x.nr}` : ""} ${fmtDot(x.data)}`,
     church,
@@ -362,7 +377,7 @@ export function chartTable(blk: Extract<Block, { type: "chart" }>): string[][] {
 
 /** Textul simplu al unui document tipărit (pentru teste și previzualizare). */
 export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): string {
-  const lines: string[] = [`Biserica ${spec.church.nume}`.trim()];
+  const lines: string[] = [churchTitle(spec.church.nume)];
   for (const blk of spec.blocks) {
     if (blk.type === "nr" || blk.type === "title") lines.push(blk.text);
     else if (blk.type === "para") lines.push(blk.runs.map((r) => r.text).join(""));
@@ -376,8 +391,9 @@ export function printToText(spec: PrintSpec, opts: PrintTextOptions = {}): strin
       lines.push("Nume | Semnătura");
       for (const r of blk.rows) lines.push(`${r.name} | ${r.image ? `semnat ${r.signedAt ?? ""}`.trim() : "________________"}`);
     } else if (blk.type === "signed") {
-      lines.push(`${blk.left.label}, ${blk.left.name} | ${blk.right.label}, ${blk.right.name}`);
-      lines.push("Semnătura | Semnătura");
+      lines.push(`${blk.left.label} | ${blk.right.label}`, `${blk.left.name} | ${blk.right.name}`, "Semnătura | Semnătura");
+      const mark = (s: Signature) => [s.image ? "[semnătură]" : "", s.note ?? ""].filter(Boolean).join(" ");
+      if (mark(blk.left) || mark(blk.right)) lines.push(`${mark(blk.left)} | ${mark(blk.right)}`);
     } else {
       const cell = (s: Signature) => `${s.label}: ${s.name}${s.image ? ` [semnătură]` : ""}${s.note ? ` (${s.note})` : ""}`;
       lines.push(`${cell(blk.left)} | ${cell(blk.right)}`);

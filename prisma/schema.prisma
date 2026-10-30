@@ -188,6 +188,7 @@ model User {
   resetsIssued           PasswordReset[]        @relation("ResetIssuedBy")
   applicationsDecided    Application[]          @relation("ApplicationDecidedBy")
   signaturesCollected    MeetingSignature[]     @relation("SignatureCollectedBy")
+  roleSignsCollected     MeetingRoleSignature[] @relation("RoleSignatureCollectedBy")
   meetingSends           MeetingSend[]
   loginChallenges        LoginChallenge[]
   passkeys               UserPasskey[]
@@ -810,9 +811,10 @@ model Meeting {
   locked   Boolean   @default(false)
   lockedAt DateTime?
 
-  prezenti   MeetingAttendee[]
-  signatures MeetingSignature[]
-  sends      MeetingSend[]
+  prezenti       MeetingAttendee[]
+  signatures     MeetingSignature[]
+  roleSignatures MeetingRoleSignature[]
+  sends          MeetingSend[]
 
   @@unique([churchId, anRegistru, nr])
   @@index([churchId, data])
@@ -826,13 +828,36 @@ model MeetingSignature {
   meeting        Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   personId       String
   person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-  imagePng       Bytes
+  /// The drawn signature; null when it was signed on paper (`peHartie`).
+  imagePng       Bytes?
+  /// MINUTES-SIGNATURES: „Semnat pe hârtie”: the printed copy carries the signature; `signedAt` /
+  /// `signedBy` are when and by whom it was marked.
+  peHartie       Boolean  @default(false)
   signedAt       DateTime @default(now())
   signedByUserId String?
   signedBy       User?    @relation("SignatureCollectedBy", fields: [signedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([meetingId, personId])
   @@map("meeting_signatures")
+}
+
+/// MINUTES-SIGNATURES: the signatures at the bottom of the minutes („Întocmit, Secretar / Pastor”), one
+/// per role. No churchId: reached only through its Meeting. `nume` is the name printed when it was signed.
+model MeetingRoleSignature {
+  id             String        @id @default(cuid())
+  meetingId      String
+  meeting        Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  rol            SignatureRole
+  nume           String        @default("")
+  /// The drawn signature; null when it was signed on paper.
+  imagePng       Bytes?
+  peHartie       Boolean       @default(false)
+  signedAt       DateTime      @default(now())
+  signedByUserId String?
+  signedBy       User?         @relation("RoleSignatureCollectedBy", fields: [signedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([meetingId, rol])
+  @@map("meeting_role_signatures")
 }
 
 /// The second step of a login, after a correct password: identified by a random token kept in an

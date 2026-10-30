@@ -3,6 +3,7 @@ import { exportCells, REGISTER_COLUMNS, registerTitle, sortedRows } from "@/lib/
 import { exportRegister } from "@/server/correspondence-export";
 import { getChurch } from "@/server/queries/church";
 import { requireCtx } from "@/server/session";
+import { churchTitle } from "@/lib/church-name";
 
 /** „Registru de intrare-ieșire <an>” as an Excel sheet (the page's year, filter, search and sort). Every role that reads the register. */
 export async function GET(req: Request) {
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Secretariat Biserică";
   const ws = wb.addWorksheet(`Registru ${an}`, { views: [{ state: "frozen", ySplit: 2 }] });
-  ws.addRow([`Biserica ${church.nume} — ${registerTitle(an)}`]).font = { bold: true, size: 12 };
+  ws.addRow([`${churchTitle(church.nume)} — ${registerTitle(an)}`]).font = { bold: true, size: 12 };
   ws.addRow(REGISTER_COLUMNS.map((c) => c.label)).font = { bold: true };
   for (const r of sortedRows(rows, { sort: sp.get("sort"), dir: sp.get("dir") })) ws.addRow(exportCells(r));
   ws.columns.forEach((c, i) => (c.width = [8, 12, 14, 30, 40, 26, 14][i] ?? 14));

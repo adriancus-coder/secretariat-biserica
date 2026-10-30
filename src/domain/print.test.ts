@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { memberName } from "@/lib/format";
+import { tableSigners } from "@/lib/minutes-signatures";
 import { documentPrint, eventPrint, groupPrint, meetingPrint, printToText, reportPrint } from "./print";
 
 const church = {
@@ -18,20 +20,25 @@ describe("documente tipărite", () => {
     const sample = readFileSync(join(process.cwd(), "docs/samples/proces-verbal-model.md"), "utf8");
     const expected = [...sample.matchAll(/```text\n([\s\S]*?)```/g)].at(-1)![1].trimEnd();
     const p = (prenume: string, nume: string) => ({ prenume, nume });
+    const present = [p("Mihai", "Ionescu"), p("Daniel", "Mureșan"), p("Ioana", "Pop"), p("Ion", "Popescu"), p("Petru", "Ștefănescu")];
     const spec = meetingPrint(
       {
         nr: 16,
         tip: "Comitet",
         data: "2026-09-11",
-        prezenti: [p("Mihai", "Ionescu"), p("Daniel", "Mureșan"), p("Ioana", "Pop"), p("Ion", "Popescu"), p("Petru", "Ștefănescu")],
+        prezenti: present,
         absenti: [p("Emanuel", "Ciobanu")],
-        semnaturi: [
-          { name: "Mihai Ionescu", image: new Uint8Array([1]), signedAt: "11.09.2026 19:42" },
-          { name: "Daniel Mureșan", image: new Uint8Array([1]), signedAt: "11.09.2026 19:43" },
-          { name: "Ioana Pop", image: null, signedAt: null },
-          { name: "Ion Popescu", image: null, signedAt: null },
-          { name: "Petru Ștefănescu", image: null, signedAt: null },
-        ],
+        // The secretary and the pastor sign at the bottom, not in the table (MINUTES-SIGNATURES).
+        semnaturi: tableSigners(present, church).map((x) => ({
+          name: memberName(x),
+          image: x.prenume === "Mihai" ? new Uint8Array([1]) : null,
+          signedAt: x.prenume === "Mihai" ? "11.09.2026 19:42" : null,
+          ...(x.prenume === "Ion" ? { paper: true } : {}),
+        })),
+        semnatari: {
+          SECRETAR: { name: "Ioana Pop", image: new Uint8Array([1]), note: "semnat 11.09.2026 19:50" },
+          PASTOR: { name: "Daniel Mureșan", image: null, note: "semnat pe hârtie" },
+        },
         invitati: "Lucia Avram",
         ordine: "",
         puncte: [
@@ -71,14 +78,15 @@ describe("documente tipărite", () => {
       "Proces verbal nr. 3",
       "Încheiat azi, 15.03.2026, cu ocazia ședinței de adunare generală.",
       "La ședință au fost prezenți: 1 membru.",
-      "Ana Pop",
+      "Pop Ana",
       "Membri cu drepturi depline: 40 · prezenți: 23 · convocată la 1 martie 2026 (14 zile înainte)",
       "În cadrul ședinței s-au discutat și aprobat următoarele:",
       "1. Darea de seamă",
       "Votat: pentru 20, contra 2, abțineri 1 — adoptat",
       "2. Bugetul",
       "Întocmit,",
-      "Secretar, Ioana Pop | Pastor, Daniel Mureșan",
+      "Secretar | Pastor",
+      "Ioana Pop | Daniel Mureșan",
       "Semnătura | Semnătura",
     ]);
   });
@@ -107,7 +115,7 @@ describe("documente tipărite", () => {
       "Proces verbal",
       "Încheiat azi, 26.01.2026, cu ocazia ședinței de adunare generală.",
       "La ședință au fost prezenți: 1 membru.",
-      "Ana Pop",
+      "Pop Ana",
       "Cvorum: prezenți 1 din 2 (50 %)",
       "Ordinea de zi:",
       "1. Darea de seamă",
@@ -117,7 +125,8 @@ describe("documente tipărite", () => {
       "S-a citit darea de seamă.",
       "Încheiat și semnat.",
       "Întocmit,",
-      "Secretar, Ioana Pop | Pastor, Daniel Mureșan",
+      "Secretar | Pastor",
+      "Ioana Pop | Daniel Mureșan",
       "Semnătura | Semnătura",
       "Proces-verbal închis la 26.01.2026 20:15",
     ]);

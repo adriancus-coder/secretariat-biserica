@@ -1,10 +1,10 @@
 import { meetingPrint } from "@/domain/print";
 import { absentees } from "@/lib/attendance";
 import { minutesAttendance } from "@/lib/general-assembly";
-import { dotDateTime } from "@/lib/dates";
 import { resolveLayout } from "@/lib/page-layout";
 import { meetingFormInput, meetingSchema } from "@/lib/schemas/meeting";
 import { idSchema } from "@/lib/validation";
+import { minutesSignatures } from "@/server/pdf/meeting";
 import { pdfResponse, renderPdf } from "@/server/pdf/render";
 import { expectedAttendees } from "@/server/queries/attendance";
 import { getChurch } from "@/server/queries/church";
@@ -36,6 +36,11 @@ export async function POST(req: Request) {
   });
   const present = people.filter((p) => m.prezenti.includes(p.id));
   const signed = new Map((existing?.prezenti ?? []).filter((p) => p.signature).map((p) => [p.id, p.signature!]));
+  const signatures = minutesSignatures(
+    present.map((p) => ({ ...p, signature: signed.get(p.id) ?? null })),
+    existing?.roleSignatures ?? {},
+    church,
+  );
   const spec = meetingPrint(
     {
       nr: m.nr ?? existing?.nr ?? null,
@@ -66,10 +71,7 @@ export async function POST(req: Request) {
         church,
       ),
       sedintaInchisa: existing?.sedintaInchisa ?? false,
-      semnaturi: present.map((p) => {
-        const s = signed.get(p.id);
-        return { name: `${p.prenume} ${p.nume}`.trim(), image: s ? new Uint8Array(s.png) : null, signedAt: s ? dotDateTime(s.signedAt) : null };
-      }),
+      ...signatures,
     },
     church,
   );
