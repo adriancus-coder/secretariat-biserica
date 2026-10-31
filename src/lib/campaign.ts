@@ -43,13 +43,14 @@ export function isCampaignAdult(p: { dataNasterii: string | null }, today: strin
 
 /** Why the personal link asks for the name and the phone (the last lines of the message). */
 export const CAMPAIGN_IDENTITY_REASON =
-  "La deschidere vi se cer numele complet și numărul de telefon. Le cerem ca să ne asigurăm că doar dumneavoastră vedeți și modificați aceste date, chiar dacă linkul ajunge din greșeală la altcineva.";
+  "La deschidere vi se cer numele complet și numărul de telefon. Le cerem ca să ne asigurăm că doar dumneavoastră vedeți și modificați aceste date.";
 
-/** „Pace, frate Denis!” / „Pace, sora Dana!” by the gender in the register; without one, the name alone. */
+/** „Pace, frate Denis!” / „Pace, sora Dana!” by the gender in the register; without one only „Pace!”. */
 export function campaignGreeting(prenume: string, gen: string | null | undefined): string {
   const name = prenume.trim();
-  if (!name) return gen === "F" ? "Pace, soră!" : gen === "M" ? "Pace, frate!" : "Pace!";
-  return gen === "F" ? `Pace, sora ${name}!` : gen === "M" ? `Pace, frate ${name}!` : `Pace, ${name}!`;
+  if (gen === "F") return name ? `Pace, sora ${name}!` : "Pace, soră!";
+  if (gen === "M") return name ? `Pace, frate ${name}!` : "Pace, frate!";
+  return "Pace!";
 }
 
 /** The ready message of "Partajează" / "Copiază mesajul" / WhatsApp. */

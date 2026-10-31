@@ -28,7 +28,7 @@ describe("data-update campaign", () => {
     expect(campaignMessage("Denis", "M", "Biserica Penticostală Maranata Stavanger", "2026-11-30", "https://x/a")).toMatch(
       /^Pace, frate Denis! .* din evidența Bisericii Penticostale Maranata Stavanger până la 30 noiembrie 2026: https:\/\/x\/a\n\nLa deschidere vi se cer numele complet și numărul de telefon\. Le cerem ca să ne asigurăm/,
     );
-    expect(campaignGreeting("Dana", null)).toBe("Pace, Dana!");
+    expect(campaignGreeting("Dana", null)).toBe("Pace!");
   });
 
   it("is open while active and not past the deadline", () => {
