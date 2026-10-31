@@ -10,6 +10,7 @@ import { DEFAULT_LAYOUT } from "@/lib/page-layout";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
+import { expectNoLeak } from "../helpers/no-leak";
 
 vi.mock("@/server/session", () => ({ ActionError: class ActionError extends Error {} }));
 
@@ -75,11 +76,11 @@ describe.skipIf(!hasTestDb)("disciplinary measures", () => {
     const asSecretar = JSON.stringify((await buildExportJson(secretar)).data);
     expect(asAdmin).toContain("motiv intern");
     expect(asAdmin).toContain('"discipline"');
-    expect(asSecretar).not.toMatch(/disciplin|SUSPENDARE|motiv intern/i);
+    expectNoLeak(asSecretar, [/disciplin|SUSPENDARE|motiv intern/i]);
   });
 
   it("an Administrator without access (art. 44 lit. d) gets no trace in the export; a Secretar with access does", async () => {
-    expect(JSON.stringify((await buildExportJson(adminNoAccess)).data)).not.toMatch(/disciplin|SUSPENDARE|motiv intern/i);
+    expectNoLeak((await buildExportJson(adminNoAccess)).data, [/disciplin|SUSPENDARE|motiv intern/i]);
     const withAccess = { ...secretar, user: { ...secretar.user, accesDisciplina: true } } as Ctx;
     expect(JSON.stringify((await buildExportJson(withAccess)).data)).toContain("motiv intern");
   });
@@ -90,7 +91,7 @@ describe.skipIf(!hasTestDb)("disciplinary measures", () => {
     const noAccess = { ...other, user: { ...other.user, accesDisciplina: false } } as Ctx;
     const summary = await importBackup(noAccess, parsed.backup, "merge", parsed.extras);
     expect(await other.db.disciplinaryMeasure.count()).toBe(0);
-    expect(JSON.stringify(summary)).not.toMatch(/disciplin/i);
+    expectNoLeak(summary, [/disciplin/i]);
   });
 
   it("a file of someone with access imports the measures into another church (importer with access), linked to the imported person", async () => {

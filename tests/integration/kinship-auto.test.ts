@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
+import { expectNoLeak } from "../helpers/no-leak";
 
 // The actions run with the context set by each test (the real session needs a request).
 let current: Ctx;
@@ -78,7 +79,7 @@ describe.skipIf(!hasTestDb)("kinship: automatic check and siblings", () => {
     const audit = await prisma.auditLog.findMany({ where: { churchId, entityLabel: "Legături de rudenie" } });
     expect(audit).toHaveLength(1);
     expect(JSON.stringify(audit[0].changes)).toContain("prima verificare automată a registrului: 0 legături șterse, 6 adăugate din familii, 0 de verificat");
-    expect(JSON.stringify(audit[0].changes)).not.toContain("Ciobanu");
+    expectNoLeak(audit[0].changes, ["Ciobanu"]);
     // Never twice (the church is marked; a second page load does nothing).
     await prisma.church.update({ where: { id: churchId }, data: { kinshipCheckedAt: null } });
     await runFirstKinshipCheck(ctx.user);

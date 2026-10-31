@@ -9,6 +9,7 @@ import { hashToken, linkToken } from "@/server/campaign-tokens";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
+import { expectNoLeak } from "../helpers/no-leak";
 
 vi.mock("@/server/session", () => ({ ActionError: class ActionError extends Error {} }));
 
@@ -211,7 +212,7 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
   it("exports campaigns (never their tokens) and consents, and imports them into another church", async () => {
     const json = JSON.parse(JSON.stringify((await buildExportJson(ctx)).data));
     expect(json.campaigns.length).toBeGreaterThan(0);
-    expect(JSON.stringify(json.campaigns)).not.toMatch(/nonce|tokenHash|generalTokenHash/);
+    expectNoLeak(json.campaigns, [/nonce|tokenHash|generalTokenHash/]);
     expect(json).not.toHaveProperty("links");
     expect(json.consents.length).toBe(await ctx.db.consent.count());
     const other = await prisma.church.create({ data: { nume: "Alta", slug: "alta-campanie" } });

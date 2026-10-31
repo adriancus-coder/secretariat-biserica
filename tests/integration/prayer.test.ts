@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
+import { expectNoLeak } from "../helpers/no-leak";
 
 // The actions run with the context set by each test (the real session needs a request).
 let current: Ctx;
@@ -14,6 +15,10 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 const { loadPrayerPage, PRAYER_FAMILY_SELECT, PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT } = await import("@/server/queries/prayer");
 const { applyDecision } = await import("@/server/review");
 const { cancelPrayerWeekAction, choosePrayerFamilyAction, markPrayerWeekAction, prayerSharedAction, setPrayerPrefsAction } = await import("@/server/actions/prayer");
+
+/** The test data's phone, and the children's birth dates in every form a page could show them. */
+const PHONE = "+47 900 11 222";
+const BIRTHS = ["2016-01-01", "01.01.2016", "2016", "2018-01-01", "01.01.2018", "2018"];
 
 /** The weekly prayer: who is in the rotation, what is shown, and nothing else from the register. */
 describe.skipIf(!hasTestDb)("weekly prayer", () => {
@@ -30,7 +35,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     ctx = { user: { id: ua.id, name: "R", email: "r@x.ro", role: "RUGACIUNE", isPastor: false, churchId: ca.id, churchName: "A" }, db: scopeToChurch(prisma, ca.id) } as Ctx;
     other = { user: { id: ub.id, name: "RB", email: "rb@x.ro", role: "SECRETAR", isPastor: false, churchId: cb.id, churchName: "B" }, db: scopeToChurch(prisma, cb.id) } as Ctx;
     const person = (churchId: string, nume: string, prenume: string, data: Record<string, unknown> = {}) =>
-      prisma.person.create({ data: { churchId, nume, prenume, sortKey: `${nume} ${prenume}`, searchText: prenume, telefon: "+47 900 11 222", email: `${prenume}@x.no`, adresa: "Strada 1", ...data } });
+      prisma.person.create({ data: { churchId, nume, prenume, sortKey: `${nume} ${prenume}`, searchText: prenume, telefon: PHONE, email: `${prenume}@x.no`, adresa: "Strada 1", ...data } });
     const family = async (churchId: string, key: string, nume: string, members: [string, Record<string, unknown>][], data: Record<string, unknown> = {}) => {
       const f = await prisma.family.create({ data: { churchId, nume: `Fam. ${nume}`, ...data } });
       fam[key] = f.id;
@@ -59,8 +64,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     expect(keys(PRAYER_MEMBER_SELECT)).toEqual(["dataCasatoriei", "dataIesire", "dataNasterii", "gen", "id", "nume", "prenume", "rudenie", "statut"]);
     expect(keys(PRAYER_PERSON_SELECT)).toEqual([...keys(PRAYER_MEMBER_SELECT), "prayerIncludeChildren", "prayerOptOut"].sort());
     expect(keys(PRAYER_FAMILY_SELECT)).toEqual(["headId", "id", "members", "prayerIncludeChildren", "prayerOptOut"]);
-    const all = JSON.stringify([PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT, PRAYER_FAMILY_SELECT]);
-    for (const field of ["telefon", "email", "adresa", "note", "roles", "groups", "searchText"]) expect(all).not.toContain(field);
+    expectNoLeak([PRAYER_MEMBER_SELECT, PRAYER_PERSON_SELECT, PRAYER_FAMILY_SELECT], ["telefon", "email", "adresa", "note", "roles", "groups", "searchText"]);
   });
 
   it("shows the next family by name only; the opted-out, former members and other churches are not in the rotation", async () => {
@@ -73,12 +77,12 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     expect(popescu.message).toBe(
       "Pace, frați și surori! Săptămâna aceasta ne vom ruga pentru familia Popescu Ion și Maria și pentru copilul lor, ca Domnul să-i binecuvânteze cu sănătate și cu dragoste de Domnul și să le dea înțelepciune în toate. Amin.",
     );
-    expect(JSON.stringify(popescu)).not.toMatch(/Ana|2016/);
+    expectNoLeak(popescu, ["Ana", "2016-01-01", "01.01.2016", "2016"]);
     expect(popescu.review).toBeNull();
     // With consent (Barbu), the little boy is named.
     expect(d.message).toContain("familia Barbu Vasile și Ioana și pentru micuțul Matei, ca Domnul");
-    const text = JSON.stringify(d);
-    for (const hidden of ["Ciobanu", "Dobre", "Enache", "900", "@x.no", "Strada", "2016", "2018"]) expect(text).not.toContain(hidden);
+    // The whole phone, e-mail, address and birth dates of the test data; ids are left out of the search.
+    expectNoLeak(d, ["Ciobanu", "Dobre", "Enache", PHONE, /@x\.no/, "Strada 1", ...BIRTHS]);
     // The page data is the label and the key, nothing more.
     expect(Object.keys(d.next!).sort()).toEqual(["key", "label"]);
   });
@@ -93,8 +97,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     for (const o of d.overview) expect(Object.keys(o).sort()).toEqual(["key", "label", "last", "order"]);
     expect(d.summary).toEqual({ inRotation: 2, thisYear: 0, cycleWeeks: 2 });
     // No contact data, birth dates, objecting families or children named without consent anywhere.
-    const text = JSON.stringify(d);
-    for (const hidden of ["Ana", "2016", "2018", "1980", "900", "@x.no", "Strada", "Ciobanu", "Dobre", "Enache", "APARTINATOR", "Fiică"]) expect(text).not.toContain(hidden);
+    expectNoLeak(d, ["Ana", ...BIRTHS, "1980-01-01", "1980", PHONE, /@x\.no/, "Strada 1", "Ciobanu", "Dobre", "Enache", "APARTINATOR", "Fiică"]);
     const popescu = d.overview[1].key;
     expect((await choosePrayerFamilyAction(popescu)).ok).toBe(true);
     const chosen = await loadPrayerPage(ctx, 0, popescu);
@@ -103,7 +106,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     expect(await prisma.prayerWeek.count()).toBe(0);
     const log = await prisma.auditLog.findFirstOrThrow({ where: { entity: "PRAYER" }, orderBy: { createdAt: "desc" } });
     expect(JSON.stringify(log)).toContain("familie aleasă manual pentru săptămâna");
-    expect(JSON.stringify(log)).not.toMatch(/Popescu|Ion|Maria/);
+    expectNoLeak(log, ["Popescu", "Ion", "Maria"]);
     // Another church's family, or a family out of the rotation, cannot be chosen.
     expect((await choosePrayerFamilyAction(`f:${fam.altabiserica}`)).message).toContain("nu mai este în rotație");
     expect((await loadPrayerPage(ctx, 0, `f:${fam.nu}`)).next?.key).toBe(d.overview[0].key);
@@ -121,7 +124,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     await prayerSharedAction("whatsapp");
     const log = await prisma.auditLog.findMany({ where: { entity: "PRAYER" } });
     expect(log).toHaveLength(2);
-    expect(JSON.stringify(log)).not.toMatch(/Barbu|Vasile|Ioana|Matei/);
+    expectNoLeak(log, ["Barbu", "Vasile", "Ioana", "Matei"]);
     // Sharing records the channel only.
     expect(log.map((l) => (l.changes as { observatie?: string }).observatie)).toContain("PRAYER shared: whatsapp");
     expect((await cancelPrayerWeekAction()).ok).toBe(true);
@@ -197,7 +200,7 @@ describe.skipIf(!hasTestDb)("weekly prayer", () => {
     expect(page.review).toEqual({ href: `/familii/${f.id}` });
     const plain = await loadPrayerPage(prayerRole, skip);
     expect(plain.review).toEqual({ href: null });
-    expect(JSON.stringify(plain)).not.toMatch(/rudenie|fără|1990|2012/);
+    expectNoLeak(plain, ["rudenie", "fără", "1990-03-03", "1990", "2012-07-01", "2012"]);
     expect(await familiesToReview(secretar.db)).toEqual([
       { id: f.id, nume: "Fam. Ciobanu Felix", reasons: ["Ciobanu Naomi: membru fără rudenie", "Capul familiei are dată de căsătorie, dar familia nu are soț / soție"] },
     ]);

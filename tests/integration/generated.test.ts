@@ -3,6 +3,7 @@ import { permissions, type Permission } from "@/lib/permissions";
 import type { Ctx } from "@/server/session";
 import { scopeToChurch } from "@/server/tenant-scope";
 import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
+import { expectNoLeak } from "../helpers/no-leak";
 
 let current: Ctx;
 let stepUp = true;
@@ -209,7 +210,7 @@ describe.skipIf(!hasTestDb)("generated documents", () => {
     current = secretar;
     const { data } = await buildExportJson(secretar);
     expect(JSON.stringify(data)).not.toContain(docId);
-    expect(JSON.stringify(data.documenteGenerate)).not.toContain("disciplina-");
+    expectNoLeak(data.documenteGenerate, [/disciplina-/]);
   });
 
   it("the backup keeps the saved versions; anonymising deletes the unregistered ones naming the person", async () => {
