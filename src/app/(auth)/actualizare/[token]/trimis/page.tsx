@@ -5,7 +5,7 @@ import { CONSENT_LABEL, OPTIONAL_CONSENTS } from "@/lib/labels";
 import type { DataUpdateProposal } from "@/lib/schemas/data-update";
 import { personalIdentityOk, resolvePersonalLink } from "@/server/data-update";
 import { tenantDb } from "@/server/tenant-db";
-import { InvalidLink } from "../../shared";
+import { AcceptedLink, InvalidLink } from "../../shared";
 
 export const metadata: Metadata = { title: "Date trimise", robots: { index: false } };
 
@@ -13,6 +13,7 @@ export const metadata: Metadata = { title: "Date trimise", robots: { index: fals
 export default async function PersonalSentPage({ params }: PageProps<"/actualizare/[token]/trimis">) {
   const { token } = await params;
   const r = await resolvePersonalLink(token);
+  if (r.state === "accepted") return <AcceptedLink />;
   if (r.state !== "ok") return <InvalidLink />;
   const show = await personalIdentityOk(r.link);
   const pending = show

@@ -16,6 +16,7 @@ import {
   personalIdentityOk,
   resolveGeneralLink,
   resolvePersonalLink,
+  LINK_ACCEPTED,
   writeOnlineConsents,
 } from "../data-update";
 import { currentPrivacyVersion } from "../campaigns";
@@ -63,6 +64,7 @@ export async function verifyPersonalIdentityAction(token: string, _prev: FormSta
   const state = await runFormAction(formData, async () => {
     const r = await resolvePersonalLink(token);
     if (r.state === "invalid") throw new ActionError(LINK_INVALID);
+    if (r.state === "accepted") throw new ActionError(LINK_ACCEPTED);
     if (r.state === "locked") throw new ActionError(LINK_LOCKED);
     if (!checks.hit(await clientIp())) throw new ActionError(IP_LIMIT_MESSAGE);
     const typed = typedIdentity(formData);
@@ -92,6 +94,7 @@ export async function submitPersonalUpdateAction(token: string, _prev: FormState
   const state = await runFormAction(formData, async () => {
     const r = await resolvePersonalLink(token);
     if (r.state === "invalid") throw new ActionError(LINK_INVALID);
+    if (r.state === "accepted") throw new ActionError(LINK_ACCEPTED);
     if (r.state === "locked") throw new ActionError(LINK_LOCKED);
     if (!(await personalIdentityOk(r.link))) throw new ActionError(SESSION_EXPIRED);
     if (String(formData.get("website") ?? "").trim()) {

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createMissingLinks, privacyVersionOf } from "@/server/campaigns";
-import { adultChildren, selfSnapshot, writeOnlineConsents } from "@/server/data-update";
+import { adultChildren, resolvePersonalLink, selfSnapshot, writeOnlineConsents } from "@/server/data-update";
 import { selfChanges } from "@/lib/data-update-review";
 import { applyDecision } from "@/server/review";
 import { importBackup } from "@/server/backup";
@@ -12,6 +12,7 @@ import { hasTestDb, resetDatabase, testPrisma } from "./helpers";
 import { expectNoLeak } from "../helpers/no-leak";
 
 vi.mock("@/server/session", () => ({ ActionError: class ActionError extends Error {} }));
+vi.mock("@/server/db", async () => ({ prisma: (await import("./helpers")).testPrisma() }));
 
 describe.skipIf(!hasTestDb)("data-update campaign", () => {
   const prisma = hasTestDb ? testPrisma() : (undefined as never);
@@ -56,6 +57,24 @@ describe.skipIf(!hasTestDb)("data-update campaign", () => {
       expect(l.tokenHash).toBe(hashToken(token));
       expect(JSON.stringify(l)).not.toContain(token);
     }
+  });
+
+  it("closes a personal link once the secretariat accepted the answer (fully or partly), not before or after a rejection", async () => {
+    const link = await ctx.db.dataUpdateLink.findFirstOrThrow({ where: { personId: ids.adult } });
+    const token = linkToken(link.id, link.nonce);
+    expect((await resolvePersonalLink(token)).state).toBe("ok");
+    const sub = await ctx.db.dataUpdateSubmission.create({ data: { campaignId: link.campaignId, linkId: link.id, personId: ids.adult, via: "PERSONAL", proposed: {} } as never });
+    expect((await resolvePersonalLink(token)).state).toBe("ok");
+    await ctx.db.dataUpdateSubmission.update({ where: { id: sub.id }, data: { status: "REJECTED" } });
+    expect((await resolvePersonalLink(token)).state).toBe("ok");
+    for (const status of ["PARTIAL", "ACCEPTED"] as const) {
+      await ctx.db.dataUpdateSubmission.update({ where: { id: sub.id }, data: { status } });
+      expect((await resolvePersonalLink(token)).state).toBe("accepted");
+    }
+    // The other adult's link stays open.
+    const other = await ctx.db.dataUpdateLink.findFirstOrThrow({ where: { personId: ids["fara-data"] } });
+    expect((await resolvePersonalLink(linkToken(other.id, other.nonce))).state).toBe("ok");
+    await ctx.db.dataUpdateSubmission.delete({ where: { id: sub.id } });
   });
 
   it("finds the adult's own minor children only, and writes the online consents (a parent's for a minor)", async () => {

@@ -16,12 +16,15 @@ import type { Ctx } from "./session";
 export const IDENTITY_FAILED = "Datele nu corespund. Verificați și încercați din nou.";
 export const LINK_LOCKED = "Linkul a fost blocat. Cereți un link nou de la secretariat.";
 export const MAX_FAILED_CHECKS = 5;
+export const LINK_ACCEPTED = "Datele dumneavoastră au fost deja acceptate de secretariat. Linkul nu mai poate fi folosit.";
 
 const campaignSelect = { id: true, nume: true, deadline: true, status: true, privacyTextVersion: true, generalLinkEnabled: true, churchId: true } as const;
 
 export type PersonalLink =
   | { state: "invalid" }
   | { state: "locked" }
+  /** The secretariat already approved (fully or partly) this person's answer in this campaign. */
+  | { state: "accepted" }
   | {
       state: "ok";
       link: { id: string; nonce: string; personId: string; churchId: string; failedChecks: number; openedAt: Date | null };
@@ -35,6 +38,10 @@ export async function resolvePersonalLink(token: string): Promise<PersonalLink> 
   if (!link || link.revokedAt) return { state: "invalid" };
   const deadline = fromDbDate(link.campaign.deadline)!;
   if (!campaignOpen({ status: link.campaign.status, deadline }, todayIso())) return { state: "invalid" };
+  const accepted = await prisma.dataUpdateSubmission.count({
+    where: { churchId: link.churchId, campaignId: link.campaignId, personId: link.personId, status: { in: ["ACCEPTED", "PARTIAL"] } },
+  });
+  if (accepted) return { state: "accepted" };
   if (link.lockedAt) return { state: "locked" };
   return { state: "ok", link, campaign: { ...link.campaign, deadline } };
 }

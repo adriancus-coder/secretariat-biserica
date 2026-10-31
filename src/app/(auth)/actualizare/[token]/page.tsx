@@ -8,7 +8,7 @@ import { adultChildren, childSnapshot, personalIdentityOk, resolvePersonalLink, 
 import { prisma } from "@/server/db";
 import { tenantDb } from "@/server/tenant-db";
 import { IdentityForm } from "../identity-form";
-import { churchForCampaign, InvalidLink, LockedLink } from "../shared";
+import { AcceptedLink, churchForCampaign, InvalidLink, LockedLink } from "../shared";
 import { UpdateForm, type ChildState } from "../update-form";
 import { answersForFamily } from "@/lib/prayer";
 import { churchTitle } from "@/lib/church-name";
@@ -22,6 +22,7 @@ export default async function PersonalUpdatePage({ params }: PageProps<"/actuali
   const { token } = await params;
   const r = await resolvePersonalLink(token);
   if (r.state === "invalid") return <InvalidLink />;
+  if (r.state === "accepted") return <AcceptedLink />;
   if (r.state === "locked") return <LockedLink />;
   if (!r.link.openedAt) await prisma.dataUpdateLink.update({ where: { id: r.link.id }, data: { openedAt: new Date() } });
   const church = await churchForCampaign(r.link.churchId);

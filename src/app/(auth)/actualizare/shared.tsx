@@ -15,6 +15,16 @@ export function InvalidLink() {
   );
 }
 
+/** The person's answer was already approved: the link is closed (DATA-UPDATE-ACCEPTED). */
+export function AcceptedLink() {
+  return (
+    <>
+      <h2 className="text-2xl mb-2">Datele au fost deja acceptate</h2>
+      <p className="hint">Secretariatul a verificat și a acceptat datele dumneavoastră, așa că linkul nu mai poate fi folosit. Dacă doriți să mai modificați ceva, adresați-vă secretariatului bisericii.</p>
+    </>
+  );
+}
+
 export function LockedLink() {
   return (
     <>
