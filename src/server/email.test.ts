@@ -98,7 +98,7 @@ describe("sending (mocked Resend client)", () => {
     const payload = send.mock.calls[0][0];
     const link = `${APP_URL}/invitatie/${TOKEN}`;
     expect(payload).toMatchObject({ from: DEFAULT_EMAIL_FROM, to: "ana@example.org" });
-    expect(payload.subject).toBe("Invitație în secretariatul bisericii Maranata Stavanger");
+    expect(payload.subject).toBe("Invitație în secretariatul Bisericii Maranata Stavanger");
     expect(payload.text).toContain(link);
     expect(payload.html).toContain(`href="${link}"`);
     expect(payload.text).toContain("Daniel Mureșan vă invită");
@@ -111,7 +111,7 @@ describe("sending (mocked Resend client)", () => {
     const payload = send.mock.calls[0][0];
     const link = `${APP_URL}/resetare-parola/${TOKEN}`;
     expect(payload.to).toBe("ana@example.org");
-    expect(payload.subject).toBe("Parolă nouă pentru secretariatul bisericii Maranata Stavanger");
+    expect(payload.subject).toBe("Parolă nouă pentru secretariatul Bisericii Maranata Stavanger");
     expect(payload.text).toContain(link);
     expect(payload.html).toContain(`href="${link}"`);
     expect(payload.text).toContain("Bună ziua, Ana Pop,");
@@ -228,7 +228,7 @@ describe("minutes", () => {
         minutes.note,
         "",
         "Cu stimă,",
-        "Secretariatul bisericii Maranata Stavanger",
+        "Secretariatul Bisericii Maranata Stavanger",
         "",
         "— trimis din Secretariat Biserică",
       ].join("\n"),
@@ -308,13 +308,13 @@ describe("application link", () => {
       [
         "Bună ziua,",
         "",
-        "Puteți completa cererea de membru a bisericii Maranata online, la adresa:",
+        "Puteți completa cererea de membru a Bisericii Maranata online, la adresa:",
         `${APP_URL}/cerere/maranata-stavanger`,
         "",
         "Vă așteptăm duminică.",
         "",
         "Cu stimă,",
-        "Secretariatul bisericii Maranata",
+        "Secretariatul Bisericii Maranata",
         "",
         "— trimis din Secretariat Biserică",
       ].join("\n"),

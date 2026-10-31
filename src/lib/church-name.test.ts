@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { generateDocumentText } from "@/domain/documents";
 import { documentPrint, eventPrint, groupPrint, meetingPrint, printApplicationPoster, printToText, reportPrint } from "@/domain/print";
-import { churchTitle } from "./church-name";
+import { churchOf, churchTitle } from "./church-name";
+import { campaignMessage } from "./campaign";
 import { consentFormPrint } from "./consent-form-print";
 import { exclusionNoticePrint } from "./discipline-print";
 import { DOCUMENT_TYPES } from "./labels";
@@ -37,6 +38,18 @@ describe("MINUTES-SIGNATURES: the church's name once (churchTitle)", () => {
     expect(churchTitle(null)).toBe("Biserica");
   });
 
+  it("the genitive never says „Bisericii Biserica” (churchOf)", () => {
+    expect(churchOf("Biserica Penticostală Maranata Stavanger")).toBe("Bisericii Penticostale Maranata Stavanger");
+    expect(churchOf("Maranata Stavanger")).toBe("Bisericii Maranata Stavanger");
+    expect(churchOf("Biserica Creștină Baptistă Betel")).toBe("Bisericii Creștine Baptiste Betel");
+    expect(churchOf("Biserica Românească")).toBe("Bisericii Românești");
+    expect(churchOf("Biserica Maranata")).toBe("Bisericii Maranata");
+    expect(churchOf("")).toBe("bisericii");
+    const msg = campaignMessage("Denis", "M", "Biserica Penticostală Maranata Stavanger", "2026-11-30", "https://x/a");
+    expect(msg).toContain("din evidența Bisericii Penticostale Maranata Stavanger până la");
+    expect(msg).not.toMatch(/biserici?i?\s+biserica/i);
+  });
+
   it("no generator writes the prefix by hand (src/ scan)", () => {
     const allowed = new Set(["src/lib/church-name.ts", "src/lib/privacy.ts"]);
     const offenders: string[] = [];
@@ -47,7 +60,7 @@ describe("MINUTES-SIGNATURES: the church's name once (churchTitle)", () => {
         .split("\n")
         .forEach((line, i) => {
           // `Biserica ${…}` in a template, or „Biserica {…}” in JSX (the blank of an empty name aside).
-          if (/Biserica \$\{|Biserica \{|"Biserica " \+/.test(line) && !line.includes("BLANK")) offenders.push(`${rel}:${i + 1}`);
+          if (/Biserica \$\{|Biserica \{|"Biserica " \+|[Bb]isericii( \$\{| \{)/.test(line) && !line.includes("BLANK")) offenders.push(`${rel}:${i + 1}`);
         });
     }
     expect(offenders).toEqual([]);

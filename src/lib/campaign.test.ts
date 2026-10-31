@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campaignMessage, campaignOpen, isCampaignAdult, linkStatus } from "./campaign";
+import { CAMPAIGN_IDENTITY_REASON, campaignGreeting, campaignMessage, campaignOpen, isCampaignAdult, linkStatus } from "./campaign";
 
 const none = { sentAt: null, openedAt: null, verifiedAt: null, submittedAt: null, lockedAt: null };
 const t = new Date("2026-11-01T10:00:00Z");
@@ -22,9 +22,13 @@ describe("data-update campaign", () => {
   });
 
   it("writes the share message with the first name, the church, the deadline and the link", () => {
-    expect(campaignMessage("Ana", "Maranata Stavanger", "2026-12-01", "https://x/actualizare/abc")).toBe(
-      "Bună ziua, Ana! Vă rugăm să verificați datele dumneavoastră din evidența Bisericii Maranata Stavanger până la 1 decembrie 2026. La deschidere vi se cer numele complet și numărul de telefon: https://x/actualizare/abc",
+    expect(campaignMessage("Ana", "F", "Maranata Stavanger", "2026-12-01", "https://x/actualizare/abc")).toBe(
+      "Pace, sora Ana! Vă rugăm să verificați datele dumneavoastră din evidența Bisericii Maranata Stavanger până la 1 decembrie 2026: https://x/actualizare/abc\n\n" + CAMPAIGN_IDENTITY_REASON,
     );
+    expect(campaignMessage("Denis", "M", "Biserica Penticostală Maranata Stavanger", "2026-11-30", "https://x/a")).toMatch(
+      /^Pace, frate Denis! .* din evidența Bisericii Penticostale Maranata Stavanger până la 30 noiembrie 2026: https:\/\/x\/a\n\nLa deschidere vi se cer numele complet și numărul de telefon\. Le cerem ca să ne asigurăm/,
+    );
+    expect(campaignGreeting("Dana", null)).toBe("Pace, Dana!");
   });
 
   it("is open while active and not past the deadline", () => {

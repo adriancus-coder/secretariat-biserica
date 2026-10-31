@@ -1,4 +1,5 @@
 /** The data-update campaign: link statuses, the share message, who gets a personal link. Pure. */
+import { churchOf } from "@/lib/church-name";
 import { ageAt } from "./dates";
 import { fmtL } from "./format";
 
@@ -40,9 +41,20 @@ export function isCampaignAdult(p: { dataNasterii: string | null }, today: strin
   return p.dataNasterii === null || ageAt(p.dataNasterii, today) >= 18;
 }
 
-/** The ready message of "Partajează" / "Copiază mesajul". */
-export function campaignMessage(prenume: string, church: string, deadline: string, link: string): string {
-  return `Bună ziua, ${prenume.trim() || "frate/soră"}! Vă rugăm să verificați datele dumneavoastră din evidența Bisericii ${church} până la ${fmtL(deadline)}. La deschidere vi se cer numele complet și numărul de telefon: ${link}`;
+/** Why the personal link asks for the name and the phone (the last lines of the message). */
+export const CAMPAIGN_IDENTITY_REASON =
+  "La deschidere vi se cer numele complet și numărul de telefon. Le cerem ca să ne asigurăm că doar dumneavoastră vedeți și modificați aceste date, chiar dacă linkul ajunge din greșeală la altcineva.";
+
+/** „Pace, frate Denis!” / „Pace, sora Dana!” by the gender in the register; without one, the name alone. */
+export function campaignGreeting(prenume: string, gen: string | null | undefined): string {
+  const name = prenume.trim();
+  if (!name) return gen === "F" ? "Pace, soră!" : gen === "M" ? "Pace, frate!" : "Pace!";
+  return gen === "F" ? `Pace, sora ${name}!` : gen === "M" ? `Pace, frate ${name}!` : `Pace, ${name}!`;
+}
+
+/** The ready message of "Partajează" / "Copiază mesajul" / WhatsApp. */
+export function campaignMessage(prenume: string, gen: string | null | undefined, church: string, deadline: string, link: string): string {
+  return `${campaignGreeting(prenume, gen)} Vă rugăm să verificați datele dumneavoastră din evidența ${churchOf(church)} până la ${fmtL(deadline)}: ${link}\n\n${CAMPAIGN_IDENTITY_REASON}`;
 }
 
 /** Is the campaign still open on `today` (active and not past its deadline)? */

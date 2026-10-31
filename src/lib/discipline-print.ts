@@ -3,7 +3,7 @@ import type { ChurchInfo } from "@/domain/types";
 import { formatAddress } from "./address";
 import { addDays } from "./dates";
 import { fmtL, memberName } from "./format";
-import { churchTitle } from "@/lib/church-name";
+import { churchOf, churchTitle } from "@/lib/church-name";
 
 /** The default addressee when the church has not set its Comunitate (Setări → Organizația). */
 export const COMMUNITY_PLACEHOLDER = "Comunitatea de care aparține biserica";
@@ -74,7 +74,7 @@ export function hearingConvocationPrint(x: HearingConvocation, church: ChurchInf
       { type: "title", text: "Convocare la audiere" },
       para(`${g.title} ${memberName(x.person)},`),
       para(
-        `Comitetul Bisericii ${church.nume} vă convoacă la audiere în data de ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}, la ${x.loc || `sediul bisericii${formatAddress(church) ? `, ${formatAddress(church)}` : ""}`}, în cadrul procedurii de cercetare prevăzute de Statutul Cultului Creștin Penticostal (art. 272 lit. a). Veți avea posibilitatea să vă prezentați punctul de vedere în fața comitetului.`,
+        `Comitetul ${churchOf(church.nume)} vă convoacă la audiere în data de ${fmtL(x.data)}${x.ora ? `, ora ${x.ora}` : ""}, la ${x.loc || `sediul bisericii${formatAddress(church) ? `, ${formatAddress(church)}` : ""}`}, în cadrul procedurii de cercetare prevăzute de Statutul Cultului Creștin Penticostal (art. 272 lit. a). Veți avea posibilitatea să vă prezentați punctul de vedere în fața comitetului.`,
       ),
       para(`Potrivit art. 272 lit. b, neprezentarea nu împiedică desfășurarea procedurii.`),
       para(`Data: ${fmtL(x.today)}`),
@@ -146,7 +146,7 @@ export function sanctionNoticePrint(x: SanctionNotice, church: ChurchInfo): Prin
       { type: "title", text: "Comunicarea sancțiunii" },
       para(`${g.title} ${memberName(x.person)},`),
       para(
-        `Vă comunicăm că, prin hotărârea comitetului Bisericii ${church.nume}${x.sedinta ? `, consemnată în ${x.sedinta}` : ""}, vi s-a aplicat sancțiunea: ${x.sanctiune.toLocaleLowerCase("ro-RO")}${x.temei ? `, în temeiul ${x.temei}` : ""} (Statutul Cultului Creștin Penticostal, art. 27 alin. 10).`,
+        `Vă comunicăm că, prin hotărârea comitetului ${churchOf(church.nume)}${x.sedinta ? `, consemnată în ${x.sedinta}` : ""}, vi s-a aplicat sancțiunea: ${x.sanctiune.toLocaleLowerCase("ro-RO")}${x.temei ? `, în temeiul ${x.temei}` : ""} (Statutul Cultului Creștin Penticostal, art. 27 alin. 10).`,
       ),
       para(
         `Aveți dreptul de a contesta hotărârea la ${x.comunitate || COMMUNITY_PLACEHOLDER} în termen de ${APPEAL_DAYS} zile de la comunicare, adică până la data de ${fmtL(appealDeadline(x.comunicatLa))} inclusiv (art. 27 alin. 11).`,

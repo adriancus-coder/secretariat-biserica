@@ -11,3 +11,29 @@ export function churchTitle(name: string | null | undefined): string {
   if (!n) return "Biserica";
   return /^biseric/i.test(n) ? n : `Biserica ${n}`;
 }
+
+/** An adjective after „Biserica” in the genitive: „Penticostală” → „Penticostale”, „Românească” → „Românești”. */
+function genitiveAdjective(word: string): string | null {
+  if (/ească$/.test(word)) return word.replace(/ească$/, "ești");
+  if (/ă$/.test(word)) return word.replace(/ă$/, "e");
+  return null;
+}
+
+/**
+ * The church's name after a noun („din evidența …”, „comitetul …”, „secretariatul …”): „Maranata Stavanger”
+ * → „Bisericii Maranata Stavanger”; „Biserica Penticostală Maranata Stavanger” → „Bisericii Penticostale
+ * Maranata Stavanger” (never „Bisericii Biserica …”); "" → „bisericii”.
+ */
+export function churchOf(name: string | null | undefined): string {
+  const n = (name ?? "").trim().replace(/\s+/g, " ");
+  if (!n) return "bisericii";
+  if (!/^biseric/i.test(n)) return `Bisericii ${n}`;
+  const words = n.split(" ").slice(1);
+  let i = 0;
+  for (; i < words.length; i++) {
+    const g = genitiveAdjective(words[i]);
+    if (g === null) break;
+    words[i] = g;
+  }
+  return ["Bisericii", ...words].join(" ");
+}

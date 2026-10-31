@@ -1,4 +1,5 @@
 import { hasStepUp, stepUpMethod } from "@/server/step-up";
+import { churchOf } from "@/lib/church-name";
 import { StepUpGate } from "@/components/passkey/step-up-gate";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -57,7 +58,7 @@ export default async function SettingsPage() {
       open={church.applicationsOpen}
       emailConfigured={isEmailConfigured()}
       subject={applicationLinkSubject(church.nume)}
-      frame={{ start: `Bună ziua, Puteți completa cererea de membru a bisericii ${church.nume} online, la adresa:`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
+      frame={{ start: `Bună ziua, Puteți completa cererea de membru a ${churchOf(church.nume)} online, la adresa:`, end: `Cu stimă, Secretariatul ${churchOf(church.nume)} — trimis din Secretariat Biserică` }}
     />
   ) : null;
   return (

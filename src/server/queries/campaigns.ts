@@ -19,6 +19,7 @@ export interface CampaignLinkRow {
   personId: string;
   nume: string;
   prenume: string;
+  gen: string | null;
   telefon: string;
   status: LinkStatus;
   url: string;
@@ -33,7 +34,7 @@ export interface CampaignLinkRow {
 export async function getCampaign(ctx: Ctx, id: string) {
   const c = await ctx.db.dataCampaign.findUnique({
     where: { id },
-    include: { links: { include: { person: { select: { nume: true, prenume: true, telefon: true, sortKey: true } } } } },
+    include: { links: { include: { person: { select: { nume: true, prenume: true, gen: true, telefon: true, sortKey: true } } } } },
   });
   if (!c) return null;
   const origin = await requestOrigin();
@@ -52,6 +53,7 @@ export async function getCampaign(ctx: Ctx, id: string) {
       personId: l.personId,
       nume: l.person.nume,
       prenume: l.person.prenume,
+      gen: l.person.gen,
       telefon: l.person.telefon,
       status: linkStatus({ ...l, approved: approved.has(l.personId) }),
       url: appUrl(`/actualizare/${linkToken(l.id, l.nonce)}`, origin),

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { churchOf } from "@/lib/church-name";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuditTrail } from "@/components/audit-trail";
@@ -79,7 +80,7 @@ export default async function MeetingPage({ params, searchParams }: PageProps<"/
             configured={isEmailConfigured()}
             recipients={recipients}
             subject={defaultSendSubject({ ...x, dataLabel }, church.nume)}
-            frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true, copie: x.importat }).join(" ")}`, end: `Cu stimă, Secretariatul bisericii ${church.nume} — trimis din Secretariat Biserică` }}
+            frame={{ start: `Bună ziua, ${minutesLines({ tip: x.tip, dataLabel, withPdf: true, copie: x.importat }).join(" ")}`, end: `Cu stimă, Secretariatul ${churchOf(church.nume)} — trimis din Secretariat Biserică` }}
           />
         ) : null}
         {canWrite && ag ? (

@@ -1,6 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
-import { churchTitle } from "@/lib/church-name";
+import { churchOf, churchTitle } from "@/lib/church-name";
 import { RECORD_COPY_LABEL } from "@/lib/minutes";
 
 export const DEFAULT_EMAIL_FROM = "Secretariat Biserică <secretariat@sanctuaryvoice.com>";
@@ -174,11 +174,11 @@ export function invitationEmail(p: {
 }): EmailContent {
   const closing = `Linkul este personal și este valabil ${quantity(p.validDays, "o zi", "zile")}. Dacă nu vă așteptați la această invitație, puteți ignora mesajul.`;
   return {
-    subject: `Invitație în secretariatul bisericii ${p.churchName}`,
+    subject: `Invitație în secretariatul ${churchOf(p.churchName)}`,
     text: [
       "Bună ziua,",
       "",
-      `${p.invitedBy} vă invită să folosiți aplicația de secretariat a bisericii ${p.churchName}, cu rolul ${p.roleLabel}.`,
+      `${p.invitedBy} vă invită să folosiți aplicația de secretariat a ${churchOf(p.churchName)}, cu rolul ${p.roleLabel}.`,
       "",
       "Pentru a vă crea contul, deschideți linkul de mai jos și alegeți-vă o parolă:",
       p.link,
@@ -202,11 +202,11 @@ export function passwordResetEmail(p: { link: string; churchName: string; name: 
     `Linkul este valabil ${quantity(p.validHours, "o oră", "ore")} și poate fi folosit o singură dată. ` +
     "Dacă nu ați cerut dumneavoastră o parolă nouă, ignorați mesajul: parola actuală rămâne neschimbată.";
   return {
-    subject: `Parolă nouă pentru secretariatul bisericii ${p.churchName}`,
+    subject: `Parolă nouă pentru secretariatul ${churchOf(p.churchName)}`,
     text: [
       `Bună ziua, ${p.name},`,
       "",
-      `A fost cerută o parolă nouă pentru contul dumneavoastră din aplicația de secretariat a bisericii ${p.churchName}.`,
+      `A fost cerută o parolă nouă pentru contul dumneavoastră din aplicația de secretariat a ${churchOf(p.churchName)}.`,
       "",
       "Pentru a alege parola nouă, deschideți linkul de mai jos:",
       p.link,
@@ -259,7 +259,7 @@ export function newApplicationEmail(p: { link: string; churchName: string; appli
     text: [
       "Bună ziua,",
       "",
-      `${p.applicantName} a trimis o cerere de membru (${p.kindLabel}) prin formularul online al bisericii ${p.churchName}.`,
+      `${p.applicantName} a trimis o cerere de membru (${p.kindLabel}) prin formularul online al ${churchOf(p.churchName)}.`,
       "",
       "Cererea poate fi văzută aici:",
       p.link,
@@ -305,8 +305,8 @@ export function documentApprovalEmail(p: { link: string; churchName: string; kin
         : "Un document trimis spre semnare a fost respins de pastor; motivul este în aplicație.";
   return {
     subject: p.kind === "trimis" ? "Un document așteaptă semnătura dumneavoastră" : p.kind === "aprobat" ? "Document aprobat de pastor" : "Document respins de pastor",
-    text: ["Bună ziua,", "", line, "", p.link, "", `Secretariatul bisericii ${p.churchName}`].join("\n"),
-    html: htmlLayout([htmlParagraph("Bună ziua,"), htmlParagraph(esc(line)), htmlButton(p.link, "Deschide documentul"), htmlParagraph(`Secretariatul bisericii ${esc(p.churchName)}`)]),
+    text: ["Bună ziua,", "", line, "", p.link, "", `Secretariatul ${churchOf(p.churchName)}`].join("\n"),
+    html: htmlLayout([htmlParagraph("Bună ziua,"), htmlParagraph(esc(line)), htmlButton(p.link, "Deschide documentul"), htmlParagraph(`Secretariatul ${esc(churchOf(p.churchName))}`)]),
   };
 }
 
@@ -346,7 +346,7 @@ export const EMAIL_NOTE_MAX = 1000;
  */
 export function framedEmail(p: { subject: string; churchName: string; lines: string[]; note: string }): EmailContent {
   const note = p.note.replace(/\r\n/g, "\n").trim().slice(0, EMAIL_NOTE_MAX);
-  const signature = p.churchName ? `Secretariatul bisericii ${p.churchName}` : "Secretariatul bisericii";
+  const signature = p.churchName ? `Secretariatul ${churchOf(p.churchName)}` : "Secretariatul bisericii";
   const footer = "— trimis din Secretariat Biserică";
   const noteParagraphs = note ? note.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean) : [];
   return {
@@ -413,7 +413,7 @@ export async function sendApplicationLinkEmail(p: { to: string[]; churchName: st
   const to = dedupeRecipients(p.to);
   if (!to.length || to.length > MAX_RECIPIENTS) return { result: "failed", error: "recipients" };
   const link = new URL(`/cerere/${p.slug}`, config.appUrl).toString();
-  const lines = [`Puteți completa cererea de membru a bisericii${p.churchName ? ` ${p.churchName}` : ""} online, la adresa:`, link];
+  const lines = [`Puteți completa cererea de membru a ${churchOf(p.churchName)} online, la adresa:`, link];
   return send(config, "application-link", to, framedEmail({ subject: applicationLinkSubject(p.churchName), churchName: p.churchName, lines, note: p.note }), to);
 }
 
@@ -444,7 +444,7 @@ export function loginCodeEmail(p: { code: string; churchName: string; validMinut
   return {
     // The code is only in the body: subjects show up in notifications and mail logs.
     subject: "Codul dumneavoastră de autentificare",
-    text: [`Codul de autentificare în secretariatul bisericii ${p.churchName} este:`, "", p.code, "", closing].join("\n"),
+    text: [`Codul de autentificare în secretariatul ${churchOf(p.churchName)} este:`, "", p.code, "", closing].join("\n"),
     html: htmlLayout([
       htmlParagraph(`Codul de autentificare în secretariatul bisericii <b>${esc(p.churchName)}</b> este:`),
       htmlParagraph(esc(p.code), "margin:0 0 16px;font-size:28px;font-weight:bold;letter-spacing:6px"),
