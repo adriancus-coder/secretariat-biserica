@@ -25,6 +25,7 @@ const church = {
   secretar: "",
   pastorEmail: "",
   secretarEmail: "",
+  secretarTelefon: "",
   slug: "maranata-stavanger",
   comunitate: "",
   applicationsOpen: true,

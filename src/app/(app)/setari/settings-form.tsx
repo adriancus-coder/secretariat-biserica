@@ -13,7 +13,7 @@ import { DOCUMENT_TYPE_LABEL, DOCUMENT_TYPES, type Nomenclatures } from "@/lib/l
 import { saveChurchSettingsAction } from "@/server/actions/settings";
 import { PRIVACY_NOTICE_VERSION } from "@/lib/privacy-notice";
 
-type ChurchTextFields = "nume" | "adresa" | "codPostal" | "localitate" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "slug" | "comunitate";
+type ChurchTextFields = "nume" | "adresa" | "codPostal" | "localitate" | "orgNr" | "telefon" | "email" | "pastor" | "secretar" | "pastorEmail" | "secretarEmail" | "secretarTelefon" | "slug" | "comunitate";
 
 export function SettingsForm({
   church,
@@ -91,6 +91,9 @@ export function SettingsForm({
         <div className="row2 stack-sm">
           <TextField name="pastorEmail" label="E-mail pastor" type="email" defaultValue={val("pastorEmail")} error={e.pastorEmail} hint="Primește procesele-verbale trimise din aplicație." />
           <TextField name="secretarEmail" label="E-mail secretar" type="email" defaultValue={val("secretarEmail")} error={e.secretarEmail} hint="Primește procesele-verbale trimise din aplicație." />
+        </div>
+        <div className="row2 stack-sm">
+          <TextField name="secretarTelefon" label="Telefon secretar" type="tel" defaultValue={val("secretarTelefon")} error={e.secretarTelefon} hint="Apare în mesajul de actualizare a datelor, pentru întrebări." />
         </div>
         <TextField
           name="slug"

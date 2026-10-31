@@ -53,9 +53,27 @@ export function campaignGreeting(prenume: string, gen: string | null | undefined
   return "Pace!";
 }
 
-/** The ready message of "Partajează" / "Copiază mesajul" / WhatsApp. */
-export function campaignMessage(prenume: string, gen: string | null | undefined, church: string, deadline: string, link: string): string {
-  return `${campaignGreeting(prenume, gen)} Vă rugăm să verificați datele dumneavoastră din evidența ${churchOf(church)} până la ${fmtL(deadline)}: ${link}\n\n${CAMPAIGN_IDENTITY_REASON}`;
+/** The secretary in Setări → Organizația (each part optional). */
+export interface SecretaryContact {
+  nume?: string | null;
+  telefon?: string | null;
+  email?: string | null;
+}
+
+/** „Pentru întrebări vă puteți adresa secretariatului bisericii: Ana Pop, tel. 900 11 222, ana@x.no.” */
+export function secretaryLine(c: SecretaryContact = {}): string {
+  const parts = [c.nume?.trim(), c.telefon?.trim() ? `tel. ${c.telefon.trim()}` : "", c.email?.trim()].filter(Boolean);
+  return parts.length ? `Pentru întrebări vă puteți adresa secretariatului bisericii: ${parts.join(", ")}.` : "Pentru întrebări vă puteți adresa secretariatului bisericii.";
+}
+
+/** The ready message of "Partajează" / "Copiază mesajul" / WhatsApp, sent by the secretariat. */
+export function campaignMessage(prenume: string, gen: string | null | undefined, church: string, deadline: string, link: string, secretary: SecretaryContact = {}): string {
+  return [
+    `${campaignGreeting(prenume, gen)} Vă rugăm să verificați datele dumneavoastră din evidența ${churchOf(church)} până la ${fmtL(deadline)}: ${link}`,
+    CAMPAIGN_IDENTITY_REASON,
+    secretaryLine(secretary),
+    "Secretariatul bisericii",
+  ].join("\n\n");
 }
 
 /** Is the campaign still open on `today` (active and not past its deadline)? */

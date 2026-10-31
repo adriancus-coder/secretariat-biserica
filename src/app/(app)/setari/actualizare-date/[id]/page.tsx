@@ -187,7 +187,7 @@ export default async function CampaignPage({ params, searchParams }: PageProps<"
           <LinkRow
             key={l.id}
             row={{ id: l.id, personId: l.personId, name: memberName(l), telefon: l.telefon, status: l.status, sentOn: l.sentOn, submissionId: l.submissionId }}
-            message={campaignMessage(l.prenume, l.gen, church.nume, c.deadline, l.url)}
+            message={campaignMessage(l.prenume, l.gen, church.nume, c.deadline, l.url, { nume: church.secretar, telefon: church.secretarTelefon, email: church.secretarEmail })}
             open={c.open}
           />
         ))}

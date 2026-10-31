@@ -54,6 +54,8 @@ model Church {
   /// Addresses preselected when the minutes are e-mailed (Setări → Organizația).
   pastorEmail      String    @default("")
   secretarEmail    String    @default("")
+  /// The secretary's phone, given in the data-update campaign message for questions.
+  secretarTelefon  String    @default("")
 
   // Nomenclatoare editabile. O listă goală înseamnă „valorile implicite” din aplicație.
   tipuriSedinte           String[]  @default([])

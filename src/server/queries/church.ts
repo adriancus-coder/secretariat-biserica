@@ -33,6 +33,7 @@ export interface ChurchSettings extends ChurchInfo {
   /** Preselected recipients when the minutes are e-mailed ("" = none). */
   pastorEmail: string;
   secretarEmail: string;
+  secretarTelefon: string;
   /** Every user must use a second factor at login. */
   require2fa: boolean;
   /** Pastors and administrators sign in with password + passkey (codes only as audited recovery). */
@@ -86,6 +87,7 @@ const loadChurch = cache(async (churchId: string): Promise<ChurchSettings> => {
     secretar: c.secretar,
     pastorEmail: c.pastorEmail,
     secretarEmail: c.secretarEmail,
+    secretarTelefon: c.secretarTelefon,
     require2fa: c.require2fa,
     passkeyPolicy: c.passkeyPolicy,
     semnaturaUnica: c.semnaturaUnica,
